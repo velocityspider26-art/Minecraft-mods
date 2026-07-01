@@ -1,0 +1,15 @@
+{
+  "radarballistics.configuration.title": "Create Radar Ballistics Configs",
+  "radarballistics.configuration.section.radarballistics.common.toml": "Create Radar Ballistics",
+  "radarballistics.configuration.section.radarballistics.common.toml.title": "Create Radar Ballistics",
+
+  "radarballistics.configuration.enableAutoTrackLead": "Enable Auto-Track Lead Correction",
+  "radarballistics.configuration.leadMovingTargets": "Lead Moving Targets",
+  "radarballistics.configuration.projectile.muzzleSpeedBlocksPerTick": "Projectile Muzzle Speed (blocks/tick)",
+  "radarballistics.configuration.projectile.gravityBlocksPerTickSquared": "Projectile Gravity (blocks/tick²)",
+  "radarballistics.configuration.projectile.dragPerTick": "Projectile Drag (per tick)",
+  "radarballistics.configuration.solver.maxIterations": "Solver Max Iterations",
+  "radarballistics.configuration.solver.timeToleranceTicks": "Solver Time Tolerance (ticks)",
+  "radarballistics.configuration.solver.maxFlightTicks": "Solver Max Flight (ticks)",
+  "radarballistics.configuration.solver.leadDamping": "Solver Lead Damping"
+}

@@ -36,7 +36,7 @@ displayName="${mod_name}" #mandatory
 #displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
 
 # A file name (in the root of the mod JAR) containing a logo for display
-#logoFile="examplemod.png" #optional
+#logoFile="${mod_id}.png" #optional
 
 # A text field displayed in the mod UI
 #credits="" #optional
@@ -46,7 +46,11 @@ displayName="${mod_name}" #mandatory
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Example mod description.
+A fire-control add-on for Create Radar and Create: Big Cannons. Improves auto-tracking
+accuracy by solving a proper intercept: it leads the target using its velocity and
+acceleration and computes the barrel elevation that accounts for the shell's muzzle speed,
+gravity and air drag, so moving targets get hit instead of trailed. Includes an in-game
+/radarballistics command to inspect firing solutions.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

@@ -28,6 +28,7 @@ sourceSets.main.resources {
 
 repositories {
     // Add here additional repositories if required by some of the dependencies below.
+    mavenCentral() // for the JUnit test dependencies below
 }
 
 base {
@@ -136,9 +137,35 @@ dependencies {
     // Example project dependency using a sister or child project:
     // implementation project(":myproject")
 
+    // --- Create: Big Cannons and Create Radar integration ---
+    // The ballistics engine in this mod is pure Java and builds with no third-party mods.
+    // The optional in-game auto-tracking hook (see docs/INTEGRATION.md and the templates in
+    // src/integration-templates/) mixes into Create: Big Cannons and Create Radar. To build
+    // that hook, add their Maven coordinates here, e.g. via the Create ecosystem repositories:
+    //
+    //   repositories {
+    //       maven { url "https://mvn.devos.one/releases" }           // Create + friends
+    //       maven { url "https://maven.createbigcannons.com/" }      // Create: Big Cannons
+    //   }
+    //   compileOnly "com.simibubi.create:create-${mc_version}:<ver>:slim"
+    //   compileOnly "rbasamoyai:createbigcannons-${mc_version}:<ver>"
+    //   compileOnly "<group>:createradar-${mc_version}:<ver>"
+    //
+    // Coordinates change per release, so confirm the current ones on the mods' pages.
+
+    // Plain-Java unit tests for the ballistics engine (no Minecraft on the test classpath).
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+// Run the ballistics unit tests on the JUnit 5 platform.
+tasks.named('test', Test) {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
