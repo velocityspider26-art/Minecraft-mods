@@ -26,27 +26,32 @@ The command still works and is now **optional** — purely a diagnostic.
 
 ## Prerequisites
 
-You need a workspace where the modded classes resolve at compile time:
+The `withCbc` build resolves everything from `./libs/` plus one small Maven artifact (Flywheel).
+The Create ecosystem mavens are flaky, so downloading the mod jars from Modrinth/CurseForge is
+the reliable route. You need these jars in `./libs/` (NeoForge 1.21.1 builds):
 
-1. **Create** and **Create: Big Cannons** come from Maven (repositories are already declared in
-   `build.gradle` under the `withCbc` block).
-2. **Create: Radars** (the port at
-   `github.com/Maqwr/Create-radars-port-1.21.1-neoforge`) is **not** on Maven. Build or download
-   its NeoForge 1.21.1 jar and drop it into `./libs/` (any `*.jar` there is put on the compile
-   classpath).
+- **Create: Radars** — e.g. `create_radar-0.4.9.4-1.21.1.jar` (Modrinth)
+- **Create** — e.g. `create-1.21.1-6.0.10.jar` (Modrinth)
+- **Create: Big Cannons** — e.g. `createbigcannons-5.11.7+mc.1.21.1.jar` (Modrinth)
+- **Ponder**, **Registrate**, **Flywheel** — Create bundles these as jar-in-jar; extract them
+  from Create's jar (`META-INF/jarjar/*.jar`) into `./libs/` so the compiler can see them.
 
-The dependency versions default to those in the port's `gradle.properties`; override any with
-`-Pcreate_version=… -Pcbc_version=… -Pflywheel_version=…` if they drift.
+Flywheel also resolves from `https://maven.createmod.net` (already declared under `withCbc`), so
+extracting it is optional. These are all `compileOnly` — none are bundled into the output jar.
 
 ## Build it
 
 ```
-# 1. Put the Create: Radars port jar here:
-mkdir -p libs && cp /path/to/create_radar-*.jar libs/
-
-# 2. Build the integrated jar:
+mkdir -p libs
+# 1. Put the three mod jars in ./libs
+cp create_radar-0.4.9.4-1.21.1.jar create-1.21.1-6.0.10.jar createbigcannons-5.11.7+mc.1.21.1.jar libs/
+# 2. Extract Create's bundled Ponder/Registrate/Flywheel so they resolve at compile time
+cd libs && unzip -o create-1.21.1-6.0.10.jar 'META-INF/jarjar/*.jar' -d _jj && cp _jj/META-INF/jarjar/*.jar . && rm -rf _jj && cd ..
+# 3. Build the integrated jar
 ./gradlew build -PwithCbc
 ```
+
+Override versions with `-Pflywheel_version=…` if the Flywheel Maven coordinate drifts.
 
 The result in `build/libs/radarballistics-1.0.0.jar` now contains the mixins, the
 `radarballistics.mixins.json` config, and a `neoforge.mods.toml` that registers the mixin config

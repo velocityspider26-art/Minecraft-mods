@@ -192,19 +192,18 @@ tasks.named('test', Test) {
 // ---------------------------------------------------------------------------------------
 if (withCbc) {
     repositories {
-        maven { url "https://mvn.devos.one/releases" }        // Create + Ponder + Flywheel + Registrate
-        maven { url "https://mvn.devos.one/snapshots" }
-        maven { url "https://maven.createbigcannons.com/" }   // Create: Big Cannons
+        maven { url "https://maven.createmod.net" }           // Flywheel (Create's render engine)
         maven { url "https://maven.parchmentmc.org" }
-        flatDir { dirs 'libs' }                                // Create: Radars jar goes here
     }
     dependencies {
-        // Versions match the Create: Radars 1.21.1 NeoForge port (see its gradle.properties).
-        compileOnly "com.simibubi.create:create-${minecraft_version}:${project.findProperty('create_version') ?: '6.0.10-278'}:slim"
-        compileOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${project.findProperty('flywheel_version') ?: '1.0.6-41'}"
-        compileOnly "rbasamoyai:createbigcannons-${minecraft_version}-neoforge:${project.findProperty('cbc_version') ?: '6.1.0'}"
-        // The Create: Radars port jar you placed in ./libs (name it create_radar.jar or adjust).
+        // Drop the Create, Create: Big Cannons and Create: Radars jars into ./libs (any *.jar
+        // there is put on the compile classpath). Downloading them from Modrinth/CurseForge is
+        // the most reliable route; the Create ecosystem mavens are often flaky. See
+        // BUILD_INTEGRATION.md. These are compileOnly — they are not bundled into our jar.
         compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+        // Flywheel provides base types in the contraption class hierarchy that the compiler
+        // must resolve. Version pairs with Create 6.0.10.
+        compileOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${project.findProperty('flywheel_version') ?: '1.0.6-42'}"
     }
 }
 

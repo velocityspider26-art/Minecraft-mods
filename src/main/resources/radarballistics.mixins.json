@@ -1,9 +1,8 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.8",
   "package": "com.velocityspider.radarballistics.mixin",
   "compatibilityLevel": "JAVA_21",
-  "refmap": "radarballistics.refmap.json",
   "mixins": [
     "CannonTargetingMixin",
     "CannonLeadMixin"

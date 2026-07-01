@@ -2,7 +2,6 @@ package com.velocityspider.radarballistics.integration.cbc;
 
 import java.util.List;
 
-import com.happysg.radar.compat.PhysicsHandler;
 import com.happysg.radar.compat.cbc.CannonLead;
 import com.happysg.radar.compat.cbc.CannonUtil;
 import com.velocityspider.radarballistics.Config;
@@ -11,6 +10,7 @@ import com.velocityspider.radarballistics.ballistics.FireSolution;
 import com.velocityspider.radarballistics.ballistics.ProjectileProfile;
 import com.velocityspider.radarballistics.ballistics.TargetState;
 import com.velocityspider.radarballistics.ballistics.Vec3d;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -32,8 +32,18 @@ import rbasamoyai.createbigcannons.munitions.config.components.BallisticProperti
 public final class CbcBridge {
 
     private static final BallisticSolver SOLVER = BallisticSolver.standard();
+    private static final java.util.concurrent.atomic.AtomicBoolean ANNOUNCED =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
 
     private CbcBridge() {
+    }
+
+    /** Logs once, the first time the corrected fire-control actually runs, to confirm it is live. */
+    private static void announceOnce() {
+        if (ANNOUNCED.compareAndSet(false, true)) {
+            com.velocityspider.radarballistics.RadarBallistics.LOGGER.info(
+                    "Create Radar Ballistics: accurate lead/elevation fire-control is now driving cannon auto-aim.");
+        }
     }
 
     static Vec3d vec(Vec3 v) {
@@ -91,6 +101,7 @@ public final class CbcBridge {
         if (!sol.converged()) {
             return null;
         }
+        announceOnce();
         return List.of(sol.elevationDegrees());
     }
 
@@ -163,6 +174,7 @@ public final class CbcBridge {
         double yawRad = Math.atan2(toAim.z(), toAim.x());
         int flightTicks = (int) Math.round(sol.timeToImpactTicks());
 
+        announceOnce();
         return new CannonLead.LeadSolution(aimPoint, pitchDeg, yawRad, flightTicks);
     }
 
