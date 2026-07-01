@@ -30,8 +30,13 @@ public final class Config {
             .defineInRange("projectile.gravityBlocksPerTickSquared", 0.05, 0.0, 10.0);
 
     public static final ModConfigSpec.DoubleValue DRAG = BUILDER
-            .comment("Per-tick velocity multiplier modelling air resistance. 1.0 = no drag.")
-            .defineInRange("projectile.dragPerTick", 0.99, 0.5, 1.0);
+            .comment("Air-drag coefficient, matching Create: Big Cannons' ballistic 'drag'. 0 = no drag.",
+                    "Applied per tick as v *= (1 - drag), or v *= 1/(1 + drag*|v|) when quadraticDrag is on.")
+            .defineInRange("projectile.drag", 0.01, 0.0, 1.0);
+
+    public static final ModConfigSpec.BooleanValue QUADRATIC_DRAG = BUILDER
+            .comment("Whether the shell uses quadratic drag (CBC's isQuadraticDrag) instead of linear.")
+            .define("projectile.quadraticDrag", false);
 
     public static final ModConfigSpec.BooleanValue LEAD_MOVING_TARGETS = BUILDER
             .comment("Predict target motion (velocity + acceleration) when aiming.",
@@ -62,7 +67,7 @@ public final class Config {
 
     /** Builds the projectile flight model from the current config values. */
     public static ProjectileProfile projectileProfile() {
-        return new ProjectileProfile(MUZZLE_SPEED.get(), GRAVITY.get(), DRAG.get());
+        return new ProjectileProfile(MUZZLE_SPEED.get(), GRAVITY.get(), DRAG.get(), QUADRATIC_DRAG.get());
     }
 
     /** Builds a solver configured from the current advanced config values. */

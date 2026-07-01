@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
  */
 class BallisticSolverTest {
 
-    private static final ProjectileProfile SHELL = new ProjectileProfile(8.0, 0.05, 0.99);
+    private static final ProjectileProfile SHELL = new ProjectileProfile(8.0, 0.05, 0.01);
     private final BallisticSolver solver = BallisticSolver.standard();
 
     /** Simulates both bodies forward and returns the minimum swept-path miss distance. */
@@ -101,13 +101,24 @@ class BallisticSolverTest {
 
     @Test
     void leadsFastCrosserWithSlowShell() {
-        ProjectileProfile slow = new ProjectileProfile(4.0, 0.05, 0.98);
-        FireSolution sol = solver.solve(new Vec3d(0, 70, 0),
-                new TargetState(new Vec3d(90, 72, 0), new Vec3d(0, 0, 0.9)), slow);
+        ProjectileProfile slow = new ProjectileProfile(4.0, 0.05, 0.02);
+        Vec3d launcher = new Vec3d(0, 70, 0);
+        TargetState target = new TargetState(new Vec3d(90, 72, 0), new Vec3d(0, 0, 0.9));
+        FireSolution sol = solver.solve(launcher, target, slow);
         assertTrue(sol.converged(), "slow shell: expected convergence");
-        double miss = closestApproach(new Vec3d(0, 70, 0),
-                new TargetState(new Vec3d(90, 72, 0), new Vec3d(0, 0, 0.9)), slow, sol);
+        double miss = closestApproach(launcher, target, slow, sol);
         assertTrue(miss < 0.25, "slow shell miss too large: " + miss);
+    }
+
+    @Test
+    void leadsCrossingTargetWithQuadraticDrag() {
+        ProjectileProfile quad = new ProjectileProfile(9.0, 0.05, 0.01, true);
+        Vec3d launcher = new Vec3d(0, 70, 0);
+        TargetState target = new TargetState(new Vec3d(130, 78, 0), new Vec3d(0, 0, 0.7));
+        FireSolution sol = solver.solve(launcher, target, quad);
+        assertTrue(sol.converged(), "quadratic-drag shell: expected convergence");
+        double miss = closestApproach(launcher, target, quad, sol);
+        assertTrue(miss < 0.25, "quadratic-drag miss too large: " + miss);
     }
 
     @Test

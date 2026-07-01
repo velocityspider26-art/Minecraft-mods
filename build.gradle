@@ -26,6 +26,22 @@ sourceSets.main.resources {
     exclude("src/generated/**/.cache") // datagen cache files
 }
 
+// The Create Radar / Create: Big Cannons auto-aim integration (mixins + CBC bridge) only
+// compiles when those mods are on the classpath. Build it with -PwithCbc (see BUILD_INTEGRATION.md);
+// without that flag the default build produces the standalone engine + /radarballistics command
+// and the integration sources and mixin config are excluded so the jar still builds and loads.
+def withCbc = project.hasProperty('withCbc')
+
+if (!withCbc) {
+    sourceSets.main.java {
+        exclude 'com/velocityspider/radarballistics/mixin/**'
+        exclude 'com/velocityspider/radarballistics/integration/cbc/**'
+    }
+    sourceSets.main.resources {
+        exclude 'radarballistics.mixins.json'
+    }
+}
+
 repositories {
     // Add here additional repositories if required by some of the dependencies below.
     mavenCentral() // for the JUnit test dependencies below
@@ -168,6 +184,49 @@ tasks.named('test', Test) {
     useJUnitPlatform()
 }
 
+// ---------------------------------------------------------------------------------------
+// Create Radar + Create: Big Cannons auto-aim integration (activated with -PwithCbc).
+//
+// Create: Radars is distributed as a mod jar, not a Maven artifact, so drop its jar into
+// ./libs (see BUILD_INTEGRATION.md) and this picks it up. Create and CBC come from Maven.
+// ---------------------------------------------------------------------------------------
+if (withCbc) {
+    repositories {
+        maven { url "https://mvn.devos.one/releases" }        // Create + Ponder + Flywheel + Registrate
+        maven { url "https://mvn.devos.one/snapshots" }
+        maven { url "https://maven.createbigcannons.com/" }   // Create: Big Cannons
+        maven { url "https://maven.parchmentmc.org" }
+        flatDir { dirs 'libs' }                                // Create: Radars jar goes here
+    }
+    dependencies {
+        // Versions match the Create: Radars 1.21.1 NeoForge port (see its gradle.properties).
+        compileOnly "com.simibubi.create:create-${minecraft_version}:${project.findProperty('create_version') ?: '6.0.10-278'}:slim"
+        compileOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${project.findProperty('flywheel_version') ?: '1.0.6-41'}"
+        compileOnly "rbasamoyai:createbigcannons-${minecraft_version}-neoforge:${project.findProperty('cbc_version') ?: '6.1.0'}"
+        // The Create: Radars port jar you placed in ./libs (name it create_radar.jar or adjust).
+        compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    }
+}
+
+// Builds the optional-dependency TOML injected into neoforge.mods.toml for the CBC build.
+static String cbcDependenciesToml() {
+    return '''
+[[dependencies.radarballistics]]
+    modId="create_radar"
+    type="optional"
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.radarballistics]]
+    modId="createbigcannons"
+    type="optional"
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+'''
+}
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -180,6 +239,10 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            // Emitted into neoforge.mods.toml: registers the mixin config and declares the
+            // optional CBC / Create Radar dependencies only when building with -PwithCbc.
+            mixins_toml            : withCbc ? '[[mixins]]\nconfig="radarballistics.mixins.json"\n' : '',
+            cbc_deps_toml          : withCbc ? cbcDependenciesToml() : '',
     ]
     inputs.properties replaceProperties
     expand replaceProperties

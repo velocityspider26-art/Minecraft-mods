@@ -225,33 +225,33 @@ public final class BallisticSolver {
         double vy = s * Math.sin(angleRad); // vertical speed component
         double h = 0.0; // horizontal distance travelled
         double y = 0.0; // height relative to launch
-        double t = 0.0;
 
         for (int tick = 0; tick < maxFlightTicks; tick++) {
             double prevH = h;
             double prevY = y;
-            double prevVy = vy;
-            double prevVh = vh;
-
-            // One tick of the projectile model: gravity, then drag, then move.
-            vy -= proj.gravity();
-            vh *= proj.drag();
-            vy *= proj.drag();
+            // Move first, at the current velocity (matches CBC's integration order). The
+            // velocity carrying the shell across this tick is (vh, vy).
+            double moveVh = vh;
+            double moveVy = vy;
             h += vh;
             y += vy;
-            t += 1.0;
 
             if (h >= range) {
                 double span = h - prevH;
                 double frac = span < 1.0e-12 ? 0.0 : (range - prevH) / span;
                 double heightAtRange = prevY + frac * (y - prevY);
-                double timeAtRange = (t - 1.0) + frac;
-                double impactVy = prevVy + frac * (vy - prevVy);
-                double impactVh = prevVh + frac * (vh - prevVh);
-                return Elevation.reached(angleRad, heightAtRange, timeAtRange, impactVy, impactVh);
+                double timeAtRange = tick + frac;
+                return Elevation.reached(angleRad, heightAtRange, timeAtRange, moveVy, moveVh);
             }
-            // Horizontal velocity decays geometrically under drag; once it is negligible the
-            // shell can never cover the remaining distance.
+
+            // Update velocity for the next tick: gravity, then CBC-style drag.
+            vy -= proj.gravity();
+            double f = proj.dragFactor(Math.sqrt(vh * vh + vy * vy));
+            vh *= f;
+            vy *= f;
+
+            // Horizontal velocity decays under drag; once it is negligible the shell can
+            // never cover the remaining distance.
             if (vh < 1.0e-6) {
                 break;
             }

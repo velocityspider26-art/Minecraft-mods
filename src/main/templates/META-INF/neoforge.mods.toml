@@ -53,9 +53,9 @@ gravity and air drag, so moving targets get hit instead of trailed. Includes an 
 /radarballistics command to inspect firing solutions.
 '''
 
-# The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
-#[[mixins]]
-#config="${mod_id}.mixins.json"
+# The [[mixins]] block registers the auto-aim mixin config. It is emitted only when building
+# the Create Radar integration with -PwithCbc; otherwise this expands to nothing.
+${mixins_toml}
 
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
@@ -91,6 +91,9 @@ gravity and air drag, so moving targets get hit instead of trailed. Includes an 
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
+
+# Optional Create Radar / Create: Big Cannons dependencies, emitted only for the -PwithCbc build.
+${cbc_deps_toml}
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't

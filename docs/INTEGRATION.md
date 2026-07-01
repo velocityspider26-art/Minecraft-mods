@@ -1,109 +1,66 @@
-# Hooking the engine into Create Radar + Create: Big Cannons
+# Building the Create Radar auto-aim integration
 
-The ballistics engine in this mod (`com.velocityspider.radarballistics.ballistics`) is pure
-Java and builds with **no** third-party mods on the classpath, which is why it can be unit
-tested and numerically verified in isolation. Wiring it into the actual auto-tracking of
-Create Radar and Create: Big Cannons (CBC) requires compiling against those two mods, whose
-Maven artifacts are not available in every build environment. This document describes exactly
-where the two hook points are and how to connect them.
+By default this mod builds as a standalone engine + the `/radarballistics` command. Passing
+`-PwithCbc` additionally compiles the **auto-aim integration**: two Mixins that replace Create
+Radar's aiming math with this mod's verified, drag-accurate solver, so cannons lead targets
+correctly **without** anyone running a command.
 
-The ready-to-adapt Mixin is in [`src/integration-templates/AutoAimMixin.java`](../src/integration-templates/AutoAimMixin.java).
-It is deliberately **outside** `src/main/java` so the mod still builds without the Create
-dependencies. Move it into a source set and fill in the marked class/method names once you add
-the dependencies.
+## What the integration does
 
-## 1. Add the dependencies
+It targets the Create: Radars NeoForge 1.21.1 port (`com.happysg.radar`) and intercepts the two
+methods that decide where a tracked cannon points:
 
-In `build.gradle`, add the Create ecosystem repositories and declare CBC and Create Radar as
-`compileOnly` (mixin targets are resolved at runtime by the loaded mods):
+| Target (in Create: Radars) | Mixin | Why |
+| --- | --- | --- |
+| `compat.cbc.CannonTargeting#calculatePitch(mount, origin, target, level)` | `CannonTargetingMixin` | The original solves elevation with a **continuous-time** closed form that treats CBC's per-tick drag as a continuous coefficient and ignores quadratic drag — systematically off at range. We return a pitch found by simulating CBC's **exact per-tick** flight. |
+| `compat.cbc.CannonLead#solveLeadPerTickWithAcceleration(...)` | `CannonLeadMixin` | Replaces the moving-target lead with a coupled intercept solve (target velocity **and** acceleration + real muzzle speed/gravity/drag), so the predicted aim point and time-of-flight are correct. |
 
-```gradle
-repositories {
-    maven { url "https://mvn.devos.one/releases" }      // Create + library mods
-    maven { url "https://maven.createbigcannons.com/" }  // Create: Big Cannons
-    // ...plus wherever your Create Radar build is published
-}
+Both mixins delegate to `integration.cbc.CbcBridge`, which pulls the shell's real muzzle speed
+(charge count), gravity, drag and quadratic-drag flag straight from the loaded cannon via
+Create Radar's own `CannonUtil`, feeds them to the engine, and hands the result back in the
+exact types the original methods return. On any failure (out of range, laser cannon, or the
+feature disabled in config) the mixin does nothing and the original code runs — so it degrades
+safely. Everything respects `enableAutoTrackLead` in the config.
 
-dependencies {
-    compileOnly "com.simibubi.create:create-${mc_version}:<create_ver>:slim"
-    compileOnly "com.jozufozu.flywheel:flywheel-neoforge-${mc_version}:<flywheel_ver>"
-    compileOnly "rbasamoyai:createbigcannons-${mc_version}:<cbc_ver>"
-    compileOnly "<group>:createradar-${mc_version}:<radar_ver>"
-}
-```
+The command still works and is now **optional** — purely a diagnostic.
 
-Exact coordinates and versions change per release — confirm them on each mod's distribution
-page. Also add the three mods as `optional` dependencies in `neoforge.mods.toml`.
+## Prerequisites
 
-## 2. Register the mixin config
+You need a workspace where the modded classes resolve at compile time:
 
-Uncomment the mixins block in `neoforge.mods.toml`:
+1. **Create** and **Create: Big Cannons** come from Maven (repositories are already declared in
+   `build.gradle` under the `withCbc` block).
+2. **Create: Radars** (the port at
+   `github.com/Maqwr/Create-radars-port-1.21.1-neoforge`) is **not** on Maven. Build or download
+   its NeoForge 1.21.1 jar and drop it into `./libs/` (any `*.jar` there is put on the compile
+   classpath).
 
-```toml
-[[mixins]]
-config="radarballistics.mixins.json"
-```
+The dependency versions default to those in the port's `gradle.properties`; override any with
+`-Pcreate_version=… -Pcbc_version=… -Pflywheel_version=…` if they drift.
 
-and add `src/main/resources/radarballistics.mixins.json`:
-
-```json
-{
-  "required": true,
-  "package": "com.velocityspider.radarballistics.mixin",
-  "compatibilityLevel": "JAVA_21",
-  "mixins": ["AutoAimMixin"],
-  "injectors": { "defaultRequire": 1 }
-}
-```
-
-## 3. The two hook points
-
-**Hook A — the target feed (Create Radar).** Create Radar's auto-aiming controller decides
-where the cannon should point. Vanilla behaviour points it at the tracked target's *current*
-position. Intercept the method that produces that aim direction/target and, instead, call:
-
-```java
-FireSolution sol = FireControl.solve(muzzlePos, new TargetState(targetPos, targetVelocity));
-if (sol.converged()) {
-    // drive the mount to sol.yawDegrees() / sol.pitchDegrees()
-}
-```
-
-`targetVelocity` should be the tracked entity's `getDeltaMovement()` (for a moving
-contraption, its measured per-tick displacement). This is the change that fixes the miss:
-the mount is driven to the *predicted intercept*, not the stale position.
-
-**Hook B — the projectile model (Create: Big Cannons).** The solver needs the shell's real
-muzzle speed, gravity and drag so its elevation is correct. CBC exposes the initial speed
-when a round is fired (it scales with the number of propellant charges). Read those values
-and set them on the config, or better, pass a per-shot `ProjectileProfile`:
-
-```java
-ProjectileProfile profile = new ProjectileProfile(cbcMuzzleSpeed, cbcGravity, cbcDrag);
-FireSolution sol = new BallisticSolver(...).solve(muzzlePos, target, profile);
-```
-
-CBC's projectile properties are data-driven; the muzzle speed for a given charge count is
-available from the cannon's fired-projectile context. If you can't read it live, the config
-default (`projectile.muzzleSpeedBlocksPerTick`) is a reasonable starting point — set it to the
-speed you observe for your standard load.
-
-## 4. Applying the solution to the mount
-
-Create's cannon mounts (pitch bearing + rotation) rotate at a limited speed, so feed
-`sol.yawDegrees()` and `sol.pitchDegrees()` to the mount's target-angle setter every tick and
-let it slew. Because the solver already accounts for time-of-flight, the mount will lead the
-target correctly once it is on-angle. Only fire when the mount is within a small tolerance of
-the solution angles.
-
-## Verifying it works
-
-Without any of this wiring you can already exercise the exact math the hook uses, in-game:
+## Build it
 
 ```
-/radarballistics profile        # shows the projectile model the solver assumes
-/radarballistics solve          # look at any entity; prints the yaw/pitch/lead/time to hit it
+# 1. Put the Create: Radars port jar here:
+mkdir -p libs && cp /path/to/create_radar-*.jar libs/
+
+# 2. Build the integrated jar:
+./gradlew build -PwithCbc
 ```
 
-Point at a moving mob and watch the reported lead distance grow with its speed — that is the
-correction Hook A applies to the cannon.
+The result in `build/libs/radarballistics-1.0.0.jar` now contains the mixins, the
+`radarballistics.mixins.json` config, and a `neoforge.mods.toml` that registers the mixin config
+and declares Create Radar + CBC as optional dependencies.
+
+## Install
+
+Put that jar in `mods/` alongside Create, Create: Big Cannons and Create: Radars (all for
+NeoForge 1.21.1). Build a radar-controlled auto-cannon as normal — the aiming is now corrected
+automatically. Verify with `/radarballistics solve` while looking at a moving target.
+
+## Note on this build environment
+
+The standalone engine + command jar is built and its math is unit-tested and numerically
+verified here. The `-PwithCbc` integration jar must be built in a workspace that has the
+Create: Radars port jar (it isn't published to Maven), so the final mixin binary is produced
+there rather than in this sandbox. The mixin code is written against the port's actual source.

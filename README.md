@@ -51,18 +51,27 @@ Point at a moving mob and watch the reported lead grow with its speed.
 | `projectile.dragPerTick` | Per-tick air-resistance multiplier (1.0 = none) |
 | `solver.*` | Advanced convergence tuning |
 
-## Hooking into the cannons
+## Auto-aim integration (no command needed)
 
-The `/radarballistics` command runs the full engine today. Wiring the same solver into Create
-Radar's auto-tracking and Create: Big Cannons' projectiles takes a small Mixin adapter that
-must be compiled against those mods — see **[docs/INTEGRATION.md](docs/INTEGRATION.md)** and the
-template in `src/integration-templates/`.
+Built with `-PwithCbc`, this mod hooks **directly** into Create Radar's auto-aim so cannons
+lead their targets automatically — the command becomes just a diagnostic. Two Mixins replace
+Create Radar's aiming math with this engine:
+
+- `CannonTargetingMixin` → replaces the barrel-elevation solver, whose original continuous-time
+  closed form mismodels CBC's per-tick drag and ignores quadratic drag.
+- `CannonLeadMixin` → replaces the moving-target lead solver with a coupled intercept solve
+  using the target's velocity and acceleration and the shell's real muzzle speed/gravity/drag.
+
+Both read the shell's true ballistics from the loaded cannon and fall back to vanilla behaviour
+on any failure, so it degrades safely. See **[docs/INTEGRATION.md](docs/INTEGRATION.md)** for the
+exact build steps (you supply the Create: Radars port jar, since it isn't on Maven).
 
 ## Building
 
 ```
-./gradlew build     # builds the mod
-./gradlew test      # runs the ballistics unit tests
+./gradlew build             # standalone engine + /radarballistics command
+./gradlew test              # runs the ballistics unit tests
+./gradlew build -PwithCbc   # adds the Create Radar auto-aim mixins (see docs/INTEGRATION.md)
 ```
 
 ## License
