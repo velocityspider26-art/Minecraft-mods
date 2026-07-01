@@ -42,11 +42,17 @@ displayName="${mod_name}" #mandatory
 #credits="" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+authors="velocityspider"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Example mod description.
+Adds a scaled-down, ruined Death Star that is summoned as a real physics object.
+
+The wreck is generated procedurally (hull panelling, the equatorial trench, the superlaser dish
+and battle-damage craters), placed into the world, and then assembled into a Sable physics
+sub-level - so it tumbles, collides and settles instead of just being placed blocks.
+
+Summon it with the Death Star Core item, or with /deathstar summon [radius]. Requires Sable.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
@@ -86,6 +92,15 @@ Example mod description.
     # This version range declares a minimum of the current minecraft version up to but not including the next major version
     versionRange="${minecraft_version_range}"
     ordering="NONE"
+    side="BOTH"
+
+# Sable provides the physics sub-levels this mod assembles the Death Star into. Without it there is
+# nowhere to put a physics body, so it is a hard requirement. Load after Sable so its API is ready.
+[[dependencies.${mod_id}]]
+    modId="sable"
+    type="required"
+    versionRange="[2.0.0,)"
+    ordering="AFTER"
     side="BOTH"
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares

@@ -27,7 +27,11 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    // Sable (physics sub-levels) and its companion library live here.
+    maven {
+        name = "RyanHCode"
+        url = "https://maven.ryanhcode.dev/releases"
+    }
 }
 
 base {
@@ -118,6 +122,17 @@ configurations {
 }
 
 dependencies {
+    // --- Sable physics engine -------------------------------------------------------------
+    // We compile against Sable's public API (SubLevelAssemblyHelper) to turn the placed Death
+    // Star blocks into a real physics sub-level. Sable is a REQUIRED runtime dependency that the
+    // player installs as a normal mod, so it is 'compileOnly' here rather than bundled.
+    //
+    // 'transitive = false' keeps Sable's own heavy dependency graph (Veil, Create, Flywheel, the
+    // Rapier natives, ...) off our compile classpath -- we only need the API classes to compile.
+    // BoundingBox3i comes from the companion library, so it is added explicitly.
+    compileOnly("dev.ryanhcode.sable:sable-neoforge-1.21.1:${sable_version}") { transitive = false }
+    compileOnly("dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:${sable_companion_version}") { transitive = false }
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

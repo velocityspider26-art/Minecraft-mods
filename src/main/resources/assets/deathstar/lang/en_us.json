@@ -1,0 +1,10 @@
+{
+  "itemGroup.deathstar": "Death Star Ruins",
+  "item.deathstar.death_star_core": "Death Star Core",
+
+  "message.deathstar.summoned": "Assembled a Death Star from %s blocks. Stand clear.",
+  "message.deathstar.too_many": "That Death Star would be %s blocks, over the limit of %s. Lower the radius in the config.",
+  "message.deathstar.no_sable": "Sable is not available here, so there is nowhere to build a physics body. Is Sable installed?",
+  "message.deathstar.failed": "Death Star assembly failed: %s",
+  "message.deathstar.needs_player": "This command must be run by a player."
+}
