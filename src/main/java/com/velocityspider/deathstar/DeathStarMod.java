@@ -3,6 +3,7 @@ package com.velocityspider.deathstar;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import com.velocityspider.deathstar.block.ModBlocks;
 import com.velocityspider.deathstar.command.DeathStarCommand;
 import com.velocityspider.deathstar.config.DeathStarConfig;
 import com.velocityspider.deathstar.item.DeathStarCoreItem;
@@ -51,10 +52,16 @@ public class DeathStarMod {
                     .title(Component.translatable("itemGroup.deathstar"))
                     .withTabsBefore(CreativeModeTabs.COMBAT)
                     .icon(() -> DEATH_STAR_CORE.get().getDefaultInstance())
-                    .displayItems((parameters, output) -> output.accept(DEATH_STAR_CORE.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(DEATH_STAR_CORE.get());
+                        ModBlocks.BLOCK_ITEMS.forEach(item -> output.accept(item.get()));
+                    })
                     .build());
 
     public DeathStarMod(IEventBus modEventBus, ModContainer modContainer) {
+        // Blocks must be registered before their block-items and before ITEMS.register(...).
+        ModBlocks.init();
+        ModBlocks.BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
 

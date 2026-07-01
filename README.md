@@ -8,13 +8,18 @@ collides with terrain, and settles.
 
 ## How it works
 
-1. **Generate** — `DeathStarBlueprint` builds a hollow, panelled sphere and carves the three
-   features that make the silhouette read as a Death Star:
-   - the **equatorial trench** (dark recessed band around the middle),
-   - the **superlaser dish** (the concave "eye" on the upper hemisphere), and
-   - **battle damage** — impact craters that punch holes clean through the hull and expose the
-     charred internal frame around their rims, so it looks like *ruins*.
-   Generation is deterministic from a seed.
+1. **Generate** — `DeathStarBlueprint` builds a wreck (deterministic from a seed):
+   - a **two-layer panelled hull** with the **equatorial trench** and the concave **superlaser
+     dish** ("eye"),
+   - a **huge blown-open section** with a jagged, charred rim that tears away ~15% of the sphere and
+     exposes a cutaway of the interior — this is what makes it read as *ruins* rather than a moon,
+   - an **accurate-feeling interior**: a glowing **main reactor** at the core, the vertical
+     **reactor/exhaust shaft**, the **superlaser focusing tube** running out to the dish, exposed
+     **decks** and structural **girders**, and
+   - **battle-damage craters** across the rest of the skin.
+   It's built from the mod's **own blocks/textures** (hull plating, greebles, reinforced frame,
+   scorched hull, Imperial interior walls/floors, reactor core/casing, superlaser lens, power
+   conduit, control panels) — no re-used vanilla iron/concrete.
 2. **Place** — every voxel is written into the world around the target point.
 3. **Assemble** — the exact set of placed positions is passed to
    `SubLevelAssemblyHelper.assembleBlocks(...)`. Sable lifts the blocks out of the world into a
@@ -45,18 +50,30 @@ Summon with either:
 
 | Option | Default | Notes |
 | --- | --- | --- |
-| `radius` | `45` | Outer radius in blocks. Block count scales with radius²: ~32 → ~25k, ~45 → ~50k. |
+| `radius` | `40` | Outer radius in blocks. Two-layer hull, so it scales fast: ~32 → ~30k, ~40 → ~48k, ~45 → ~58k blocks. |
 | `shellThickness` | `2` | Hull skin thickness. |
-| `maxBlocks` | `60000` | Hard safety cap; a summon over this is refused rather than locking the server. |
+| `maxBlocks` | `90000` | Hard safety cap; a summon over this is refused rather than locking the server. |
 | `dropHeight` | `3` | Blocks above ground it spawns before physics takes over (0 = already resting). |
-| `reactorCore` | `true` | Places a small solid glowing core at the centre (mass anchor). |
+
+## Easter eggs
+
+Tucked into the exposed decks (visible through the blown-open section) are little Star Wars nods,
+labelled with signs:
+
+- **Detention Block AA-23** with barred cells and **cell 1138** (the THX-1138 / *A New Hope* cell).
+- The **garbage masher 3263827** (the number Han yells).
+- **Tractor beam control** ("1 of 7") — Obi-Wan's objective.
+- The **Emperor's throne room** (a *Return of the Jedi* / Death Star II nod).
+- Scattered quips: **"IT'S A TRAP!"**, **"I have a bad feeling about this..."**, and a
+  **"THAT'S NO MOON."** plaque near the trench.
+- The **thermal exhaust port** on the trench, wired down a conduit shaft to the reactor.
 
 ## Performance note
 
-At the default `radius = 45` the Death Star is **~50,000 blocks in a single physics body**. That
-is intentional (it's what was asked for) but it is genuinely heavy for the physics engine and the
+At the default `radius = 40` the Death Star is **~48,000 blocks in a single physics body** — right
+around the size that was asked for. It is still genuinely heavy for the physics engine and the
 initial assembly is a one-off spike. If you want something smoother to fly around, drop `radius`
-to ~24–32 in the config.
+to ~24–32 in the config; push it to 45+ for a ~58k-block monster.
 
 ## Building
 
