@@ -2,6 +2,10 @@ package com.example.examplemod;
 
 import org.slf4j.Logger;
 
+import com.example.examplemod.content.thruster.CreativeThrusterBlock;
+import com.example.examplemod.content.thruster.CreativeThrusterBlockEntity;
+import com.example.examplemod.content.thruster.ThrusterBlock;
+import com.example.examplemod.content.thruster.ThrusterBlockEntity;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -14,6 +18,8 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.api.distmarker.Dist;
@@ -44,6 +50,29 @@ public class ExampleMod {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     // Create a Deferred Register to hold CreativeModeTabs which will all be registered under the "examplemod" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+    // Create a Deferred Register to hold BlockEntityTypes which will all be registered under the "examplemod" namespace
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
+
+    // --- Thruster blocks (plume-mesh exhaust instead of particles) ---
+    // A directional thruster whose plume is driven by its redstone input.
+    public static final DeferredBlock<ThrusterBlock> THRUSTER_BLOCK = BLOCKS.registerBlock("thruster",
+            ThrusterBlock::new,
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0f).sound(SoundType.METAL).lightLevel(state -> 8));
+    public static final DeferredItem<BlockItem> THRUSTER_ITEM = ITEMS.registerSimpleBlockItem("thruster", THRUSTER_BLOCK);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThrusterBlockEntity>> THRUSTER_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("thruster", () -> BlockEntityType.Builder.of(
+                    (pos, state) -> new ThrusterBlockEntity(ExampleMod.THRUSTER_BLOCK_ENTITY.get(), pos, state),
+                    THRUSTER_BLOCK.get()).build(null));
+
+    // A creative thruster that always fires at full throttle.
+    public static final DeferredBlock<CreativeThrusterBlock> CREATIVE_THRUSTER_BLOCK = BLOCKS.registerBlock("creative_thruster",
+            CreativeThrusterBlock::new,
+            BlockBehaviour.Properties.of().mapColor(MapColor.GOLD).strength(3.0f).sound(SoundType.METAL).lightLevel(state -> 10));
+    public static final DeferredItem<BlockItem> CREATIVE_THRUSTER_ITEM = ITEMS.registerSimpleBlockItem("creative_thruster", CREATIVE_THRUSTER_BLOCK);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CreativeThrusterBlockEntity>> CREATIVE_THRUSTER_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("creative_thruster", () -> BlockEntityType.Builder.of(
+                    (pos, state) -> new CreativeThrusterBlockEntity(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), pos, state),
+                    CREATIVE_THRUSTER_BLOCK.get()).build(null));
 
     // Creates a new Block with the id "examplemod:example_block", combining the namespace and path
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
@@ -61,6 +90,8 @@ public class ExampleMod {
             .icon(() -> EXAMPLE_ITEM.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 output.accept(EXAMPLE_ITEM.get()); // Add the example item to the tab. For your own tabs, this method is preferred over the event
+                output.accept(THRUSTER_ITEM.get());
+                output.accept(CREATIVE_THRUSTER_ITEM.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -75,6 +106,8 @@ public class ExampleMod {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        // Register the Deferred Register to the mod event bus so block entity types get registered
+        BLOCK_ENTITIES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
