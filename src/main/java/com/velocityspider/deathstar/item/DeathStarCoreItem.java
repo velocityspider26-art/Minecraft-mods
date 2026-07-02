@@ -28,11 +28,11 @@ public class DeathStarCoreItem extends Item {
         }
 
         int radius = DeathStarConfig.RADIUS.get();
-        // Scatter the wreck field above the clicked spot; the pieces fall and settle onto the ground.
+        // Rest the sphere on the clicked block: its centre one radius above the click point.
         BlockPos clicked = context.getClickedPos();
         BlockPos center = new BlockPos(
                 clicked.getX(),
-                clicked.getY() + 1 + Math.max(10, radius / 2),
+                clicked.getY() + 1 + radius,
                 clicked.getZ());
 
         DeathStarAssembler.Result result = DeathStarAssembler.summon(level, center, radius, level.getRandom().nextLong());

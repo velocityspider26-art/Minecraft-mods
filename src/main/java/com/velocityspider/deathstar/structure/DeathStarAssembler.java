@@ -24,13 +24,11 @@ import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 
 /**
- * Builds the Death Star wreckage out of real blocks and assembles it into Sable physics bodies.
+ * Builds the ruined Death Star out of real blocks and assembles it into a Sable physics body.
  *
- * <p>The wreck is a <em>field of separate pieces</em> ({@link DeathStarBlueprint#buildWreckField}).
- * Each piece is placed at its own scattered offset and assembled into its <em>own</em> sub-level,
- * so the ruins really are in pieces: every shard is an independent rigid body that falls, collides
- * and settles on its own. Pieces are placed and assembled one at a time, so their blocks never
- * coexist in the world and cannot collide during placement.
+ * <p>The whole station is one connected {@link DeathStarBlueprint.Fragment}: it is placed around
+ * the target centre and handed to {@link SubLevelAssemblyHelper#assembleBlocks} as a single
+ * assembly, so the result is <em>one whole</em> rigid physics body rather than scattered pieces.
  */
 public final class DeathStarAssembler {
 
@@ -41,7 +39,7 @@ public final class DeathStarAssembler {
     private static final int PLACE_FLAGS = Block.UPDATE_KNOWN_SHAPE;
 
     public sealed interface Result {
-        record Success(int pieceCount, int blockCount) implements Result {}
+        record Success(int blockCount) implements Result {}
         record TooManyBlocks(int blockCount, int limit) implements Result {}
         record SableUnavailable() implements Result {}
         record Failed(String message) implements Result {}
@@ -50,12 +48,12 @@ public final class DeathStarAssembler {
     private DeathStarAssembler() {}
 
     /**
-     * Summons the Death Star wreck centred on {@code center}.
+     * Summons the ruined Death Star as one physics body centred on {@code center}.
      *
      * @param level  the server level to build in
-     * @param center the world position the debris field is scattered around
-     * @param radius radius of the intact station the shards were cut from
-     * @param seed   seed controlling the exact wreck pattern
+     * @param center the world position of the station's centre (and the assembly anchor)
+     * @param radius outer radius in blocks
+     * @param seed   seed controlling the exact ruin pattern
      */
     public static Result summon(ServerLevel level, BlockPos center, int radius, long seed) {
         ServerSubLevelContainer container = SubLevelContainer.getContainer(level);
@@ -64,57 +62,39 @@ public final class DeathStarAssembler {
         }
 
         int thickness = DeathStarConfig.SHELL_THICKNESS.get();
-        List<DeathStarBlueprint.Fragment> fragments = DeathStarBlueprint.buildWreckField(seed, radius, thickness);
+        DeathStarBlueprint.Fragment fragment = DeathStarBlueprint.build(seed, radius, thickness);
 
-        int total = 0;
-        for (DeathStarBlueprint.Fragment f : fragments) {
-            total += f.voxels().size() + f.signs().size();
-        }
+        int total = fragment.voxels().size() + fragment.signs().size();
         int limit = DeathStarConfig.MAX_BLOCKS.get();
         if (total > limit) {
             return new Result.TooManyBlocks(total, limit);
         }
 
-        int drop = DeathStarConfig.DROP_HEIGHT.get();
-        int placedTotal = 0;
-        int pieces = 0;
-        String lastError = null;
+        BlockPos anchor = center.above(DeathStarConfig.DROP_HEIGHT.get());
+        List<BlockPos> placed = new ArrayList<>(total);
+        try {
+            for (DeathStarBlueprint.Voxel v : fragment.voxels()) {
+                BlockPos pos = anchor.offset(v.x(), v.y(), v.z());
+                level.setBlock(pos, v.state(), PLACE_FLAGS);
+                placed.add(pos);
+            }
+            for (DeathStarBlueprint.SignFeature s : fragment.signs()) {
+                placeSign(level, anchor.offset(s.x(), s.y(), s.z()), s, placed);
+            }
 
-        for (DeathStarBlueprint.Fragment fragment : fragments) {
-            if (fragment.voxels().isEmpty()) continue;
-            BlockPos anchor = center.offset(fragment.offsetX(), fragment.offsetY() + drop, fragment.offsetZ());
-            List<BlockPos> placed = new ArrayList<>(fragment.voxels().size() + fragment.signs().size());
-            try {
-                for (DeathStarBlueprint.Voxel v : fragment.voxels()) {
-                    BlockPos pos = anchor.offset(v.x(), v.y(), v.z());
-                    level.setBlock(pos, v.state(), PLACE_FLAGS);
-                    placed.add(pos);
-                }
-                for (DeathStarBlueprint.SignFeature s : fragment.signs()) {
-                    placeSign(level, anchor.offset(s.x(), s.y(), s.z()), s, placed);
-                }
-
-                BoundingBox3i bounds = BoundingBox3i.from(placed);
-                SubLevelAssemblyHelper.assembleBlocks(level, anchor, placed, bounds);
-                placedTotal += placed.size();
-                pieces++;
-            } catch (Exception e) {
-                lastError = String.valueOf(e.getMessage());
-                LOGGER.error("Failed to assemble Death Star fragment '{}'", fragment.name(), e);
-                // Best-effort cleanup of this piece so it does not linger as a static husk.
-                for (BlockPos pos : placed) {
-                    if (!level.getBlockState(pos).isAir()) {
-                        level.setBlock(pos, Blocks.AIR.defaultBlockState(), PLACE_FLAGS);
-                    }
+            BoundingBox3i bounds = BoundingBox3i.from(placed);
+            SubLevelAssemblyHelper.assembleBlocks(level, anchor, placed, bounds);
+            LOGGER.info("Assembled the Death Star: {} blocks, radius {}", placed.size(), radius);
+            return new Result.Success(placed.size());
+        } catch (Exception e) {
+            LOGGER.error("Death Star assembly failed", e);
+            for (BlockPos pos : placed) {
+                if (!level.getBlockState(pos).isAir()) {
+                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), PLACE_FLAGS);
                 }
             }
+            return new Result.Failed(String.valueOf(e.getMessage()));
         }
-
-        if (pieces == 0) {
-            return new Result.Failed(lastError != null ? lastError : "no pieces assembled");
-        }
-        LOGGER.info("Assembled Death Star wreck: {} pieces, {} blocks, radius {}", pieces, placedTotal, radius);
-        return new Result.Success(pieces, placedTotal);
     }
 
     /** Places a wall sign (plus a backing block) and writes its text via the sign block entity. */
@@ -146,7 +126,7 @@ public final class DeathStarAssembler {
     /** Builds a player-facing chat message describing an assembly outcome. */
     public static Component describe(Result result) {
         return switch (result) {
-            case Result.Success s -> Component.translatable("message.deathstar.summoned", s.pieceCount(), s.blockCount())
+            case Result.Success s -> Component.translatable("message.deathstar.summoned", s.blockCount())
                     .withStyle(ChatFormatting.GRAY);
             case Result.TooManyBlocks t -> Component.translatable("message.deathstar.too_many", t.blockCount(), t.limit())
                     .withStyle(ChatFormatting.RED);

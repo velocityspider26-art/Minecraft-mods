@@ -1,44 +1,38 @@
 # Death Star Ruins
 
-A NeoForge **1.21.1** mod that summons the **Death Star wreckage** as real **physics objects** —
-styled after the Kef Bir sea-wreck in *The Rise of Skywalker*: not one intact sphere, but a
-**scattered field of separate broken pieces**. Each shard is generated procedurally, placed into
-the world, and handed to [**Sable**](https://modrinth.com/mod/sable) (the physics sub-level engine
-behind Create Aeronautics), which simulates **each piece as its own rigid body** that falls,
-collides and settles.
+A NeoForge **1.21.1** mod that summons the ruined **Death Star** as **one whole physics object**: a
+battle-scarred sphere with a huge section of the top torn open, revealing a cutaway of the **second
+Death Star**'s interior. It is generated procedurally, placed into the world, and handed to
+[**Sable**](https://modrinth.com/mod/sable) (the physics sub-level engine behind Create
+Aeronautics), which simulates the whole station as a single rigid body that falls, collides and
+settles.
 
 ## How it works
 
-1. **Generate** — `DeathStarBlueprint.buildWreckField(...)` builds a field of independent pieces
-   (deterministic from a seed):
-   - a **big "hero" hull shard** — a great curved slab of two-layer panelled hull with a torn,
-     charred edge, a slice of the **equatorial trench**, exposed skeletal **under-construction
-     superstructure**, and a full cutaway of the **Death Star II interior** clinging to it (see
-     below),
-   - the **superlaser-dish section** (the concave green "eye") torn free,
-   - a few **medium curved hull shards** with ragged edges and exposed frame, and
-   - smaller **twisted debris** chunks.
-
-### The Death Star II interior (on the hero shard)
-
-Laid out to match *Return of the Jedi*, top to bottom:
-
-- the **Emperor's throne room** — a circular room with a panoramic **viewport**, the raised
-  **throne dais** with console arms, and the turbolift door in the floor,
-- the **turbolift shaft** dropping down to the core,
-- the **main reactor chamber** — a huge hollow chamber, cut open, with the glowing **reactor core**
-  suspended on support **struts** and ringed by **catwalks**, and
-- the **reactor-shaft tunnel** bored out through the chamber wall (the run the Falcon flew).
+1. **Generate** — `DeathStarBlueprint.build(...)` builds one connected station (deterministic from a
+   seed): a **two-layer panelled hull** with the **equatorial trench** and the concave green
+   **superlaser dish**, a **blown-open top** with a jagged charred rim, scattered **craters**, a
+   patch of skeletal **under-construction superstructure**, and the interior below.
    Everything is built from the mod's **own blocks/textures** (hull plating, greebles, reinforced
    frame, scorched hull, Imperial interior walls/floors, reactor core/casing, superlaser lens,
    power conduit, control panels) — no re-used vanilla iron/concrete.
-2. **Place & assemble each piece** — every piece is placed at its own scattered offset and its
-   positions passed to `SubLevelAssemblyHelper.assembleBlocks(...)`, which lifts them out of the
-   world into a **separate sub-level** with its own physics body. Pieces are done one at a time, so
-   their blocks never coexist in the world.
+2. **Place & assemble** — the whole station is placed around the target point and passed to
+   `SubLevelAssemblyHelper.assembleBlocks(...)` as a **single assembly**, which lifts it out of the
+   world into one sub-level with one physics body.
 
-The server only does generation + assembly; **Sable owns the rendering and physics** of each piece,
-which is why this mod ships no custom entity or renderer.
+### The Death Star II interior
+
+Revealed through the blown-open top, laid out to match *Return of the Jedi*, top to bottom:
+
+- the **Emperor's throne room** near the top — a circular room with a panoramic **viewport**, the
+  raised **throne dais** with console arms, and the turbolift door in the floor,
+- the **turbolift shaft** dropping down to the core,
+- the **main reactor chamber** at the core — a hollow chamber, open at the top, with the glowing
+  **reactor core** suspended on support **struts** and ringed by **catwalks**, and
+- the **reactor-shaft tunnel** bored out through the chamber wall (the run the Falcon flew).
+
+The server only does generation + assembly; **Sable owns the rendering and physics**, which is why
+this mod ships no custom entity or renderer.
 
 ## Requirements
 
@@ -68,7 +62,7 @@ Summon with either:
 
 ## Easter eggs
 
-Signs scattered through the hero shard's interior, themed to the Battle of Endor / Death Star II:
+Signs scattered through the interior, themed to the Battle of Endor / Death Star II:
 
 - the **throne room** plaque (*"Now, young Skywalker, you will die"*),
 - **"MAIN REACTOR — aim for the core"** by the reactor,
@@ -78,12 +72,15 @@ Signs scattered through the hero shard's interior, themed to the Battle of Endor
 
 ## Performance note
 
-The default `radius` is now **30** for performance: the wreck is **~14,000 blocks across ~9 separate
-pieces** (the hero shard ~8k including its interior, a few ~1.7k shards, plus small debris) — down
-from ~24k. Splitting it into independent pieces is also easier on the physics engine than one giant
-body. Drop `radius` to ~24 for an even lighter wreck (~9k), or push it up for bigger, more detailed
-shards. The field spreads roughly `1.5 × radius` blocks around the summon point, so give it open,
-flat space.
+The default `radius` is **26**: one whole body of **~19,000 blocks**. Because it is a single sphere
+now (a two-layer shell), the count is higher than a shard field — drop `radius` to ~22–24 for a
+lighter station (~13–16k), or push it up for a bigger, more detailed one (radius 30 ≈ 25k). The
+initial assembly is a one-off spike.
+
+**Note on a spherical body:** a hollow sphere can roll. It spawns already resting on the ground
+with (almost) no velocity so it should settle in place, but on a slope or if nudged it may roll —
+summon it on flat, open ground. If rolling is a problem, tell me and I can flatten the base or weld
+it in place.
 
 ## Building
 
