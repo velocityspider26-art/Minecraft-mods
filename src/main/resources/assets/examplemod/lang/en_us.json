@@ -3,6 +3,7 @@
   "block.examplemod.example_block": "Example Block",
   "block.examplemod.thruster": "Thruster",
   "block.examplemod.creative_thruster": "Creative Thruster",
+  "item.examplemod.kerosene": "Kerosene",
   "item.examplemod.example_item": "Example Item",
 
   "examplemod.configuration.title": "Example Mod Configs",

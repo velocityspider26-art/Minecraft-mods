@@ -54,10 +54,11 @@ public class ExampleMod {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
 
     // --- Thruster blocks (plume-mesh exhaust instead of particles) ---
-    // A directional thruster whose plume is driven by its redstone input.
+    // A directional thruster that burns fuel (lava or kerosene) to fire its plume.
     public static final DeferredBlock<ThrusterBlock> THRUSTER_BLOCK = BLOCKS.registerBlock("thruster",
             ThrusterBlock::new,
-            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0f).sound(SoundType.METAL).lightLevel(state -> 8));
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0f).sound(SoundType.METAL)
+                    .lightLevel(state -> state.getValue(ThrusterBlock.LIT) ? 13 : 3));
     public static final DeferredItem<BlockItem> THRUSTER_ITEM = ITEMS.registerSimpleBlockItem("thruster", THRUSTER_BLOCK);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThrusterBlockEntity>> THRUSTER_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("thruster", () -> BlockEntityType.Builder.of(
@@ -67,12 +68,15 @@ public class ExampleMod {
     // A creative thruster that always fires at full throttle.
     public static final DeferredBlock<CreativeThrusterBlock> CREATIVE_THRUSTER_BLOCK = BLOCKS.registerBlock("creative_thruster",
             CreativeThrusterBlock::new,
-            BlockBehaviour.Properties.of().mapColor(MapColor.GOLD).strength(3.0f).sound(SoundType.METAL).lightLevel(state -> 10));
+            BlockBehaviour.Properties.of().mapColor(MapColor.GOLD).strength(3.0f).sound(SoundType.METAL).lightLevel(state -> 15));
     public static final DeferredItem<BlockItem> CREATIVE_THRUSTER_ITEM = ITEMS.registerSimpleBlockItem("creative_thruster", CREATIVE_THRUSTER_BLOCK);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CreativeThrusterBlockEntity>> CREATIVE_THRUSTER_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("creative_thruster", () -> BlockEntityType.Builder.of(
                     (pos, state) -> new CreativeThrusterBlockEntity(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), pos, state),
                     CREATIVE_THRUSTER_BLOCK.get()).build(null));
+
+    // Kerosene: a thruster fuel. Right-click a thruster with it (or a lava bucket) to refuel.
+    public static final DeferredItem<Item> KEROSENE = ITEMS.registerSimpleItem("kerosene", new Item.Properties());
 
     // Creates a new Block with the id "examplemod:example_block", combining the namespace and path
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
@@ -92,6 +96,7 @@ public class ExampleMod {
                 output.accept(EXAMPLE_ITEM.get()); // Add the example item to the tab. For your own tabs, this method is preferred over the event
                 output.accept(THRUSTER_ITEM.get());
                 output.accept(CREATIVE_THRUSTER_ITEM.get());
+                output.accept(KEROSENE.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.

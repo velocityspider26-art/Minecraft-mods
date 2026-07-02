@@ -15,20 +15,21 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * Renders a Starship-V3-Raptor-style exhaust plume as a real 3D mesh instead of particles.
+ * Renders a rocket exhaust plume as a real 3D mesh instead of particles.
  *
- * <p>The plume is a tube of stacked quad rings extruded along the thruster's facing direction.
- * Radius, colour and alpha vary along the length to reproduce the look of the reference photo:
- * a narrow white-hot throat, a bright magenta core with white "mach diamond" shock nodes near the
- * nozzle, fading into a translucent pink tail. Everything is drawn with {@link RenderType#lightning()}
- * which is an untextured, additively-blended, cull-off POSITION_COLOR pass - ideal for a glowing
- * volumetric flame.</p>
+ * <p>The plume is built from three nested, additively-blended tubes extruded along the thruster's
+ * facing direction - a wide translucent red rim, an orange mid layer, and a bright white-hot core.
+ * Because the layers add together, the centre reads white, the flanks orange and the outer edge
+ * red, giving the smooth white/orange lens look of a real rocket flame. The profile is a rounded
+ * teardrop: a bulge just past the nozzle tapering to a sharp point, with subtle animated turbulence.</p>
+ *
+ * <p>All geometry uses {@link RenderType#lightning()} - an untextured, additively-blended,
+ * cull-off POSITION_COLOR pass - which is ideal for a glowing volumetric flame.</p>
  */
 public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockEntity> {
 
-    private static final int RADIAL = 18;      // segments around the tube
-    private static final int SEGMENTS = 56;    // segments along the tube
-    private static final float DIAMONDS = 6.0f; // number of mach-diamond nodes
+    private static final int RADIAL = 20;      // segments around each tube
+    private static final int SEGMENTS = 64;    // segments along each tube
 
     // Pre-computed unit circle so we do not call sin/cos per vertex.
     private static final float[] COS = new float[RADIAL + 1];
@@ -46,8 +47,8 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
 
     @Override
     public AABB getRenderBoundingBox(ThrusterBlockEntity blockEntity) {
-        // The plume can extend several blocks past the nozzle; inflate so it is not culled.
-        return new AABB(blockEntity.getBlockPos()).inflate(12.0);
+        // The plume can extend many blocks past the nozzle; inflate so it is not culled.
+        return new AABB(blockEntity.getBlockPos()).inflate(14.0);
     }
 
     @Override
@@ -70,32 +71,50 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         Direction facing = be.getFacing();
         Vector3f dir = new Vector3f(facing.getStepX(), facing.getStepY(), facing.getStepZ());
 
-        // Build an orthonormal basis around the plume axis.
+        // Orthonormal basis around the plume axis.
         Vector3f helper = Math.abs(dir.y) < 0.99f ? new Vector3f(0f, 1f, 0f) : new Vector3f(1f, 0f, 0f);
         Vector3f u = new Vector3f(dir).cross(helper).normalize();
         Vector3f w = new Vector3f(dir).cross(u).normalize();
 
-        // Nozzle exit = block centre pushed half a block along the facing direction.
-        Vector3f start = new Vector3f(0.5f, 0.5f, 0.5f).add(dir.x * 0.5f, dir.y * 0.5f, dir.z * 0.5f);
+        // Start at the nozzle tip (the ripped model's nozzle sticks ~0.25 blocks past the face).
+        Vector3f start = new Vector3f(0.5f, 0.5f, 0.5f).add(dir.x * 0.72f, dir.y * 0.72f, dir.z * 0.72f);
 
-        float length = 1.2f + throttle * 7.0f;
-        float maxRadius = 0.30f + throttle * 0.22f;
+        float length = 2.0f + throttle * 9.0f;
+        float maxRadius = 0.50f + throttle * 0.28f;
 
-        // Slight overall flicker so the flame feels alive.
-        float flicker = 0.86f + 0.14f * Mth.sin(time * 1.7f) * Mth.cos(time * 0.73f);
+        // Overall flicker so the flame breathes.
+        float flicker = 0.88f + 0.12f * Mth.sin(time * 1.9f) * Mth.cos(time * 0.83f);
 
         VertexConsumer vc = buffer.getBuffer(RenderType.lightning());
         Matrix4f pose = ms.last().pose();
 
-        // Two nested layers: a wide translucent magenta sheath and a bright inner core.
-        renderLayer(vc, pose, start, dir, u, w, length, maxRadius, throttle, time, flicker, false);
-        renderLayer(vc, pose, start, dir, u, w, length * 0.80f, maxRadius * 0.48f, throttle, time, flicker, true);
+        // Outer translucent red rim.
+        renderLayer(vc, pose, start, dir, u, w, length, maxRadius, 1.00f, throttle, time, flicker,
+                1.00f, 0.50f, 0.14f, 0.92f, 0.14f, 0.04f, 0.30f, 1.25f, 0.06f);
+        // Orange mid layer.
+        renderLayer(vc, pose, start, dir, u, w, length * 0.94f, maxRadius, 0.62f, throttle, time, flicker,
+                1.00f, 0.82f, 0.42f, 1.00f, 0.42f, 0.12f, 0.42f, 1.55f, 0.045f);
+        // Bright white-hot core.
+        renderLayer(vc, pose, start, dir, u, w, length * 0.80f, maxRadius, 0.30f, throttle, time, flicker,
+                1.00f, 0.98f, 0.92f, 1.00f, 0.80f, 0.48f, 0.60f, 1.90f, 0.03f);
     }
 
+    /**
+     * Renders one concentric tube layer of the plume.
+     *
+     * @param radiusScale   fraction of {@code maxRadius} for this layer
+     * @param nr,ng,nb      colour near the nozzle
+     * @param fr,fg,fb      colour near the tip
+     * @param baseAlpha     alpha at the nozzle
+     * @param alphaFalloff  exponent controlling how fast alpha fades toward the tip
+     * @param turbAmp       amplitude of the animated radial turbulence
+     */
     private static void renderLayer(VertexConsumer vc, Matrix4f pose, Vector3f start, Vector3f dir,
-                                    Vector3f u, Vector3f w, float length, float maxRadius,
-                                    float throttle, float time, float flicker, boolean core) {
-        float phase = time * 2.2f;
+                                    Vector3f u, Vector3f w, float length, float maxRadius, float radiusScale,
+                                    float throttle, float time, float flicker,
+                                    float nr, float ng, float nb, float fr, float fg, float fb,
+                                    float baseAlpha, float alphaFalloff, float turbAmp) {
+        float layerRadius = maxRadius * radiusScale;
         float[] c0 = new float[4];
         float[] c1 = new float[4];
 
@@ -103,10 +122,9 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
             float t0 = i / (float) SEGMENTS;
             float t1 = (i + 1) / (float) SEGMENTS;
 
-            float r0 = maxRadius * radiusProfile(t0, phase);
-            float r1 = maxRadius * radiusProfile(t1, phase);
+            float r0 = layerRadius * radiusProfile(t0) * turbulence(t0, time, turbAmp);
+            float r1 = layerRadius * radiusProfile(t1) * turbulence(t1, time, turbAmp);
 
-            // Axis positions of the two rings.
             float ax0 = start.x + dir.x * (t0 * length);
             float ay0 = start.y + dir.y * (t0 * length);
             float az0 = start.z + dir.z * (t0 * length);
@@ -114,17 +132,15 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
             float ay1 = start.y + dir.y * (t1 * length);
             float az1 = start.z + dir.z * (t1 * length);
 
-            colorAt(t0, phase, throttle, flicker, core, c0);
-            colorAt(t1, phase, throttle, flicker, core, c1);
+            colorAt(t0, nr, ng, nb, fr, fg, fb, baseAlpha, alphaFalloff, throttle, flicker, c0);
+            colorAt(t1, nr, ng, nb, fr, fg, fb, baseAlpha, alphaFalloff, throttle, flicker, c1);
 
             for (int j = 0; j < RADIAL; j++) {
                 float cA = COS[j],     sA = SIN[j];
                 float cB = COS[j + 1], sB = SIN[j + 1];
 
-                // Ring 0, angle A / B
                 putVertex(vc, pose, ax0, ay0, az0, u, w, cA, sA, r0, c0);
                 putVertex(vc, pose, ax0, ay0, az0, u, w, cB, sB, r0, c0);
-                // Ring 1, angle B / A
                 putVertex(vc, pose, ax1, ay1, az1, u, w, cB, sB, r1, c1);
                 putVertex(vc, pose, ax1, ay1, az1, u, w, cA, sA, r1, c1);
             }
@@ -139,61 +155,39 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         vc.addVertex(pose, x, y, z).setColor(color[0], color[1], color[2], color[3]);
     }
 
-    /** Normalised radius in [0,1] along the plume, including animated mach-diamond bulges. */
-    private static float radiusProfile(float t, float phase) {
-        // Rapid flare out of the throat, then a long taper to the tip.
-        float expand = Mth.clamp(t / 0.10f, 0f, 1f);
-        float taper = 1f - Mth.clamp((t - 0.10f) / 0.90f, 0f, 1f);
-        float env = expand * (0.30f + 0.70f * taper);
-        // Mach diamonds: strongest near the nozzle, decaying down the plume.
-        float diamond = 1f + 0.22f * (float) Math.exp(-3.5f * t) * Mth.cos(t * DIAMONDS * ((float) Math.PI * 2f) - phase);
-        return Math.max(0f, env * diamond);
+    /**
+     * Normalised radius in [0,1] along the plume: a rounded bulge just past the nozzle that tapers
+     * smoothly to a sharp point at the tip (teardrop shape).
+     */
+    private static float radiusProfile(float t) {
+        final float head = 0.16f;
+        if (t < head) {
+            // Rounded leading edge.
+            return (float) Math.sqrt(t / head);
+        }
+        // Long smooth taper to a point.
+        float k = (t - head) / (1f - head);
+        return (float) Math.pow(1f - k, 0.7);
+    }
+
+    /** Subtle animated wobble so the plume surface is not perfectly rigid. */
+    private static float turbulence(float t, float time, float amp) {
+        if (amp <= 0f) {
+            return 1f;
+        }
+        return 1f + amp * Mth.sin(t * 16f - time * 6f) + amp * 0.5f * Mth.sin(t * 37f - time * 9f);
     }
 
     /**
-     * Fills {@code out} with the RGBA for a point at fraction {@code t} along the plume.
-     * Palette matches the reference: white-hot throat -> magenta core -> deep pink tail, with
-     * bright bluish-white shock diamonds superimposed near the nozzle.
+     * Fills {@code out} with the RGBA at fraction {@code t} along the plume, lerping the layer's
+     * near/far colours and fading alpha toward the tip.
      */
-    private static void colorAt(float t, float phase, float throttle, float flicker, boolean core, float[] out) {
-        float r, g, b;
-        if (t < 0.18f) {
-            float k = t / 0.18f;
-            if (core) {
-                r = Mth.lerp(k, 1.00f, 1.00f);
-                g = Mth.lerp(k, 0.97f, 0.60f);
-                b = Mth.lerp(k, 1.00f, 0.85f);
-            } else {
-                r = Mth.lerp(k, 1.00f, 1.00f);
-                g = Mth.lerp(k, 0.85f, 0.28f);
-                b = Mth.lerp(k, 0.98f, 0.55f);
-            }
-        } else {
-            float k = (t - 0.18f) / 0.82f;
-            if (core) {
-                r = Mth.lerp(k, 1.00f, 1.00f);
-                g = Mth.lerp(k, 0.60f, 0.30f);
-                b = Mth.lerp(k, 0.85f, 0.55f);
-            } else {
-                r = Mth.lerp(k, 1.00f, 0.65f);
-                g = Mth.lerp(k, 0.28f, 0.06f);
-                b = Mth.lerp(k, 0.55f, 0.22f);
-            }
-        }
-
-        // Bluish-white mach-diamond shock nodes, concentrated near the throat.
-        float shock = Math.max(0f, Mth.cos(t * DIAMONDS * ((float) Math.PI * 2f) - phase)) * (float) Math.exp(-4.0f * t);
-        r = Math.min(1f, r + shock * 0.40f);
-        g = Math.min(1f, g + shock * 0.50f);
-        b = Math.min(1f, b + shock * 0.60f);
-
-        float baseAlpha = core ? 0.70f : 0.50f;
-        float falloff = core ? 1.2f : 1.6f;
-        float alpha = baseAlpha * (float) Math.pow(1f - t, falloff) * throttle * flicker;
-
-        out[0] = r;
-        out[1] = g;
-        out[2] = b;
+    private static void colorAt(float t, float nr, float ng, float nb, float fr, float fg, float fb,
+                                float baseAlpha, float alphaFalloff, float throttle, float flicker, float[] out) {
+        out[0] = Mth.lerp(t, nr, fr);
+        out[1] = Mth.lerp(t, ng, fg);
+        out[2] = Mth.lerp(t, nb, fb);
+        float alpha = baseAlpha * (float) Math.pow(1f - t, alphaFalloff) * throttle * flicker;
         out[3] = Mth.clamp(alpha, 0f, 1f);
     }
 }

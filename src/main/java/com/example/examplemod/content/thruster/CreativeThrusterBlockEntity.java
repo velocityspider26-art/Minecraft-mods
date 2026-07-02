@@ -5,11 +5,16 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Block entity for the creative thruster: always at full throttle.
+ * Block entity for the creative thruster: always at full throttle, never burns fuel.
  */
 public class CreativeThrusterBlockEntity extends ThrusterBlockEntity {
     public CreativeThrusterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+    }
+
+    @Override
+    public void serverTick() {
+        // No fuel logic for the creative thruster.
     }
 
     @Override

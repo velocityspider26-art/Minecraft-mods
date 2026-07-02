@@ -5,17 +5,17 @@ import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Creative counterpart of {@link ThrusterBlock}. It always fires at full throttle (no fuel or
- * redstone required), which makes it convenient for showing off the plume mesh.
+ * Creative counterpart of {@link ThrusterBlock}. It always fires at full throttle (no fuel needed),
+ * so it is always {@link ThrusterBlock#LIT}.
  */
 public class CreativeThrusterBlock extends ThrusterBlock {
     public static final MapCodec<CreativeThrusterBlock> CODEC = simpleCodec(CreativeThrusterBlock::new);
@@ -31,6 +31,13 @@ public class CreativeThrusterBlock extends ThrusterBlock {
 
     @Override
     @Nullable
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        BlockState state = super.getStateForPlacement(context);
+        return state == null ? null : state.setValue(LIT, Boolean.TRUE);
+    }
+
+    @Override
+    @Nullable
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new CreativeThrusterBlockEntity(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), pos, state);
     }
@@ -38,6 +45,7 @@ public class CreativeThrusterBlock extends ThrusterBlock {
     @Override
     @Nullable
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        // Creative thruster only needs the client-side throttle smoothing; it never burns fuel.
         return level.isClientSide ? (lvl, pos, st, be) -> ((ThrusterBlockEntity) be).clientTick() : null;
     }
 }
