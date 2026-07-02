@@ -3,6 +3,9 @@ package com.example.examplemod;
 import com.example.examplemod.client.ThrusterPlumeRenderer;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -10,6 +13,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
@@ -30,6 +35,10 @@ public class ExampleModClient {
         // Some client setup code
         ExampleMod.LOGGER.info("HELLO FROM CLIENT SETUP");
         ExampleMod.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+        event.enqueueWork(() -> {
+            ItemBlockRenderTypes.setRenderLayer(ExampleMod.KEROSENE_FLUID.get(), RenderType.translucent());
+            ItemBlockRenderTypes.setRenderLayer(ExampleMod.KEROSENE_FLOWING.get(), RenderType.translucent());
+        });
     }
 
     @SubscribeEvent
@@ -37,5 +46,29 @@ public class ExampleModClient {
         // Both thruster block entities share the plume-mesh renderer.
         event.registerBlockEntityRenderer(ExampleMod.THRUSTER_BLOCK_ENTITY.get(), ThrusterPlumeRenderer::new);
         event.registerBlockEntityRenderer(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), ThrusterPlumeRenderer::new);
+    }
+
+    @SubscribeEvent
+    static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
+        // Give the kerosene fluid textures (reusing vanilla water, tinted amber) so it renders.
+        event.registerFluidType(new IClientFluidTypeExtensions() {
+            private final ResourceLocation still = ResourceLocation.withDefaultNamespace("block/water_still");
+            private final ResourceLocation flow = ResourceLocation.withDefaultNamespace("block/water_flow");
+
+            @Override
+            public ResourceLocation getStillTexture() {
+                return still;
+            }
+
+            @Override
+            public ResourceLocation getFlowingTexture() {
+                return flow;
+            }
+
+            @Override
+            public int getTintColor() {
+                return 0xFFC8912E; // amber kerosene
+            }
+        }, ExampleMod.KEROSENE_FLUID_TYPE.get());
     }
 }

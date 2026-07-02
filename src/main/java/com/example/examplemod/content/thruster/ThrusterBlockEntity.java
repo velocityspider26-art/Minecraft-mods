@@ -1,45 +1,46 @@
 package com.example.examplemod.content.thruster;
 
+import com.example.examplemod.ExampleMod;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 
 /**
- * Stores the thruster's fuel and the smoothed throttle used to drive the plume mesh.
+ * Stores the thruster's fuel tank and the smoothed throttle used to drive the plume mesh.
  *
- * <p>Fuel can be inserted two ways, like the Create thruster: piped into the exposed item-handler
- * capability (funnel/hopper/dropper), or by right-clicking with a fuel item. Inserted items are
- * burned down into a fuel buffer on the server; whether the thruster is currently burning is
- * published to the client through the {@link ThrusterBlock#LIT} block-state, so no extra sync is
- * needed. The throttle itself is smoothed client-side for a soft spool up/down.</p>
+ * <p>Fuel is a fluid (lava or the mod's kerosene). Fill the tank by pumping fuel in with a Create
+ * mechanical pump (the tank is exposed as a fluid-handler capability) or by right-clicking with a
+ * filled bucket. While the tank has fuel the thruster burns it down and the {@link ThrusterBlock#LIT}
+ * block-state is true, which drives both the plume and the block's light emission. The throttle is
+ * smoothed client-side for a soft spool up/down.</p>
  */
 public class ThrusterBlockEntity extends BlockEntity {
-    public static final int FUEL_CAPACITY = 200_000;
-    private static final int FUEL_BURN_PER_TICK = 1;
+    public static final int TANK_CAPACITY = 8_000; // 8 buckets
+    private static final int BURN_RATE_MB = 2;     // fuel consumed per tick while firing
 
-    /** Single input slot that only accepts valid fuel items. */
-    private final ItemStackHandler fuelInput = new ItemStackHandler(1) {
+    private final FluidTank fuelTank = new FluidTank(TANK_CAPACITY) {
         @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return ThrusterBlock.getFuelValue(stack) > 0;
+        public boolean isFluidValid(FluidStack stack) {
+            return isFuel(stack.getFluid());
         }
 
         @Override
-        protected void onContentsChanged(int slot) {
+        protected void onContentsChanged() {
             setChanged();
         }
     };
-
-    private int fuel = 0;
 
     private float currentThrottle = 0f;
     private float prevThrottle = 0f;
@@ -48,38 +49,24 @@ public class ThrusterBlockEntity extends BlockEntity {
         super(type, pos, state);
     }
 
-    public IItemHandler getFuelHandler() {
-        return fuelInput;
+    public static boolean isFuel(Fluid fluid) {
+        return fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA
+                || fluid == ExampleMod.KEROSENE_FLUID.get() || fluid == ExampleMod.KEROSENE_FLOWING.get();
     }
 
-    /** Server tick: pull fuel from the input slot, burn it, and keep the LIT state in sync. */
+    public IFluidHandler getFuelTank() {
+        return fuelTank;
+    }
+
+    /** Server tick: burn fuel from the tank and keep the LIT block-state in sync. */
     public void serverTick() {
         if (level == null) {
             return;
         }
-        // Top up the fuel buffer from the input slot when it runs dry.
-        if (fuel <= 0) {
-            ItemStack in = fuelInput.getStackInSlot(0);
-            int value = ThrusterBlock.getFuelValue(in);
-            if (value > 0) {
-                fuelInput.extractItem(0, 1, false);
-                fuel += value;
-                setChanged();
-            }
-        }
-
-        boolean lit = getBlockState().getValue(ThrusterBlock.LIT);
-        if (fuel > 0) {
-            fuel = Math.max(0, fuel - FUEL_BURN_PER_TICK);
-            setChanged();
-            if (!lit) {
-                setLit(true);
-            }
-            if (fuel == 0) {
-                setLit(false);
-            }
-        } else if (lit) {
-            setLit(false);
+        FluidStack burned = fuelTank.drain(BURN_RATE_MB, IFluidHandler.FluidAction.EXECUTE);
+        boolean firing = !burned.isEmpty();
+        if (getBlockState().getValue(ThrusterBlock.LIT) != firing) {
+            setLit(firing);
         }
     }
 
@@ -112,19 +99,6 @@ public class ThrusterBlockEntity extends BlockEntity {
         return Mth.lerp(partialTick, prevThrottle, currentThrottle);
     }
 
-    public void addFuel(int amount) {
-        fuel = Math.min(FUEL_CAPACITY, fuel + amount);
-        setChanged();
-    }
-
-    public int getFuel() {
-        return fuel;
-    }
-
-    public boolean hasFuelRoom() {
-        return fuel < FUEL_CAPACITY;
-    }
-
     public Direction getFacing() {
         BlockState state = getBlockState();
         return state.hasProperty(DirectionalBlock.FACING) ? state.getValue(DirectionalBlock.FACING) : Direction.NORTH;
@@ -142,16 +116,14 @@ public class ThrusterBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.putInt("Fuel", fuel);
-        tag.put("FuelInput", fuelInput.serializeNBT(registries));
+        tag.put("FuelTank", fuelTank.writeToNBT(registries, new CompoundTag()));
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        fuel = tag.getInt("Fuel");
-        if (tag.contains("FuelInput")) {
-            fuelInput.deserializeNBT(registries, tag.getCompound("FuelInput"));
+        if (tag.contains("FuelTank")) {
+            fuelTank.readFromNBT(registries, tag.getCompound("FuelTank"));
         }
     }
 }

@@ -14,7 +14,6 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -30,6 +29,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.fluids.FluidUtil;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -75,32 +75,6 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
         return this.defaultBlockState().setValue(FACING, context.getNearestLookingDirection());
     }
 
-    /** Fuel value (in ticks) for a given item stack, or 0 if it is not a valid fuel. */
-    public static int getFuelValue(ItemStack stack) {
-        if (stack.isEmpty()) {
-            return 0;
-        }
-        if (stack.is(Items.LAVA_BUCKET)) {
-            return 20_000;
-        }
-        if (stack.is(ExampleMod.KEROSENE.get())) {
-            return 3_200;
-        }
-        if (stack.is(Items.BLAZE_ROD)) {
-            return 4_800;
-        }
-        if (stack.is(Items.BLAZE_POWDER)) {
-            return 1_600;
-        }
-        if (stack.is(Items.COAL) || stack.is(Items.CHARCOAL)) {
-            return 1_600;
-        }
-        if (stack.is(Items.COAL_BLOCK)) {
-            return 16_000;
-        }
-        return 0;
-    }
-
     private static boolean isWrench(ItemStack stack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return id != null && id.getPath().equals("wrench");
@@ -121,20 +95,9 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
 
-        // Fuel: fill the fuel buffer directly from the held stack.
-        int fuel = getFuelValue(stack);
-        if (fuel > 0 && level.getBlockEntity(pos) instanceof ThrusterBlockEntity be && !be.isCreative() && be.hasFuelRoom()) {
-            if (!level.isClientSide) {
-                be.addFuel(fuel);
-                if (stack.is(Items.LAVA_BUCKET)) {
-                    if (!player.getAbilities().instabuild) {
-                        player.setItemInHand(hand, new ItemStack(Items.BUCKET));
-                    }
-                } else {
-                    stack.consume(1, player);
-                }
-                level.playSound(null, pos, SoundEvents.BUCKET_EMPTY_LAVA, SoundSource.BLOCKS, 0.6f, 1.4f);
-            }
+        // Fuel: let the player fill the tank from a held bucket (lava or kerosene).
+        if (level.getBlockEntity(pos) instanceof ThrusterBlockEntity be && !be.isCreative()
+                && FluidUtil.interactWithFluidHandler(player, hand, be.getFuelTank())) {
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;

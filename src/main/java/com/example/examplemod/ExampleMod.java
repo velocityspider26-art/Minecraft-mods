@@ -13,14 +13,19 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -34,10 +39,13 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.fluids.BaseFlowingFluid;
+import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(ExampleMod.MODID)
@@ -77,8 +85,27 @@ public class ExampleMod {
                     (pos, state) -> new CreativeThrusterBlockEntity(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), pos, state),
                     CREATIVE_THRUSTER_BLOCK.get()).build(null));
 
-    // Kerosene: a thruster fuel. Right-click a thruster with it (or a lava bucket) to refuel.
-    public static final DeferredItem<Item> KEROSENE = ITEMS.registerSimpleItem("kerosene", new Item.Properties());
+    // --- Kerosene: a liquid thruster fuel you can store in a tank and pump into the thruster ---
+    public static final DeferredRegister<FluidType> FLUID_TYPES = DeferredRegister.create(NeoForgeRegistries.Keys.FLUID_TYPES, MODID);
+    public static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(Registries.FLUID, MODID);
+
+    public static final DeferredHolder<FluidType, FluidType> KEROSENE_FLUID_TYPE = FLUID_TYPES.register("kerosene",
+            () -> new FluidType(FluidType.Properties.create()
+                    .descriptionId("fluid.examplemod.kerosene")
+                    .density(820).viscosity(1200).canSwim(true).canDrown(false)));
+    public static final DeferredHolder<Fluid, BaseFlowingFluid.Source> KEROSENE_FLUID = FLUIDS.register("kerosene",
+            () -> new BaseFlowingFluid.Source(ExampleMod.KEROSENE_FLUID_PROPERTIES));
+    public static final DeferredHolder<Fluid, BaseFlowingFluid.Flowing> KEROSENE_FLOWING = FLUIDS.register("flowing_kerosene",
+            () -> new BaseFlowingFluid.Flowing(ExampleMod.KEROSENE_FLUID_PROPERTIES));
+    public static final DeferredBlock<LiquidBlock> KEROSENE_LIQUID_BLOCK = BLOCKS.register("kerosene",
+            () -> new LiquidBlock(KEROSENE_FLUID.get(), BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_ORANGE).replaceable().noCollission().strength(100f).noLootTable().liquid()));
+    public static final DeferredItem<Item> KEROSENE_BUCKET = ITEMS.register("kerosene_bucket",
+            () -> new BucketItem(KEROSENE_FLUID.get(), new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
+    public static final BaseFlowingFluid.Properties KEROSENE_FLUID_PROPERTIES = new BaseFlowingFluid.Properties(
+            KEROSENE_FLUID_TYPE, KEROSENE_FLUID, KEROSENE_FLOWING)
+            .block(KEROSENE_LIQUID_BLOCK).bucket(KEROSENE_BUCKET)
+            .slopeFindDistance(2).levelDecreasePerBlock(2).tickRate(20);
 
     // Creates a new Block with the id "examplemod:example_block", combining the namespace and path
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
@@ -98,7 +125,7 @@ public class ExampleMod {
                 output.accept(EXAMPLE_ITEM.get()); // Add the example item to the tab. For your own tabs, this method is preferred over the event
                 output.accept(THRUSTER_ITEM.get());
                 output.accept(CREATIVE_THRUSTER_ITEM.get());
-                output.accept(KEROSENE.get());
+                output.accept(KEROSENE_BUCKET.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -106,7 +133,7 @@ public class ExampleMod {
     public ExampleMod(IEventBus modEventBus, ModContainer modContainer) {
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
-        // Expose the thruster's fuel input slot as an item-handler capability (funnels/hoppers/pipes)
+        // Expose the thruster's fuel tank as a fluid-handler capability (Create pumps/pipes)
         modEventBus.addListener(this::registerCapabilities);
 
         // Register the Deferred Register to the mod event bus so blocks get registered
@@ -117,6 +144,9 @@ public class ExampleMod {
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so block entity types get registered
         BLOCK_ENTITIES.register(modEventBus);
+        // Register the kerosene fluid, its type, and its bucket
+        FLUID_TYPES.register(modEventBus);
+        FLUIDS.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
@@ -131,9 +161,10 @@ public class ExampleMod {
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
-        // Only the regular thruster accepts fuel; the creative one never burns anything.
-        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, THRUSTER_BLOCK_ENTITY.get(),
-                (be, side) -> be.getFuelHandler());
+        // Expose the regular thruster's fuel tank so Create pumps/pipes can fill it. The creative
+        // thruster never burns anything, so it has no tank.
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, THRUSTER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getFuelTank());
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
