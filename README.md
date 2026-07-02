@@ -12,11 +12,23 @@ collides and settles.
 1. **Generate** — `DeathStarBlueprint.buildWreckField(...)` builds a field of independent pieces
    (deterministic from a seed):
    - a **big "hero" hull shard** — a great curved slab of two-layer panelled hull with a torn,
-     charred edge, a slice of the **equatorial trench**, and a chunk of exposed **interior** still
-     clinging to it (reactor stub, structural girder, decks, and the Easter-egg rooms),
+     charred edge, a slice of the **equatorial trench**, exposed skeletal **under-construction
+     superstructure**, and a full cutaway of the **Death Star II interior** clinging to it (see
+     below),
    - the **superlaser-dish section** (the concave green "eye") torn free,
    - a few **medium curved hull shards** with ragged edges and exposed frame, and
    - smaller **twisted debris** chunks.
+
+### The Death Star II interior (on the hero shard)
+
+Laid out to match *Return of the Jedi*, top to bottom:
+
+- the **Emperor's throne room** — a circular room with a panoramic **viewport**, the raised
+  **throne dais** with console arms, and the turbolift door in the floor,
+- the **turbolift shaft** dropping down to the core,
+- the **main reactor chamber** — a huge hollow chamber, cut open, with the glowing **reactor core**
+  suspended on support **struts** and ringed by **catwalks**, and
+- the **reactor-shaft tunnel** bored out through the chamber wall (the run the Falcon flew).
    Everything is built from the mod's **own blocks/textures** (hull plating, greebles, reinforced
    frame, scorched hull, Imperial interior walls/floors, reactor core/casing, superlaser lens,
    power conduit, control panels) — no re-used vanilla iron/concrete.
@@ -56,24 +68,22 @@ Summon with either:
 
 ## Easter eggs
 
-Tucked into the exposed interior clinging to the **big hero hull shard** are little Star Wars nods,
-labelled with signs:
+Signs scattered through the hero shard's interior, themed to the Battle of Endor / Death Star II:
 
-- **Detention Block AA-23** with barred cells and **cell 1138** (the THX-1138 / *A New Hope* cell).
-- The **garbage masher 3263827** (the number Han yells).
-- **Tractor beam control** ("1 of 7") — Obi-Wan's objective.
-- The **Emperor's throne room** (a *Return of the Jedi* / Death Star II nod).
-- Scattered quips: **"IT'S A TRAP!"**, **"I have a bad feeling about this..."**, and a
-  **"THAT'S NO MOON."** plaque near the trench.
-- The **thermal exhaust port** on the trench, wired down a conduit shaft to the reactor.
+- the **throne room** plaque (*"Now, young Skywalker, you will die"*),
+- **"MAIN REACTOR — aim for the core"** by the reactor,
+- **"IT'S A TRAP!"** (Ackbar),
+- **"MANY BOTHANS died..."** with a nod to Lucas's **1138**, and
+- a **"DEATH STAR II — shield still operational"** sign.
 
 ## Performance note
 
-At the default `radius = 40` the wreck is **~24,000 blocks spread across ~9 separate pieces** (the
-biggest ~13k, a few ~3k shards, plus small debris). Splitting it into pieces is easier on the
-physics engine than one giant body, but the initial assembly is still a one-off spike. Drop
-`radius` to ~24–32 for smaller shards, or push it higher for bigger ones. The debris field spreads
-roughly `1.5 × radius` blocks around the summon point, so give it some open, flat space.
+The default `radius` is now **30** for performance: the wreck is **~14,000 blocks across ~9 separate
+pieces** (the hero shard ~8k including its interior, a few ~1.7k shards, plus small debris) — down
+from ~24k. Splitting it into independent pieces is also easier on the physics engine than one giant
+body. Drop `radius` to ~24 for an even lighter wreck (~9k), or push it up for bigger, more detailed
+shards. The field spreads roughly `1.5 × radius` blocks around the summon point, so give it open,
+flat space.
 
 ## Building
 

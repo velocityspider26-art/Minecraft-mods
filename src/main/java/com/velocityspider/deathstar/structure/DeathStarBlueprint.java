@@ -15,15 +15,17 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Procedural generator for the Death Star <em>wreckage</em>, styled after the Kef Bir sea-wreck in
- * <i>The Rise of Skywalker</i>: not one sphere with a hole in it, but a scattered field of separate
- * broken pieces — huge curved hull shards, a torn superlaser-dish section, and smaller twisted
- * debris.
+ * <i>The Rise of Skywalker</i>: a scattered field of separate broken pieces — a big curved hull
+ * shard, the torn superlaser-dish section, medium shards and twisted debris.
  *
- * <p>{@link #buildWreckField} returns a list of independent {@link Fragment}s. The assembler places
- * and assembles each one into its <em>own</em> Sable physics body, so the ruins really are "in
- * pieces": each shard falls, collides and settles on its own.
+ * <p>The big "hero" shard carries a cutaway of the <b>second Death Star</b>'s interior, laid out to
+ * match <i>Return of the Jedi</i>: the Emperor's throne room at the top, a turbolift shaft dropping
+ * down to the enormous main reactor chamber, the exposed reactor core suspended on struts and ringed
+ * by catwalks, the reactor-shaft tunnel the Falcon flew through, and the skeletal under-construction
+ * superstructure on the unfinished part of the hull.
  *
- * <p>Everything is a pure function of the seed. Generation runs server-side only.
+ * <p>{@link #buildWreckField} returns independent {@link Fragment}s; the assembler assembles each
+ * into its own Sable physics body. Everything is a pure function of the seed (server-side only).
  */
 public final class DeathStarBlueprint {
 
@@ -32,10 +34,7 @@ public final class DeathStarBlueprint {
     /** A sign to place after the blocks are down (its text is applied via its block entity). */
     public record SignFeature(int x, int y, int z, Direction facing, List<String> lines) {}
 
-    /**
-     * One broken piece. {@code voxels}/{@code signs} are centred on the piece's own origin; the
-     * {@code offset*} fields say where to drop that origin relative to the summon centre.
-     */
+    /** One broken piece, centred on its own origin; {@code offset*} says where to drop that origin. */
     public record Fragment(String name, int offsetX, int offsetY, int offsetZ,
                            List<Voxel> voxels, List<SignFeature> signs) {}
 
@@ -52,32 +51,27 @@ public final class DeathStarBlueprint {
         final BlockState casing = ModBlocks.REACTOR_CASING.get().defaultBlockState();
         final BlockState lens = ModBlocks.SUPERLASER_LENS.get().defaultBlockState();
         final BlockState conduit = ModBlocks.POWER_CONDUIT.get().defaultBlockState();
-        final BlockState bars = Blocks.IRON_BARS.defaultBlockState();
         final BlockState lamp = Blocks.SEA_LANTERN.defaultBlockState();
+        final BlockState glass = Blocks.GRAY_STAINED_GLASS.defaultBlockState();
     }
 
-    private static final double[] DISH = unit(0.15, 0.72, 0.68); // superlaser "eye" direction
+    private static final double[] DISH = unit(0.15, 0.72, 0.68);      // superlaser "eye" direction
+    private static final double[] HERO = unit(-0.2, 0.15, -0.97);     // big shard's outward normal
+    private static final double[] SCAFFOLD = unit(0.1, 0.6, -0.79);   // unfinished sector on the hero shard
 
     private DeathStarBlueprint() {}
 
-    /**
-     * Builds the whole scattered wreck as a list of independent pieces.
-     *
-     * @param radius    the radius of the intact station the shards were cut from
-     * @param thickness hull skin thickness
-     */
     public static List<Fragment> buildWreckField(long seed, int radius, int thickness) {
         RandomSource rnd = RandomSource.create(seed);
         Palette p = new Palette();
         List<Fragment> frags = new ArrayList<>();
 
-        // 1) The big hero shard: a great curved slab of hull with a chunk of interior + rooms.
+        // 1) Hero hull shard with the full Death Star II interior cutaway.
         {
             Map<Long, BlockState> b = new LinkedHashMap<>();
             List<SignFeature> signs = new ArrayList<>();
-            double[] dir = unit(-0.2, 0.15, -0.97);
-            shardInto(b, radius, thickness, dir, 55.0, true, p, rnd);
-            addInteriorChunk(b, signs, radius, dir, p, rnd);
+            shardInto(b, radius, thickness, HERO, 58.0, true, SCAFFOLD, p, rnd);
+            buildInteriorII(b, signs, radius, HERO, p, rnd);
             frags.add(finish("hero_hull", b, signs, offset(0, radius, rnd)));
         }
 
@@ -92,8 +86,7 @@ public final class DeathStarBlueprint {
         int medium = 3;
         for (int i = 0; i < medium; i++) {
             Map<Long, BlockState> b = new LinkedHashMap<>();
-            double[] dir = randomUnit(rnd);
-            shardInto(b, radius, thickness, dir, 24.0 + rnd.nextDouble() * 12.0, rnd.nextBoolean(), p, rnd);
+            shardInto(b, radius, thickness, randomUnit(rnd), 22.0 + rnd.nextDouble() * 12.0, rnd.nextBoolean(), null, p, rnd);
             frags.add(finish("hull_shard_" + i, b, new ArrayList<>(), offset(2 + i, radius, rnd)));
         }
 
@@ -101,7 +94,7 @@ public final class DeathStarBlueprint {
         int debris = 4;
         for (int i = 0; i < debris; i++) {
             Map<Long, BlockState> b = new LinkedHashMap<>();
-            debrisInto(b, 3 + rnd.nextInt(4), p, rnd);
+            debrisInto(b, 3 + rnd.nextInt(3), p, rnd);
             frags.add(finish("debris_" + i, b, new ArrayList<>(), offset(2 + medium + i, radius, rnd)));
         }
 
@@ -109,14 +102,16 @@ public final class DeathStarBlueprint {
     }
 
     // ------------------------------------------------------------------------------------------
-    // Piece builders
+    // Hull pieces
     // ------------------------------------------------------------------------------------------
 
-    /** A curved spherical-cap slice of the two-layer hull, with a ragged torn boundary. */
+    /** A curved spherical-cap slice of the two-layer hull with a ragged torn edge and optional scaffolding. */
     private static void shardInto(Map<Long, BlockState> b, int radius, int thickness, double[] dir,
-                                  double halfAngleDeg, boolean allowTrench, Palette p, RandomSource rnd) {
+                                  double halfAngleDeg, boolean allowTrench, double[] scaffoldDir,
+                                  Palette p, RandomSource rnd) {
         double R = radius;
         double cosA = Math.cos(Math.toRadians(halfAngleDeg));
+        double scaffoldCos = Math.cos(Math.toRadians(22.0));
         for (int x = -radius - 1; x <= radius + 1; x++) {
             for (int y = -radius - 1; y <= radius + 1; y++) {
                 for (int z = -radius - 1; z <= radius + 1; z++) {
@@ -130,19 +125,23 @@ public final class DeathStarBlueprint {
                     double dot = nx * dir[0] + ny * dir[1] + nz * dir[2];
                     if (dot < cosA) continue;
 
-                    double t = (dot - cosA) / (1.0 - cosA); // 0 at cap edge, 1 at cap centre
+                    double t = (dot - cosA) / (1.0 - cosA);
                     double jag = 0.06 + 0.16 * rnd.nextDouble();
-                    if (t < jag) continue; // torn, ragged edge
+                    if (t < jag) continue;
                     boolean rim = t < jag + 0.12;
 
+                    // Unfinished superstructure: skeletal ribs instead of a skin.
+                    if (scaffoldDir != null && outer
+                            && nx * scaffoldDir[0] + ny * scaffoldDir[1] + nz * scaffoldDir[2] > scaffoldCos) {
+                        boolean rib = Math.floorMod(x, 4) == 0 || Math.floorMod(z, 4) == 0 || Math.floorMod(y, 4) == 0;
+                        if (rib) set(b, x, y, z, p.frame);
+                        continue;
+                    }
+
                     if (outer) {
-                        if (rim) {
-                            set(b, x, y, z, rnd.nextInt(3) == 0 ? p.frame : p.scorched);
-                        } else if (allowTrench && Math.abs(y) <= 2 && dist <= R - 1) {
-                            set(b, x, y, z, p.hullDark); // a slice of the equatorial trench
-                        } else {
-                            set(b, x, y, z, panelFor(x, y, z, rnd, p));
-                        }
+                        if (rim) set(b, x, y, z, rnd.nextInt(3) == 0 ? p.frame : p.scorched);
+                        else if (allowTrench && Math.abs(y) <= 2 && dist <= R - 1) set(b, x, y, z, p.hullDark);
+                        else set(b, x, y, z, panelFor(x, y, z, rnd, p));
                     } else {
                         set(b, x, y, z, rim ? p.frame : (rnd.nextInt(5) == 0 ? p.wall : p.frame));
                     }
@@ -151,7 +150,6 @@ public final class DeathStarBlueprint {
         }
     }
 
-    /** The concave superlaser dish plus a torn ring of hull around it. */
     private static void dishShardInto(Map<Long, BlockState> b, int radius, int thickness, Palette p, RandomSource rnd) {
         double R = radius;
         int dishDepth = Math.max(3, radius / 6);
@@ -165,9 +163,8 @@ public final class DeathStarBlueprint {
                     double nx = x / dist, ny = y / dist, nz = z / dist;
                     double dot = nx * DISH[0] + ny * DISH[1] + nz * DISH[2];
                     if (dot < rimCos) continue;
-
                     double te = (dot - rimCos) / (1.0 - rimCos);
-                    if (te < 0.06 + 0.12 * rnd.nextDouble()) continue; // ragged edge
+                    if (te < 0.06 + 0.12 * rnd.nextDouble()) continue;
 
                     if (dot >= dishCos) {
                         double tt = (dot - dishCos) / (1.0 - dishCos);
@@ -186,145 +183,154 @@ public final class DeathStarBlueprint {
         }
     }
 
-    /** A small blob of twisted metal. */
     private static void debrisInto(Map<Long, BlockState> b, int size, Palette p, RandomSource rnd) {
         BlockState[] mix = {p.frame, p.scorched, p.hull, p.hullDark, p.greeble};
-        for (int x = -size; x <= size; x++) {
-            for (int y = -size; y <= size; y++) {
+        for (int x = -size; x <= size; x++)
+            for (int y = -size; y <= size; y++)
                 for (int z = -size; z <= size; z++) {
-                    double d = Math.sqrt((double) x * x + (double) y * y + (double) z * z);
-                    if (d > size + 0.3) continue;
-                    if (rnd.nextDouble() < 0.35) continue; // jagged / hollow
+                    if (Math.sqrt((double) x * x + y * y + z * z) > size + 0.3) continue;
+                    if (rnd.nextDouble() < 0.35) continue;
                     set(b, x, y, z, mix[rnd.nextInt(mix.length)]);
                 }
-            }
-        }
-    }
-
-    /** Hangs a chunk of interior (reactor stub, girder, decks, Easter-egg rooms) under the hero shard. */
-    private static void addInteriorChunk(Map<Long, BlockState> b, List<SignFeature> signs, int radius,
-                                         double[] dir, Palette p, RandomSource rnd) {
-        // Perpendicular basis for laying things out under the shard.
-        double[] up = Math.abs(dir[1]) > 0.9 ? new double[] {1, 0, 0} : new double[] {0, 1, 0};
-        double[] u = unit(cross(up, dir));
-        double[] v = unit(cross(dir, u));
-
-        // A structural girder reaching in from the hull toward the old core.
-        for (int t = radius - 4; t >= radius / 3; t--) {
-            int x = (int) Math.round(dir[0] * t);
-            int y = (int) Math.round(dir[1] * t);
-            int z = (int) Math.round(dir[2] * t);
-            set(b, x, y, z, p.frame);
-            set(b, x, y + 1, z, p.frame);
-        }
-        // A reactor stub still clinging to the piece.
-        int cr = radius / 3;
-        int[] core = at(dir, cr);
-        for (int dx = -3; dx <= 3; dx++)
-            for (int dy = -3; dy <= 3; dy++)
-                for (int dz = -3; dz <= 3; dz++) {
-                    double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    if (d <= 2) set(b, core[0] + dx, core[1] + dy, core[2] + dz, p.reactor);
-                    else if (d <= 3.3) set(b, core[0] + dx, core[1] + dy, core[2] + dz, p.casing);
-                }
-
-        // Two partial decks and the Easter-egg rooms, laid on the concave side.
-        int[] base = at(dir, radius - 12);
-        deck(b, base, u, v, p);
-        int[] base2 = at(dir, radius - 18);
-        deck(b, base2, u, v, p);
-
-        buildRooms(b, signs, base, u, v, p);
-    }
-
-    private static void deck(Map<Long, BlockState> b, int[] c, double[] u, double[] v, Palette p) {
-        for (int a = -7; a <= 7; a++) {
-            for (int e = -7; e <= 7; e++) {
-                if (a * a + e * e > 49) continue;
-                int x = (int) Math.round(c[0] + u[0] * a + v[0] * e);
-                int y = (int) Math.round(c[1] + u[1] * a + v[1] * e);
-                int z = (int) Math.round(c[2] + u[2] * a + v[2] * e);
-                set(b, x, y, z, p.floor);
-            }
-        }
-    }
-
-    /** The Star Wars Easter-egg rooms, placed around a base point using the shard's local axes. */
-    private static void buildRooms(Map<Long, BlockState> b, List<SignFeature> signs, int[] base,
-                                   double[] u, double[] v, Palette p) {
-        // Detention Block AA-23 / cell 1138.
-        Room det = room(b, offAt(base, u, v, -10, 4), 5, 3, 4, p);
-        for (int y = det.y0 + 1; y <= det.y0 + 3; y++) {
-            set(b, det.cx - 1, y, det.cz, p.bars);
-            set(b, det.cx + 1, y, det.cz, p.bars);
-        }
-        addSign(signs, det.cx, det.cy, det.cz + det.hz, Direction.NORTH,
-                List.of("DETENTION", "BLOCK AA-23", "", "cell 1138"));
-
-        // Garbage masher 3263827.
-        Room tc = room(b, offAt(base, u, v, 10, -4), 4, 3, 4, p);
-        set(b, tc.cx - tc.hx + 1, tc.cy, tc.cz, p.hullDark);
-        set(b, tc.cx + tc.hx - 1, tc.cy, tc.cz, p.hullDark);
-        addSign(signs, tc.cx, tc.cy, tc.cz + tc.hz, Direction.NORTH,
-                List.of("GARBAGE", "MASHER", "3263827", "!!!"));
-
-        // Tractor beam control.
-        Room tb = room(b, offAt(base, u, v, -14, -8), 3, 3, 3, p);
-        set(b, tb.cx, tb.cy, tb.cz, p.panel);
-        set(b, tb.cx, tb.cy + 1, tb.cz, p.conduit);
-        addSign(signs, tb.cx, tb.cy, tb.cz + tb.hz, Direction.NORTH,
-                List.of("TRACTOR BEAM", "control", "1 of 7", "> power <"));
-
-        // Emperor's throne room.
-        Room th = room(b, offAt(base, u, v, 6, 10), 5, 4, 4, p);
-        set(b, th.cx, th.y0 + 1, th.cz + th.hz - 1, p.hullDark);
-        set(b, th.cx, th.y0 + 2, th.cz + th.hz - 1, p.panel);
-        addSign(signs, th.cx, th.cy + 1, th.cz + th.hz, Direction.NORTH,
-                List.of("THRONE ROOM", "", "\"a fully armed", "battle station\""));
-
-        // Loose quips.
-        int[] q1 = offAt(base, u, v, 0, 14);
-        addSign(signs, q1[0], q1[1], q1[2], Direction.NORTH, List.of("", "IT'S A TRAP!", "", ""));
-        int[] q2 = offAt(base, u, v, -18, 2);
-        addSign(signs, q2[0], q2[1], q2[2], Direction.NORTH,
-                List.of("I have a bad", "feeling about", "this...", ""));
-        int[] q3 = offAt(base, u, v, 16, 6);
-        addSign(signs, q3[0], q3[1], q3[2], Direction.NORTH, List.of("THAT'S", "NO MOON.", "", "- ruins -"));
     }
 
     // ------------------------------------------------------------------------------------------
-    // Room helper
+    // Death Star II interior cutaway
     // ------------------------------------------------------------------------------------------
 
-    private record Room(int cx, int cy, int cz, int hx, int hy, int hz, int y0) {}
+    private static void buildInteriorII(Map<Long, BlockState> b, List<SignFeature> signs, int radius,
+                                        double[] dir, Palette p, RandomSource rnd) {
+        int[] base = at(dir, (int) (radius * 0.40)); // reactor chamber centre, on the concave side
+        int bx = base[0], by = base[1], bz = base[2];
+        int chamberR = Math.max(6, radius / 4);
 
-    private static Room room(Map<Long, BlockState> b, int[] c, int hx, int hy, int hz, Palette p) {
-        int cx = c[0], cy = c[1], cz = c[2];
-        int y0 = cy - hy;
-        for (int x = cx - hx; x <= cx + hx; x++) {
-            for (int y = cy - hy; y <= cy + hy; y++) {
-                for (int z = cz - hz; z <= cz + hz; z++) {
-                    boolean shell = x == cx - hx || x == cx + hx || y == cy - hy || y == cy + hy
-                            || z == cz - hz || z == cz + hz;
-                    if (shell) set(b, x, y, z, (y == cy - hy) ? p.floor : p.wall);
-                    else b.remove(pack(x, y, z));
+        reactorChamber(b, bx, by, bz, chamberR, dir, p);
+        reactorCoreAssembly(b, signs, bx, by, bz, chamberR, p);
+        reactorTunnel(b, bx, by, bz, chamberR, p);            // the shaft the Falcon flew down
+
+        int shaftTop = by + chamberR + Math.max(9, radius / 3);
+        turbolift(b, bx, by + chamberR - 1, bz, shaftTop, p); // vertical shaft up to the throne
+
+        throneRoom(b, signs, bx, shaftTop, bz, p);
+
+        // Loose Battle-of-Endor quips further out in the wreck.
+        addSign(signs, bx + chamberR + 2, by + 2, bz, Direction.EAST,
+                List.of("", "IT'S A TRAP!", "- Ackbar", ""));
+        addSign(signs, bx - 3, by - chamberR - 1, bz + 3, Direction.NORTH,
+                List.of("MANY BOTHANS", "died to bring", "us this", "sign. 1138"));
+    }
+
+    /** A hollow spherical reactor chamber, cut open on the side facing the wreck's exposed face. */
+    private static void reactorChamber(Map<Long, BlockState> b, int cx, int cy, int cz, int cr,
+                                       double[] dir, Palette p) {
+        for (int x = -cr; x <= cr; x++)
+            for (int y = -cr; y <= cr; y++)
+                for (int z = -cr; z <= cr; z++) {
+                    double d = Math.sqrt((double) x * x + y * y + z * z);
+                    if (Math.abs(d - cr) > 0.8) continue;
+                    double nd = (x * dir[0] + y * dir[1] + z * dir[2]) / cr;
+                    if (nd < -0.15) continue; // open the viewer-facing side into a cutaway
+                    set(b, cx + x, cy + y, cz + z, ((x + y + z) & 3) == 0 ? p.frame : p.casing);
+                }
+    }
+
+    /** The suspended, glowing reactor core with support struts and two catwalk rings. */
+    private static void reactorCoreAssembly(Map<Long, BlockState> b, List<SignFeature> signs,
+                                            int cx, int cy, int cz, int cr, Palette p) {
+        int coreR = Math.max(2, cr / 3);
+        for (int x = -coreR - 1; x <= coreR + 1; x++)
+            for (int y = -coreR - 1; y <= coreR + 1; y++)
+                for (int z = -coreR - 1; z <= coreR + 1; z++) {
+                    double d = Math.sqrt((double) x * x + y * y + z * z);
+                    if (d <= coreR) set(b, cx + x, cy + y, cz + z, p.reactor);
+                    else if (d <= coreR + 1.2) set(b, cx + x, cy + y, cz + z, p.casing);
+                }
+        // Six struts from the core out to the chamber shell.
+        int[][] axes = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        for (int[] a : axes)
+            for (int t = coreR; t <= cr; t++)
+                set(b, cx + a[0] * t, cy + a[1] * t, cz + a[2] * t, p.frame);
+        // Two catwalk rings around the inside of the chamber.
+        for (int ring = -1; ring <= 1; ring += 2) {
+            int ry = (int) (cr * 0.45) * ring;
+            int rr = (int) Math.sqrt(Math.max(1, cr * cr - ry * ry)) - 1;
+            for (int deg = 0; deg < 360; deg += 8) {
+                int x = (int) Math.round(Math.cos(Math.toRadians(deg)) * rr);
+                int z = (int) Math.round(Math.sin(Math.toRadians(deg)) * rr);
+                set(b, cx + x, cy + ry, cz + z, p.frame);
+            }
+        }
+        addSign(signs, cx + coreR + 2, cy, cz, Direction.EAST,
+                List.of("MAIN REACTOR", "", "aim for", "the core"));
+    }
+
+    /** The reactor-shaft tunnel bored out through the chamber wall (Falcon's run). */
+    private static void reactorTunnel(Map<Long, BlockState> b, int cx, int cy, int cz, int cr, Palette p) {
+        for (int t = 0; t <= cr + 6; t++) {
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dz = -2; dz <= 2; dz++) {
+                    boolean wallRing = Math.max(Math.abs(dy), Math.abs(dz)) == 2;
+                    int x = cx - t; // bore out along -X
+                    if (wallRing) set(b, x, cy + dy, cz + dz, ((t + dy + dz) & 1) == 0 ? p.casing : p.conduit);
+                    else b.remove(pack(x, cy + dy, cz + dz)); // hollow bore
+                }
+        }
+    }
+
+    /** Vertical 3x3 turbolift shaft (casing walls, glowing conduit core). */
+    private static void turbolift(Map<Long, BlockState> b, int cx, int y0, int cz, int y1, Palette p) {
+        for (int y = y0; y <= y1; y++)
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dz == 0) set(b, cx, y, cz, p.conduit);
+                    else set(b, cx + dx, y, cz + dz, p.casing);
+                }
+    }
+
+    /** The Emperor's throne room: circular room, panoramic viewport, throne dais, turbolift door. */
+    private static void throneRoom(Map<Long, BlockState> b, List<SignFeature> signs, int cx, int cy, int cz, Palette p) {
+        int r = 7, h = 5;
+        int floorY = cy, ceilY = cy + h;
+        for (int x = -r; x <= r; x++)
+            for (int z = -r; z <= r; z++) {
+                double d = Math.hypot(x, z);
+                if (d > r + 0.5) continue;
+                if (d > r - 0.5) {
+                    // Wall ring: the front arc (+Z) is the big circular viewport.
+                    for (int y = floorY; y <= ceilY; y++) {
+                        boolean viewport = z > r * 0.35 && y > floorY && y < ceilY;
+                        set(b, cx + x, y, cz + z, viewport ? p.glass : p.wall);
+                    }
+                } else {
+                    set(b, cx + x, floorY, cz + z, p.floor);   // deck
+                    set(b, cx + x, ceilY, cz + z, p.wall);     // ceiling
                 }
             }
-        }
-        for (int x = cx - 1; x <= cx + 1; x++) {
-            for (int y = y0 + 1; y <= y0 + 2; y++) {
-                b.remove(pack(x, y, cz - hz));
-            }
-        }
-        set(b, cx, cy + hy, cz, p.lamp);
-        return new Room(cx, cy, cz, hx, hy, hz, y0);
+        // Turbolift door: hole in the floor at the back.
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+                b.remove(pack(cx + dx, floorY, cz - r + 2 + dz));
+        // Throne dais at the back, facing the viewport.
+        int daisZ = cz - r + 3;
+        for (int dx = -2; dx <= 2; dx++)
+            for (int dz = 0; dz <= 2; dz++)
+                set(b, cx + dx, floorY + 1, daisZ + dz, p.hullDark);
+        set(b, cx, floorY + 2, daisZ, p.wall);                 // throne back
+        set(b, cx - 1, floorY + 2, daisZ, p.panel);            // arm consoles
+        set(b, cx + 1, floorY + 2, daisZ, p.panel);
+        set(b, cx, floorY + 3, daisZ, p.wall);
+        set(b, cx, ceilY - 1, cz, p.lamp);
+
+        addSign(signs, cx, floorY + 2, daisZ - 1, Direction.SOUTH,
+                List.of("THRONE ROOM", "\"Now, young", "Skywalker,", "you will die\""));
+        addSign(signs, cx - 4, floorY + 2, cz + r - 1, Direction.NORTH,
+                List.of("DEATH STAR II", "", "shield still", "operational"));
     }
 
     // ------------------------------------------------------------------------------------------
     // Fragment finishing + offsets
     // ------------------------------------------------------------------------------------------
 
-    /** Re-centres a piece on its own bounding-box centre and packages it as a {@link Fragment}. */
     private static Fragment finish(String name, Map<Long, BlockState> b, List<SignFeature> signs, int[] off) {
         if (b.isEmpty()) return new Fragment(name, off[0], off[1], off[2], List.of(), List.of());
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
@@ -348,11 +354,10 @@ public final class DeathStarBlueprint {
         return new Fragment(name, off[0], off[1], off[2], vox, sh);
     }
 
-    /** Scatters fragment {@code i} across a rough field so the pieces do not spawn intersecting. */
     private static int[] offset(int i, int radius, RandomSource rnd) {
         if (i == 0) return new int[] {0, 6, 0};
         double sp = radius * 1.5;
-        double angle = i * 2.399963; // golden angle, spreads pieces evenly
+        double angle = i * 2.399963;
         double rad = sp * (0.8 + 0.28 * i);
         int x = (int) Math.round(Math.cos(angle) * rad);
         int z = (int) Math.round(Math.sin(angle) * rad);
@@ -366,13 +371,6 @@ public final class DeathStarBlueprint {
 
     private static int[] at(double[] dir, int t) {
         return new int[] {(int) Math.round(dir[0] * t), (int) Math.round(dir[1] * t), (int) Math.round(dir[2] * t)};
-    }
-
-    private static int[] offAt(int[] base, double[] u, double[] v, int a, int e) {
-        return new int[] {
-                (int) Math.round(base[0] + u[0] * a + v[0] * e),
-                (int) Math.round(base[1] + u[1] * a + v[1] * e),
-                (int) Math.round(base[2] + u[2] * a + v[2] * e)};
     }
 
     private static void addSign(List<SignFeature> signs, int x, int y, int z, Direction facing, List<String> lines) {
@@ -393,17 +391,11 @@ public final class DeathStarBlueprint {
         return t * t * (3.0 - 2.0 * t);
     }
 
-    private static double[] cross(double[] a, double[] b) {
-        return new double[] {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
-    }
-
     private static double[] unit(double x, double y, double z) {
         double len = Math.sqrt(x * x + y * y + z * z);
         if (len < 1.0e-9) return new double[] {0, 1, 0};
         return new double[] {x / len, y / len, z / len};
     }
-
-    private static double[] unit(double[] a) { return unit(a[0], a[1], a[2]); }
 
     private static double[] randomUnit(RandomSource rand) {
         double a, b, s;

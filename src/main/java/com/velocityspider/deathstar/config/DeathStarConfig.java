@@ -24,11 +24,12 @@ public final class DeathStarConfig {
 
         RADIUS = builder
                 .comment(
-                        "Outer radius of the Death Star in blocks. Diameter is roughly 2x this.",
-                        "The hull is a two-layer skin, so block count scales fast with radius:",
-                        "  radius 32 ~= 30,000 blocks, radius 40 ~= 48,000, radius 45 ~= 58,000 (heavy!).",
-                        "Larger spheres are a *lot* more work for the physics engine.")
-                .defineInRange("radius", 40, 8, 96);
+                        "Radius of the intact station the wreck pieces were cut from (in blocks).",
+                        "The wreck is only a handful of shards, not the whole sphere, so the block",
+                        "count is far lower than the diameter suggests:",
+                        "  radius 24 ~= 7,000 blocks, radius 30 ~= 13,000, radius 40 ~= 24,000 (heavier).",
+                        "Bigger values mean bigger, more detailed shards but more physics load.")
+                .defineInRange("radius", 30, 8, 96);
 
         SHELL_THICKNESS = builder
                 .comment("Thickness of the hull skin in blocks. 2 gives a solid-looking plated shell.")
