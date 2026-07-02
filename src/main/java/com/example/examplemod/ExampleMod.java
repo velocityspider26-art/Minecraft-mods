@@ -68,7 +68,7 @@ public class ExampleMod {
     public static final DeferredBlock<ThrusterBlock> THRUSTER_BLOCK = BLOCKS.registerBlock("thruster",
             ThrusterBlock::new,
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0f).sound(SoundType.METAL)
-                    .lightLevel(state -> state.getValue(ThrusterBlock.LIT) ? 13 : 3));
+                    .lightLevel(state -> state.getValue(ThrusterBlock.POWER)));
     public static final DeferredItem<BlockItem> THRUSTER_ITEM = ITEMS.registerSimpleBlockItem("thruster", THRUSTER_BLOCK);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThrusterBlockEntity>> THRUSTER_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("thruster", () -> BlockEntityType.Builder.of(

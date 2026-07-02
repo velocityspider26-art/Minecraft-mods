@@ -5,6 +5,7 @@ import com.example.examplemod.content.thruster.ThrusterBlockEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -12,6 +13,8 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -88,17 +91,52 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         VertexConsumer vc = buffer.getBuffer(RenderType.lightning());
         Matrix4f pose = ms.last().pose();
 
+        Vector3f drag = computeDrag(be, pose, time, length);
+
         for (float[] layer : profile.layers) {
             renderLayer(vc, pose, start, dir, u, w, length, maxRadius, throttle, time, flicker, layer,
-                    profile.diamondAmp, profile.diamondCount);
+                    profile.diamondAmp, profile.diamondCount, drag);
         }
+    }
+
+    /**
+     * Measures the thruster's true world-space velocity from the render pose (so it works on
+     * Valkyrien Skies ships / Create contraptions, whose transform is baked into the pose) and turns
+     * it into a block-local "drag" vector - the direction the plume trails as the craft moves.
+     */
+    private static Vector3f computeDrag(ThrusterBlockEntity be, Matrix4f pose, float time, float length) {
+        final float DRAG_FACTOR = 6.0f;
+
+        Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        Vector3f originRel = pose.transformPosition(new Vector3f(0f, 0f, 0f));
+        be.updateRenderMotion(cam.x + originRel.x, cam.y + originRel.y, cam.z + originRel.z, time);
+
+        Vector3f worldVel = be.getSmoothedWorldVelocity();
+        if (worldVel.lengthSquared() < 1.0e-6f) {
+            return new Vector3f(0f, 0f, 0f);
+        }
+        // World velocity -> block-local space (inverse of the pose's rotation/scale).
+        Matrix3f invRot = new Matrix3f(pose);
+        try {
+            invRot.invert();
+        } catch (RuntimeException e) {
+            return new Vector3f(0f, 0f, 0f);
+        }
+        Vector3f localVel = invRot.transform(new Vector3f(worldVel));
+        // The plume trails opposite the motion.
+        Vector3f drag = localVel.mul(-DRAG_FACTOR);
+        float max = length * 0.85f;
+        if (drag.length() > max) {
+            drag.normalize().mul(max);
+        }
+        return drag;
     }
 
     /** layer = {nearR,nearG,nearB, farR,farG,farB, baseAlpha, alphaFalloff, radiusScale, lengthScale, turbAmp} */
     private static void renderLayer(VertexConsumer vc, Matrix4f pose, Vector3f start, Vector3f dir,
                                     Vector3f u, Vector3f w, float baseLength, float maxRadius,
                                     float throttle, float time, float flicker, float[] layer,
-                                    float diamondAmp, float diamondCount) {
+                                    float diamondAmp, float diamondCount, Vector3f drag) {
         float layerRadius = maxRadius * layer[8];
         float length = baseLength * layer[9];
         float turbAmp = layer[10];
@@ -113,12 +151,15 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
             float r0 = layerRadius * radiusProfile(t0) * turbulence(t0, time, turbAmp) * diamond(t0, phase, diamondAmp, diamondCount);
             float r1 = layerRadius * radiusProfile(t1) * turbulence(t1, time, turbAmp) * diamond(t1, phase, diamondAmp, diamondCount);
 
-            float ax0 = start.x + dir.x * (t0 * length);
-            float ay0 = start.y + dir.y * (t0 * length);
-            float az0 = start.z + dir.z * (t0 * length);
-            float ax1 = start.x + dir.x * (t1 * length);
-            float ay1 = start.y + dir.y * (t1 * length);
-            float az1 = start.z + dir.z * (t1 * length);
+            // Motion drag grows with distance down the plume, so the flame trails and bends.
+            float d0 = (float) Math.pow(t0, 1.3);
+            float d1 = (float) Math.pow(t1, 1.3);
+            float ax0 = start.x + dir.x * (t0 * length) + drag.x * d0;
+            float ay0 = start.y + dir.y * (t0 * length) + drag.y * d0;
+            float az0 = start.z + dir.z * (t0 * length) + drag.z * d0;
+            float ax1 = start.x + dir.x * (t1 * length) + drag.x * d1;
+            float ay1 = start.y + dir.y * (t1 * length) + drag.y * d1;
+            float az1 = start.z + dir.z * (t1 * length) + drag.z * d1;
 
             colorAt(t0, phase, layer, diamondAmp, diamondCount, throttle, flicker, c0);
             colorAt(t1, phase, layer, diamondAmp, diamondCount, throttle, flicker, c1);

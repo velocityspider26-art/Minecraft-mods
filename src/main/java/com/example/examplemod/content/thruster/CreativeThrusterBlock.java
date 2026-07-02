@@ -33,7 +33,7 @@ public class CreativeThrusterBlock extends ThrusterBlock {
     @Nullable
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockState state = super.getStateForPlacement(context);
-        return state == null ? null : state.setValue(LIT, Boolean.TRUE);
+        return state == null ? null : state.setValue(POWER, 15);
     }
 
     @Override

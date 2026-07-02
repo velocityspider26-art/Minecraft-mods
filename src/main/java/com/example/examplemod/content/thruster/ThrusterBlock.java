@@ -26,8 +26,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.fluids.FluidUtil;
 import org.jetbrains.annotations.Nullable;
@@ -38,23 +38,24 @@ import org.jetbrains.annotations.Nullable;
  * ({@link com.example.examplemod.client.ThrusterPlumeRenderer}).
  *
  * <p>The plume fires out of the {@link DirectionalBlock#FACING} (nozzle) side. This thruster needs
- * fuel: pipe fuel items into it with a funnel/hopper (it exposes an item-handler capability, just
- * like the Create thruster) or right-click it with a fuel item. While it has fuel it burns and the
- * {@link #LIT} state is true, which drives both the plume and the block's light emission.</p>
+ * both fuel and a redstone signal: fill its tank (pump/pipe fuel in, or right-click with a bucket)
+ * and give it redstone. The {@link #POWER} state mirrors the redstone signal (0-15) while it is
+ * firing and drives the plume intensity and the block's light emission.</p>
  *
  * <p>Right-clicking with a wrench cycles the {@link #PLUME} look through the five real-world-inspired
  * variants (sneak to cycle backwards).</p>
  */
 public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
     public static final MapCodec<ThrusterBlock> CODEC = simpleCodec(ThrusterBlock::new);
-    public static final BooleanProperty LIT = BlockStateProperties.LIT;
+    /** Redstone-driven throttle level while firing (0 = off). */
+    public static final IntegerProperty POWER = BlockStateProperties.POWER;
     public static final EnumProperty<PlumeType> PLUME = EnumProperty.create("plume", PlumeType.class);
 
     public ThrusterBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(LIT, Boolean.FALSE)
+                .setValue(POWER, 0)
                 .setValue(PLUME, PlumeType.KEROLOX));
     }
 
@@ -65,7 +66,7 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, LIT, PLUME);
+        builder.add(FACING, POWER, PLUME);
     }
 
     @Override

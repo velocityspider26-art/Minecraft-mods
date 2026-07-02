@@ -16,19 +16,25 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import org.joml.Vector3f;
 
 /**
- * Stores the thruster's fuel tank and the smoothed throttle used to drive the plume mesh.
+ * Stores the thruster's fuel tank, the redstone-driven throttle, and the smoothed motion used to
+ * deform the plume mesh.
  *
- * <p>Fuel is a fluid (lava or the mod's kerosene). Fill the tank by pumping fuel in with a Create
- * mechanical pump (the tank is exposed as a fluid-handler capability) or by right-clicking with a
- * filled bucket. While the tank has fuel the thruster burns it down and the {@link ThrusterBlock#LIT}
- * block-state is true, which drives both the plume and the block's light emission. The throttle is
- * smoothed client-side for a soft spool up/down.</p>
+ * <p>The thruster fires only when it has both fuel (a fluid: lava or kerosene) and a redstone signal.
+ * The {@link ThrusterBlock#POWER} block-state mirrors the redstone level (1-15) while firing, so the
+ * client renders 15 distinct plume intensities with no extra sync. Fuel is consumed faster at higher
+ * throttle. The throttle is smoothed client-side for a soft spool up/down.</p>
+ *
+ * <p>For motion reactivity, the renderer feeds back the block's real world-space position each frame
+ * (which already accounts for Valkyrien Skies ships / Create contraptions, since their transform is
+ * baked into the render pose). We derive a smoothed velocity from it so the plume can trail and
+ * deform as the craft moves - like a real exhaust.</p>
  */
 public class ThrusterBlockEntity extends BlockEntity {
-    public static final int TANK_CAPACITY = 8_000; // 8 buckets
-    private static final int BURN_RATE_MB = 2;     // fuel consumed per tick while firing
+    public static final int TANK_CAPACITY = 8_000;   // 8 buckets
+    private static final int MAX_BURN_MB = 6;        // fuel per tick at full throttle
 
     private final FluidTank fuelTank = new FluidTank(TANK_CAPACITY) {
         @Override
@@ -45,6 +51,12 @@ public class ThrusterBlockEntity extends BlockEntity {
     private float currentThrottle = 0f;
     private float prevThrottle = 0f;
 
+    // Client-only motion tracking (world space), used to deform the plume.
+    private double lastWorldX, lastWorldY, lastWorldZ;
+    private float lastMotionTime;
+    private boolean hasMotionSample;
+    private float velX, velY, velZ;
+
     public ThrusterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
@@ -58,15 +70,22 @@ public class ThrusterBlockEntity extends BlockEntity {
         return fuelTank;
     }
 
-    /** Server tick: burn fuel from the tank and keep the LIT block-state in sync. */
+    /** Server tick: gate on redstone + fuel, burn fuel scaled by throttle, publish POWER. */
     public void serverTick() {
         if (level == null) {
             return;
         }
-        FluidStack burned = fuelTank.drain(BURN_RATE_MB, IFluidHandler.FluidAction.EXECUTE);
-        boolean firing = !burned.isEmpty();
-        if (getBlockState().getValue(ThrusterBlock.LIT) != firing) {
-            setLit(firing);
+        int signal = level.getBestNeighborSignal(getBlockPos());
+        int power = 0;
+        if (signal > 0 && !fuelTank.getFluid().isEmpty()) {
+            int burn = Math.max(1, Math.round(MAX_BURN_MB * (signal / 15f)));
+            FluidStack burned = fuelTank.drain(burn, IFluidHandler.FluidAction.EXECUTE);
+            if (!burned.isEmpty()) {
+                power = signal;
+            }
+        }
+        if (getBlockState().getValue(ThrusterBlock.POWER) != power) {
+            setPower(power);
         }
     }
 
@@ -80,23 +99,52 @@ public class ThrusterBlockEntity extends BlockEntity {
         }
     }
 
-    private void setLit(boolean value) {
+    private void setPower(int value) {
         if (level != null) {
             BlockState state = getBlockState();
-            if (state.hasProperty(ThrusterBlock.LIT) && state.getValue(ThrusterBlock.LIT) != value) {
-                level.setBlock(getBlockPos(), state.setValue(ThrusterBlock.LIT, value), 3);
+            if (state.hasProperty(ThrusterBlock.POWER) && state.getValue(ThrusterBlock.POWER) != value) {
+                level.setBlock(getBlockPos(), state.setValue(ThrusterBlock.POWER, value), 3);
             }
         }
     }
 
-    /** Target throttle in [0,1]. Regular thrusters fire while they have burning fuel. */
+    /** Target throttle in [0,1], from the redstone-driven power level. */
     protected float getTargetThrottle() {
-        return getBlockState().hasProperty(ThrusterBlock.LIT) && getBlockState().getValue(ThrusterBlock.LIT) ? 1f : 0f;
+        if (!getBlockState().hasProperty(ThrusterBlock.POWER)) {
+            return 0f;
+        }
+        return getBlockState().getValue(ThrusterBlock.POWER) / 15f;
     }
 
     /** Interpolated throttle for smooth rendering between ticks. */
     public float getThrottle(float partialTick) {
         return Mth.lerp(partialTick, prevThrottle, currentThrottle);
+    }
+
+    /** Feeds the renderer's measured world position back in to compute a smoothed velocity. */
+    public void updateRenderMotion(double wx, double wy, double wz, float timeTicks) {
+        if (hasMotionSample) {
+            float dt = timeTicks - lastMotionTime;
+            if (dt > 0.0001f) {
+                float ivx = (float) ((wx - lastWorldX) / dt);
+                float ivy = (float) ((wy - lastWorldY) / dt);
+                float ivz = (float) ((wz - lastWorldZ) / dt);
+                float s = 0.25f;
+                velX += (ivx - velX) * s;
+                velY += (ivy - velY) * s;
+                velZ += (ivz - velZ) * s;
+            }
+        }
+        lastWorldX = wx;
+        lastWorldY = wy;
+        lastWorldZ = wz;
+        lastMotionTime = timeTicks;
+        hasMotionSample = true;
+    }
+
+    /** Smoothed world-space velocity in blocks/tick. */
+    public Vector3f getSmoothedWorldVelocity() {
+        return new Vector3f(velX, velY, velZ);
     }
 
     public Direction getFacing() {
