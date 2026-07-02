@@ -29,6 +29,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -104,6 +106,8 @@ public class ExampleMod {
     public ExampleMod(IEventBus modEventBus, ModContainer modContainer) {
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
+        // Expose the thruster's fuel input slot as an item-handler capability (funnels/hoppers/pipes)
+        modEventBus.addListener(this::registerCapabilities);
 
         // Register the Deferred Register to the mod event bus so blocks get registered
         BLOCKS.register(modEventBus);
@@ -124,6 +128,12 @@ public class ExampleMod {
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+    }
+
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        // Only the regular thruster accepts fuel; the creative one never burns anything.
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, THRUSTER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getFuelHandler());
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

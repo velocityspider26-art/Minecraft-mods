@@ -5,6 +5,9 @@ import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.ItemInteractionResult;
@@ -25,32 +28,34 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A directional thruster block modelled after the Create: Propulsion Simulated thruster, but with
- * the particle exhaust replaced by a procedural 3D plume mesh
+ * A directional thruster block modelled after the Create: Propulsion Simulated thruster, with the
+ * particle exhaust replaced by a procedural 3D plume mesh
  * ({@link com.example.examplemod.client.ThrusterPlumeRenderer}).
  *
- * <p>The plume fires out of the {@link DirectionalBlock#FACING} (nozzle) side. Unlike the creative
- * variant, this thruster needs a fuel source: right-click it with a lava bucket or with the mod's
- * kerosene to fill its fuel buffer. While it has fuel it burns and the {@link #LIT} state is true,
- * which drives both the plume and the block's light emission.</p>
+ * <p>The plume fires out of the {@link DirectionalBlock#FACING} (nozzle) side. This thruster needs
+ * fuel: pipe fuel items into it with a funnel/hopper (it exposes an item-handler capability, just
+ * like the Create thruster) or right-click it with a fuel item. While it has fuel it burns and the
+ * {@link #LIT} state is true, which drives both the plume and the block's light emission.</p>
+ *
+ * <p>Right-clicking with a wrench cycles the {@link #PLUME} look through the five real-world-inspired
+ * variants (sneak to cycle backwards).</p>
  */
 public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
     public static final MapCodec<ThrusterBlock> CODEC = simpleCodec(ThrusterBlock::new);
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
-
-    /** Fuel (in ticks) granted per fuel item. */
-    public static final int LAVA_FUEL = 20000;
-    public static final int KEROSENE_FUEL = 2400;
+    public static final EnumProperty<PlumeType> PLUME = EnumProperty.create("plume", PlumeType.class);
 
     public ThrusterBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(LIT, Boolean.FALSE));
+                .setValue(LIT, Boolean.FALSE)
+                .setValue(PLUME, PlumeType.KEROLOX));
     }
 
     @Override
@@ -60,7 +65,7 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, LIT);
+        builder.add(FACING, LIT, PLUME);
     }
 
     @Override
@@ -72,18 +77,51 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
 
     /** Fuel value (in ticks) for a given item stack, or 0 if it is not a valid fuel. */
     public static int getFuelValue(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return 0;
+        }
         if (stack.is(Items.LAVA_BUCKET)) {
-            return LAVA_FUEL;
+            return 20_000;
         }
         if (stack.is(ExampleMod.KEROSENE.get())) {
-            return KEROSENE_FUEL;
+            return 3_200;
+        }
+        if (stack.is(Items.BLAZE_ROD)) {
+            return 4_800;
+        }
+        if (stack.is(Items.BLAZE_POWDER)) {
+            return 1_600;
+        }
+        if (stack.is(Items.COAL) || stack.is(Items.CHARCOAL)) {
+            return 1_600;
+        }
+        if (stack.is(Items.COAL_BLOCK)) {
+            return 16_000;
         }
         return 0;
+    }
+
+    private static boolean isWrench(ItemStack stack) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return id != null && id.getPath().equals("wrench");
     }
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                               Player player, InteractionHand hand, BlockHitResult hitResult) {
+        // Wrench: cycle the plume variant (sneak = backwards). Runs before the wrench's own useOn.
+        if (isWrench(stack)) {
+            if (!level.isClientSide) {
+                PlumeType current = state.getValue(PLUME);
+                PlumeType next = player.isShiftKeyDown() ? current.previous() : current.next();
+                level.setBlock(pos, state.setValue(PLUME, next), 3);
+                level.playSound(null, pos, SoundEvents.COMPARATOR_CLICK, SoundSource.BLOCKS, 0.9f, 1.2f);
+                player.displayClientMessage(Component.literal("Plume: " + next.getDisplayName()), true);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+
+        // Fuel: fill the fuel buffer directly from the held stack.
         int fuel = getFuelValue(stack);
         if (fuel > 0 && level.getBlockEntity(pos) instanceof ThrusterBlockEntity be && !be.isCreative() && be.hasFuelRoom()) {
             if (!level.isClientSide) {
