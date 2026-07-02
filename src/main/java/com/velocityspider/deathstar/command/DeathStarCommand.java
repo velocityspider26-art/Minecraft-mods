@@ -68,8 +68,10 @@ public final class DeathStarCommand {
         int x = (int) Math.floor(eye.x + flat.x * distance);
         int z = (int) Math.floor(eye.z + flat.z * distance);
 
+        // The wreck is a scattered field that settles onto the terrain, so we only need a modest
+        // clearance above the ground here; the per-piece drop height is applied by the assembler.
         int groundY = player.level().getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-        int y = groundY + radius + DeathStarConfig.DROP_HEIGHT.get();
+        int y = groundY + Math.max(10, radius / 2);
         return new BlockPos(x, y, z);
     }
 }

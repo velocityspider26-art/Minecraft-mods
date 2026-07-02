@@ -1,33 +1,32 @@
 # Death Star Ruins
 
-A NeoForge **1.21.1** mod that summons a scaled-down, battle-scarred **Death Star** as a real
-**physics object** — not a static build. The wreck is generated procedurally, placed into the
-world, and then handed to [**Sable**](https://modrinth.com/mod/sable) (the physics sub-level
-engine behind Create Aeronautics), which takes over and simulates it as a rigid body that tumbles,
-collides with terrain, and settles.
+A NeoForge **1.21.1** mod that summons the **Death Star wreckage** as real **physics objects** —
+styled after the Kef Bir sea-wreck in *The Rise of Skywalker*: not one intact sphere, but a
+**scattered field of separate broken pieces**. Each shard is generated procedurally, placed into
+the world, and handed to [**Sable**](https://modrinth.com/mod/sable) (the physics sub-level engine
+behind Create Aeronautics), which simulates **each piece as its own rigid body** that falls,
+collides and settles.
 
 ## How it works
 
-1. **Generate** — `DeathStarBlueprint` builds a wreck (deterministic from a seed):
-   - a **two-layer panelled hull** with the **equatorial trench** and the concave **superlaser
-     dish** ("eye"),
-   - a **huge blown-open section** with a jagged, charred rim that tears away ~15% of the sphere and
-     exposes a cutaway of the interior — this is what makes it read as *ruins* rather than a moon,
-   - an **accurate-feeling interior**: a glowing **main reactor** at the core, the vertical
-     **reactor/exhaust shaft**, the **superlaser focusing tube** running out to the dish, exposed
-     **decks** and structural **girders**, and
-   - **battle-damage craters** across the rest of the skin.
-   It's built from the mod's **own blocks/textures** (hull plating, greebles, reinforced frame,
-   scorched hull, Imperial interior walls/floors, reactor core/casing, superlaser lens, power
-   conduit, control panels) — no re-used vanilla iron/concrete.
-2. **Place** — every voxel is written into the world around the target point.
-3. **Assemble** — the exact set of placed positions is passed to
-   `SubLevelAssemblyHelper.assembleBlocks(...)`. Sable lifts the blocks out of the world into a
-   sub-level and registers a physics body for them. From that moment the Death Star is a moving,
-   interactive physics object.
+1. **Generate** — `DeathStarBlueprint.buildWreckField(...)` builds a field of independent pieces
+   (deterministic from a seed):
+   - a **big "hero" hull shard** — a great curved slab of two-layer panelled hull with a torn,
+     charred edge, a slice of the **equatorial trench**, and a chunk of exposed **interior** still
+     clinging to it (reactor stub, structural girder, decks, and the Easter-egg rooms),
+   - the **superlaser-dish section** (the concave green "eye") torn free,
+   - a few **medium curved hull shards** with ragged edges and exposed frame, and
+   - smaller **twisted debris** chunks.
+   Everything is built from the mod's **own blocks/textures** (hull plating, greebles, reinforced
+   frame, scorched hull, Imperial interior walls/floors, reactor core/casing, superlaser lens,
+   power conduit, control panels) — no re-used vanilla iron/concrete.
+2. **Place & assemble each piece** — every piece is placed at its own scattered offset and its
+   positions passed to `SubLevelAssemblyHelper.assembleBlocks(...)`, which lifts them out of the
+   world into a **separate sub-level** with its own physics body. Pieces are done one at a time, so
+   their blocks never coexist in the world.
 
-The server only does generation + assembly; **Sable owns the rendering and physics** of the
-result, which is why this mod ships no custom entity or renderer.
+The server only does generation + assembly; **Sable owns the rendering and physics** of each piece,
+which is why this mod ships no custom entity or renderer.
 
 ## Requirements
 
@@ -57,7 +56,7 @@ Summon with either:
 
 ## Easter eggs
 
-Tucked into the exposed decks (visible through the blown-open section) are little Star Wars nods,
+Tucked into the exposed interior clinging to the **big hero hull shard** are little Star Wars nods,
 labelled with signs:
 
 - **Detention Block AA-23** with barred cells and **cell 1138** (the THX-1138 / *A New Hope* cell).
@@ -70,10 +69,11 @@ labelled with signs:
 
 ## Performance note
 
-At the default `radius = 40` the Death Star is **~48,000 blocks in a single physics body** — right
-around the size that was asked for. It is still genuinely heavy for the physics engine and the
-initial assembly is a one-off spike. If you want something smoother to fly around, drop `radius`
-to ~24–32 in the config; push it to 45+ for a ~58k-block monster.
+At the default `radius = 40` the wreck is **~24,000 blocks spread across ~9 separate pieces** (the
+biggest ~13k, a few ~3k shards, plus small debris). Splitting it into pieces is easier on the
+physics engine than one giant body, but the initial assembly is still a one-off spike. Drop
+`radius` to ~24–32 for smaller shards, or push it higher for bigger ones. The debris field spreads
+roughly `1.5 × radius` blocks around the summon point, so give it some open, flat space.
 
 ## Building
 

@@ -15,7 +15,7 @@
   "block.deathstar.superlaser_lens": "Superlaser Lens",
   "block.deathstar.power_conduit": "Power Conduit",
 
-  "message.deathstar.summoned": "Assembled a ruined Death Star from %s blocks. Stand clear.",
+  "message.deathstar.summoned": "Assembled Death Star wreckage: %s pieces, %s blocks. Stand clear.",
   "message.deathstar.too_many": "That Death Star would be %s blocks, over the limit of %s. Lower the radius in the config.",
   "message.deathstar.no_sable": "Sable is not available here, so there is nowhere to build a physics body. Is Sable installed?",
   "message.deathstar.failed": "Death Star assembly failed: %s",
