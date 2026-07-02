@@ -16,7 +16,6 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
-import org.joml.Vector3f;
 
 /**
  * Stores the thruster's fuel tank, the redstone-driven throttle, and the smoothed motion used to
@@ -27,10 +26,11 @@ import org.joml.Vector3f;
  * client renders 15 distinct plume intensities with no extra sync. Fuel is consumed faster at higher
  * throttle. The throttle is smoothed client-side for a soft spool up/down.</p>
  *
- * <p>For motion reactivity, the renderer feeds back the block's real world-space position each frame
- * (which already accounts for Valkyrien Skies ships / Create contraptions, since their transform is
- * baked into the render pose). We derive a smoothed velocity from it so the plume can trail and
- * deform as the craft moves - like a real exhaust.</p>
+ * <p>For motion reactivity, the renderer feeds back the nozzle's real world-space position and facing
+ * each frame (which already accounts for Valkyrien Skies ships / Create contraptions, since their
+ * transform is baked into the render pose). We keep a short history of those samples so the plume can
+ * be drawn through the path the nozzle actually traced - trailing when the craft translates and
+ * curving at the tail when it turns, like a real exhaust.</p>
  */
 public class ThrusterBlockEntity extends BlockEntity {
     public static final int TANK_CAPACITY = 8_000;   // 8 buckets
@@ -51,11 +51,18 @@ public class ThrusterBlockEntity extends BlockEntity {
     private float currentThrottle = 0f;
     private float prevThrottle = 0f;
 
-    // Client-only motion tracking (world space), used to deform the plume.
-    private double lastWorldX, lastWorldY, lastWorldZ;
-    private float lastMotionTime;
-    private boolean hasMotionSample;
-    private float velX, velY, velZ;
+    // Client-only ring buffer of recent nozzle samples (world-space position + facing), newest at
+    // HEAD. Used to draw the plume through the path the nozzle actually traced.
+    private static final int HIST = 96;
+    private final double[] histX = new double[HIST];
+    private final double[] histY = new double[HIST];
+    private final double[] histZ = new double[HIST];
+    private final float[] histDX = new float[HIST];
+    private final float[] histDY = new float[HIST];
+    private final float[] histDZ = new float[HIST];
+    private final float[] histT = new float[HIST];
+    private int histHead = 0;
+    private int histSize = 0;
 
     public ThrusterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -121,30 +128,76 @@ public class ThrusterBlockEntity extends BlockEntity {
         return Mth.lerp(partialTick, prevThrottle, currentThrottle);
     }
 
-    /** Feeds the renderer's measured world position back in to compute a smoothed velocity. */
-    public void updateRenderMotion(double wx, double wy, double wz, float timeTicks) {
-        if (hasMotionSample) {
-            float dt = timeTicks - lastMotionTime;
-            if (dt > 0.0001f) {
-                float ivx = (float) ((wx - lastWorldX) / dt);
-                float ivy = (float) ((wy - lastWorldY) / dt);
-                float ivz = (float) ((wz - lastWorldZ) / dt);
-                float s = 0.25f;
-                velX += (ivx - velX) * s;
-                velY += (ivy - velY) * s;
-                velZ += (ivz - velZ) * s;
-            }
+    /** Records the current nozzle world position + facing (called once per frame by the renderer). */
+    public void pushNozzleSample(float time, double px, double py, double pz, float dx, float dy, float dz) {
+        if (histSize > 0 && time <= histT[histHead]) {
+            return; // no time progress (e.g. paused); keep existing history
         }
-        lastWorldX = wx;
-        lastWorldY = wy;
-        lastWorldZ = wz;
-        lastMotionTime = timeTicks;
-        hasMotionSample = true;
+        histHead = (histHead + 1) % HIST;
+        if (histSize < HIST) {
+            histSize++;
+        }
+        histX[histHead] = px;
+        histY[histHead] = py;
+        histZ[histHead] = pz;
+        histDX[histHead] = dx;
+        histDY[histHead] = dy;
+        histDZ[histHead] = dz;
+        histT[histHead] = time;
     }
 
-    /** Smoothed world-space velocity in blocks/tick. */
-    public Vector3f getSmoothedWorldVelocity() {
-        return new Vector3f(velX, velY, velZ);
+    /**
+     * Interpolates the nozzle sample at {@code targetTime}, writing world position into {@code outPos}
+     * and facing into {@code outDir}. Clamps to the ends of the history. Returns false if no history.
+     */
+    public boolean sampleNozzle(float targetTime, double[] outPos, float[] outDir) {
+        if (histSize == 0) {
+            return false;
+        }
+        if (targetTime >= histT[histHead]) {
+            copySample(histHead, outPos, outDir);
+            return true;
+        }
+        int oldest = ((histHead - (histSize - 1)) % HIST + HIST) % HIST;
+        if (targetTime <= histT[oldest]) {
+            copySample(oldest, outPos, outDir);
+            return true;
+        }
+        for (int k = 0; k < histSize - 1; k++) {
+            int newer = ((histHead - k) % HIST + HIST) % HIST;
+            int older = ((histHead - k - 1) % HIST + HIST) % HIST;
+            if (targetTime <= histT[newer] && targetTime >= histT[older]) {
+                float span = histT[newer] - histT[older];
+                float f = span > 1.0e-5f ? (targetTime - histT[older]) / span : 0f;
+                outPos[0] = Mth.lerp(f, histX[older], histX[newer]);
+                outPos[1] = Mth.lerp(f, histY[older], histY[newer]);
+                outPos[2] = Mth.lerp(f, histZ[older], histZ[newer]);
+                float ndx = Mth.lerp(f, histDX[older], histDX[newer]);
+                float ndy = Mth.lerp(f, histDY[older], histDY[newer]);
+                float ndz = Mth.lerp(f, histDZ[older], histDZ[newer]);
+                float len = Mth.sqrt(ndx * ndx + ndy * ndy + ndz * ndz);
+                if (len > 1.0e-5f) {
+                    ndx /= len;
+                    ndy /= len;
+                    ndz /= len;
+                }
+                outDir[0] = ndx;
+                outDir[1] = ndy;
+                outDir[2] = ndz;
+                return true;
+            }
+        }
+        copySample(histHead, outPos, outDir);
+        return true;
+    }
+
+    private void copySample(int i, double[] outPos, float[] outDir) {
+        outPos[0] = histX[i];
+        outPos[1] = histY[i];
+        outPos[2] = histZ[i];
+        outDir[0] = histDX[i];
+        outDir[1] = histDY[i];
+        outDir[2] = histDZ[i];
     }
 
     public Direction getFacing() {
