@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "ebe"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steel_plating"
+    },
+    "b": {
+      "item": "crusty_chunks:turbine_rotor"
+    },
+    "c": {
+      "item": "crusty_chunks:shielding_component"
+    },
+    "d": {
+      "item": "minecraft:water_bucket"
+    },
+    "e": {
+      "tag": "forge:blocks/aluminum"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:power_reactor_interface"
+  }
+}

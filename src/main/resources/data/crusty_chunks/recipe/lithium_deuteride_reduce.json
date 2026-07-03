@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:lithium_deuteride"
+    }
+  ],
+  "result": {
+    "count": 9,
+    "id": "crusty_chunks:tiny_lithium_deuteride"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "crusty_chunks:block/light_gray_armor_slab"
+    },
+    "type=top": {
+      "model": "crusty_chunks:block/light_gray_armor_slab_top"
+    },
+    "type=double": {
+      "model": "crusty_chunks:block/light_gray_armor_slab_full"
+    }
+  }
+}

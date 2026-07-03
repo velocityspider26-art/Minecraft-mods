@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/lightautocannon",
+  "textures": {
+    "all": "crusty_chunks:block/lightautocannon",
+    "particle": "crusty_chunks:block/solidsteel",
+    "2": "crusty_chunks:block/lightautocannon"
+  },
+  "render_type": "solid"
+}

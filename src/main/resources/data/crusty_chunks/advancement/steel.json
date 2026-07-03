@@ -1,0 +1,73 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:steel_ingot"
+    },
+    "title": {
+      "translate": "advancements.steel.title"
+    },
+    "description": {
+      "translate": "advancements.steel.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "steel_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:steel_ingot"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:steel_ore_block_recipe",
+      "crusty_chunks:steel_block_ore_recipe",
+      "crusty_chunks:steel_component_recipe",
+      "crusty_chunks:plating_block",
+      "crusty_chunks:plating_stairs",
+      "crusty_chunks:plating_slab",
+      "crusty_chunks:plating_trap",
+      "crusty_chunks:hammer_recipe",
+      "crusty_chunks:hammering",
+      "crusty_chunks:hammering_2",
+      "crusty_chunks:hammering_3",
+      "crusty_chunks:steel_gear_recipe",
+      "crusty_chunks:cutting",
+      "crusty_chunks:iron_gear_recipe",
+      "crusty_chunks:bullet_helmet_recipe",
+      "crusty_chunks:bullet_vest_recipe",
+      "crusty_chunks:advanced_component_recipe",
+      "crusty_chunks:refinery_recipe",
+      "crusty_chunks:refinery_tower_recipe",
+      "crusty_chunks:copper_coil_recipe",
+      "crusty_chunks:steel_coil_recipe",
+      "crusty_chunks:giant_coil_recipe",
+      "crusty_chunks:shear_recipe",
+      "crusty_chunks:press_recipe",
+      "crusty_chunks:extruder_recipe",
+      "crusty_chunks:electric_motor_recipe",
+      "crusty_chunks:wire_fence_recipe",
+      "crusty_chunks:razor_wire_recipe",
+      "crusty_chunks:truss_recipe",
+      "crusty_chunks:aimer_recipe",
+      "crusty_chunks:aimer_node_recipe",
+      "crusty_chunks:node_trigger_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:the_forge"
+}

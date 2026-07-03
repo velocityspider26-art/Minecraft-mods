@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "bcb",
+    "bcb"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:impact_fuze"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "c": {
+      "item": "crusty_chunks:volatile_dust"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:redstone_tnt"
+  }
+}

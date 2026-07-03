@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/generator"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/generator",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/generator",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/generator",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "crusty_chunks:block/generator",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "crusty_chunks:block/generator",
+      "x": 90
+    }
+  }
+}

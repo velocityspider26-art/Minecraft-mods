@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "crusty_chunks:oil_well",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 80,
+    "separation": 20,
+    "salt": 352215729
+  }
+}

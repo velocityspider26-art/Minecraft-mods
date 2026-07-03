@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/refinerytower",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "0": "crusty_chunks:block/refinerytowertexture"
+  },
+  "render_type": "solid"
+}

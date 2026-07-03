@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ab ",
+    "bcb",
+    " bc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:flak_projectile"
+    },
+    "b": {
+      "item": "minecraft:paper"
+    },
+    "c": {
+      "item": "crusty_chunks:propellent"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:flak_shell"
+  }
+}

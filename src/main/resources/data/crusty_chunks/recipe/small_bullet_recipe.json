@@ -1,0 +1,37 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:small_projectile"
+    },
+    {
+      "item": "crusty_chunks:small_projectile"
+    },
+    {
+      "item": "crusty_chunks:small_projectile"
+    },
+    {
+      "item": "crusty_chunks:small_casing"
+    },
+    {
+      "item": "crusty_chunks:small_projectile"
+    },
+    {
+      "item": "crusty_chunks:propellent"
+    },
+    {
+      "item": "crusty_chunks:small_casing"
+    },
+    {
+      "item": "crusty_chunks:small_casing"
+    },
+    {
+      "item": "crusty_chunks:small_casing"
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "crusty_chunks:smallbullet"
+  }
+}

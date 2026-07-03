@@ -1,0 +1,6 @@
+{
+  "parent": "crusty_chunks:displaysettings/handdrill.item",
+  "textures": {
+    "layer0": "crusty_chunks:item/handdrill"
+  }
+}

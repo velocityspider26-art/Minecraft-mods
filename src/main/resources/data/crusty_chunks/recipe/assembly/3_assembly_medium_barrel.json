@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "crusty_chunks:medium_unbored_barrel",
+  "process": "crusty_chunks:mechanical_bore",
+  "result": {
+    "id": "crusty_chunks:medium_bored_barrel"
+  },
+  "runs": 6
+}

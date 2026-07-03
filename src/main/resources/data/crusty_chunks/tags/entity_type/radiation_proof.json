@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    "zombie",
+    "zombie_horse",
+    "zombie_villager",
+    "zombified_piglin",
+    "skeleton",
+    "skeleton_horse",
+    "wither_skeleton",
+    "wither",
+    "iron_golem",
+    "ender_dragon",
+    "husk",
+    "stray",
+    "drowned",
+    "zoglin",
+    "warden",
+    "crusty_chunks:hunter",
+    "crusty_chunks:striker",
+    "crusty_chunks:decimator",
+    "crusty_chunks:flamer",
+    "crusty_chunks:commander",
+    "crusty_chunks:rifler",
+    "crusty_chunks:mortarer",
+    "crusty_chunks:ciws",
+    "crusty_chunks:assassin",
+    "crusty_chunks:eradicator",
+    "crusty_chunks:worker",
+    "crusty_chunks:breacher",
+    "#crusty_chunks:robot"
+  ]
+}

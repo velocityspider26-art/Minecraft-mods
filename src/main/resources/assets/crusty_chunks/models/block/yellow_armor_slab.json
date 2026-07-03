@@ -1,0 +1,10 @@
+{
+  "parent": "block/slab",
+  "textures": {
+    "particle": "crusty_chunks:block/armor_yellow",
+    "bottom": "crusty_chunks:block/armor_yellow",
+    "top": "crusty_chunks:block/armor_yellow",
+    "side": "crusty_chunks:block/armoryellowslab"
+  },
+  "render_type": "solid"
+}

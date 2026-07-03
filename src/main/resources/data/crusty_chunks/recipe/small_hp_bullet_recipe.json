@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:chisel"
+    },
+    {
+      "item": "crusty_chunks:smallbullet"
+    },
+    {
+      "item": "crusty_chunks:smallbullet"
+    },
+    {
+      "item": "crusty_chunks:smallbullet"
+    }
+  ],
+  "result": {
+    "count": 3,
+    "id": "crusty_chunks:small_hollow_point_bullet"
+  }
+}

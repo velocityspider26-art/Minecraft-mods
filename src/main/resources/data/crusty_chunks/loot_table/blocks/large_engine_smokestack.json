@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "crusty_chunks:blocks/large_engine_smokestack",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crusty_chunks:large_engine_smokestack"
+        }
+      ]
+    }
+  ]
+}

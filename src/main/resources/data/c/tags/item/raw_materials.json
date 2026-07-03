@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:raw_lead",
+    "crusty_chunks:raw_nickel",
+    "crusty_chunks:raw_zinc",
+    "crusty_chunks:raw_uranium",
+    "crusty_chunks:raw_beryllium",
+    "crusty_chunks:raw_lithium"
+  ]
+}

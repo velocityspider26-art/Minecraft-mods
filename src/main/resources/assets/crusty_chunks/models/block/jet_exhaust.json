@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/jetexhaust",
+  "textures": {
+    "all": "crusty_chunks:block/jetexausttexture",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/jetexausttexture"
+  },
+  "render_type": "cutout_mipped"
+}

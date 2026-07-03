@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/energynode",
+  "textures": {
+    "all": "crusty_chunks:block/batterytop",
+    "particle": "crusty_chunks:block/batterytop",
+    "0": "crusty_chunks:block/energynode"
+  },
+  "render_type": "solid"
+}

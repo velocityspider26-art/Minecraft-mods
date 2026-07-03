@@ -1,0 +1,13 @@
+{
+  "type": "create:pressing",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:cast_component"
+    }
+  ],
+  "results": [
+    {
+      "item": "crusty_chunks:steel_gear"
+    }
+  ]
+}

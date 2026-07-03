@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ab"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:shale_oil"
+    },
+    "b": {
+      "item": "minecraft:gravel"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:asphalt"
+  }
+}

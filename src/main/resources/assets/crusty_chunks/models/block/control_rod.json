@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/controlrod",
+    "up": "crusty_chunks:block/controlrod",
+    "north": "crusty_chunks:block/reactorcasingside",
+    "east": "crusty_chunks:block/reactorcasingside",
+    "south": "crusty_chunks:block/reactorcasingside",
+    "west": "crusty_chunks:block/reactorcasingside",
+    "particle": "crusty_chunks:block/controlrod"
+  },
+  "render_type": "solid"
+}

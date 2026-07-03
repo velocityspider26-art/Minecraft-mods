@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ab",
+    "cd"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steel_gear"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_spring"
+    },
+    "c": {
+      "item": "crusty_chunks:cast_component"
+    },
+    "d": {
+      "item": "crusty_chunks:cut_component"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:steel_component"
+  }
+}

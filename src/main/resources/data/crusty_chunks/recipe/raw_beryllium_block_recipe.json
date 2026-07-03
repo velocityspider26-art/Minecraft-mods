@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "aaa",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:raw_beryllium"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:raw_beryllium_block"
+  }
+}

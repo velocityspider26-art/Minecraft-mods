@@ -1,0 +1,26 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:ordinance_fusion_bomb_projectile",
+    "crusty_chunks:cluster_bomb_projectile",
+    "crusty_chunks:fire_bomb_projectile",
+    "crusty_chunks:gas_bomb_projectile",
+    "crusty_chunks:large_bomb_projectile",
+    "crusty_chunks:medium_bomb_projectile",
+    "crusty_chunks:nuclear_bomb_projectile",
+    "crusty_chunks:small_bomb_projectile",
+    "crusty_chunks:super_large_bomb_projectile",
+    "crusty_chunks:cluster_rocket",
+    "crusty_chunks:fire_spear_rocket_projectile",
+    "crusty_chunks:incindiary_rocket_projectile",
+    "crusty_chunks:large_rocket",
+    "crusty_chunks:ir_missile",
+    "crusty_chunks:large_radar_missile_projectile",
+    "crusty_chunks:radar_spear_missile_projectile",
+    "crusty_chunks:seeker_spear_missile_projectile",
+    "crusty_chunks:torpedo",
+    "crusty_chunks:block_buster_projectile",
+    "crusty_chunks:bunker_buster_projectile",
+    "crusty_chunks:large_torpedo"
+  ]
+}

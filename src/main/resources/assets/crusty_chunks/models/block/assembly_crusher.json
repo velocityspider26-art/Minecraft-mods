@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/assemblygrinder",
+  "textures": {
+    "all": "crusty_chunks:block/driveshaftside",
+    "particle": "crusty_chunks:block/driveshaftside",
+    "0": "crusty_chunks:block/assemblygrinder"
+  },
+  "render_type": "solid"
+}

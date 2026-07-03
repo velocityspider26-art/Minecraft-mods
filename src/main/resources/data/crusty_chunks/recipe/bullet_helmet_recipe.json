@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "b": {
+      "item": "minecraft:leather_helmet"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:bullet_resistant_helmet_helmet"
+  }
+}

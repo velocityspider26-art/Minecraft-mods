@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/armor_purple",
+    "up": "crusty_chunks:block/armor_purple",
+    "north": "crusty_chunks:block/opticfront_purple",
+    "east": "crusty_chunks:block/armor_purple",
+    "south": "crusty_chunks:block/opticback_purple",
+    "west": "crusty_chunks:block/armor_purple",
+    "particle": "crusty_chunks:block/armor_purple"
+  },
+  "render_type": "translucent"
+}

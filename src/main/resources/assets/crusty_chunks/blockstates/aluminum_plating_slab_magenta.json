@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_magenta"
+    },
+    "type=top": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_magenta_top"
+    },
+    "type=double": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_magenta_full"
+    }
+  }
+}

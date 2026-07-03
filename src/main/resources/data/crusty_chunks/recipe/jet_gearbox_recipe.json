@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abc",
+    "deb",
+    "abc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "c": {
+      "item": "crusty_chunks:aluminum_plate"
+    },
+    "d": {
+      "item": "crusty_chunks:steel_cylinder"
+    },
+    "e": {
+      "item": "crusty_chunks:turbine_rotor"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:jet_gearbox"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "crusty_chunks:advanced_alloy_mixture",
+  "process": "crusty_chunks:mechanical_press",
+  "result": {
+    "id": "crusty_chunks:compressed_advanced_mixture"
+  },
+  "runs": 40
+}

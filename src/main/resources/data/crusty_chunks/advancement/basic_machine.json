@@ -1,0 +1,54 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:mineral_grinder"
+    },
+    "title": {
+      "translate": "advancements.basic_machine.title"
+    },
+    "description": {
+      "translate": "advancements.basic_machine.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "basic_machine_0": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "crusty_chunks:mineral_grinder"
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:blast_brick",
+      "crusty_chunks:blast_bricks_recipe",
+      "crusty_chunks:blast_furnace_recipe",
+      "crusty_chunks:blast_funnel_recipe",
+      "crusty_chunks:iron_gear_recipe",
+      "crusty_chunks:firebox_recipe",
+      "crusty_chunks:foundry_recipe",
+      "crusty_chunks:foundry_template_recipe",
+      "crusty_chunks:large_foundry_template_recipe",
+      "crusty_chunks:lathe_recipe",
+      "crusty_chunks:conveyor_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:shear_recipe",
+      "crusty_chunks:extruder_recipe",
+      "crusty_chunks:press_recipe",
+      "crusty_chunks:reinforced_concrete_recipe",
+      "crusty_chunks:rebar_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:tools"
+}

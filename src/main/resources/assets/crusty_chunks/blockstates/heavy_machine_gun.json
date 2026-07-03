@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/heavy_machine_gun"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/heavy_machine_gun",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/heavy_machine_gun",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/heavy_machine_gun",
+      "y": 270
+    }
+  }
+}

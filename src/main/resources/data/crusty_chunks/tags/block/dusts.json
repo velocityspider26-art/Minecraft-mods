@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:snow",
+    "minecraft:snow_block",
+    "minecraft:powder_snow",
+    "minecraft:white_concrete_powder",
+    "minecraft:ice",
+    "minecraft:packed_ice",
+    "minecraft:frosted_ice",
+    "minecraft:blue_ice",
+    "minecraft:gravel",
+    "minecraft:suspicious_gravel",
+    "#c:gravel",
+    "crusty_chunks:radioactive_ash",
+    "crusty_chunks:radioactive_ash_full_block"
+  ]
+}

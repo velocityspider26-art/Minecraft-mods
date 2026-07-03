@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:harddirt",
+    "minecraft:dirt",
+    "minecraft:coarse_dirt",
+    "minecraft:podzol",
+    "minecraft:rooted_dirt",
+    "minecraft:mud",
+    "minecraft:muddy_mangrove_roots",
+    "minecraft:soul_sand",
+    "minecraft:soul_soil",
+    "minecraft:grass_block",
+    "minecraft:dirt_path",
+    "minecraft:mycelium",
+    "minecraft:moss_block",
+    "minecraft:moss_carpet",
+    "crusty_chunks:burntgrass",
+    "#minecraft:dirt"
+  ]
+}

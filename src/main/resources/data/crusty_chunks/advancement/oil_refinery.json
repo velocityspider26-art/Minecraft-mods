@@ -1,0 +1,54 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:crude_oil_bucket"
+    },
+    "title": {
+      "translate": "advancements.oil_refinery.title"
+    },
+    "description": {
+      "translate": "advancements.oil_refinery.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "oil_refinery_0": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "crusty_chunks:refinery"
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:flamethrower_recipe",
+      "crusty_chunks:flamethrowertankrecipe",
+      "crusty_chunks:advanced_component_recipe",
+      "crusty_chunks:incendiary_bottle_recipe",
+      "crusty_chunks:fire_agent_recipe",
+      "crusty_chunks:oil_firebox_recipe",
+      "crusty_chunks:combustion_cylinder_recipe",
+      "crusty_chunks:engine_component_recipe",
+      "crusty_chunks:small_engine_recipe",
+      "crusty_chunks:hand_drill_recipe",
+      "crusty_chunks:turbine_rotor_recipe",
+      "crusty_chunks:jet_turbine_recipe",
+      "crusty_chunks:jet_compressor_recipe",
+      "crusty_chunks:jet_exhaust_recipe",
+      "crusty_chunks:jet_gearbox_recipe",
+      "crusty_chunks:energy_node_recipe",
+      "crusty_chunks:cable_recipe",
+      "crusty_chunks:medium_diesel_engine_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:steel"
+}

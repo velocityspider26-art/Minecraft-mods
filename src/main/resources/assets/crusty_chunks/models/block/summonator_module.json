@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/summonatortop",
+    "up": "crusty_chunks:block/summonationtop",
+    "north": "crusty_chunks:block/summonatorbeampanel",
+    "east": "crusty_chunks:block/summonatorbeampanel",
+    "south": "crusty_chunks:block/summonatorbeampanel",
+    "west": "crusty_chunks:block/summonatorbeampanel",
+    "particle": "crusty_chunks:block/summonatortop"
+  },
+  "render_type": "solid"
+}

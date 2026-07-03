@@ -1,0 +1,8 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "crusty_chunks:block/pyrochloreore",
+    "particle": "crusty_chunks:block/pyrochloreore"
+  },
+  "render_type": "solid"
+}

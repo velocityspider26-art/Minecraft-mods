@@ -1,0 +1,10 @@
+{
+  "parent": "block/stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "bottom": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "top": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "side": "crusty_chunks:block/aluminum_armor_dark_gray"
+  },
+  "render_type": "solid"
+}

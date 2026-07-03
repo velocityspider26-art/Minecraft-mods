@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "a a",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "b": {
+      "item": "minecraft:iron_bars"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:large_engine_smokestack"
+  }
+}

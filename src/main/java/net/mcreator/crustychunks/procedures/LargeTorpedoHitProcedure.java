@@ -1,0 +1,28 @@
+package net.mcreator.crustychunks.procedures;
+
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.Level.ExplosionInteraction;
+
+public class LargeTorpedoHitProcedure {
+   public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      if (immediatesourceentity != null) {
+         HugeExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY() + 2.0, immediatesourceentity.getZ());
+         if (world instanceof Level _level && !_level.isClientSide()) {
+            _level.explode(
+               null,
+               immediatesourceentity.getX() + immediatesourceentity.getLookAngle().x * 2.0,
+               immediatesourceentity.getY() + 2.5,
+               immediatesourceentity.getZ() - immediatesourceentity.getLookAngle().z * 2.0,
+               6.0F,
+               ExplosionInteraction.NONE
+            );
+         }
+
+         if (!immediatesourceentity.level().isClientSide()) {
+            immediatesourceentity.discard();
+         }
+      }
+   }
+}

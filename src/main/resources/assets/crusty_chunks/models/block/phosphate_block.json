@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/phosphateblock",
+    "up": "crusty_chunks:block/phosphateblock",
+    "north": "crusty_chunks:block/phosphateblock",
+    "east": "crusty_chunks:block/phosphateblock",
+    "south": "crusty_chunks:block/phosphateblock",
+    "west": "crusty_chunks:block/phosphateblock",
+    "particle": "crusty_chunks:block/phosphateblock"
+  },
+  "render_type": "solid"
+}

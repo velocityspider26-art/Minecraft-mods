@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a a",
+    "a a",
+    "a a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:blast_furnace_brick"
+    }
+  },
+  "result": {
+    "count": 4,
+    "id": "crusty_chunks:blast_funnel"
+  }
+}

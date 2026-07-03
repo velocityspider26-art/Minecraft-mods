@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "crusty_chunks:blocks/reinforced_glass_trapdoor",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crusty_chunks:reinforced_glass_trapdoor"
+        }
+      ]
+    }
+  ]
+}

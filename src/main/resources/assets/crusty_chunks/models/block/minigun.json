@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/minigun",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "2": "crusty_chunks:block/minigun"
+  },
+  "render_type": "solid"
+}

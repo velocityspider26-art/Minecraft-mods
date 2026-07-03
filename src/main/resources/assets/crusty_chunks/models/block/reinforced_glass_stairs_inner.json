@@ -1,0 +1,10 @@
+{
+  "parent": "block/inner_stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/reinforcedglass",
+    "bottom": "crusty_chunks:block/reinforcedglass",
+    "top": "crusty_chunks:block/reinforcedglass",
+    "side": "crusty_chunks:block/reinforcedglass"
+  },
+  "render_type": "cutout"
+}

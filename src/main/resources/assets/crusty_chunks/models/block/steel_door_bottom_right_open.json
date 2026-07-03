@@ -1,0 +1,9 @@
+{
+  "parent": "block/door_bottom_right_open",
+  "textures": {
+    "particle": "crusty_chunks:block/steeldoorbottom",
+    "bottom": "crusty_chunks:block/steeldoorbottom",
+    "top": "crusty_chunks:block/steeldoortop"
+  },
+  "render_type": "solid"
+}

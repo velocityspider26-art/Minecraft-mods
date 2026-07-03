@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "bcb",
+    "ddd"
+  ],
+  "key": {
+    "a": {
+      "tag": "c:ingots/steel"
+    },
+    "b": {
+      "tag": "c:ingots/aluminum"
+    },
+    "c": {
+      "tag": "c:ingots/niobium"
+    },
+    "d": {
+      "tag": "c:dusts/nickel"
+    }
+  },
+  "result": {
+    "count": 2,
+    "id": "crusty_chunks:advanced_alloy_mixture"
+  }
+}

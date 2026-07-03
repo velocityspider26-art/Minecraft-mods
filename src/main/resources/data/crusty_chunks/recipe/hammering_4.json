@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:hammer"
+    },
+    {
+      "tag": "c:ingots/aluminum"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:aluminum_plate"
+  }
+}

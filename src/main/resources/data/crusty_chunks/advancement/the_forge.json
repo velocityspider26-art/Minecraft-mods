@@ -1,0 +1,53 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:blast_furnace"
+    },
+    "title": {
+      "translate": "advancements.the_forge.title"
+    },
+    "description": {
+      "translate": "advancements.the_forge.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "the_forge_0": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "crusty_chunks:blast_furnace"
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:fr_1",
+      "crusty_chunks:fr_2",
+      "crusty_chunks:fr_3",
+      "crusty_chunks:fr_4",
+      "crusty_chunks:fr_5",
+      "crusty_chunks:fr_6",
+      "crusty_chunks:fr_7",
+      "crusty_chunks:fr_8",
+      "crusty_chunks:bfr_1",
+      "crusty_chunks:bfr_2",
+      "crusty_chunks:bfr_3",
+      "crusty_chunks:bfr_4",
+      "crusty_chunks:bfr_5",
+      "crusty_chunks:bfr_6",
+      "crusty_chunks:bfr_7",
+      "crusty_chunks:bfr_8",
+      "crusty_chunks:bfr_9"
+    ]
+  },
+  "parent": "crusty_chunks:basic_machine"
+}

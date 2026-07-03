@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/afterburner",
+  "textures": {
+    "all": "crusty_chunks:block/afterburner",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/afterburner"
+  },
+  "render_type": "cutout_mipped"
+}

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:huge_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    }
+  },
+  "result": {
+    "count": 2,
+    "id": "crusty_chunks:rac_barrel"
+  }
+}

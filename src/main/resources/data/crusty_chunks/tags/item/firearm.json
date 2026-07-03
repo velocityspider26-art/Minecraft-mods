@@ -1,0 +1,29 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:semi_automatic_pistol_animated",
+    "crusty_chunks:auto_pistol",
+    "crusty_chunks:stealth_pistol",
+    "crusty_chunks:revolver_animated",
+    "crusty_chunks:pump_action_shotgun_animated",
+    "crusty_chunks:break_action_shotgun_animated",
+    "crusty_chunks:machine_carbine",
+    "crusty_chunks:smg_animated",
+    "crusty_chunks:lmg_animated",
+    "crusty_chunks:armor_peeler_unloaded",
+    "crusty_chunks:armor_peeler_animated",
+    "crusty_chunks:semi_automatic_rifle_animated",
+    "crusty_chunks:bolt_action_rifle_animated",
+    "crusty_chunks:scoped_bolt_action_rifle_animated",
+    "crusty_chunks:single_shot_rifle",
+    "crusty_chunks:burst_rifle",
+    "crusty_chunks:battle_rifle",
+    "crusty_chunks:flame_thrower_animated",
+    "crusty_chunks:breech_rifle",
+    "crusty_chunks:scoped_breech_rifle",
+    "crusty_chunks:eradication",
+    "crusty_chunks:lever_rifle",
+    "crusty_chunks:automatic_rifle",
+    "crusty_chunks:grenade_launcher"
+  ]
+}

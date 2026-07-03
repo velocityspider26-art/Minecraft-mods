@@ -1,0 +1,10 @@
+{
+  "parent": "block/cube_bottom_top",
+  "textures": {
+    "particle": "crusty_chunks:block/steel_block",
+    "bottom": "crusty_chunks:block/steel_block",
+    "top": "crusty_chunks:block/steel_block",
+    "side": "crusty_chunks:block/unpaintedsteelslab"
+  },
+  "render_type": "solid"
+}

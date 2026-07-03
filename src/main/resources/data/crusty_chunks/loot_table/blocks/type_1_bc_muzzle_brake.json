@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "crusty_chunks:blocks/type_1_bc_muzzle_brake",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crusty_chunks:type_1_bc_muzzle_brake"
+        }
+      ]
+    }
+  ]
+}

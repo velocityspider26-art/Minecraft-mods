@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a a",
+    " b ",
+    "a a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:era_tile"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:era_4"
+  }
+}

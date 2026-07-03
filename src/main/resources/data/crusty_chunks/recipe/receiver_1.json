@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "abc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "b": {
+      "item": "crusty_chunks:firing_mechanism"
+    },
+    "c": {
+      "item": "crusty_chunks:steelplate"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:basic_receiver"
+  }
+}

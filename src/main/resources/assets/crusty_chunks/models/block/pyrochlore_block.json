@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/pyrochloreblock",
+    "up": "crusty_chunks:block/pyrochloreblock",
+    "north": "crusty_chunks:block/pyrochloreblock",
+    "east": "crusty_chunks:block/pyrochloreblock",
+    "south": "crusty_chunks:block/pyrochloreblock",
+    "west": "crusty_chunks:block/pyrochloreblock",
+    "particle": "crusty_chunks:block/pyrochloreblock"
+  },
+  "render_type": "solid"
+}

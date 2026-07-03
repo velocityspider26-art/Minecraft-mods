@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:generic_large_bullet_green",
+    "crusty_chunks:huge_ai_bullet",
+    "crusty_chunks:medium_ai_bullet",
+    "crusty_chunks:small_ai_bullet",
+    "crusty_chunks:ap_medium_bullet",
+    "crusty_chunks:large_ap_bullet",
+    "crusty_chunks:smallbulletfire_projectile",
+    "crusty_chunks:small_flak_shell_projectile"
+  ]
+}

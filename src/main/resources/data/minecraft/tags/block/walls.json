@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:destroyed_concrete_wall",
+    "crusty_chunks:damaged_concrete_wall",
+    "crusty_chunks:fractured_concrete_wall",
+    "crusty_chunks:cracked_concrete_wall",
+    "crusty_chunks:concrete_wall"
+  ]
+}

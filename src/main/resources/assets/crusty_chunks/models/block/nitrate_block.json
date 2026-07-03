@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/nitrateblock",
+    "up": "crusty_chunks:block/nitrateblock",
+    "north": "crusty_chunks:block/nitrateblock",
+    "east": "crusty_chunks:block/nitrateblock",
+    "south": "crusty_chunks:block/nitrateblock",
+    "west": "crusty_chunks:block/nitrateblock",
+    "particle": "crusty_chunks:block/nitrateblock"
+  },
+  "render_type": "solid"
+}

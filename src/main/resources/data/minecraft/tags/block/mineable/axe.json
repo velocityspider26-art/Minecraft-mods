@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:sand_bags",
+    "crusty_chunks:rebar",
+    "crusty_chunks:wire_fence",
+    "crusty_chunks:razor_wire"
+  ]
+}

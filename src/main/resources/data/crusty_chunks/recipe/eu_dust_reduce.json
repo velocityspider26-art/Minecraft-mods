@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:uranium_enriched_dust"
+    }
+  },
+  "result": {
+    "count": 9,
+    "id": "crusty_chunks:uranium_enriched_tiny_dust"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/scorchdirt",
+    "up": "crusty_chunks:block/scorchdirt",
+    "north": "crusty_chunks:block/scorchdirt",
+    "east": "crusty_chunks:block/scorchdirt",
+    "south": "crusty_chunks:block/scorchdirt",
+    "west": "crusty_chunks:block/scorchdirt",
+    "particle": "crusty_chunks:block/scorchdirt"
+  },
+  "render_type": "solid"
+}

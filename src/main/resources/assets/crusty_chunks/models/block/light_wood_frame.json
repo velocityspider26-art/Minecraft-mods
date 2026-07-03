@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/woodenframe",
+    "up": "crusty_chunks:block/woodenframe",
+    "north": "crusty_chunks:block/woodenframe",
+    "east": "crusty_chunks:block/woodenframe",
+    "south": "crusty_chunks:block/woodenframe",
+    "west": "crusty_chunks:block/woodenframe",
+    "particle": "crusty_chunks:block/woodenframe"
+  },
+  "render_type": "cutout"
+}

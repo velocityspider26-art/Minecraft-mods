@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "c:ingots/steel",
+  "process": "crusty_chunks:mechanical_press",
+  "result": {
+    "id": "crusty_chunks:steelplate"
+  },
+  "runs": 3
+}

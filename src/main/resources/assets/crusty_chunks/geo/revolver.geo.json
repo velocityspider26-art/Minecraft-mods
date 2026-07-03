@@ -1,0 +1,308 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Left",
+          "pivot": [
+            6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -3
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "pivot": [
+                6,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                180,
+                0
+              ],
+              "uv": [
+                12,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -3
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "pivot": [
+                -6,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                180,
+                0
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pistol1",
+          "pivot": [
+            -5,
+            2,
+            -12
+          ]
+        },
+        {
+          "name": "Revolver",
+          "parent": "pistol1",
+          "pivot": [
+            -6,
+            -3,
+            -13
+          ]
+        },
+        {
+          "name": "Rotor",
+          "parent": "Revolver",
+          "pivot": [
+            -5,
+            4,
+            -13
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                1,
+                -18
+              ],
+              "size": [
+                6,
+                6,
+                7
+              ],
+              "inflate": -2.2,
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "Revolver",
+          "pivot": [
+            -5,
+            3,
+            -5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6,
+                2.75,
+                -17
+              ],
+              "size": [
+                2,
+                3,
+                6
+              ],
+              "inflate": -0.6,
+              "uv": [
+                22,
+                13
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                1.25,
+                -15.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                0,
+                24
+              ]
+            },
+            {
+              "origin": [
+                -5.6,
+                3.6,
+                -21
+              ],
+              "size": [
+                1,
+                1,
+                5
+              ],
+              "inflate": -0.3,
+              "pivot": [
+                -5,
+                4,
+                -17
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                26,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -5.5,
+                3.75,
+                -22
+              ],
+              "size": [
+                1,
+                1,
+                10
+              ],
+              "inflate": -0.15,
+              "pivot": [
+                -4.5,
+                4.5,
+                -15
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                13
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                0.5,
+                -13.5
+              ],
+              "size": [
+                3,
+                6,
+                3.5
+              ],
+              "inflate": -1,
+              "pivot": [
+                -5,
+                3,
+                -6
+              ],
+              "rotation": [
+                15,
+                0,
+                0
+              ],
+              "uv": [
+                22,
+                22
+              ]
+            },
+            {
+              "origin": [
+                -5.5,
+                4.1,
+                -22
+              ],
+              "size": [
+                1,
+                2,
+                2
+              ],
+              "inflate": -0.5,
+              "uv": [
+                12,
+                24
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                4.25,
+                -16
+              ],
+              "size": [
+                2,
+                2,
+                4
+              ],
+              "inflate": -0.65,
+              "uv": [
+                26,
+                6
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

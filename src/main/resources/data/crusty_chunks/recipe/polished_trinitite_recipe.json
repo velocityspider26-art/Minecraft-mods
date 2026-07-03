@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aa",
+    "aa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:trinitite"
+    }
+  },
+  "result": {
+    "count": 4,
+    "id": "crusty_chunks:polished_trinitite"
+  }
+}

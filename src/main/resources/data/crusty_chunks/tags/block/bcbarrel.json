@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:battle_cannon_barrel",
+    "crusty_chunks:thick_battle_cannon_barrel",
+    "crusty_chunks:type_1_bc_muzzle_brake",
+    "crusty_chunks:type_2_bc_muzzle_brake",
+    "crusty_chunks:battle_cannon_mantlet"
+  ]
+}

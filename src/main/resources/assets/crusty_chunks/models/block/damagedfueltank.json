@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/damagedfueltank",
+    "up": "crusty_chunks:block/damagedfueltank",
+    "north": "crusty_chunks:block/damagedfueltank",
+    "east": "crusty_chunks:block/damagedfueltank",
+    "south": "crusty_chunks:block/damagedfueltank",
+    "west": "crusty_chunks:block/damagedfueltank",
+    "particle": "crusty_chunks:block/damagedfueltank"
+  },
+  "render_type": "solid"
+}

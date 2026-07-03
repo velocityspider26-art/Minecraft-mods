@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:sheet_metal"
+    }
+  },
+  "result": {
+    "count": 16,
+    "id": "crusty_chunks:sheet_metal_pane"
+  }
+}

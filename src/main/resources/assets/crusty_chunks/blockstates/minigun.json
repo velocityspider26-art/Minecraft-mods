@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/minigun"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/minigun",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/minigun",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/minigun",
+      "y": 270
+    }
+  }
+}

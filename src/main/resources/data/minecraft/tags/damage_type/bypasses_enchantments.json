@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:armor_bypass_damage",
+    "crusty_chunks:vaporized",
+    "crusty_chunks:spall_damage"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "display": {
+    "background": "crusty_chunks:textures/screens/greenarmor.png",
+    "icon": {
+      "id": "minecraft:gunpowder"
+    },
+    "title": {
+      "translate": "advancements.powder_types.title"
+    },
+    "description": {
+      "translate": "advancements.powder_types.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "powder_types_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "minecraft:gunpowder"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:volatile_dust_recipe",
+      "crusty_chunks:volatile_grow",
+      "crusty_chunks:volatile_shrink",
+      "crusty_chunks:propellent_recipe",
+      "crusty_chunks:small_bomb_recipe",
+      "crusty_chunks:medium_bomb_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:cluster_bomb_recipe",
+      "crusty_chunks:explosive_barrel_recipe",
+      "crusty_chunks:alternate_explosive_barrel_recipe",
+      "crusty_chunks:impact_fuze_recipe",
+      "crusty_chunks:timed_fuze_recipe",
+      "crusty_chunks:shaped_charge_fuze_recipe",
+      "crusty_chunks:grenade_recipe",
+      "crusty_chunks:armor_peeler_recipe",
+      "crusty_chunks:smoke_agent_recipe",
+      "crusty_chunks:fire_agent_recipe",
+      "crusty_chunks:smoke_grenade_recipe",
+      "crusty_chunks:smoke_bomb_recipe",
+      "crusty_chunks:smoke_mortar_shell_recipe",
+      "crusty_chunks:incendiary_grenade_recipe",
+      "crusty_chunks:mortar_shell_recipe",
+      "crusty_chunks:blast_clay_recipe",
+      "crusty_chunks:mineral_grinder_recipe",
+      "crusty_chunks:blast_brick",
+      "crusty_chunks:blast_bricks_recipe",
+      "crusty_chunks:blast_furnace_recipe",
+      "crusty_chunks:blast_funnel_recipe",
+      "crusty_chunks:chisel_recipe",
+      "crusty_chunks:chiseling",
+      "crusty_chunks:manual_crank_recipe"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:plutonium_block",
+    "crusty_chunks:uranium_depleted_block",
+    "crusty_chunks:uranium_enriched_block",
+    "crusty_chunks:uranium_neutral_block",
+    "crusty_chunks:lithium_ore",
+    "crusty_chunks:structural_concrete",
+    "crusty_chunks:uranium_ore",
+    "crusty_chunks:steel_block"
+  ]
+}

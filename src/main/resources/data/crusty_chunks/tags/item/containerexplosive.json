@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:small_shell",
+    "crusty_chunks:large_shell",
+    "crusty_chunks:artillery_shell",
+    "crusty_chunks:heat_shell",
+    "crusty_chunks:ap_shell",
+    "crusty_chunks:flak_shell",
+    "crusty_chunks:mortar_shell",
+    "crusty_chunks:solid_shell",
+    "crusty_chunks:gas_artillery_shell",
+    "crusty_chunks:fire_artillery_shell",
+    "crusty_chunks:small_flak_shell",
+    "crusty_chunks:he_projectile",
+    "crusty_chunks:heat_projectile",
+    "crusty_chunks:volatile_dust",
+    "crusty_chunks:large_volatile_pile",
+    "crusty_chunks:strike_spear_missile",
+    "crusty_chunks:radar_spear_missile",
+    "crusty_chunks:armor_peeler_rocket",
+    "crusty_chunks:fire_spear_rocket",
+    "crusty_chunks:seeker_spear_rocket",
+    "crusty_chunks:ordinance_heavy_warhead",
+    "crusty_chunks:ordinance_incendiary_warhead",
+    "crusty_chunks:ordinance_inline_warhead",
+    "crusty_chunks:ordinance_cluster_warhead",
+    "crusty_chunks:powder_charge",
+    "crusty_chunks:explosive_barrel",
+    "crusty_chunks:smoke_shell",
+    "crusty_chunks:solid_rocket_fuel_pack"
+  ]
+}

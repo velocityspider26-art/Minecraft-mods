@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:hollowed_large_projectile"
+    },
+    {
+      "item": "crusty_chunks:volatile_dust"
+    },
+    {
+      "item": "crusty_chunks:hollowed_large_projectile"
+    },
+    {
+      "item": "crusty_chunks:hollowed_large_projectile"
+    },
+    {
+      "item": "crusty_chunks:hollowed_large_projectile"
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "crusty_chunks:small_he_projectile"
+  }
+}

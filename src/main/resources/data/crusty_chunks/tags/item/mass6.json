@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:single_shot_rifle",
+    "crusty_chunks:eradication",
+    "crusty_chunks:ordinance_heavy_warhead",
+    "crusty_chunks:ordinance_incendiary_warhead",
+    "crusty_chunks:ordinance_inline_warhead",
+    "crusty_chunks:ordinance_cluster_warhead"
+  ]
+}

@@ -1,0 +1,858 @@
+package net.mcreator.crustychunks.procedures;
+
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.mcreator.crustychunks.entity.GenericlargeBulletEntity;
+import net.mcreator.crustychunks.init.CrustyChunksModEntities;
+import net.mcreator.crustychunks.init.CrustyChunksModItems;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Direction.Axis;
+import net.minecraft.core.Direction.AxisDirection;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+
+public class MinigunFireScriptProcedure {
+   public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      Direction playerdirection = Direction.NORTH;
+      boolean found = false;
+      boolean DetectedPlayer = false;
+      double sx = 0.0;
+      double sy = 0.0;
+      double sz = 0.0;
+      double Pitch = 0.0;
+      double Xvector = 0.0;
+      double Zvector = 0.0;
+      double Barrels = 0.0;
+      double mvmultiplier = 0.0;
+      mvmultiplier = ProjectileLibsSmallArmsProcedure.execute();
+      if (!world.isClientSide()) {
+         BlockPos _bp = BlockPos.containing(x, y, z);
+         BlockEntity _blockEntity = world.getBlockEntity(_bp);
+         BlockState _bs = world.getBlockState(_bp);
+         if (_blockEntity != null) {
+            _blockEntity.getPersistentData().putDouble("Barrels", 1.0);
+         }
+
+         if (world instanceof Level _level) {
+            _level.sendBlockUpdated(_bp, _bs, _bs, 3);
+         }
+      }
+
+      if (1.0 > Math.abs((double)(new Object() {
+         public Direction getDirection(BlockState _bs) {
+            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+               return (Direction)_bs.getValue(_dp);
+            } else {
+               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+               }
+
+               return Direction.NORTH;
+            }
+         }
+      }).getDirection(blockstate).getStepX() - (new Object() {
+         public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+            BlockEntity blockEntity = world.getBlockEntity(pos);
+            return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+         }
+      }).getValue(world, BlockPos.containing(x, y, z), "X")) || 1.0 > Math.abs((double)(new Object() {
+         public Direction getDirection(BlockState _bs) {
+            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+               return (Direction)_bs.getValue(_dp);
+            } else {
+               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+               }
+
+               return Direction.NORTH;
+            }
+         }
+      }).getDirection(blockstate).getStepZ() - (new Object() {
+         public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+            BlockEntity blockEntity = world.getBlockEntity(pos);
+            return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+         }
+      }).getValue(world, BlockPos.containing(x, y, z), "Z"))) {
+         Pitch = (new Object() {
+            public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+               BlockEntity blockEntity = world.getBlockEntity(pos);
+               return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+            }
+         }).getValue(world, BlockPos.containing(x, y, z), "Pitch");
+         Xvector = (new Object() {
+            public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+               BlockEntity blockEntity = world.getBlockEntity(pos);
+               return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+            }
+         }).getValue(world, BlockPos.containing(x, y, z), "X") + (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepX();
+         Zvector = (new Object() {
+            public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+               BlockEntity blockEntity = world.getBlockEntity(pos);
+               return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+            }
+         }).getValue(world, BlockPos.containing(x, y, z), "Z") + (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepZ();
+      }
+
+      if (0.0 == Xvector * Zvector) {
+         Xvector = (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepX();
+         Zvector = (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepZ();
+      }
+
+      if (world instanceof Level _level24 && _level24.hasNeighborSignal(BlockPos.containing(x, y, z)) && 0.0 < (new Object() {
+         public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+            BlockEntity blockEntity = world.getBlockEntity(pos);
+            return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+         }
+      }).getValue(world, BlockPos.containing(x, y, z), "Ammo") && !(new Object() {
+         public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
+            BlockEntity blockEntity = world.getBlockEntity(pos);
+            return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
+         }
+      }).getValue(world, BlockPos.containing(x, y, z), "fired") && world.getBlockState(BlockPos.containing(x + (double)((new Object() {
+         public Direction getDirection(BlockState _bs) {
+            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+               return (Direction)_bs.getValue(_dp);
+            } else {
+               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+               }
+
+               return Direction.NORTH;
+            }
+         }
+      }).getDirection(blockstate).getStepX() * 1) + 0.5, y + (double)((new Object() {
+         public Direction getDirection(BlockState _bs) {
+            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+               return (Direction)_bs.getValue(_dp);
+            } else {
+               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+               }
+
+               return Direction.NORTH;
+            }
+         }
+      }).getDirection(blockstate).getStepY() * 1) + 0.5, z + (double)((new Object() {
+         public Direction getDirection(BlockState _bs) {
+            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+               return (Direction)_bs.getValue(_dp);
+            } else {
+               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+               }
+
+               return Direction.NORTH;
+            }
+         }
+      }).getDirection(blockstate).getStepZ() * 1) + 0.5)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:minigunbarrel")))) {
+         BlockPos _pos = BlockPos.containing(x + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepX() * 1) + 0.5, y + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepY() * 1) + 0.5, z + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepZ() * 1) + 0.5);
+         BlockState _bsx = world.getBlockState(_pos);
+         if (_bsx.getBlock().getStateDefinition().getProperty("animation") instanceof IntegerProperty _integerProp) {
+            world.setBlock(_pos, (BlockState)_bsx.setValue(_integerProp, 0), 3);
+         }
+
+         int _value = 3;
+         BlockPos _posx = BlockPos.containing(x + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepX() * 1) + 0.5, y + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepY() * 1) + 0.5, z + (double)((new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepZ() * 1) + 0.5);
+         BlockState _bsxx = world.getBlockState(_posx);
+         if (_bsxx.getBlock().getStateDefinition().getProperty("animation") instanceof IntegerProperty _integerProp && _integerProp.getPossibleValues().contains(_value)) {
+            world.setBlock(_posx, (BlockState)_bsxx.setValue(_integerProp, _value), 3);
+         }
+
+         if (world instanceof ServerLevel projectileLevel) {
+            Projectile _entityToSpawn = (new Object() {
+                  public Projectile getArrow(Level level, float damage, int knockback, byte piercing) {
+                     AbstractArrow entityToSpawn = new GenericlargeBulletEntity((EntityType<? extends GenericlargeBulletEntity>)CrustyChunksModEntities.GENERICLARGE_BULLET.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                     entityToSpawn.setBaseDamage((double)damage);
+                     entityToSpawn.setSilent(true);
+                     return entityToSpawn;
+                  }
+               })
+               .getArrow(projectileLevel, 0.1F, 0, (byte)5);
+            _entityToSpawn.setPos(x + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepX() * 2) + 0.5, y + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepY() * 2) + 0.5, z + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepZ() * 2) + 0.5);
+            _entityToSpawn.shoot(Xvector, Pitch, Zvector, (float)(9.0 * mvmultiplier), 0.9F);
+            projectileLevel.addFreshEntity(_entityToSpawn);
+         }
+
+         if (world instanceof Level _level) {
+            if (!_level.isClientSide()) {
+               _level.playSound(
+                  null,
+                  BlockPos.containing(x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5, y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5, z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
+                  SoundSource.NEUTRAL,
+                  80.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4)
+               );
+            } else {
+               _level.playLocalSound(
+                  x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5,
+                  y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5,
+                  z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
+                  SoundSource.NEUTRAL,
+                  80.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4),
+                  false
+               );
+            }
+         }
+
+         if (world instanceof Level _levelx) {
+            if (!_levelx.isClientSide()) {
+               _levelx.playSound(
+                  null,
+                  BlockPos.containing(x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5, y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5, z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshot")),
+                  SoundSource.NEUTRAL,
+                  80.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
+               );
+            } else {
+               _levelx.playLocalSound(
+                  x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5,
+                  y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5,
+                  z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshot")),
+                  SoundSource.NEUTRAL,
+                  80.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
+                  false
+               );
+            }
+         }
+
+         if (world instanceof Level _levelxx) {
+            if (!_levelxx.isClientSide()) {
+               _levelxx.playSound(
+                  null,
+                  BlockPos.containing(x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5, y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5, z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
+                  SoundSource.NEUTRAL,
+                  10.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.4, 1.5)
+               );
+            } else {
+               _levelxx.playLocalSound(
+                  x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5,
+                  y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5,
+                  z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
+                  SoundSource.NEUTRAL,
+                  10.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.4, 1.5),
+                  false
+               );
+            }
+         }
+
+         if (world instanceof Level _levelxxx) {
+            if (!_levelxxx.isClientSide()) {
+               _levelxxx.playSound(
+                  null,
+                  BlockPos.containing(x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5, y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5, z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:largeshot")),
+                  SoundSource.NEUTRAL,
+                  10.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
+               );
+            } else {
+               _levelxxx.playLocalSound(
+                  x + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepX() * 2) + 0.5,
+                  y + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepY() * 2) + 0.5,
+                  z + (double)((new Object() {
+                     public Direction getDirection(BlockState _bs) {
+                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                           return (Direction)_bs.getValue(_dp);
+                        } else {
+                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                           }
+
+                           return Direction.NORTH;
+                        }
+                     }
+                  }).getDirection(blockstate).getStepZ() * 2) + 0.5,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:largeshot")),
+                  SoundSource.NEUTRAL,
+                  10.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
+                  false
+               );
+            }
+         }
+
+         if (world instanceof ServerLevel _levelxxxx) {
+            _levelxxxx.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepX() * 3) + 0.5, y + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepY() * 3) + 0.5, z + (double)((new Object() {
+               public Direction getDirection(BlockState _bs) {
+                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                     return (Direction)_bs.getValue(_dp);
+                  } else {
+                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                     }
+
+                     return Direction.NORTH;
+                  }
+               }
+            }).getDirection(blockstate).getStepZ() * 3) + 0.5, 2, 0.1, 0.1, 0.1, 0.01);
+         }
+
+         MuzzleFlashProcedure.execute(world, x + (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepX() * 2.5 + 0.5, y + (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepY() * 2.5 + 0.5, z + (double)(new Object() {
+            public Direction getDirection(BlockState _bs) {
+               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
+                  return (Direction)_bs.getValue(_dp);
+               } else {
+                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
+                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
+                  }
+
+                  return Direction.NORTH;
+               }
+            }
+         }).getDirection(blockstate).getStepZ() * 2.5 + 0.5);
+         CasingDropProcedure.execute(world, x, y, z);
+         if (!world.isClientSide()) {
+            _pos = BlockPos.containing(x, y, z);
+            BlockEntity _blockEntityx = world.getBlockEntity(_pos);
+            _bsxx = world.getBlockState(_pos);
+            if (_blockEntityx != null) {
+               _blockEntityx.getPersistentData().putDouble("Ammo", (new Object() {
+                  public double getValue(LevelAccessor world, BlockPos pos, String tag) {
+                     BlockEntity blockEntity = world.getBlockEntity(pos);
+                     return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
+                  }
+               }).getValue(world, BlockPos.containing(x, y, z), "Ammo") - 1.0);
+            }
+
+            if (world instanceof Level _levelxxxx) {
+               _levelxxxx.sendBlockUpdated(_pos, _bsxx, _bsxx, 3);
+            }
+         }
+
+         if (world instanceof ServerLevel _levelxxxx) {
+            ItemEntity entityToSpawn = new ItemEntity(_levelxxxx, x, y - 1.0, z, new ItemStack((ItemLike)CrustyChunksModItems.LARGE_CASING.get()));
+            entityToSpawn.setPickUpDelay(10);
+            _levelxxxx.addFreshEntity(entityToSpawn);
+         }
+      }
+   }
+}

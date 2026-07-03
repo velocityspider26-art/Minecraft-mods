@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:lmg_animated",
+    "crusty_chunks:battle_rifle",
+    "crusty_chunks:large_shell",
+    "crusty_chunks:heat_shell",
+    "crusty_chunks:ap_shell",
+    "crusty_chunks:flak_shell",
+    "crusty_chunks:fire_spear_rocket",
+    "crusty_chunks:seeker_spear_rocket",
+    "crusty_chunks:strike_spear_missile",
+    "crusty_chunks:radar_spear_missile",
+    "crusty_chunks:artillery_shell",
+    "crusty_chunks:artillery_solid_shell",
+    "crusty_chunks:gas_artillery_shell",
+    "crusty_chunks:fire_artillery_shell",
+    "crusty_chunks:powder_charge"
+  ]
+}

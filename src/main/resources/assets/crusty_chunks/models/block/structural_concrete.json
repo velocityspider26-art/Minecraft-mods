@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/reinforcedcementitetop",
+    "up": "crusty_chunks:block/reinforcedcementitetop",
+    "north": "crusty_chunks:block/reinforcedcementiteside",
+    "east": "crusty_chunks:block/reinforcedcementiteside",
+    "south": "crusty_chunks:block/reinforcedcementiteside",
+    "west": "crusty_chunks:block/reinforcedcementiteside",
+    "particle": "crusty_chunks:block/reinforcedcementitetop"
+  },
+  "render_type": "solid"
+}

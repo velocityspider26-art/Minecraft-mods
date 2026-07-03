@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:weapon_supressor"
+    },
+    {
+      "item": "crusty_chunks:semi_automatic_pistol_animated"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:stealth_pistol"
+  }
+}

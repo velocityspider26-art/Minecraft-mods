@@ -1,0 +1,44 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:energy_node"
+    },
+    "title": {
+      "translate": "advancements.electricity.title"
+    },
+    "description": {
+      "translate": "advancements.electricity.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "electricity_0": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "crusty_chunks:energy_node"
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 3,
+    "recipes": [
+      "crusty_chunks:energy_battery_recipe",
+      "crusty_chunks:power_cell_recipe",
+      "crusty_chunks:cable_recipe",
+      "crusty_chunks:energy_node_recipe",
+      "crusty_chunks:electric_motor_recipe",
+      "crusty_chunks:electric_firebox_recipe",
+      "crusty_chunks:generator_recipe",
+      "crusty_chunks:large_motor_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:oil_refinery"
+}

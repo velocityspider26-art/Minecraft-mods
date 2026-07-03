@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/1fuelrods",
+  "textures": {
+    "all": "crusty_chunks:block/reactorcoretop",
+    "particle": "crusty_chunks:block/reactorcoretop",
+    "0": "crusty_chunks:block/fuelrods"
+  },
+  "render_type": "solid"
+}

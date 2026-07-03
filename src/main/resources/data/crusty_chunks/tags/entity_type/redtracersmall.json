@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:bulletfire_projectile",
+    "crusty_chunks:extra_large_bullet_fire",
+    "crusty_chunks:genericlarge_bullet",
+    "crusty_chunks:large_bullet_fire_projectile",
+    "crusty_chunks:small_bullet_alt",
+    "crusty_chunks:small_bullet_hp",
+    "crusty_chunks:small_shell_fire",
+    "crusty_chunks:huge_he_bullet_fire"
+  ]
+}

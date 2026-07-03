@@ -1,0 +1,10 @@
+{
+  "parent": "block/stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/armor_green",
+    "bottom": "crusty_chunks:block/armor_green",
+    "top": "crusty_chunks:block/armor_green",
+    "side": "crusty_chunks:block/armor_green"
+  },
+  "render_type": "solid"
+}

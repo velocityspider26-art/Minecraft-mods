@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/overgrowncementite",
+    "up": "crusty_chunks:block/overgrowncementite",
+    "north": "crusty_chunks:block/overgrowncementite",
+    "east": "crusty_chunks:block/overgrowncementite",
+    "south": "crusty_chunks:block/overgrowncementite",
+    "west": "crusty_chunks:block/overgrowncementite",
+    "particle": "crusty_chunks:block/overgrowncementite"
+  },
+  "render_type": "solid"
+}

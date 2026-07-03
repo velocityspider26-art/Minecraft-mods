@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/fuel_tank"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/fuel_tank",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/fuel_tank",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/fuel_tank",
+      "y": 270
+    }
+  }
+}

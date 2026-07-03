@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/conveyor"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/conveyor",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/conveyor",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/conveyor",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "crusty_chunks:block/conveyor",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "crusty_chunks:block/conveyor",
+      "x": 90
+    }
+  }
+}

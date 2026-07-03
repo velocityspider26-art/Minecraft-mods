@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:cast_component"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_gear"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:steel_crushing_wheel"
+  }
+}

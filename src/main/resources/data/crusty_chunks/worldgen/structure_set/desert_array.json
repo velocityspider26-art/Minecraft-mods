@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "crusty_chunks:desert_array",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 130,
+    "separation": 30,
+    "salt": 2089367773
+  }
+}

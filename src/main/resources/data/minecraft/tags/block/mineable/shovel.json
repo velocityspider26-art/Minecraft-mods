@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:scorch_dirt",
+    "crusty_chunks:radioactive_ash_full_block",
+    "crusty_chunks:radioactive_ash",
+    "crusty_chunks:charred_block",
+    "crusty_chunks:tar",
+    "crusty_chunks:harddirt",
+    "crusty_chunks:burntgrass"
+  ]
+}

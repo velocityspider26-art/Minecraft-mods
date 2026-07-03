@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "c c",
+    "ded"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steel_spring"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_cylinder"
+    },
+    "d": {
+      "item": "crusty_chunks:steel_plating_slab"
+    },
+    "e": {
+      "item": "crusty_chunks:steel_gear"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:assembly_machine"
+  }
+}

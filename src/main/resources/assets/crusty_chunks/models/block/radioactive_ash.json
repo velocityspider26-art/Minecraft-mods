@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/plop",
+  "textures": {
+    "all": "crusty_chunks:block/metalash",
+    "particle": "crusty_chunks:block/metalash",
+    "0": "crusty_chunks:block/metalash"
+  },
+  "render_type": "solid"
+}

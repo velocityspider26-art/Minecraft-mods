@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "ccc",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:beryllium_ingot"
+    },
+    "b": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "c": {
+      "item": "crusty_chunks:reenforced_concrete"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:reactor_casing"
+  }
+}

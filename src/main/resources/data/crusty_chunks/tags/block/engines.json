@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:engine_cyllinder",
+    "crusty_chunks:jet_turbine",
+    "crusty_chunks:medium_petrol_engine",
+    "crusty_chunks:small_diesel_engine",
+    "crusty_chunks:flame_thrower",
+    "crusty_chunks:medium_diesel_engine",
+    "crusty_chunks:small_petrol_engine"
+  ]
+}

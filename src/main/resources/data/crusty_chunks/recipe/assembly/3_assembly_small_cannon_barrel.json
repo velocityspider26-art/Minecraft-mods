@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "crusty_chunks:small_unbored_cannon_barrel",
+  "process": "crusty_chunks:mechanical_bore",
+  "result": {
+    "id": "crusty_chunks:autocannon_barrel"
+  },
+  "runs": 12
+}

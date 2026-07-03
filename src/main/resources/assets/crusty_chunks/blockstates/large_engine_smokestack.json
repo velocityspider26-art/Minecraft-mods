@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/large_engine_smokestack"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/large_engine_smokestack",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/large_engine_smokestack",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/large_engine_smokestack",
+      "y": 270
+    }
+  }
+}

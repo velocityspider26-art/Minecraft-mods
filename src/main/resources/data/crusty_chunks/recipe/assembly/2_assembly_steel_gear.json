@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "crusty_chunks:cast_component",
+  "process": "crusty_chunks:mechanical_shear",
+  "result": {
+    "id": "crusty_chunks:steel_gear"
+  },
+  "runs": 1
+}

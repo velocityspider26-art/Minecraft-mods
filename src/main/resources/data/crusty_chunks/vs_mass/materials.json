@@ -1,0 +1,17 @@
+[
+  {
+    "block": "crusty_chunks:steel_block",
+    "mass": 7850.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:bauxite",
+    "mass": 2000.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:polished_bauxite",
+    "mass": 2000.0,
+    "priority": 101
+  }
+]

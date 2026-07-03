@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:artillerybreech",
+    "crusty_chunks:battle_cannon_breech",
+    "crusty_chunks:rocket_pod",
+    "crusty_chunks:machine_gun",
+    "crusty_chunks:autocannon",
+    "crusty_chunks:mortar",
+    "crusty_chunks:rotary_auto_cannon",
+    "crusty_chunks:light_autocannon",
+    "crusty_chunks:ordinance_core",
+    "crusty_chunks:large_rocket_pod",
+    "crusty_chunks:empty_missile_hardpoint",
+    "crusty_chunks:fire_spear_missile_hardpoint",
+    "crusty_chunks:seeker_spear_missile_hardpoint",
+    "crusty_chunks:strike_spear_missile_hardpoint",
+    "crusty_chunks:radar_spear_missile_hardpoint",
+    "crusty_chunks:ordinance_controller",
+    "crusty_chunks:heavy_machine_gun",
+    "crusty_chunks:light_machine_gun",
+    "crusty_chunks:flame_thrower",
+    "crusty_chunks:minigun"
+  ]
+}

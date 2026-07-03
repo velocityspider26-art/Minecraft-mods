@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:clay"
+    },
+    "b": {
+      "tag": "minecraft:sand"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:large_foundry_template"
+  }
+}

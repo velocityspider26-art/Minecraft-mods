@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "crusty_chunks:block/asphalt_slab"
+    },
+    "type=top": {
+      "model": "crusty_chunks:block/asphalt_slab_top"
+    },
+    "type=double": {
+      "model": "crusty_chunks:block/asphalt_slab_full"
+    }
+  }
+}

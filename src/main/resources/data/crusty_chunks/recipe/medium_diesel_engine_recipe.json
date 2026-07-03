@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cde",
+    "ada"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:engine_component"
+    },
+    "b": {
+      "item": "crusty_chunks:electric_motor"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "d": {
+      "tag": "c:ingots/steel"
+    },
+    "e": {
+      "item": "crusty_chunks:steel_tube"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:medium_diesel_engine"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/ordinancefissionnosewarhead",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/fissionnosewarhead"
+  },
+  "render_type": "solid"
+}

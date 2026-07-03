@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/battlecannon",
+  "textures": {
+    "all": "crusty_chunks:block/battlebreech",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/battlebreech"
+  },
+  "render_type": "solid"
+}

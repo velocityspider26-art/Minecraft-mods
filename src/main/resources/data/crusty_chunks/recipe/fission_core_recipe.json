@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    },
+    "b": {
+      "item": "crusty_chunks:shielding_component"
+    },
+    "c": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "d": {
+      "item": "crusty_chunks:plutonium_core"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:fission_core"
+  }
+}

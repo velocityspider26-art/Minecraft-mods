@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "a  ",
+    "bc ",
+    " de"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:mortar"
+    },
+    "b": {
+      "item": "crusty_chunks:wood_component"
+    },
+    "c": {
+      "item": "crusty_chunks:basic_receiver"
+    },
+    "d": {
+      "item": "crusty_chunks:cut_component"
+    },
+    "e": {
+      "item": "crusty_chunks:rifle_stock"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:grenade_launcher"
+  }
+}

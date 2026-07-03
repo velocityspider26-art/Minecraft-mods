@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:energy_battery",
+    "crusty_chunks:large_electric_motor",
+    "crusty_chunks:generator",
+    "crusty_chunks:electric_firebox",
+    "crusty_chunks:power_reactor_port",
+    "crusty_chunks:energy_distribution_node",
+    "crusty_chunks:solar_generator"
+  ]
+}

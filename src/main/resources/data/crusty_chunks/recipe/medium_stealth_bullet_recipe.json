@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:aluminum_tiny_dust"
+    },
+    {
+      "item": "crusty_chunks:bullet"
+    },
+    {
+      "item": "crusty_chunks:bullet"
+    },
+    {
+      "item": "crusty_chunks:bullet"
+    }
+  ],
+  "result": {
+    "count": 3,
+    "id": "crusty_chunks:medium_stealth_bullet"
+  }
+}

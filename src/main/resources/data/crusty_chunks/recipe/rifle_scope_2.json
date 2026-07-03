@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:spyglass"
+    },
+    {
+      "item": "crusty_chunks:breech_rifle"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:scoped_breech_rifle"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "block/template_glass_pane_side_alt",
+  "textures": {
+    "particle": "crusty_chunks:block/wirefence",
+    "edge": "crusty_chunks:block/wirefence",
+    "pane": "crusty_chunks:block/wirefence"
+  },
+  "render_type": "cutout_mipped"
+}

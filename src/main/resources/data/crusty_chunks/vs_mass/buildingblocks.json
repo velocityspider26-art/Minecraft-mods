@@ -1,0 +1,107 @@
+[
+  {
+    "block": "crusty_chunks:sheet_metal",
+    "mass": 75.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:sheet_metal_pane",
+    "mass": 75.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:sheet_metal_slab",
+    "mass": 75.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:sheet_metal_stairs",
+    "mass": 75.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:sand_bags",
+    "mass": 500.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:rebar",
+    "mass": 75.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:wire_fence",
+    "mass": 50.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:razor_wire",
+    "mass": 50.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:steel_door",
+    "mass": 500.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:reenforced_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:overgrown_reenforced_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:cracked_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:fractured_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:damaged_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:destroyed_concrete",
+    "mass": 2400.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:structural_concrete",
+    "mass": 6000.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:rusty_block",
+    "mass": 700.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:rusty_slab",
+    "mass": 700.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:rusty_stairs",
+    "mass": 700.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:rusty_trapdoor",
+    "mass": 700.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:steel_truss",
+    "mass": 400.0,
+    "priority": 101
+  }
+]

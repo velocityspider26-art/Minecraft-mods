@@ -1,0 +1,7 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "crusty_chunks:block/wirefence"
+  },
+  "render_type": "cutout_mipped"
+}

@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:bullet_resistant_helmet_helmet",
+    "crusty_chunks:nvd_helmet_helmet",
+    "crusty_chunks:blast_armor_helmet",
+    "crusty_chunks:gas_mask_helmet_helmet",
+    "crusty_chunks:body_armor_chestplate",
+    "crusty_chunks:blast_armor_chestplate",
+    "crusty_chunks:blast_armor_leggings",
+    "crusty_chunks:blast_armor_boots",
+    "crusty_chunks:bullet_resistant_helmet_2_helmet",
+    "crusty_chunks:bullet_resistant_helmet_3_helmet",
+    "crusty_chunks:bullet_resistant_helmet_4_helmet"
+  ]
+}

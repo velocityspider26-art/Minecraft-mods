@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "crusty_chunks:steel_cylinder",
+  "process": "crusty_chunks:mechanical_bore",
+  "result": {
+    "id": "crusty_chunks:steel_tube"
+  },
+  "runs": 3
+}

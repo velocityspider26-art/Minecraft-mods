@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:covered_machine_gun_barrel",
+    "crusty_chunks:machine_gun_barrel",
+    "#crusty_chunks:acbarrel"
+  ]
+}

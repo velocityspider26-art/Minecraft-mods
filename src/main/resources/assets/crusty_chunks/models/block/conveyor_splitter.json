@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/conveyorsplitter_1",
+  "textures": {
+    "all": "crusty_chunks:block/conveyorsplitter",
+    "particle": "crusty_chunks:block/solidsteel",
+    "0": "crusty_chunks:block/conveyorsplitter"
+  },
+  "render_type": "cutout"
+}

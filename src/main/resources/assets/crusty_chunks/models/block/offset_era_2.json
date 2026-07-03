@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/offsetera2",
+  "textures": {
+    "all": "crusty_chunks:block/armor_green",
+    "particle": "crusty_chunks:block/armor_green",
+    "2": "crusty_chunks:block/offseteratiles"
+  },
+  "render_type": "solid"
+}

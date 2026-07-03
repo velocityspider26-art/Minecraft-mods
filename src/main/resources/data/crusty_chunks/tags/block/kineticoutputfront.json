@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:medium_petrol_engine",
+    "crusty_chunks:small_diesel_engine",
+    "crusty_chunks:medium_diesel_engine",
+    "crusty_chunks:small_petrol_engine",
+    "crusty_chunks:large_electric_motor",
+    "crusty_chunks:extension_shaft",
+    "crusty_chunks:drive_shaft",
+    "crusty_chunks:jet_gearbox",
+    "crusty_chunks:manual_crank",
+    "crusty_chunks:redirector_shaft"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "crusty_chunks:blocks/artillery_charge_loader",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crusty_chunks:artillery_charge_loader"
+        }
+      ]
+    }
+  ]
+}

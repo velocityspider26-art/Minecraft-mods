@@ -1,0 +1,8 @@
+{
+  "type": "forge:add_features",
+  "biomes": {
+    "type": "forge:any"
+  },
+  "features": "crusty_chunks:bauxite",
+  "step": "underground_ores"
+}

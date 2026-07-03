@@ -1,0 +1,58 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:fission_bomb"
+    },
+    "title": {
+      "translate": "advancements.fission_core_acquired.title"
+    },
+    "description": {
+      "translate": "advancements.fission_core_acquired.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "fission_core_acquired_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:fission_core"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:fission_core_recipe",
+      "crusty_chunks:fission_bomb_recipe",
+      "crusty_chunks:shielding_component_recipe",
+      "crusty_chunks:implosion_module_recipe",
+      "crusty_chunks:implosion_lens_recipe",
+      "crusty_chunks:plutonium_ingot_recipe",
+      "crusty_chunks:plutonium_nugget_recipe",
+      "crusty_chunks:advanced_component_recipe",
+      "crusty_chunks:reaction_component_recipe",
+      "crusty_chunks:breeder_reactor_recipe",
+      "crusty_chunks:reaction_chamber_recipe",
+      "crusty_chunks:reactor_port_recipe",
+      "crusty_chunks:fission_bomb_module_recipe",
+      "crusty_chunks:fission_bomb_initiator_recipe",
+      "crusty_chunks:fusion_bomb_recipe",
+      "crusty_chunks:fusion_bomb_1_recipe",
+      "crusty_chunks:fusion_bomb_2_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:uranium"
+}

@@ -1,0 +1,10 @@
+{
+  "parent": "block/cube_bottom_top",
+  "textures": {
+    "particle": "crusty_chunks:block/armor_cyan",
+    "bottom": "crusty_chunks:block/armor_cyan",
+    "top": "crusty_chunks:block/armor_cyan",
+    "side": "crusty_chunks:block/armorcyanslab"
+  },
+  "render_type": "solid"
+}

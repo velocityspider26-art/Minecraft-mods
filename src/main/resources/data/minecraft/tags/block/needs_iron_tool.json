@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:advanced_alloy_block",
+    "crusty_chunks:pyrochlore_ore",
+    "crusty_chunks:lithium_block",
+    "crusty_chunks:raw_lithium_block",
+    "crusty_chunks:beryllium_block",
+    "crusty_chunks:raw_uranium_block",
+    "crusty_chunks:raw_beryllium_block",
+    "crusty_chunks:beryllium_ore",
+    "crusty_chunks:sulfur_ore",
+    "crusty_chunks:raw_zinc_block",
+    "crusty_chunks:raw_nickel_block",
+    "crusty_chunks:raw_lead_block",
+    "crusty_chunks:deepslate_lead_ore",
+    "crusty_chunks:nickel_block",
+    "crusty_chunks:nickel_ore",
+    "crusty_chunks:lead_block",
+    "crusty_chunks:lead_ore",
+    "crusty_chunks:brass_block",
+    "crusty_chunks:zinc_block",
+    "crusty_chunks:zinc_ore"
+  ]
+}

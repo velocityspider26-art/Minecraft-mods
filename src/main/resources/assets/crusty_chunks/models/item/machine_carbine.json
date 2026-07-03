@@ -1,0 +1,31 @@
+{
+  "loader": "forge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "crusty_chunks:displaysettings/carbine.item",
+    "textures": {
+      "0": "crusty_chunks:item/machinecarbine"
+    }
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/rifle8"
+      },
+      "gui_light": "front"
+    },
+    "ground": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/rifle8"
+      }
+    },
+    "fixed": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/rifle8"
+      }
+    }
+  }
+}

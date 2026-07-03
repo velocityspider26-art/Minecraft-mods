@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/darkgrayaluminumpanel",
+  "textures": {
+    "all": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "particle": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "0": "crusty_chunks:block/aluminum_armor_dark_gray"
+  },
+  "render_type": "solid"
+}

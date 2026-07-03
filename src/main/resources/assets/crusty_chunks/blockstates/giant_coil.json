@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "crusty_chunks:block/giant_coil",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "crusty_chunks:block/giant_coil"
+    },
+    "axis=z": {
+      "model": "crusty_chunks:block/giant_coil",
+      "x": 90
+    }
+  }
+}

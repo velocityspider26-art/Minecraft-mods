@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/aluminumcasing",
+    "up": "crusty_chunks:block/aluminumcasing",
+    "north": "crusty_chunks:block/jetturbine",
+    "east": "crusty_chunks:block/aluminumcasingside",
+    "south": "crusty_chunks:block/jetexhaust",
+    "west": "crusty_chunks:block/aluminumcasingside",
+    "particle": "crusty_chunks:block/aluminumcasing"
+  },
+  "render_type": "cutout_mipped"
+}

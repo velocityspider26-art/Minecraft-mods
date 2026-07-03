@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/gunhandle",
+  "textures": {
+    "all": "crusty_chunks:block/ammodrumside",
+    "particle": "crusty_chunks:block/ammodrumside",
+    "0": "crusty_chunks:block/gunhandle"
+  },
+  "render_type": "solid"
+}

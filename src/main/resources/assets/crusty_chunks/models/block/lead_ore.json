@@ -1,0 +1,8 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "crusty_chunks:block/leadore",
+    "particle": "crusty_chunks:block/leadore"
+  },
+  "render_type": "solid"
+}

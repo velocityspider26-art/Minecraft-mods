@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/crackedcementite",
+    "up": "crusty_chunks:block/crackedcementite",
+    "north": "crusty_chunks:block/crackedcementite",
+    "east": "crusty_chunks:block/crackedcementite",
+    "south": "crusty_chunks:block/crackedcementite",
+    "west": "crusty_chunks:block/crackedcementite",
+    "particle": "crusty_chunks:block/crackedcementite"
+  },
+  "render_type": "solid"
+}

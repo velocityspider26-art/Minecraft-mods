@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/centrifugemiddle",
+  "textures": {
+    "all": "crusty_chunks:block/largesteelcyllindertop",
+    "particle": "crusty_chunks:block/largesteelcyllindertop",
+    "1": "crusty_chunks:block/centrifugemiddle"
+  },
+  "render_type": "solid"
+}

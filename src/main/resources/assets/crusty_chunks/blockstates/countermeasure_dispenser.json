@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/countermeasure_dispenser"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/countermeasure_dispenser",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/countermeasure_dispenser",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/countermeasure_dispenser",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "crusty_chunks:block/countermeasure_dispenser",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "crusty_chunks:block/countermeasure_dispenser",
+      "x": 90
+    }
+  }
+}

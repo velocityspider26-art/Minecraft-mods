@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a  ",
+    " b ",
+    "  a"
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:dried_kelp"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_tube"
+    }
+  },
+  "result": {
+    "count": 16,
+    "id": "crusty_chunks:fuel_hose"
+  }
+}

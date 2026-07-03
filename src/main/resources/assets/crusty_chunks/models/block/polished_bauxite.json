@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/polishedbauxite",
+    "up": "crusty_chunks:block/polishedbauxite",
+    "north": "crusty_chunks:block/polishedbauxite",
+    "east": "crusty_chunks:block/polishedbauxite",
+    "south": "crusty_chunks:block/polishedbauxite",
+    "west": "crusty_chunks:block/polishedbauxite",
+    "particle": "crusty_chunks:block/polishedbauxite"
+  },
+  "render_type": "solid"
+}

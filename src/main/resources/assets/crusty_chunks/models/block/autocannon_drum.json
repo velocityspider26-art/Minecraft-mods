@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/ammodropport",
+    "up": "crusty_chunks:block/ammodropport",
+    "north": "crusty_chunks:block/ammodrumside",
+    "east": "crusty_chunks:block/ammodrumtop",
+    "south": "crusty_chunks:block/ammodrumside",
+    "west": "crusty_chunks:block/ammodrumtop",
+    "particle": "crusty_chunks:block/ammodropport"
+  },
+  "render_type": "solid"
+}

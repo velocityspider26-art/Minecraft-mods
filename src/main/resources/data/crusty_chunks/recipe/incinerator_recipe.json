@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a",
+    "b",
+    "c"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:blast_furnace_bricks"
+    },
+    "b": {
+      "item": "minecraft:flint_and_steel"
+    },
+    "c": {
+      "item": "minecraft:cauldron"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:item_incinerator"
+  }
+}

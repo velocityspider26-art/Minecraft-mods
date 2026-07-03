@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/trinititeglass",
+    "up": "crusty_chunks:block/trinititeglass",
+    "north": "crusty_chunks:block/trinititeglass",
+    "east": "crusty_chunks:block/trinititeglass",
+    "south": "crusty_chunks:block/trinititeglass",
+    "west": "crusty_chunks:block/trinititeglass",
+    "particle": "crusty_chunks:block/trinititeglass"
+  },
+  "render_type": "translucent"
+}

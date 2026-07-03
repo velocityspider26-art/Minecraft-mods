@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "aba",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:aluminum_side_panel"
+    },
+    "b": {
+      "item": "minecraft:charcoal"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:aluminum_side_panel_dark_gray"
+  }
+}

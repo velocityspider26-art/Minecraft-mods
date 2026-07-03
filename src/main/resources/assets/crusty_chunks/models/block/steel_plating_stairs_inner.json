@@ -1,0 +1,10 @@
+{
+  "parent": "block/inner_stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/steel_block",
+    "bottom": "crusty_chunks:block/steel_block",
+    "top": "crusty_chunks:block/steel_block",
+    "side": "crusty_chunks:block/steel_block"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/generator",
+  "textures": {
+    "all": "crusty_chunks:block/coilend",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/generator"
+  },
+  "render_type": "cutout_mipped"
+}

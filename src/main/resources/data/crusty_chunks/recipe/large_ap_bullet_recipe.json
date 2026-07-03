@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_nugget"
+    },
+    {
+      "item": "crusty_chunks:large_bullet"
+    },
+    {
+      "item": "crusty_chunks:large_bullet"
+    },
+    {
+      "item": "crusty_chunks:large_bullet"
+    }
+  ],
+  "result": {
+    "count": 3,
+    "id": "crusty_chunks:ap_large_bullet"
+  }
+}

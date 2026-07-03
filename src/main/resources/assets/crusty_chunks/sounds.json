@@ -1,0 +1,731 @@
+{
+  "rocket_launch": {
+    "subtitle": "subtitles.rocket_launch",
+    "sounds": [
+      {
+        "name": "crusty_chunks:rocket",
+        "stream": false
+      }
+    ]
+  },
+  "golemidle": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:golemidle",
+        "stream": false
+      }
+    ]
+  },
+  "golemmad": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:golemmad",
+        "stream": false
+      }
+    ]
+  },
+  "magazine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:weaponmagazine",
+        "stream": false
+      }
+    ]
+  },
+  "shotguncycle": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:shotgunaction",
+        "stream": false
+      }
+    ]
+  },
+  "revolver": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:revolveraction_1",
+        "stream": false
+      }
+    ]
+  },
+  "smallexplosion": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionsmall",
+        "stream": false
+      }
+    ]
+  },
+  "explosion": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionlarge",
+        "stream": false
+      }
+    ]
+  },
+  "explosion_distant": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionsmallfar",
+        "stream": false
+      }
+    ]
+  },
+  "bounce": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:bounce",
+        "stream": false
+      }
+    ]
+  },
+  "shotgunreload": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:shotgunreload",
+        "stream": false
+      }
+    ]
+  },
+  "cannonfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:cannonfar",
+        "stream": false
+      }
+    ]
+  },
+  "smallcasing": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:smallcasing",
+        "stream": false
+      }
+    ]
+  },
+  "mediumcasing": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:mediumcasing",
+        "stream": false
+      }
+    ]
+  },
+  "shotguncasing": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:shotguncasing",
+        "stream": false
+      }
+    ]
+  },
+  "small_expllosion_distant": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:tinyblast",
+        "stream": false
+      }
+    ]
+  },
+  "mechstep": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:mechstep",
+        "stream": false
+      }
+    ]
+  },
+  "hunterfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:dronefar",
+        "stream": false
+      }
+    ]
+  },
+  "hunternear": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:dronenear",
+        "stream": false
+      }
+    ]
+  },
+  "distantshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:distantshot",
+        "stream": false
+      }
+    ]
+  },
+  "farblast": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:farblast",
+        "stream": false
+      }
+    ]
+  },
+  "peelerpod": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:peelerpod",
+        "stream": false
+      }
+    ]
+  },
+  "flaregun": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:flaregun",
+        "stream": false
+      }
+    ]
+  },
+  "fissionblast": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:nuke",
+        "stream": false
+      }
+    ]
+  },
+  "rumble": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:rumble",
+        "stream": false
+      }
+    ]
+  },
+  "rocketflight": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:rocket_1",
+        "stream": false
+      }
+    ]
+  },
+  "rocketfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:rocketfar",
+        "stream": false
+      }
+    ]
+  },
+  "heavylaunch": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:largerocketlaunch",
+        "stream": false
+      }
+    ]
+  },
+  "wizz": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:wizz1",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:wizz2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:wizz3",
+        "stream": false
+      }
+    ]
+  },
+  "sparks": {
+    "subtitle": "subtitles.sparks",
+    "sounds": [
+      {
+        "name": "crusty_chunks:sparks",
+        "stream": false
+      }
+    ]
+  },
+  "humm": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:humm",
+        "stream": false
+      }
+    ]
+  },
+  "strikerstep": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:strikerstep2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:strikerstep1",
+        "stream": false
+      }
+    ]
+  },
+  "sonicboom": {
+    "subtitle": "subtitles.sonicboom",
+    "sounds": [
+      {
+        "name": "crusty_chunks:sonicboom",
+        "stream": false
+      }
+    ]
+  },
+  "turbine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:turbine",
+        "stream": false
+      }
+    ]
+  },
+  "megamechstep": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:eradicatorstep",
+        "stream": false
+      }
+    ]
+  },
+  "sirenfar": {
+    "subtitle": "subtitles.sirenfar",
+    "sounds": [
+      {
+        "name": "crusty_chunks:sirenfar",
+        "stream": false
+      }
+    ]
+  },
+  "siren": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:siren_1",
+        "stream": false
+      }
+    ]
+  },
+  "drone": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:drone",
+        "stream": false
+      }
+    ]
+  },
+  "bolt": {
+    "subtitle": "subtitles.bolt",
+    "sounds": [
+      {
+        "name": "crusty_chunks:boltaction",
+        "stream": false
+      }
+    ]
+  },
+  "boltreload": {
+    "subtitle": "subtitles.boltreload",
+    "sounds": [
+      {
+        "name": "crusty_chunks:boltreload_1",
+        "stream": false
+      }
+    ]
+  },
+  "bolt3": {
+    "subtitle": "subtitles.bolt3",
+    "sounds": [
+      {
+        "name": "crusty_chunks:bolt3",
+        "stream": false
+      }
+    ]
+  },
+  "bolt2": {
+    "subtitle": "subtitles.bolt2",
+    "sounds": [
+      {
+        "name": "crusty_chunks:bolt2",
+        "stream": false
+      }
+    ]
+  },
+  "dryfire": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:dryfire",
+        "stream": false
+      }
+    ]
+  },
+  "riflemagazine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:riflemagazine",
+        "stream": false
+      }
+    ]
+  },
+  "revolverreload": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:revolverreload",
+        "stream": false
+      }
+    ]
+  },
+  "beep": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:beep_1",
+        "stream": false
+      }
+    ]
+  },
+  "peelerpodfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:peelerfar",
+        "stream": false
+      }
+    ]
+  },
+  "distantshotmedium": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:distantshot2",
+        "stream": false
+      }
+    ]
+  },
+  "engine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:smallengine",
+        "stream": false
+      }
+    ]
+  },
+  "motor": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:motor",
+        "stream": false
+      }
+    ]
+  },
+  "leveraction": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:leveraction",
+        "stream": false
+      }
+    ]
+  },
+  "commanderwaffing": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:commandervoice2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:commandervoice",
+        "stream": false
+      }
+    ]
+  },
+  "commanderalert": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:commanderalert_1",
+        "stream": false
+      }
+    ]
+  },
+  "spacenuke": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:spacenuke",
+        "stream": false
+      }
+    ]
+  },
+  "medium_small_explosion_distant": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:smallexplosiondistant",
+        "stream": false
+      }
+    ]
+  },
+  "smallfarblast": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:smallfarblast",
+        "stream": false
+      }
+    ]
+  },
+  "distantgunfire": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:distantgunfire",
+        "stream": false
+      }
+    ]
+  },
+  "bloop": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:bloop",
+        "stream": false
+      }
+    ]
+  },
+  "artyfall": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:artyfall",
+        "stream": false
+      }
+    ]
+  },
+  "glory": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:glorytonation",
+        "stream": false
+      }
+    ]
+  },
+  "surrender": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:bedestroyed",
+        "stream": false
+      }
+    ]
+  },
+  "located": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:enemyidentified1",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:enemyidentified2",
+        "stream": false
+      }
+    ]
+  },
+  "searching": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:searching2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:searching1",
+        "stream": false
+      }
+    ]
+  },
+  "petrolengine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:petrolengine",
+        "stream": false
+      }
+    ]
+  },
+  "autocannonshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:23mm",
+        "stream": false
+      }
+    ]
+  },
+  "heavyautocannonshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:57mm",
+        "stream": false
+      }
+    ]
+  },
+  "smallshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:8x20mm",
+        "stream": false
+      }
+    ]
+  },
+  "mediumshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:6x45",
+        "stream": false
+      }
+    ]
+  },
+  "silencedshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:8x20mm_supressed",
+        "stream": false
+      }
+    ]
+  },
+  "rac": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:23mmrotarynear",
+        "stream": false
+      }
+    ]
+  },
+  "brtttfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:23mmrotaryfar",
+        "stream": false
+      }
+    ]
+  },
+  "battlecannon": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:battlecannon_1",
+        "stream": false
+      }
+    ]
+  },
+  "cannonclose": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:artillerycannon",
+        "stream": false
+      }
+    ]
+  },
+  "fabricator": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:fabricator",
+        "stream": false
+      }
+    ]
+  },
+  "jetfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:jetfar1",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:jetfar2",
+        "stream": false
+      }
+    ]
+  },
+  "jetidle": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:jetidle1",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:jetidle2",
+        "stream": false
+      }
+    ]
+  },
+  "jetstart": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:jetstart",
+        "stream": false
+      }
+    ]
+  },
+  "bulletcrack": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:crack2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:crack3",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:crack1",
+        "stream": false
+      }
+    ]
+  },
+  "pistolmagin": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:pistolmagin",
+        "stream": false
+      }
+    ]
+  },
+  "pistolaction": {
+    "subtitle": "subtitles.pistolaction",
+    "sounds": [
+      {
+        "name": "crusty_chunks:pistolaction_1",
+        "stream": false
+      }
+    ]
+  },
+  "gunmechanism": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:gunmechanism",
+        "stream": false
+      }
+    ]
+  },
+  "autoloader": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:autoloader",
+        "stream": false
+      }
+    ]
+  },
+  "midrangeshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:midrangeshot",
+        "stream": false
+      }
+    ]
+  },
+  "huge_explosion_distant": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionlargefar",
+        "stream": false
+      }
+    ]
+  },
+  "largeshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:8x55mm",
+        "stream": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/powerconduitface",
+    "up": "crusty_chunks:block/powerconduitface",
+    "north": "crusty_chunks:block/powerconduitface",
+    "east": "crusty_chunks:block/powerconduitface",
+    "south": "crusty_chunks:block/powerconduitface",
+    "west": "crusty_chunks:block/powerconduitface",
+    "particle": "crusty_chunks:block/powerconduitface"
+  },
+  "render_type": "solid"
+}

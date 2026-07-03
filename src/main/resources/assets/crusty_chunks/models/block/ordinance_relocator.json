@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/dropbayoutput",
+    "up": "crusty_chunks:block/dropbayinput",
+    "north": "crusty_chunks:block/dropbayfront",
+    "east": "crusty_chunks:block/dropbayside",
+    "south": "crusty_chunks:block/dropbayside",
+    "west": "crusty_chunks:block/dropbayside",
+    "particle": "crusty_chunks:block/dropbayoutput"
+  },
+  "render_type": "solid"
+}

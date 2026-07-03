@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/thickbattlebarrel",
+  "textures": {
+    "all": "crusty_chunks:block/thickbattlebarrel",
+    "particle": "crusty_chunks:block/steel_block",
+    "2": "crusty_chunks:block/thickbattlebarrel"
+  },
+  "render_type": "solid"
+}

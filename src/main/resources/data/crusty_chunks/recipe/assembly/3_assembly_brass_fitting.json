@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "c:ingots/brass",
+  "process": "crusty_chunks:mechanical_bore",
+  "result": {
+    "id": "crusty_chunks:brass_fitting"
+  },
+  "runs": 1
+}

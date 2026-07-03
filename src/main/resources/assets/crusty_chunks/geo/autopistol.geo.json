@@ -1,0 +1,324 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Left",
+          "pivot": [
+            6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                12,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pistol1",
+          "pivot": [
+            -13,
+            -2,
+            -15
+          ]
+        },
+        {
+          "name": "Pistol",
+          "parent": "pistol1",
+          "pivot": [
+            -6,
+            -3,
+            -13
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                2.5,
+                -18
+              ],
+              "size": [
+                4,
+                4,
+                9
+              ],
+              "inflate": -1.4,
+              "pivot": [
+                -5,
+                4.5,
+                -10
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                17,
+                4
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bolt",
+          "parent": "Pistol",
+          "pivot": [
+            0,
+            0,
+            -1
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                2.5,
+                -17
+              ],
+              "size": [
+                4,
+                4,
+                9
+              ],
+              "inflate": -1.5,
+              "pivot": [
+                -5,
+                4.5,
+                -9
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "Pistol",
+          "pivot": [
+            -5,
+            3,
+            -5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6,
+                1.25,
+                -15.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                14,
+                27
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                2,
+                -17
+              ],
+              "size": [
+                4,
+                4,
+                7
+              ],
+              "inflate": -1.5,
+              "uv": {
+                "north": {
+                  "uv": [
+                    9,
+                    22
+                  ],
+                  "uv_size": [
+                    4,
+                    4
+                  ]
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    22
+                  ],
+                  "uv_size": [
+                    9,
+                    4
+                  ]
+                },
+                "south": {
+                  "uv": [
+                    22,
+                    22
+                  ],
+                  "uv_size": [
+                    4,
+                    4
+                  ]
+                },
+                "west": {
+                  "uv": [
+                    13,
+                    22
+                  ],
+                  "uv_size": [
+                    9,
+                    4
+                  ]
+                },
+                "up": {
+                  "uv": [
+                    9,
+                    13
+                  ],
+                  "uv_size": [
+                    4,
+                    9
+                  ]
+                },
+                "down": {
+                  "uv": [
+                    13,
+                    22
+                  ],
+                  "uv_size": [
+                    4,
+                    -9
+                  ]
+                }
+              }
+            },
+            {
+              "origin": [
+                -5.4,
+                3.7,
+                -21
+              ],
+              "size": [
+                1,
+                1,
+                9
+              ],
+              "inflate": -0.1,
+              "pivot": [
+                -4.5,
+                4.5,
+                -15
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                17,
+                17
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                1.5,
+                -13
+              ],
+              "size": [
+                3,
+                7,
+                4
+              ],
+              "inflate": -1.05,
+              "pivot": [
+                -5,
+                3,
+                -6
+              ],
+              "rotation": [
+                30,
+                0,
+                0
+              ],
+              "uv": [
+                0,
+                26
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:reenforced_concrete",
+    "crusty_chunks:cracked_concrete",
+    "crusty_chunks:fractured_concrete",
+    "crusty_chunks:damaged_concrete",
+    "crusty_chunks:overgrown_reenforced_concrete",
+    "crusty_chunks:cracked_concrete_wall",
+    "crusty_chunks:fractured_concrete_wall",
+    "crusty_chunks:damaged_concrete_wall",
+    "crusty_chunks:destroyed_concrete_wall"
+  ]
+}

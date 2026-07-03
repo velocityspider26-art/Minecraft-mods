@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/chartop",
+    "up": "crusty_chunks:block/chartop",
+    "north": "crusty_chunks:block/char",
+    "east": "crusty_chunks:block/char",
+    "south": "crusty_chunks:block/char",
+    "west": "crusty_chunks:block/char",
+    "particle": "crusty_chunks:block/chartop"
+  },
+  "render_type": "solid"
+}

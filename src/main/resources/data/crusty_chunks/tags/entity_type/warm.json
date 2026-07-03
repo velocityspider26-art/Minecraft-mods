@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:cluster_rocket",
+    "crusty_chunks:incindiary_rocket_projectile",
+    "crusty_chunks:large_rocket",
+    "crusty_chunks:rocket",
+    "crusty_chunks:flare_projectile",
+    "crusty_chunks:jet_exhaust_projectile",
+    "crusty_chunks:hunter",
+    "crusty_chunks:vehicle_flare_projectile",
+    "crusty_chunks:assassinpod",
+    "crusty_chunks:reaper",
+    "crusty_chunks:fire_spear_rocket_projectile",
+    "crusty_chunks:strike_spear_projectile",
+    "crusty_chunks:nuclear_bomb_projectile",
+    "crusty_chunks:ordinance_fusion_bomb_projectile"
+  ]
+}

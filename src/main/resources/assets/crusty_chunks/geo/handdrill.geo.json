@@ -1,0 +1,207 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 32,
+        "texture_height": 32,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 3.5,
+        "visible_bounds_offset": [
+          0,
+          1.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Drill",
+          "pivot": [
+            -6,
+            2,
+            -11
+          ]
+        },
+        {
+          "name": "Handle",
+          "parent": "Drill",
+          "pivot": [
+            -6,
+            3,
+            -5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                0,
+                -15
+              ],
+              "size": [
+                2,
+                4,
+                6
+              ],
+              "inflate": -0.35,
+              "uv": [
+                14,
+                17
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                0,
+                -22
+              ],
+              "size": [
+                4,
+                4,
+                9
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -5,
+                1,
+                -17
+              ],
+              "size": [
+                5,
+                2,
+                2
+              ],
+              "inflate": -0.25,
+              "uv": [
+                0,
+                23
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Head",
+          "parent": "Drill",
+          "pivot": [
+            -6,
+            2,
+            -25
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7.5,
+                0.5,
+                -25
+              ],
+              "size": [
+                3,
+                3,
+                3
+              ],
+              "uv": [
+                17,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bit",
+          "parent": "Head",
+          "pivot": [
+            -6,
+            2,
+            -23
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                1,
+                -32
+              ],
+              "size": [
+                2,
+                2,
+                8
+              ],
+              "inflate": -0.4,
+              "uv": [
+                0,
+                13
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                0,
+                13
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Left",
+          "pivot": [
+            5,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                16,
+                13
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

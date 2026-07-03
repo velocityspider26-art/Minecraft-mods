@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "tag": "minecraft:planks"
+    },
+    "b": {
+      "item": "crusty_chunks:light_wood_frame"
+    }
+  },
+  "result": {
+    "count": 5,
+    "id": "crusty_chunks:light_wood_slab"
+  }
+}

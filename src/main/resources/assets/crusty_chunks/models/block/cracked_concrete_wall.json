@@ -1,0 +1,8 @@
+{
+  "parent": "block/template_wall_side",
+  "textures": {
+    "wall": "crusty_chunks:block/crackedcementite",
+    "particle": "crusty_chunks:block/crackedcementite"
+  },
+  "render_type": "solid"
+}

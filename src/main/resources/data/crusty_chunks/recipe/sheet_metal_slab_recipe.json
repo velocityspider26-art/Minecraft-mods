@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bent_component"
+    }
+  },
+  "result": {
+    "count": 32,
+    "id": "crusty_chunks:sheet_metal_slab"
+  }
+}

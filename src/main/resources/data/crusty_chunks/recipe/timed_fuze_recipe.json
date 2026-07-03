@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a",
+    "b",
+    "c"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steel_cylinder"
+    },
+    "b": {
+      "item": "minecraft:redstone"
+    },
+    "c": {
+      "item": "minecraft:flint"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:timed_fuze"
+  }
+}

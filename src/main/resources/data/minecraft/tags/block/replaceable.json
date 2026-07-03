@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:hydrazine",
+    "crusty_chunks:chlorine_gas",
+    "crusty_chunks:liquid_hydrogen",
+    "crusty_chunks:liquid_oxygen",
+    "crusty_chunks:compressed_air",
+    "crusty_chunks:sulfuric_acid",
+    "crusty_chunks:petrolium",
+    "crusty_chunks:kerosene",
+    "crusty_chunks:diesel",
+    "crusty_chunks:oil",
+    "crusty_chunks:crude_oil"
+  ]
+}

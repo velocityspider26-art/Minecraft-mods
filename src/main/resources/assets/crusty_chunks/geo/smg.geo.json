@@ -1,0 +1,389 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Rifle2",
+          "pivot": [
+            -6,
+            -3,
+            -12
+          ]
+        },
+        {
+          "name": "SMG",
+          "parent": "Rifle2",
+          "pivot": [
+            -5,
+            -3,
+            -12
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.5,
+                1,
+                -12.25
+              ],
+              "size": [
+                3,
+                5,
+                3
+              ],
+              "inflate": -1,
+              "pivot": [
+                -5,
+                3,
+                -5
+              ],
+              "rotation": [
+                15,
+                0,
+                0
+              ],
+              "uv": [
+                17,
+                17
+              ]
+            },
+            {
+              "origin": [
+                -5.5,
+                4.25,
+                -27
+              ],
+              "size": [
+                1,
+                2,
+                2
+              ],
+              "inflate": -0.5,
+              "uv": [
+                10,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                4.25,
+                -15
+              ],
+              "size": [
+                2,
+                2,
+                4
+              ],
+              "inflate": -0.55,
+              "uv": [
+                22,
+                28
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Magazine",
+          "parent": "SMG",
+          "pivot": [
+            -5,
+            4,
+            -15
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.5,
+                -3,
+                -17
+              ],
+              "size": [
+                3,
+                8,
+                4
+              ],
+              "inflate": -1.2,
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "SMG",
+          "pivot": [
+            -5,
+            3,
+            -4
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6,
+                1.25,
+                -14.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                26,
+                21
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                2.5,
+                -25
+              ],
+              "size": [
+                3,
+                3,
+                9
+              ],
+              "inflate": -0.9,
+              "uv": [
+                18,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -11,
+                2,
+                -27
+              ],
+              "size": [
+                1,
+                1,
+                16
+              ],
+              "inflate": -0.15,
+              "pivot": [
+                -5,
+                -3,
+                -12
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                2,
+                -19
+              ],
+              "size": [
+                4,
+                4,
+                9
+              ],
+              "inflate": -1.25,
+              "uv": [
+                0,
+                17
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Stock",
+          "parent": "SMG",
+          "pivot": [
+            -5,
+            3,
+            -6
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6,
+                -1,
+                -9.75
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "inflate": -0.4,
+              "pivot": [
+                -5,
+                3,
+                -8
+              ],
+              "rotation": [
+                -90,
+                0,
+                0
+              ],
+              "uv": [
+                18,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                0.25,
+                -9.5
+              ],
+              "size": [
+                2,
+                7,
+                2
+              ],
+              "inflate": -0.45,
+              "pivot": [
+                -5,
+                3,
+                -8
+              ],
+              "rotation": [
+                70,
+                0,
+                0
+              ],
+              "uv": [
+                0,
+                17
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                0.25,
+                -8.4
+              ],
+              "size": [
+                2,
+                4,
+                2
+              ],
+              "inflate": -0.45,
+              "pivot": [
+                -5,
+                3,
+                -8
+              ],
+              "rotation": [
+                70,
+                0,
+                0
+              ],
+              "uv": [
+                8,
+                30
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                0.75,
+                -7
+              ],
+              "size": [
+                2,
+                4,
+                2
+              ],
+              "inflate": -0.35,
+              "uv": [
+                0,
+                30
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Left",
+          "pivot": [
+            5,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                12,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

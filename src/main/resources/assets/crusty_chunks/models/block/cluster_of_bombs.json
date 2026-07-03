@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/clusterbomb",
+  "textures": {
+    "all": "crusty_chunks:block/smallbombtexture",
+    "particle": "crusty_chunks:block/steel_block",
+    "1": "crusty_chunks:block/smallbombtexture"
+  },
+  "render_type": "solid"
+}

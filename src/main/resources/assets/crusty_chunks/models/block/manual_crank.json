@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/manualcrank",
+  "textures": {
+    "all": "crusty_chunks:block/driveshaftface",
+    "particle": "crusty_chunks:block/driveshaftface",
+    "0": "crusty_chunks:block/manualgrank"
+  },
+  "render_type": "solid"
+}

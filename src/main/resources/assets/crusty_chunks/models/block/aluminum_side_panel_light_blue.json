@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/light_bluesidepanel",
+  "textures": {
+    "all": "crusty_chunks:block/light_blue_aluminum_plating",
+    "particle": "crusty_chunks:block/light_blue_aluminum_plating",
+    "0": "crusty_chunks:block/light_blue_aluminum_plating"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/ordinanceclusterwarhead",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "0": "crusty_chunks:block/ordinanceclusterwarhead"
+  },
+  "render_type": "solid"
+}

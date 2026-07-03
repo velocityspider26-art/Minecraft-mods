@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:sand",
+    "minecraft:red_sand",
+    "minecraft:suspicious_sand",
+    "minecraft:soul_sand",
+    "minecraft:soul_soil",
+    "#c:sand",
+    "crusty_chunks:sand_bags"
+  ]
+}

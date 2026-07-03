@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/reinforcedglass",
+    "up": "crusty_chunks:block/reinforcedglass",
+    "north": "crusty_chunks:block/reinforcedglass",
+    "east": "crusty_chunks:block/reinforcedglass",
+    "south": "crusty_chunks:block/reinforcedglass",
+    "west": "crusty_chunks:block/reinforcedglass",
+    "particle": "crusty_chunks:block/reinforcedglass"
+  },
+  "render_type": "cutout"
+}

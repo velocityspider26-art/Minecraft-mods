@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:huge_bullet_fire",
+    "crusty_chunks:thermal_projectile",
+    "crusty_chunks:heat",
+    "crusty_chunks:small_ap_cannon_fire"
+  ]
+}

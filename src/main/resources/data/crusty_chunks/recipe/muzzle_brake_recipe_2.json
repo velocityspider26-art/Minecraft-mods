@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a",
+    "b ",
+    " a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bored_component"
+    },
+    "b": {
+      "item": "crusty_chunks:thick_battle_cannon_barrel"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:type_2_bc_muzzle_brake"
+  }
+}

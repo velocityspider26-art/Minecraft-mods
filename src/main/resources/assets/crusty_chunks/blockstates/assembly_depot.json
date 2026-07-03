@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/assembly_depot"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/assembly_depot",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/assembly_depot",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/assembly_depot",
+      "y": 270
+    }
+  }
+}

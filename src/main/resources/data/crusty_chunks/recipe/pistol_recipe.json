@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "a ",
+    "bc",
+    " d"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:small_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "c": {
+      "item": "crusty_chunks:pistol_receiver"
+    },
+    "d": {
+      "item": "crusty_chunks:wood_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:semi_automatic_pistol_animated"
+  }
+}

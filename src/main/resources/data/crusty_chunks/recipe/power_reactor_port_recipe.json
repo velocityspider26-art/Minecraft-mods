@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "efe"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "b": {
+      "item": "crusty_chunks:turbine_rotor"
+    },
+    "c": {
+      "tag": "forge:blocks/aluminum"
+    },
+    "d": {
+      "item": "crusty_chunks:generator"
+    },
+    "e": {
+      "tag": "c:ingots/nickel"
+    },
+    "f": {
+      "item": "crusty_chunks:energy_battery"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:power_reactor_port"
+  }
+}

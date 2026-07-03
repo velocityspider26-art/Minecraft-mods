@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:era_4",
+    "crusty_chunks:era_3",
+    "crusty_chunks:era_2",
+    "crusty_chunks:era_1",
+    "crusty_chunks:offset_era_4",
+    "crusty_chunks:offset_era_3",
+    "crusty_chunks:offset_era_2",
+    "crusty_chunks:offset_era_1"
+  ]
+}

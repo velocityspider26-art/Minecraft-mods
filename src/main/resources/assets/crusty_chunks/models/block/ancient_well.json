@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/blockdrillfront",
+    "up": "crusty_chunks:block/blockdrillfront",
+    "north": "crusty_chunks:block/blockdrillfront",
+    "east": "crusty_chunks:block/blockdrillfront",
+    "south": "crusty_chunks:block/blockdrillfront",
+    "west": "crusty_chunks:block/blockdrillfront",
+    "particle": "crusty_chunks:block/blockdrillfront"
+  },
+  "render_type": "solid"
+}

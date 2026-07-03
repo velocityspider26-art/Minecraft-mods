@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/flamethrowerbarrelblock",
+  "textures": {
+    "all": "crusty_chunks:block/steel_block",
+    "particle": "crusty_chunks:block/steel_block",
+    "1": "crusty_chunks:block/flamethrowerbarrel"
+  },
+  "render_type": "cutout"
+}

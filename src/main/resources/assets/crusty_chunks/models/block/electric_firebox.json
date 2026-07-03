@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/blastcoiltop",
+    "up": "crusty_chunks:block/blastcoiltop",
+    "north": "crusty_chunks:block/blastheatingcoil",
+    "east": "crusty_chunks:block/blastheatingcoil",
+    "south": "crusty_chunks:block/blastheatingcoil",
+    "west": "crusty_chunks:block/blastheatingcoil",
+    "particle": "crusty_chunks:block/blastcoiltop"
+  },
+  "render_type": "solid"
+}

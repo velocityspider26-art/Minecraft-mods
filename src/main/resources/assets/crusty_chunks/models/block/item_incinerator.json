@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/blastchimney",
+    "up": "crusty_chunks:block/blastchimney",
+    "north": "crusty_chunks:block/itemincinerator",
+    "east": "crusty_chunks:block/itemincinerator",
+    "south": "crusty_chunks:block/itemincinerator",
+    "west": "crusty_chunks:block/itemincinerator",
+    "particle": "crusty_chunks:block/blastchimney"
+  },
+  "render_type": "solid"
+}

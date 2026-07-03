@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/destroyerofworlds",
+  "textures": {
+    "all": "crusty_chunks:block/destroyerofworlds",
+    "particle": "crusty_chunks:block/destroyerofworlds",
+    "0": "crusty_chunks:block/destroyerofworlds"
+  },
+  "render_type": "solid"
+}

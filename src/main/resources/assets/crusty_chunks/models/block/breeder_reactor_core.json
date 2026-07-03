@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/reactorporttop",
+    "up": "crusty_chunks:block/reactorporttop",
+    "north": "crusty_chunks:block/reactorchambertop",
+    "east": "crusty_chunks:block/reactorchambertop",
+    "south": "crusty_chunks:block/reactorchambertop",
+    "west": "crusty_chunks:block/reactorchambertop",
+    "particle": "crusty_chunks:block/reactorporttop"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/aluminum_ac_barrel_yellow"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/aluminum_ac_barrel_yellow",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/aluminum_ac_barrel_yellow",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/aluminum_ac_barrel_yellow",
+      "y": 270
+    }
+  }
+}

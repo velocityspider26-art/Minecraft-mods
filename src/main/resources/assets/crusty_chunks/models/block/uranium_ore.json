@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/uraniumore",
+    "up": "crusty_chunks:block/uraniumore",
+    "north": "crusty_chunks:block/uraniumore",
+    "east": "crusty_chunks:block/uraniumore",
+    "south": "crusty_chunks:block/uraniumore",
+    "west": "crusty_chunks:block/uraniumore",
+    "particle": "crusty_chunks:block/uraniumore"
+  },
+  "render_type": "solid"
+}

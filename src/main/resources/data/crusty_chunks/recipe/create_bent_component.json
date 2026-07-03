@@ -1,0 +1,13 @@
+{
+  "type": "create:pressing",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:steelplate"
+    }
+  ],
+  "results": [
+    {
+      "item": "crusty_chunks:bent_component"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/corewarheadfusion2",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/ordinancefusionwarhead2"
+  },
+  "render_type": "solid"
+}

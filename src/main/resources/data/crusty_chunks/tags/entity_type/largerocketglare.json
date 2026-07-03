@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:cluster_rocket",
+    "crusty_chunks:incindiary_rocket_projectile",
+    "crusty_chunks:large_rocket",
+    "crusty_chunks:ir_missile",
+    "crusty_chunks:large_radar_missile_projectile"
+  ]
+}

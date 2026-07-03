@@ -1,0 +1,59 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:chisel"
+    },
+    "title": {
+      "translate": "advancements.tools.title"
+    },
+    "description": {
+      "translate": "advancements.tools.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "tools_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:chisel"
+            ],
+            "count": {
+              "min": 1,
+              "max": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:hammer_recipe",
+      "crusty_chunks:shear_recipe",
+      "crusty_chunks:chisel_recipe",
+      "crusty_chunks:chiseling",
+      "crusty_chunks:hammering",
+      "crusty_chunks:hammering_2",
+      "crusty_chunks:hammering_3",
+      "crusty_chunks:bending",
+      "crusty_chunks:stripping",
+      "crusty_chunks:mineral_grinder_recipe",
+      "crusty_chunks:iron_gear_recipe",
+      "crusty_chunks:stripping_2",
+      "crusty_chunks:cutting",
+      "crusty_chunks:copper_coil_recipe",
+      "crusty_chunks:steel_coil_recipe",
+      "crusty_chunks:giant_coil_recipe",
+      "crusty_chunks:cutters_recipe",
+      "crusty_chunks:manual_crank_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:powder_types"
+}

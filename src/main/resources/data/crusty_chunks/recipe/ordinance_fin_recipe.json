@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a a",
+    "b b",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:ordinance_fins"
+  }
+}

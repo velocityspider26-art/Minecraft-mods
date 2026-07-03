@@ -1,0 +1,10 @@
+{
+  "parent": "block/inner_stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/woodenpanel",
+    "bottom": "crusty_chunks:block/woodenpanel",
+    "top": "crusty_chunks:block/woodenpanel",
+    "side": "crusty_chunks:block/woodslabpanel"
+  },
+  "render_type": "solid"
+}

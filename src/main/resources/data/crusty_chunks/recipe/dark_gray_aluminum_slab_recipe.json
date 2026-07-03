@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "aba",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:aluminum_plating_slab"
+    },
+    "b": {
+      "item": "minecraft:charcoal"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:aluminum_plating_slab_dark_gray"
+  }
+}

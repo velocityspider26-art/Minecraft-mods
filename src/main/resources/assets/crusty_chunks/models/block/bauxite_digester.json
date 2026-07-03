@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/bauxitedigester",
+  "textures": {
+    "all": "crusty_chunks:block/largesteelcyllindertop",
+    "particle": "crusty_chunks:block/largesteelcyllindertop",
+    "0": "crusty_chunks:block/bauxitedigester"
+  },
+  "render_type": "solid"
+}

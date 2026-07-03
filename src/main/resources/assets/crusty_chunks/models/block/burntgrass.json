@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "minecraft:block/dirt",
+    "up": "crusty_chunks:block/burntgrasstop",
+    "north": "crusty_chunks:block/burntgrassside2",
+    "east": "crusty_chunks:block/burntgrassside2",
+    "south": "crusty_chunks:block/burntgrassside2",
+    "west": "crusty_chunks:block/burntgrassside2",
+    "particle": "minecraft:block/dirt"
+  },
+  "render_type": "solid"
+}

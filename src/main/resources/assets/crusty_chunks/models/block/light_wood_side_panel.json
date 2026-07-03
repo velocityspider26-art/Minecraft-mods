@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/lightwoodsidepanel",
+  "textures": {
+    "all": "crusty_chunks:block/woodenpanel",
+    "particle": "crusty_chunks:block/woodenpanel",
+    "0": "crusty_chunks:block/woodenpanel"
+  },
+  "render_type": "solid"
+}

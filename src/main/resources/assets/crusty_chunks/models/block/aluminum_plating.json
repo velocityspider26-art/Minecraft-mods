@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/aluminumarmor",
+    "up": "crusty_chunks:block/aluminumarmor",
+    "north": "crusty_chunks:block/aluminumarmor",
+    "east": "crusty_chunks:block/aluminumarmor",
+    "south": "crusty_chunks:block/aluminumarmor",
+    "west": "crusty_chunks:block/aluminumarmor",
+    "particle": "crusty_chunks:block/aluminumarmor"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/aimertriggeroff",
+  "textures": {
+    "all": "crusty_chunks:block/aimertriggeroff",
+    "particle": "crusty_chunks:block/aimertriggeroff",
+    "0": "crusty_chunks:block/aimertriggeroff"
+  },
+  "render_type": "solid"
+}

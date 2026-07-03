@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_lime"
+    },
+    "type=top": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_lime_top"
+    },
+    "type=double": {
+      "model": "crusty_chunks:block/aluminum_plating_slab_lime_full"
+    }
+  }
+}

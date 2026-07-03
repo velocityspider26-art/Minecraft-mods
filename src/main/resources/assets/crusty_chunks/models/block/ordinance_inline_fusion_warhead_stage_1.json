@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/corewarheadfusion",
+  "textures": {
+    "all": "crusty_chunks:block/reactorcoretop",
+    "particle": "crusty_chunks:block/reactorcoretop",
+    "1": "crusty_chunks:block/ordinancefusionwarhead1"
+  },
+  "render_type": "solid"
+}

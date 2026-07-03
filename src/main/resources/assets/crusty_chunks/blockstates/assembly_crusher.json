@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/assembly_crusher"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/assembly_crusher",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/assembly_crusher",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/assembly_crusher",
+      "y": 270
+    }
+  }
+}

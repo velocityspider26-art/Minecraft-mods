@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abc",
+    "  d",
+    "abc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "b": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    },
+    "c": {
+      "item": "crusty_chunks:engine_component"
+    },
+    "d": {
+      "item": "crusty_chunks:steel_tube"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:after_burner"
+  }
+}

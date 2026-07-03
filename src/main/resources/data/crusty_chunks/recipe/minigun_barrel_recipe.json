@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:large_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:mini_gun_barrel"
+  }
+}

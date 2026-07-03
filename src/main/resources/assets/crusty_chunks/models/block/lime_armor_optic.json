@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/armor_lime",
+    "up": "crusty_chunks:block/armor_lime",
+    "north": "crusty_chunks:block/opticfront_lime",
+    "east": "crusty_chunks:block/armor_lime",
+    "south": "crusty_chunks:block/opticback_lime",
+    "west": "crusty_chunks:block/armor_lime",
+    "particle": "crusty_chunks:block/armor_lime"
+  },
+  "render_type": "translucent"
+}

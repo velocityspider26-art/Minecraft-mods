@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:armor_peeler_unloaded",
+    "crusty_chunks:mortar_shell",
+    "crusty_chunks:smoke_mortar_shell",
+    "crusty_chunks:smg_animated",
+    "crusty_chunks:grenade_launcher"
+  ]
+}

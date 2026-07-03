@@ -1,0 +1,561 @@
+package net.mcreator.crustychunks.procedures;
+
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.core.registries.BuiltInRegistries;
+import java.util.Map.Entry;
+import net.mcreator.crustychunks.CrustyChunksMod;
+import net.mcreator.crustychunks.entity.HVParticleProjectileEntity;
+import net.mcreator.crustychunks.entity.HugeBulletFireEntity;
+import net.mcreator.crustychunks.init.CrustyChunksModEntities;
+import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
+
+public class HugeBulletHitProcedure {
+   public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      if (immediatesourceentity != null) {
+         double Power = 0.0;
+         DamagesProcedure.execute(world, x, y, z);
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
+            for (int index0 = 0; index0 < 10; index0++) {
+               world.addParticle(
+                  (SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(),
+                  immediatesourceentity.getX(),
+                  immediatesourceentity.getY() + 1.0,
+                  immediatesourceentity.getZ(),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
+               );
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
+            world.destroyBlock(BlockPos.containing(x, y, z), false);
+            if (world instanceof Level _level) {
+               if (!_level.isClientSide()) {
+                  _level.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F
+                  );
+               } else {
+                  _level.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F,
+                     false
+                  );
+               }
+            }
+
+            if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
+               && world instanceof ServerLevel projectileLevel) {
+               Projectile _entityToSpawn = (new Object() {
+                     public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                        AbstractArrow entityToSpawn = new HugeBulletFireEntity((EntityType<? extends HugeBulletFireEntity>)CrustyChunksModEntities.HUGE_BULLET_FIRE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                        entityToSpawn.setOwner(shooter);
+                        entityToSpawn.setBaseDamage((double)damage);
+                        entityToSpawn.setSilent(true);
+                        entityToSpawn.setCritArrow(true);
+                        return entityToSpawn;
+                     }
+                  })
+                  .getArrow(projectileLevel, immediatesourceentity, 2.0F, 1, (byte)50);
+               _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               _entityToSpawn.shoot(
+                  immediatesourceentity.getDeltaMovement().x(),
+                  immediatesourceentity.getDeltaMovement().y(),
+                  immediatesourceentity.getDeltaMovement().z(),
+                  (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.1),
+                  0.8F
+               );
+               projectileLevel.addFreshEntity(_entityToSpawn);
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:breakable_metal")))) {
+            world.destroyBlock(BlockPos.containing(x, y, z), false);
+            if (world instanceof Level _levelx) {
+               if (!_levelx.isClientSide()) {
+                  _levelx.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F
+                  );
+               } else {
+                  _levelx.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F,
+                     false
+                  );
+               }
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
+            world.destroyBlock(BlockPos.containing(x, y, z), false);
+            if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
+               && world instanceof ServerLevel projectileLevel) {
+               Projectile _entityToSpawn = (new Object() {
+                     public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                        AbstractArrow entityToSpawn = new HugeBulletFireEntity((EntityType<? extends HugeBulletFireEntity>)CrustyChunksModEntities.HUGE_BULLET_FIRE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                        entityToSpawn.setOwner(shooter);
+                        entityToSpawn.setBaseDamage((double)damage);
+                        entityToSpawn.setSilent(true);
+                        entityToSpawn.setCritArrow(true);
+                        return entityToSpawn;
+                     }
+                  })
+                  .getArrow(projectileLevel, immediatesourceentity, 2.0F, 1, (byte)50);
+               _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               _entityToSpawn.shoot(
+                  immediatesourceentity.getDeltaMovement().x(),
+                  immediatesourceentity.getDeltaMovement().y(),
+                  immediatesourceentity.getDeltaMovement().z(),
+                  (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.1),
+                  0.8F
+               );
+               projectileLevel.addFreshEntity(_entityToSpawn);
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))) {
+            world.destroyBlock(BlockPos.containing(x, y, z), false);
+            if (world instanceof Level _levelxx) {
+               if (!_levelxx.isClientSide()) {
+                  _levelxx.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F
+                  );
+               } else {
+                  _levelxx.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+                     SoundSource.NEUTRAL,
+                     1.0F,
+                     1.0F,
+                     false
+                  );
+               }
+            }
+
+            if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
+               && world instanceof ServerLevel projectileLevel) {
+               Projectile _entityToSpawn = (new Object() {
+                     public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                        AbstractArrow entityToSpawn = new HugeBulletFireEntity((EntityType<? extends HugeBulletFireEntity>)CrustyChunksModEntities.HUGE_BULLET_FIRE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                        entityToSpawn.setOwner(shooter);
+                        entityToSpawn.setBaseDamage((double)damage);
+                        entityToSpawn.setSilent(true);
+                        entityToSpawn.setCritArrow(true);
+                        return entityToSpawn;
+                     }
+                  })
+                  .getArrow(projectileLevel, immediatesourceentity, 2.0F, 1, (byte)50);
+               _entityToSpawn.setPos(
+                  immediatesourceentity.getX() - immediatesourceentity.getLookAngle().x * 1.0,
+                  immediatesourceentity.getY() - immediatesourceentity.getLookAngle().y * 1.0,
+                  immediatesourceentity.getZ() + immediatesourceentity.getLookAngle().z * 1.0
+               );
+               _entityToSpawn.shoot(
+                  immediatesourceentity.getDeltaMovement().x(),
+                  immediatesourceentity.getDeltaMovement().y(),
+                  immediatesourceentity.getDeltaMovement().z(),
+                  (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.1),
+                  0.8F
+               );
+               projectileLevel.addFreshEntity(_entityToSpawn);
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:resistant")))) {
+            if (world instanceof Level _levelxxx) {
+               if (!_levelxxx.isClientSide()) {
+                  _levelxxx.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
+                     SoundSource.NEUTRAL,
+                     0.5F,
+                     (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4))
+                  );
+               } else {
+                  _levelxxx.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
+                     SoundSource.NEUTRAL,
+                     0.5F,
+                     (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4)),
+                     false
+                  );
+               }
+            }
+
+            if (world instanceof ServerLevel _levelxxxx) {
+               _levelxxxx.sendParticles(ParticleTypes.POOF, x + 0.5, y + 0.5, z + 0.5, 7, 0.7, 0.7, 0.7, 0.2);
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:crushable")))) {
+            if (world instanceof Level _levelxxxx) {
+               if (!_levelxxxx.isClientSide()) {
+                  _levelxxxx.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.iron_golem.damage")),
+                     SoundSource.NEUTRAL,
+                     2.0F,
+                     (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4))
+                  );
+               } else {
+                  _levelxxxx.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.iron_golem.damage")),
+                     SoundSource.NEUTRAL,
+                     2.0F,
+                     (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4)),
+                     false
+                  );
+               }
+            }
+
+            BlockPos _bp = BlockPos.containing(x, y, z);
+            BlockState _bs = Blocks.GRAVEL.defaultBlockState();
+            BlockState _bso = world.getBlockState(_bp);
+            java.util.Iterator<Property<?>> var43 = _bso.getProperties().iterator();
+
+            while (var43.hasNext()) {
+
+               Property<?> entry_prop = var43.next();
+
+               Property _property = _bs.getBlock().getStateDefinition().getProperty(entry_prop.getName());
+               if (_property != null && _bs.getValue(_property) != null) {
+                  try {
+                     _bs = (BlockState)_bs.setValue(_property, _bso.getValue(entry_prop));
+                  } catch (Exception var17) {
+                  }
+               }
+            }
+
+            world.setBlock(_bp, _bs, 3);
+
+            for (int index1 = 0; index1 < 10; index1++) {
+               world.addParticle(
+                  (SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(),
+                  immediatesourceentity.getX(),
+                  immediatesourceentity.getY() + 1.0,
+                  immediatesourceentity.getZ(),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
+               );
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.GRASS_BLOCK) {
+            world.setBlock(BlockPos.containing(x, y, z), Blocks.DIRT.defaultBlockState(), 3);
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands")))) {
+            for (int index2 = 0; index2 < 10; index2++) {
+               world.addParticle(
+                  (SimpleParticleType)CrustyChunksModParticleTypes.SAND.get(),
+                  immediatesourceentity.getX(),
+                  immediatesourceentity.getY() + 1.0,
+                  immediatesourceentity.getZ(),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
+               );
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dusts")))) {
+            for (int index3 = 0; index3 < 10; index3++) {
+               world.addParticle(
+                  (SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(),
+                  immediatesourceentity.getX(),
+                  immediatesourceentity.getY() + 1.0,
+                  immediatesourceentity.getZ(),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
+                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
+               );
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:metals")))) {
+            if (world instanceof Level _levelxxxxx) {
+               if (!_levelxxxxx.isClientSide()) {
+                  _levelxxxxx.playSound(
+                     null,
+                     BlockPos.containing(x, y, z),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
+                     SoundSource.NEUTRAL,
+                     2.0F,
+                     1.5F
+                  );
+               } else {
+                  _levelxxxxx.playLocalSound(
+                     x,
+                     y,
+                     z,
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
+                     SoundSource.NEUTRAL,
+                     2.0F,
+                     1.5F,
+                     false
+                  );
+               }
+            }
+
+            if (world instanceof ServerLevel _levelxxxxxx) {
+               _levelxxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SPARKS.get(), x + 0.5, y + 1.0, z + 0.5, 35, 0.3, 0.3, 3.0, 1.0);
+            }
+         }
+
+         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y, z))));
+         if (world instanceof Level _levelxxxxxx) {
+            if (!_levelxxxxxx.isClientSide()) {
+               _levelxxxxxx.playSound(
+                  null,
+                  BlockPos.containing(x, y, z),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.firework_rocket.blast")),
+                  SoundSource.NEUTRAL,
+                  6.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.8, 1.0)
+               );
+            } else {
+               _levelxxxxxx.playLocalSound(
+                  x,
+                  y,
+                  z,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.firework_rocket.blast")),
+                  SoundSource.NEUTRAL,
+                  6.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 0.8, 1.0),
+                  false
+               );
+            }
+         }
+
+         if (world instanceof Level _levelxxxxxxx) {
+            if (!_levelxxxxxxx.isClientSide()) {
+               _levelxxxxxxx.playSound(
+                  null,
+                  BlockPos.containing(x, y, z),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:small_expllosion_distant")),
+                  SoundSource.NEUTRAL,
+                  15.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4)
+               );
+            } else {
+               _levelxxxxxxx.playLocalSound(
+                  x,
+                  y,
+                  z,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:small_expllosion_distant")),
+                  SoundSource.NEUTRAL,
+                  15.0F,
+                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4),
+                  false
+               );
+            }
+         }
+
+         if (world.getBlockState(BlockPos.containing(x, y, z)).getDestroySpeed(world, BlockPos.containing(x, y, z)) <= 5.0F
+            && world.getBlockState(BlockPos.containing(x, y, z)).getDestroySpeed(world, BlockPos.containing(x, y, z)) >= 0.0F
+            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))
+            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands")))
+            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:concrete")))) {
+            world.destroyBlock(BlockPos.containing(x, y, z), false);
+         }
+
+         HeavyCrackProcedureProcedure.execute(world, x, y, z);
+         ArmorDegradeProcedure.execute(world, x, y, z);
+         CrustyChunksMod.queueServerWork(
+            1,
+            () -> {
+               if (world instanceof ServerLevel projectileLevel) {
+                  Projectile _entityToSpawn = (new Object() {
+                        public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                           AbstractArrow entityToSpawn = new HVParticleProjectileEntity((EntityType<? extends HVParticleProjectileEntity>)CrustyChunksModEntities.HV_PARTICLE_PROJECTILE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                           entityToSpawn.setOwner(shooter);
+                           entityToSpawn.setBaseDamage((double)damage);
+                           entityToSpawn.setSilent(true);
+                           entityToSpawn.setCritArrow(true);
+                           return entityToSpawn;
+                        }
+                     })
+                     .getArrow(projectileLevel, immediatesourceentity, 3.0F, 1, (byte)50);
+                  _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+                  _entityToSpawn.shoot(
+                     immediatesourceentity.getDeltaMovement().x(),
+                     immediatesourceentity.getDeltaMovement().y(),
+                     immediatesourceentity.getDeltaMovement().z(),
+                     5.0F,
+                     0.0F
+                  );
+                  projectileLevel.addFreshEntity(_entityToSpawn);
+               }
+
+               for (int index4 = 0; index4 < Mth.nextInt(RandomSource.create(), 4, 6); index4++) {
+                  if (world instanceof ServerLevel projectileLevel) {
+                     Projectile _entityToSpawn = (new Object() {
+                           public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                              AbstractArrow entityToSpawn = new HVParticleProjectileEntity((EntityType<? extends HVParticleProjectileEntity>)CrustyChunksModEntities.HV_PARTICLE_PROJECTILE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                              entityToSpawn.setOwner(shooter);
+                              entityToSpawn.setBaseDamage((double)damage);
+                              entityToSpawn.setSilent(true);
+                              entityToSpawn.setCritArrow(true);
+                              return entityToSpawn;
+                           }
+                        })
+                        .getArrow(projectileLevel, immediatesourceentity, 3.0F, 1, (byte)50);
+                     _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+                     _entityToSpawn.shoot(
+                        immediatesourceentity.getDeltaMovement().x(),
+                        immediatesourceentity.getDeltaMovement().y(),
+                        immediatesourceentity.getDeltaMovement().z(),
+                        5.0F,
+                        15.0F
+                     );
+                     projectileLevel.addFreshEntity(_entityToSpawn);
+                  }
+               }
+
+               if (!immediatesourceentity.level().isClientSide()) {
+                  immediatesourceentity.discard();
+               }
+            }
+         );
+      }
+   }
+}

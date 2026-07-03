@@ -1,0 +1,32 @@
+[
+  {
+    "block": "crusty_chunks:light_wood_frame",
+    "mass": 20.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:light_wood_block",
+    "mass": 20.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:light_wood_slab",
+    "mass": 20.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:light_wood_stairs",
+    "mass": 20.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:light_wood_side_panel",
+    "mass": 20.0,
+    "priority": 101
+  },
+  {
+    "block": "crusty_chunks:light_wood_trapdoor",
+    "mass": 20.0,
+    "priority": 101
+  }
+]

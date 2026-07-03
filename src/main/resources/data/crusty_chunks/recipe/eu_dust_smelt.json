@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "experience": 8,
+  "cookingtime": 100,
+  "ingredient": {
+    "item": "crusty_chunks:uranium_enriched_dust"
+  },
+  "result": {
+    "id": "crusty_chunks:uranium_enriched_ingot"
+  }
+}

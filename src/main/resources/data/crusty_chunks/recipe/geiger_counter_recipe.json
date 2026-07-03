@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "aea"
+  ],
+  "key": {
+    "a": {
+      "tag": "c:ingots/aluminum"
+    },
+    "b": {
+      "tag": "c:ingots/nickel"
+    },
+    "c": {
+      "item": "minecraft:redstone_torch"
+    },
+    "d": {
+      "item": "crusty_chunks:copper_coil"
+    },
+    "e": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:geiger_counter"
+  }
+}

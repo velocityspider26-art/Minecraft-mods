@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/rocket_pod"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/rocket_pod",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/rocket_pod",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/rocket_pod",
+      "y": 270
+    }
+  }
+}

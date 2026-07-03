@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/electricmotor",
+  "textures": {
+    "all": "crusty_chunks:block/batterytop",
+    "particle": "crusty_chunks:block/solidsteel",
+    "2": "crusty_chunks:block/electricmotor"
+  },
+  "render_type": "cutout_mipped"
+}

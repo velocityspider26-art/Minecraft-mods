@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/large_rocket_pod_chamber"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/large_rocket_pod_chamber",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/large_rocket_pod_chamber",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/large_rocket_pod_chamber",
+      "y": 270
+    }
+  }
+}

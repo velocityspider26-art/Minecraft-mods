@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a  ",
+    " bb",
+    " bc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:timed_fuze"
+    },
+    "b": {
+      "item": "crusty_chunks:smoke_agent"
+    },
+    "c": {
+      "item": "crusty_chunks:hollowed_extra_large_projectile"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:smoke_projectile"
+  }
+}

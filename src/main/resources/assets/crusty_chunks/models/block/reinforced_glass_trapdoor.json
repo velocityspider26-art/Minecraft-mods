@@ -1,0 +1,8 @@
+{
+  "parent": "block/template_orientable_trapdoor_bottom",
+  "textures": {
+    "texture": "crusty_chunks:block/reinforcedglass",
+    "particle": "crusty_chunks:block/reinforcedglass"
+  },
+  "render_type": "cutout"
+}

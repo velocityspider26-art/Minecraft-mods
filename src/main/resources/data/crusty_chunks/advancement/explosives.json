@@ -1,0 +1,76 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:volatile_dust"
+    },
+    "title": {
+      "translate": "advancements.explosives.title"
+    },
+    "description": {
+      "translate": "advancements.explosives.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "explosives_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:volatile_dust"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:explosive_barrel_recipe",
+      "crusty_chunks:alternate_explosive_barrel_recipe",
+      "crusty_chunks:small_bomb_recipe",
+      "crusty_chunks:medium_bomb_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:cluster_bomb_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:torpedo_thruster_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:peeler_pod_recipe",
+      "crusty_chunks:peeler_chamber_recipe",
+      "crusty_chunks:mortar_shell_recipe",
+      "crusty_chunks:smoke_mortar_shell_recipe",
+      "crusty_chunks:mortar_recipe",
+      "crusty_chunks:smoke_launcher_recipe",
+      "crusty_chunks:grenade_recipe",
+      "crusty_chunks:smoke_grenade_recipe",
+      "crusty_chunks:incendiary_grenade_recipe",
+      "crusty_chunks:ordinance_fin_recipe",
+      "crusty_chunks:ordinance_rocket_recipe",
+      "crusty_chunks:ordinance_core_recipe",
+      "crusty_chunks:ordinance_inline_warhead_recipe",
+      "crusty_chunks:ordinance_heavy_warhead_recipe",
+      "crusty_chunks:ordinance_fire_warhead",
+      "crusty_chunks:ordinance_cluster_warhead_recipe",
+      "crusty_chunks:ordinance_kinetic_warhead_recipe",
+      "crusty_chunks:solid_rocket_fuel_pack_recipe",
+      "crusty_chunks:gas_mask_recipe",
+      "crusty_chunks:fire_spear_recipe",
+      "crusty_chunks:seeker_spear_recipe",
+      "crusty_chunks:missile_hardpoint_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:powder_types"
+}

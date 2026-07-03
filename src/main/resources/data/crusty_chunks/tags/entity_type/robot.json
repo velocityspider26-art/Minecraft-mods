@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:decimator",
+    "crusty_chunks:flamer",
+    "crusty_chunks:hunter",
+    "crusty_chunks:striker",
+    "crusty_chunks:rifler",
+    "crusty_chunks:mortarer",
+    "crusty_chunks:commander",
+    "crusty_chunks:ciws",
+    "crusty_chunks:assassin",
+    "crusty_chunks:eradicator",
+    "crusty_chunks:raidscout",
+    "crusty_chunks:scout",
+    "crusty_chunks:worker",
+    "crusty_chunks:reaper",
+    "crusty_chunks:breacher",
+    "crusty_chunks:prototype_eradicator"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    " c "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:wood_component"
+    },
+    "b": {
+      "item": "crusty_chunks:passenger_seat"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:manual_aimer"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/blastfunnel",
+  "textures": {
+    "all": "crusty_chunks:block/blastbricks",
+    "particle": "crusty_chunks:block/blastbricks",
+    "3": "crusty_chunks:block/blastfunnel"
+  },
+  "render_type": "solid"
+}

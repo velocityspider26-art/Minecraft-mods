@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "tag": "c:ingots/steel"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_tube"
+    },
+    "c": {
+      "item": "crusty_chunks:blast_funnel"
+    },
+    "d": {
+      "tag": "forge:blocks/nickel"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:refinery_tower"
+  }
+}

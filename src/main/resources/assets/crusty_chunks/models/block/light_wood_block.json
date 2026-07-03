@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/woodenpanel",
+    "up": "crusty_chunks:block/woodenpanel",
+    "north": "crusty_chunks:block/woodenpanel",
+    "east": "crusty_chunks:block/woodenpanel",
+    "south": "crusty_chunks:block/woodenpanel",
+    "west": "crusty_chunks:block/woodenpanel",
+    "particle": "crusty_chunks:block/woodenpanel"
+  },
+  "render_type": "solid"
+}

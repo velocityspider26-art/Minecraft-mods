@@ -1,0 +1,199 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 32,
+        "texture_height": 32,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Left",
+          "pivot": [
+            6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                12,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pistol1",
+          "pivot": [
+            -13,
+            -2,
+            -15
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6,
+                1.25,
+                -15.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                0,
+                21
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                0.5,
+                -13.5
+              ],
+              "size": [
+                3,
+                6,
+                4
+              ],
+              "inflate": -0.9,
+              "pivot": [
+                -5,
+                3,
+                -6
+              ],
+              "rotation": [
+                15,
+                0,
+                0
+              ],
+              "uv": [
+                18,
+                12
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                3.5,
+                -14
+              ],
+              "size": [
+                3,
+                3,
+                3
+              ],
+              "inflate": -0.75,
+              "uv": [
+                12,
+                22
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                2.5,
+                -18.5
+              ],
+              "size": [
+                3,
+                3,
+                9
+              ],
+              "inflate": -1,
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "pistol1",
+          "pivot": [
+            -5,
+            4,
+            -17
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.5,
+                3.5,
+                -18.5
+              ],
+              "size": [
+                3,
+                3,
+                6
+              ],
+              "inflate": -0.75,
+              "uv": [
+                0,
+                12
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

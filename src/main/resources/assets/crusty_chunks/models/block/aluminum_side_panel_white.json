@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/whitesidepanel",
+  "textures": {
+    "all": "crusty_chunks:block/white_aluminum_plating",
+    "particle": "crusty_chunks:block/white_aluminum_plating",
+    "0": "crusty_chunks:block/white_aluminum_plating"
+  },
+  "render_type": "solid"
+}

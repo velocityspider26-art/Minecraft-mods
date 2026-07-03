@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/brown_aluminum_plating",
+    "up": "crusty_chunks:block/brown_aluminum_plating",
+    "north": "crusty_chunks:block/acbarrelbrownaluminum",
+    "east": "crusty_chunks:block/brown_aluminum_plating",
+    "south": "crusty_chunks:block/acbarrelbrownaluminum",
+    "west": "crusty_chunks:block/brown_aluminum_plating",
+    "particle": "crusty_chunks:block/brown_aluminum_plating"
+  },
+  "render_type": "solid"
+}

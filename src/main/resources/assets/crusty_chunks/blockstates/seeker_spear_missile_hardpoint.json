@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/seeker_spear_missile_hardpoint"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/seeker_spear_missile_hardpoint",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/seeker_spear_missile_hardpoint",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/seeker_spear_missile_hardpoint",
+      "y": 270
+    }
+  }
+}

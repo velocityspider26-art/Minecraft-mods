@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "minecraft:copper_ingot",
+  "process": "crusty_chunks:mechanical_press",
+  "result": {
+    "id": "crusty_chunks:copper_plate"
+  },
+  "runs": 1
+}

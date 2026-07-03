@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "aba",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "b": {
+      "item": "minecraft:tinted_glass"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:steel_optic"
+  }
+}

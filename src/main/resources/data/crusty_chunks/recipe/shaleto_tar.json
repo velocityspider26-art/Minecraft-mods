@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aa",
+    "aa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:shale_oil"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:tar"
+  }
+}

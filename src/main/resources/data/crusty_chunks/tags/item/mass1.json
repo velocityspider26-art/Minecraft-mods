@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:grenade",
+    "crusty_chunks:smoke_grenade",
+    "crusty_chunks:incendiary_grenade",
+    "crusty_chunks:semi_automatic_pistol_animated",
+    "crusty_chunks:auto_pistol",
+    "crusty_chunks:flare_pistol",
+    "crusty_chunks:stealth_pistol"
+  ]
+}

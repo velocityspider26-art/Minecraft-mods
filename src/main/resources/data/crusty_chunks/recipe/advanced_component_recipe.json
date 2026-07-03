@@ -1,0 +1,39 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " ab",
+    "cde",
+    "fgh"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "b": {
+      "item": "crusty_chunks:brass_fitting"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_wire"
+    },
+    "d": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "e": {
+      "item": "crusty_chunks:bored_component"
+    },
+    "f": {
+      "item": "crusty_chunks:electric_motor"
+    },
+    "g": {
+      "item": "crusty_chunks:copper_coil"
+    },
+    "h": {
+      "tag": "forge:buckets/oil"
+    }
+  },
+  "result": {
+    "count": 4,
+    "id": "crusty_chunks:advanced_component"
+  }
+}

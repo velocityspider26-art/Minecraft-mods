@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "aaa",
+    "aaa",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:nickel_ingot"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:nickel_block"
+  }
+}

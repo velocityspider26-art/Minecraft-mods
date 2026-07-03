@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:huge_projectile"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:artillery_solid_shell"
+  }
+}

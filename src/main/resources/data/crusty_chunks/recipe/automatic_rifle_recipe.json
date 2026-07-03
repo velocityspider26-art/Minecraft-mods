@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "ab ",
+    "cde",
+    " fg"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:medium_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_tube"
+    },
+    "c": {
+      "item": "crusty_chunks:wood_component"
+    },
+    "d": {
+      "item": "crusty_chunks:automatic_rifle_receiver"
+    },
+    "e": {
+      "item": "crusty_chunks:bored_component"
+    },
+    "f": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "g": {
+      "item": "crusty_chunks:rifle_stock"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:automatic_rifle"
+  }
+}

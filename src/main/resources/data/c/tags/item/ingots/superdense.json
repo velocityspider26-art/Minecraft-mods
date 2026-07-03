@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:uranium_depleted_ingot",
+    "minecraft:netherite_ingot",
+    "#c:ingots/iridium",
+    "#c:ingots/uranium",
+    "#c:ingots/tungsten"
+  ]
+}

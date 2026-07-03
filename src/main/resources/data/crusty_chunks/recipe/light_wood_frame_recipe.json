@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "a a",
+    " a "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:wood_component"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:light_wood_frame"
+  }
+}

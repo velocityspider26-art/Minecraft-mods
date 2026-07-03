@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ab ",
+    "bcb",
+    " bd"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:shaped_charge_fuze"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "c": {
+      "item": "crusty_chunks:volatile_dust"
+    },
+    "d": {
+      "item": "crusty_chunks:propellent"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:armor_peeler_rocket"
+  }
+}

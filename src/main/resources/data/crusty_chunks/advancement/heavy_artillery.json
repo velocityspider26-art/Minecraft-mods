@@ -1,0 +1,81 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:extra_large_projectile"
+    },
+    "title": {
+      "translate": "advancements.heavy_artillery.title"
+    },
+    "description": {
+      "translate": "advancements.heavy_artillery.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "heavy_artillery_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:extra_large_projectile"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:volatile_dust_recipe",
+      "crusty_chunks:volatile_grow",
+      "crusty_chunks:volatile_shrink",
+      "crusty_chunks:propellent_recipe",
+      "crusty_chunks:small_bomb_recipe",
+      "crusty_chunks:medium_bomb_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:cluster_bomb_recipe",
+      "crusty_chunks:explosive_barrel_recipe",
+      "crusty_chunks:alternate_explosive_barrel_recipe",
+      "crusty_chunks:artillery_solid_shell_recipe",
+      "crusty_chunks:artillery_he_shell_recipe",
+      "crusty_chunks:artillery_charge_recipe",
+      "crusty_chunks:shaped_charge_fuze_recipe",
+      "crusty_chunks:he_projectile_recipe",
+      "crusty_chunks:heat_projectile_recipe",
+      "crusty_chunks:flak_projectile_recipe",
+      "crusty_chunks:apfsds_projectile_recipe",
+      "crusty_chunks:h_eshell_recipe",
+      "crusty_chunks:heats_hell_recipe",
+      "crusty_chunks:flak_shell_recipe",
+      "crusty_chunks:ap_shell_recipe",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:deleted_mod_element",
+      "crusty_chunks:small_shell_recipe",
+      "crusty_chunks:small_he_projectile_recipe",
+      "crusty_chunks:artillerycannonrecipe",
+      "crusty_chunks:battle_cannon_recipe",
+      "crusty_chunks:artillery_autoloader_recipe",
+      "crusty_chunks:chargeautoloaderrecipe",
+      "crusty_chunks:battle_cannon_autoloader_recipe",
+      "crusty_chunks:mortar_shell_recipe",
+      "crusty_chunks:smoke_mortar_shell_recipe",
+      "crusty_chunks:solid_shell_recipe",
+      "crusty_chunks:toxic_agent_recipe",
+      "crusty_chunks:gas_bomb_recipe",
+      "crusty_chunks:artillery_gas_shell_recipe",
+      "crusty_chunks:seeker_head_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:gun_recipes"
+}

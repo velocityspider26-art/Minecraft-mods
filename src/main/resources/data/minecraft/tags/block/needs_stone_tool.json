@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:polished_bauxite",
+    "crusty_chunks:polished_trinitite",
+    "crusty_chunks:rebar",
+    "crusty_chunks:trinitite",
+    "crusty_chunks:wire_fence",
+    "crusty_chunks:aluminum_block"
+  ]
+}

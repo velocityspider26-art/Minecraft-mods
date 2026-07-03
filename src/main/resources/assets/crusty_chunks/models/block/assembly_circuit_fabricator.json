@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/circuitfabricator",
+    "up": "crusty_chunks:block/circuitfabricator",
+    "north": "crusty_chunks:block/assemblyout",
+    "east": "crusty_chunks:block/machinekineticinput",
+    "south": "crusty_chunks:block/assemblyin",
+    "west": "crusty_chunks:block/machinekineticinput",
+    "particle": "crusty_chunks:block/circuitfabricator"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,31 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:ap_medium_bullet",
+    "crusty_chunks:bulletfire_projectile",
+    "crusty_chunks:generic_large_bullet_green",
+    "crusty_chunks:genericlarge_bullet",
+    "crusty_chunks:huge_ai_bullet",
+    "crusty_chunks:huge_bullet_fire",
+    "crusty_chunks:large_ap_bullet",
+    "crusty_chunks:large_bullet_fire_projectile",
+    "crusty_chunks:large_stealth_bullet",
+    "crusty_chunks:medium_ai_bullet",
+    "crusty_chunks:small_ai_bullet",
+    "crusty_chunks:small_bullet_alt",
+    "crusty_chunks:small_bullet_hp",
+    "crusty_chunks:small_bullet_stealth",
+    "crusty_chunks:smallbulletfire_projectile",
+    "crusty_chunks:stealth_medium_bullet",
+    "crusty_chunks:small_shell_fire",
+    "crusty_chunks:artillery_fire_projectile",
+    "crusty_chunks:artillery_solid_projectile",
+    "crusty_chunks:large_ap_fire",
+    "crusty_chunks:large_flak_projectile",
+    "crusty_chunks:large_heat_fire",
+    "crusty_chunks:large_solid_projectile",
+    "crusty_chunks:extra_large_bullet_fire",
+    "crusty_chunks:ai_stealth_bullet",
+    "crusty_chunks:huge_he_bullet_fire"
+  ]
+}

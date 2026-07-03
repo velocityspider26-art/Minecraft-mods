@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/type_2_bc_muzzle_brake"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/type_2_bc_muzzle_brake",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/type_2_bc_muzzle_brake",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/type_2_bc_muzzle_brake",
+      "y": 270
+    }
+  }
+}

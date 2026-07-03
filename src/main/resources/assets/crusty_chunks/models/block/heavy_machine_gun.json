@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/heavymachinegun",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "2": "crusty_chunks:block/heavymachinegun"
+  },
+  "render_type": "solid"
+}

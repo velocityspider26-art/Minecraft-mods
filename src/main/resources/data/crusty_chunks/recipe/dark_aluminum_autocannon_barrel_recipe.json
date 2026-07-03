@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "aba",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:aluminum_ac_barrel"
+    },
+    "b": {
+      "item": "minecraft:charcoal"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:aluminum_ac_barrel_dark_gray"
+  }
+}

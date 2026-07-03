@@ -1,0 +1,37 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    },
+    {
+      "item": "crusty_chunks:pyrochlore"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:pyrochlore_block"
+  }
+}

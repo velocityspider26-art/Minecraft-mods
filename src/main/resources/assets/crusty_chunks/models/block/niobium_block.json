@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/niobiumblock",
+    "up": "crusty_chunks:block/niobiumblock",
+    "north": "crusty_chunks:block/niobiumblock",
+    "east": "crusty_chunks:block/niobiumblock",
+    "south": "crusty_chunks:block/niobiumblock",
+    "west": "crusty_chunks:block/niobiumblock",
+    "particle": "crusty_chunks:block/niobiumblock"
+  },
+  "render_type": "solid"
+}

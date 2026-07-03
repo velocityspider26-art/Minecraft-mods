@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "villager",
+    "iron_golem",
+    "wandering_trader"
+  ]
+}

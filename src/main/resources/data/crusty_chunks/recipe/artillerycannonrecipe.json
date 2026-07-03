@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abc",
+    "bdd",
+    "cde"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:artillery_barrel"
+    },
+    "b": {
+      "tag": "forge:blocks/steel"
+    },
+    "c": {
+      "tag": "c:ingots/steel"
+    },
+    "d": {
+      "item": "crusty_chunks:steel_spring"
+    },
+    "e": {
+      "item": "crusty_chunks:steel_gear"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:artillerybreech"
+  }
+}

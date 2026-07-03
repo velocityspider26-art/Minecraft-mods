@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/smalldieselengine",
+  "textures": {
+    "all": "crusty_chunks:block/mediumdieselengine",
+    "particle": "crusty_chunks:block/aimer",
+    "0": "crusty_chunks:block/mediumdieselengine"
+  },
+  "render_type": "cutout_mipped"
+}

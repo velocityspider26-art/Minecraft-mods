@@ -1,0 +1,10 @@
+{
+  "parent": "block/outer_stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/armor_white",
+    "bottom": "crusty_chunks:block/armor_white",
+    "top": "crusty_chunks:block/armor_white",
+    "side": "crusty_chunks:block/armor_white"
+  },
+  "render_type": "solid"
+}

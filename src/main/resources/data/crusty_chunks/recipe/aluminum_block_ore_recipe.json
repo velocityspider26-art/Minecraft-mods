@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:aluminum_block"
+    }
+  ],
+  "result": {
+    "count": 9,
+    "id": "crusty_chunks:aluminum_ingot"
+  }
+}

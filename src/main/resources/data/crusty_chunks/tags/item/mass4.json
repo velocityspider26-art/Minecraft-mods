@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:bolt_action_rifle_animated",
+    "crusty_chunks:scoped_bolt_action_rifle_animated",
+    "crusty_chunks:breech_rifle",
+    "crusty_chunks:scoped_breech_rifle",
+    "crusty_chunks:armor_peeler_animated",
+    "crusty_chunks:semi_automatic_rifle_animated",
+    "crusty_chunks:burst_rifle",
+    "crusty_chunks:automatic_rifle",
+    "crusty_chunks:pump_action_shotgun_animated",
+    "crusty_chunks:break_action_shotgun_animated"
+  ]
+}

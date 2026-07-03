@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/ordinanceseeker",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "0": "crusty_chunks:block/ordinancenoseseeker"
+  },
+  "render_type": "solid"
+}

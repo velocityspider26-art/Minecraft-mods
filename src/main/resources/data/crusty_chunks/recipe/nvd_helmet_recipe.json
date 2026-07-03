@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "bcb",
+    "ded"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bullet_resistant_helmet_helmet"
+    },
+    "b": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "c": {
+      "item": "crusty_chunks:tech_component"
+    },
+    "d": {
+      "tag": "crusty_chunks:silicoid"
+    },
+    "e": {
+      "item": "crusty_chunks:power_cell"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:nvd_helmet_helmet"
+  }
+}

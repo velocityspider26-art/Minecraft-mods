@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/drive_shaft"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/drive_shaft",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/drive_shaft",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/drive_shaft",
+      "y": 270
+    }
+  }
+}

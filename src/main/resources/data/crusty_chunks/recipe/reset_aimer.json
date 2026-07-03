@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:aimer"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:aimer"
+  }
+}

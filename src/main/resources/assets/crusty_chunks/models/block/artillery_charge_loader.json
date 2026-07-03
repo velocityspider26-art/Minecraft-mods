@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/autoloaderside",
+    "up": "crusty_chunks:block/darkplating",
+    "north": "crusty_chunks:block/conveyorlifttop",
+    "east": "crusty_chunks:block/darkplating",
+    "south": "crusty_chunks:block/autoloaderside",
+    "west": "crusty_chunks:block/darkplating",
+    "particle": "crusty_chunks:block/autoloaderside"
+  },
+  "render_type": "solid"
+}

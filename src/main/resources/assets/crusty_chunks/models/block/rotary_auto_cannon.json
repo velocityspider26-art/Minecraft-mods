@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/racbreech",
+  "textures": {
+    "all": "crusty_chunks:block/rotaryautocannontexture",
+    "particle": "crusty_chunks:block/solidsteel",
+    "1": "crusty_chunks:block/rotaryautocannontexture"
+  },
+  "render_type": "solid"
+}

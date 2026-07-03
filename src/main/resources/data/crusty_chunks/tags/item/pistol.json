@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:revolver_animated",
+    "crusty_chunks:semi_automatic_pistol_animated",
+    "crusty_chunks:auto_pistol",
+    "crusty_chunks:stealth_pistol"
+  ]
+}

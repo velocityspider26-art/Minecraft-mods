@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/smokecanister",
+  "textures": {
+    "all": "crusty_chunks:block/smokecanister",
+    "particle": "crusty_chunks:block/smokecanister",
+    "1": "crusty_chunks:block/smokecanister"
+  },
+  "render_type": "solid"
+}

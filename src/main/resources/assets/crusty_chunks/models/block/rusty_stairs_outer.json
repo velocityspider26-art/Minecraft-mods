@@ -1,0 +1,10 @@
+{
+  "parent": "block/outer_stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/rustyblock",
+    "bottom": "crusty_chunks:block/rustyblock",
+    "top": "crusty_chunks:block/rustyblock",
+    "side": "crusty_chunks:block/rustyblock"
+  },
+  "render_type": "solid"
+}

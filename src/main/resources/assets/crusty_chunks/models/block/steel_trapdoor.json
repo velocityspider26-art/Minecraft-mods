@@ -1,0 +1,8 @@
+{
+  "parent": "block/template_orientable_trapdoor_bottom",
+  "textures": {
+    "texture": "crusty_chunks:block/steel_block",
+    "particle": "crusty_chunks:block/steel_block"
+  },
+  "render_type": "solid"
+}

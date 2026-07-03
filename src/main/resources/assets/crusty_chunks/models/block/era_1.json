@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/era1",
+  "textures": {
+    "all": "crusty_chunks:block/armor_green",
+    "particle": "crusty_chunks:block/armor_green",
+    "1": "crusty_chunks:block/eratiles"
+  },
+  "render_type": "solid"
+}

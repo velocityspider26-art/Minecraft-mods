@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_features",
+  "biomes": "#is_overworld",
+  "features": "crusty_chunks:tar",
+  "step": "underground_ores"
+}

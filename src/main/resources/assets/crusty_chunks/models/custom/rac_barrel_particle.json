@@ -1,0 +1,6 @@
+{
+  "parent": "crusty_chunks:displaysettings/racbarrel.item",
+  "textures": {
+    "particle": "crusty_chunks:block/artillerybarrelblock"
+  }
+}

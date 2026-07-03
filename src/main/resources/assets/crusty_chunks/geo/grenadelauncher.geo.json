@@ -1,0 +1,382 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 4,
+        "visible_bounds_height": 2.5,
+        "visible_bounds_offset": [
+          0,
+          0.75,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Rifle2",
+          "pivot": [
+            -6,
+            -3,
+            -12
+          ]
+        },
+        {
+          "name": "Shotgun",
+          "parent": "Rifle2",
+          "pivot": [
+            -6,
+            -3,
+            -12
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                1,
+                -14.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                0,
+                8
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                1.5,
+                -14.5
+              ],
+              "size": [
+                4,
+                4.5,
+                4.5
+              ],
+              "inflate": -1.5,
+              "uv": [
+                0,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -7.5,
+                3.25,
+                -13.2
+              ],
+              "size": [
+                3,
+                3,
+                3
+              ],
+              "inflate": -0.6,
+              "uv": [
+                0,
+                58
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Hinge",
+          "parent": "Shotgun",
+          "pivot": [
+            -6,
+            3,
+            -13.5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7.5,
+                -2,
+                -20.75
+              ],
+              "size": [
+                3,
+                8,
+                3
+              ],
+              "inflate": -0.95,
+              "pivot": [
+                -5,
+                2,
+                -18
+              ],
+              "rotation": [
+                -90,
+                0,
+                0
+              ],
+              "uv": [
+                0,
+                20
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                1.5,
+                -17.5
+              ],
+              "size": [
+                4,
+                4.5,
+                6
+              ],
+              "inflate": -1.5,
+              "uv": [
+                22,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "Hinge",
+          "pivot": [
+            -6,
+            4,
+            -30
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8.5,
+                4,
+                -19
+              ],
+              "size": [
+                5,
+                7,
+                3
+              ],
+              "inflate": -1.4,
+              "uv": [
+                48,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -7.5,
+                3.25,
+                -30
+              ],
+              "size": [
+                3,
+                3,
+                18
+              ],
+              "inflate": -0.6,
+              "uv": [
+                22,
+                43
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Stock",
+          "parent": "Shotgun",
+          "pivot": [
+            -6,
+            3,
+            -6
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                3,
+                -11.75
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "inflate": -0.4,
+              "pivot": [
+                -6,
+                4,
+                -11
+              ],
+              "rotation": [
+                -77.5,
+                0,
+                0
+              ],
+              "uv": [
+                22,
+                10
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                -1.9111,
+                -12.41363
+              ],
+              "size": [
+                2,
+                7,
+                2
+              ],
+              "inflate": -0.45,
+              "pivot": [
+                -6,
+                4,
+                -11
+              ],
+              "rotation": [
+                80,
+                0,
+                0
+              ],
+              "uv": [
+                22,
+                20
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                0.5,
+                -8
+              ],
+              "size": [
+                2,
+                4,
+                2
+              ],
+              "inflate": -0.44,
+              "pivot": [
+                -6,
+                3,
+                -8
+              ],
+              "rotation": [
+                82.5,
+                0,
+                0
+              ],
+              "uv": [
+                28,
+                27
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                1.75,
+                -7
+              ],
+              "size": [
+                2,
+                4,
+                2
+              ],
+              "inflate": -0.35,
+              "uv": [
+                10,
+                29
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Left",
+          "pivot": [
+            5,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "pivot": [
+                6,
+                0,
+                1
+              ],
+              "rotation": [
+                0,
+                180,
+                0
+              ],
+              "uv": [
+                23,
+                19
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "pivot": [
+                -6,
+                0,
+                1
+              ],
+              "rotation": [
+                0,
+                180,
+                0
+              ],
+              "uv": [
+                21,
+                19
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

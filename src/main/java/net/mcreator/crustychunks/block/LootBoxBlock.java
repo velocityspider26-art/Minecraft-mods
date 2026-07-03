@@ -1,0 +1,29 @@
+package net.mcreator.crustychunks.block;
+
+import net.mcreator.crustychunks.procedures.LootBoxOpenProcedure;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.BlockBehaviour.Properties;
+import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
+import net.minecraft.world.level.material.FluidState;
+
+public class LootBoxBlock extends Block {
+   public LootBoxBlock() {
+      super(Properties.of().instrument(NoteBlockInstrument.BASEDRUM).sound(SoundType.ANVIL).strength(1.0F, 5.0F));
+   }
+
+   public int getLightBlock(BlockState state, BlockGetter worldIn, BlockPos pos) {
+      return 15;
+   }
+
+   public boolean onDestroyedByPlayer(BlockState blockstate, Level world, BlockPos pos, Player entity, boolean willHarvest, FluidState fluid) {
+      boolean retval = super.onDestroyedByPlayer(blockstate, world, pos, entity, willHarvest, fluid);
+      LootBoxOpenProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
+      return retval;
+   }
+}

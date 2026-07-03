@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "up": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "north": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "east": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "south": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "west": "crusty_chunks:block/aluminum_armor_dark_gray",
+    "particle": "crusty_chunks:block/aluminum_armor_dark_gray"
+  },
+  "render_type": "solid"
+}

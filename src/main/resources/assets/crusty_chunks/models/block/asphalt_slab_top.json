@@ -1,0 +1,10 @@
+{
+  "parent": "block/slab_top",
+  "textures": {
+    "particle": "crusty_chunks:block/asphalt",
+    "bottom": "crusty_chunks:block/asphalt",
+    "top": "crusty_chunks:block/asphalt",
+    "side": "crusty_chunks:block/asphalt"
+  },
+  "render_type": "solid"
+}

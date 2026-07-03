@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "bcb",
+    "ded"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "b": {
+      "item": "crusty_chunks:beryllium_ingot"
+    },
+    "c": {
+      "item": "crusty_chunks:uranium_neural_ingot"
+    },
+    "d": {
+      "tag": "forge:blocks/nickel"
+    },
+    "e": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:reactioncomponent"
+  }
+}

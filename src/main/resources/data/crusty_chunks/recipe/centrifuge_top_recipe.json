@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "aca",
+    "ded"
+  ],
+  "key": {
+    "a": {
+      "tag": "c:ingots/steel"
+    },
+    "b": {
+      "item": "crusty_chunks:giant_coil"
+    },
+    "c": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "d": {
+      "item": "crusty_chunks:copper_coil"
+    },
+    "e": {
+      "item": "crusty_chunks:steel_plating"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:assembly_centrifuge_top"
+  }
+}

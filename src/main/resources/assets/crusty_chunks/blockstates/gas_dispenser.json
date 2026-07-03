@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/gas_dispenser"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/gas_dispenser",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/gas_dispenser",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/gas_dispenser",
+      "y": 270
+    }
+  }
+}

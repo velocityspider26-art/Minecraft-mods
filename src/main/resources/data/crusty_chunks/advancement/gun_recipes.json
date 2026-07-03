@@ -1,0 +1,96 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:medium_bored_barrel"
+    },
+    "title": {
+      "translate": "advancements.gun_recipes.title"
+    },
+    "description": {
+      "translate": "advancements.gun_recipes.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "gun_recipes_0": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "rewards": {
+    "experience": 32,
+    "recipes": [
+      "crusty_chunks:receiver_1",
+      "crusty_chunks:receiver_2",
+      "crusty_chunks:receiver_3",
+      "crusty_chunks:receiver_4",
+      "crusty_chunks:mg_receiver_1",
+      "crusty_chunks:pistol_receiver_1",
+      "crusty_chunks:pistol_receiver_2",
+      "crusty_chunks:pistol_receiver_3",
+      "crusty_chunks:smg_receiver_1",
+      "crusty_chunks:rifle_stock_recipe",
+      "crusty_chunks:bolt_action_rifle_recipe",
+      "crusty_chunks:automatic_rifle_recipe",
+      "crusty_chunks:burst_rifle_recipe",
+      "crusty_chunks:battle_rifle_recipe",
+      "crusty_chunks:pistol_recipe",
+      "crusty_chunks:auto_pistol_recipe",
+      "crusty_chunks:mg_barrel_recipe",
+      "crusty_chunks:lmg_recipe",
+      "crusty_chunks:smg_recipe",
+      "crusty_chunks:pump_shotgun_recipe",
+      "crusty_chunks:break_action_shotgun_recipe",
+      "crusty_chunks:weapon_bolt_recipe",
+      "crusty_chunks:firing_pin_recipe",
+      "crusty_chunks:firing_mechanism_recipe",
+      "crusty_chunks:autocannon_barrel_recipe",
+      "crusty_chunks:machine_gun_recipe",
+      "crusty_chunks:machine_carbine_recipe",
+      "crusty_chunks:small_casing_recipe",
+      "crusty_chunks:medium_casing_recipe",
+      "crusty_chunks:large_casing_recipe",
+      "crusty_chunks:huge_casing_recipe",
+      "crusty_chunks:small_bullet_recipe",
+      "crusty_chunks:medium_bullet_recipe",
+      "crusty_chunks:large_bullet_recipe",
+      "crusty_chunks:huge_bullet_recipe",
+      "crusty_chunks:heavy_autocannon_recipe",
+      "crusty_chunks:light_autocannon_recipe",
+      "crusty_chunks:rotary_autocannon_recipe",
+      "crusty_chunks:small_magazine_recipe",
+      "crusty_chunks:medium_magazine_recipe",
+      "crusty_chunks:large_magazine_recipe",
+      "crusty_chunks:smg_magazine_recipe",
+      "crusty_chunks:lmg_ammo_box_recipe",
+      "crusty_chunks:mg_ammo_box_recipe",
+      "crusty_chunks:auto_cannon_ammo_box_recipe",
+      "crusty_chunks:armor_peeler_rocket_recipe",
+      "crusty_chunks:armor_peeler_recipe",
+      "crusty_chunks:shotgunshell_recipe",
+      "crusty_chunks:shotgun_casing_recipe",
+      "crusty_chunks:aimer_recipe",
+      "crusty_chunks:aimer_node_recipe",
+      "crusty_chunks:rotary_barrel_recipe",
+      "crusty_chunks:small_shell_recipe",
+      "crusty_chunks:small_he_projectile_recipe",
+      "crusty_chunks:flamethrower_recipe",
+      "crusty_chunks:flamethrowertankrecipe",
+      "crusty_chunks:single_shot_recipe",
+      "crusty_chunks:small_st_bullet_recipe",
+      "crusty_chunks:small_hp_bullet_recipe",
+      "crusty_chunks:medium_ap_bullet_recipe",
+      "crusty_chunks:medium_stealth_bullet_recipe",
+      "crusty_chunks:large_ap_bullet_recipe",
+      "crusty_chunks:large_stealth_bullet_recipe",
+      "crusty_chunks:birdshot_recipe",
+      "crusty_chunks:shotgun_slug_recipe",
+      "crusty_chunks:stealth_pistol_recipe",
+      "crusty_chunks:rifle_scope",
+      "crusty_chunks:weapon_supressor_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:casting"
+}

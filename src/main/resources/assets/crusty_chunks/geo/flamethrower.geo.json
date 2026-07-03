@@ -1,0 +1,300 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Rifle2",
+          "pivot": [
+            -6,
+            -3,
+            -12
+          ]
+        },
+        {
+          "name": "Rifle",
+          "parent": "Rifle2",
+          "pivot": [
+            -6,
+            -3,
+            -17
+          ]
+        },
+        {
+          "name": "Bolt",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            3,
+            -8
+          ]
+        },
+        {
+          "name": "Magazine",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            4,
+            -20
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            3,
+            -3
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                1.25,
+                -21.75
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                12,
+                24
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                3.5,
+                -31
+              ],
+              "size": [
+                1,
+                1,
+                23
+              ],
+              "pivot": [
+                -6,
+                4,
+                -30
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                3,
+                -32
+              ],
+              "size": [
+                2,
+                2,
+                5
+              ],
+              "inflate": -0.3,
+              "pivot": [
+                -6,
+                4,
+                -32
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                11
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                3,
+                -19
+              ],
+              "size": [
+                2,
+                2,
+                9
+              ],
+              "inflate": -0.35,
+              "pivot": [
+                -6,
+                4,
+                -19
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bone",
+          "parent": "Barrel",
+          "pivot": [
+            -6,
+            6,
+            -11
+          ]
+        },
+        {
+          "name": "Stock",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            3,
+            -18
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7.5,
+                1,
+                -19.25
+              ],
+              "size": [
+                3,
+                5,
+                3
+              ],
+              "inflate": -0.8,
+              "pivot": [
+                -6,
+                3,
+                -12
+              ],
+              "rotation": [
+                15,
+                0,
+                0
+              ],
+              "uv": [
+                11,
+                15
+              ]
+            },
+            {
+              "origin": [
+                -7.5,
+                2,
+                -13.25
+              ],
+              "size": [
+                3,
+                4,
+                3
+              ],
+              "inflate": -0.8,
+              "pivot": [
+                -6,
+                4,
+                -6
+              ],
+              "rotation": [
+                15,
+                0,
+                0
+              ],
+              "uv": [
+                0,
+                24
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Left",
+          "pivot": [
+            5,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                12,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

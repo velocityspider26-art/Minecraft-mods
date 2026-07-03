@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "crusty_chunks:blocks/aluminum_plating_slab_blue",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crusty_chunks:aluminum_plating_slab_blue",
+          "functions": [
+            {
+              "conditions": [
+                {
+                  "condition": "minecraft:block_state_property",
+                  "block": "crusty_chunks:aluminum_plating_slab_blue",
+                  "properties": {
+                    "type": "double"
+                  }
+                }
+              ],
+              "count": 2.0,
+              "function": "minecraft:set_count"
+            },
+            {
+              "function": "minecraft:explosion_decay"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

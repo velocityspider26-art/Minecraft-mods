@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "crusty_chunks:overgrown_array",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 130,
+    "separation": 30,
+    "salt": 978777980
+  }
+}

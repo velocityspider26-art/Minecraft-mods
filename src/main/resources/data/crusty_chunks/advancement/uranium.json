@@ -1,0 +1,63 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:uranium_neural_ingot"
+    },
+    "title": {
+      "translate": "advancements.uranium.title"
+    },
+    "description": {
+      "translate": "advancements.uranium.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "uranium_0": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "crusty_chunks:uranium_neutraltiny_dust"
+            ],
+            "count": {
+              "min": 1,
+              "max": 64
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": {
+    "experience": 0,
+    "recipes": [
+      "crusty_chunks:fission_core_recipe",
+      "crusty_chunks:fission_bomb_recipe",
+      "crusty_chunks:shielding_component_recipe",
+      "crusty_chunks:implosion_module_recipe",
+      "crusty_chunks:implosion_lens_recipe",
+      "crusty_chunks:plutonium_ingot_recipe",
+      "crusty_chunks:plutonium_nugget_recipe",
+      "crusty_chunks:advanced_component_recipe",
+      "crusty_chunks:centrifuge_core_recipe",
+      "crusty_chunks:centrifuge_top_recipe",
+      "crusty_chunks:centrifuge_bottom_recipe",
+      "crusty_chunks:breeder_reactor_recipe",
+      "crusty_chunks:reaction_component_recipe",
+      "crusty_chunks:reaction_chamber_recipe",
+      "crusty_chunks:reactor_port_recipe",
+      "crusty_chunks:giant_coil_recipe",
+      "crusty_chunks:geiger_counter_recipe",
+      "crusty_chunks:neutron_reflector_recipe",
+      "crusty_chunks:breeder_reactor_core_recipe",
+      "crusty_chunks:reactor_casing_recipe",
+      "crusty_chunks:empty_fuel_rod_recipe",
+      "crusty_chunks:fuel_rod_recipe"
+    ]
+  },
+  "parent": "crusty_chunks:explosives"
+}

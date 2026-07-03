@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abc",
+    "dbd",
+    "efe"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:electric_motor"
+    },
+    "b": {
+      "item": "crusty_chunks:engine_component"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_tube"
+    },
+    "d": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "e": {
+      "item": "crusty_chunks:cast_component"
+    },
+    "f": {
+      "item": "crusty_chunks:steel_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:small_engine"
+  }
+}

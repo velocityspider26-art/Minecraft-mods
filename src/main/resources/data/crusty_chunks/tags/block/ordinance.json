@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:ordinance_sarh_seeker",
+    "crusty_chunks:ordinance_core",
+    "crusty_chunks:ordinance_fins",
+    "crusty_chunks:ordinance_thruster",
+    "crusty_chunks:ordinance_heavy_warhead",
+    "crusty_chunks:ordinance_incendiary_warhead",
+    "crusty_chunks:ordinance_inline_warhead",
+    "crusty_chunks:ordinance_kinetic_head",
+    "crusty_chunks:ordinance_ir_seeker_head",
+    "crusty_chunks:ordinance_cluster_warhead",
+    "crusty_chunks:ordinance_inline_fission_warhead",
+    "crusty_chunks:ordinance_fission_initiator_head",
+    "crusty_chunks:ordinance_inline_fusion_warhead_stage_1",
+    "crusty_chunks:ordinance_inline_fusion_warhead_stage_2",
+    "crusty_chunks:torpedo_thruster"
+  ]
+}

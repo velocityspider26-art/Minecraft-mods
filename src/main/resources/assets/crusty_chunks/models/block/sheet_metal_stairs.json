@@ -1,0 +1,10 @@
+{
+  "parent": "block/stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/sheetmetal",
+    "bottom": "crusty_chunks:block/sheetmetal",
+    "top": "crusty_chunks:block/sheetmetal",
+    "side": "crusty_chunks:block/sheetmetal"
+  },
+  "render_type": "solid"
+}

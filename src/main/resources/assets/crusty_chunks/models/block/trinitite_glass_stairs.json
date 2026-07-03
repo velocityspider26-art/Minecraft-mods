@@ -1,0 +1,10 @@
+{
+  "parent": "block/stairs",
+  "textures": {
+    "particle": "crusty_chunks:block/trinititeglass",
+    "bottom": "crusty_chunks:block/trinititeglass",
+    "top": "crusty_chunks:block/trinititeglass",
+    "side": "crusty_chunks:block/trinititeglass"
+  },
+  "render_type": "translucent"
+}

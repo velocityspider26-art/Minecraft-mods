@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "experience": 0.56,
+  "cookingtime": 200,
+  "ingredient": {
+    "item": "crusty_chunks:copper_dust"
+  },
+  "result": {
+    "id": "minecraft:copper_ingot"
+  }
+}

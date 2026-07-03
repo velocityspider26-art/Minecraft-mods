@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/mediumbomb",
+  "textures": {
+    "all": "crusty_chunks:block/mediumbomb",
+    "particle": "crusty_chunks:block/steel_block",
+    "2": "crusty_chunks:block/mediumbomb"
+  },
+  "render_type": "cutout"
+}

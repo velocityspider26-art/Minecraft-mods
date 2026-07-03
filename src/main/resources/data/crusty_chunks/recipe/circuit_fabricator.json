@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cac",
+    "ded"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:precision_component"
+    },
+    "b": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "c": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    },
+    "d": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "e": {
+      "item": "crusty_chunks:assembly_depot"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:assembly_circuit_fabricator"
+  }
+}

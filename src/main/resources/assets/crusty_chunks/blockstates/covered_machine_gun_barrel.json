@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/covered_machine_gun_barrel"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/covered_machine_gun_barrel",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/covered_machine_gun_barrel",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/covered_machine_gun_barrel",
+      "y": 270
+    }
+  }
+}

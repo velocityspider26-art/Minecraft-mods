@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abb",
+    "ccc",
+    "dbb"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:electric_motor"
+    },
+    "b": {
+      "item": "crusty_chunks:aluminum_plate"
+    },
+    "c": {
+      "item": "crusty_chunks:turbine_rotor"
+    },
+    "d": {
+      "item": "crusty_chunks:advanced_component"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:jet_compressor"
+  }
+}

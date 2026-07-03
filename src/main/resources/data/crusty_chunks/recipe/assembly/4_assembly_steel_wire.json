@@ -1,0 +1,9 @@
+{
+  "type": "crusty_chunks:assembly",
+  "item": "c:ingots/steel",
+  "process": "crusty_chunks:mechanical_extruder",
+  "result": {
+    "id": "crusty_chunks:steel_wire"
+  },
+  "runs": 1
+}

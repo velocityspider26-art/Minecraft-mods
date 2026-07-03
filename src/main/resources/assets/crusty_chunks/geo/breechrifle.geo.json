@@ -1,0 +1,446 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.unknown",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 4,
+        "visible_bounds_height": 1.5,
+        "visible_bounds_offset": [
+          0,
+          0.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "Assembly",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Rifle",
+          "parent": "Assembly",
+          "pivot": [
+            -6,
+            -3,
+            -12
+          ]
+        },
+        {
+          "name": "Round",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            4,
+            -13
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                3,
+                -16
+              ],
+              "size": [
+                2,
+                2,
+                5
+              ],
+              "inflate": -0.6,
+              "uv": [
+                50,
+                56
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Lever",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            4.75,
+            -12
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                1.25,
+                -14
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.75,
+              "uv": [
+                46,
+                46
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                2.01537,
+                -12.15224
+              ],
+              "size": [
+                2,
+                3,
+                4
+              ],
+              "inflate": -0.74,
+              "pivot": [
+                -6,
+                3,
+                -13
+              ],
+              "rotation": [
+                -22.5,
+                0,
+                0
+              ],
+              "uv": [
+                46,
+                46
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Breech",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            4.75,
+            -12
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.7,
+                3.25,
+                -12.7
+              ],
+              "size": [
+                1.4,
+                2,
+                2
+              ],
+              "inflate": -0.35,
+              "uv": [
+                32,
+                50
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Barrel",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            3,
+            -4
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.75,
+                4.25,
+                -21
+              ],
+              "size": [
+                1.5,
+                2,
+                6
+              ],
+              "inflate": -0.5,
+              "uv": [
+                47,
+                27
+              ]
+            },
+            {
+              "origin": [
+                -6.5,
+                4.25,
+                -37
+              ],
+              "size": [
+                1,
+                2,
+                2
+              ],
+              "inflate": -0.5,
+              "uv": [
+                20,
+                50
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                3,
+                -33
+              ],
+              "size": [
+                2,
+                2,
+                21
+              ],
+              "inflate": -0.35,
+              "uv": [
+                0,
+                27
+              ]
+            },
+            {
+              "origin": [
+                -11.75,
+                1.75,
+                -37.24
+              ],
+              "size": [
+                1,
+                1,
+                25
+              ],
+              "inflate": -0.1,
+              "pivot": [
+                -6,
+                -3,
+                -13
+              ],
+              "rotation": [
+                0,
+                0,
+                45
+              ],
+              "uv": [
+                1,
+                1
+              ]
+            },
+            {
+              "origin": [
+                -6,
+                3,
+                -12.7
+              ],
+              "size": [
+                1,
+                2,
+                2
+              ],
+              "inflate": -0.35,
+              "uv": [
+                26,
+                50
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                3,
+                -12.7
+              ],
+              "size": [
+                1,
+                2,
+                2
+              ],
+              "inflate": -0.35,
+              "uv": [
+                26,
+                50
+              ],
+              "mirror": true
+            }
+          ]
+        },
+        {
+          "name": "Stock",
+          "parent": "Rifle",
+          "pivot": [
+            -6,
+            3,
+            -5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                -0.99524,
+                -6.25
+              ],
+              "size": [
+                2,
+                7,
+                1.75
+              ],
+              "inflate": -0.37,
+              "pivot": [
+                -6,
+                4,
+                -6
+              ],
+              "rotation": [
+                -90,
+                0,
+                0
+              ],
+              "uv": [
+                8,
+                50
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                0.73481,
+                -8.17365
+              ],
+              "size": [
+                2,
+                9,
+                2
+              ],
+              "inflate": -0.4,
+              "pivot": [
+                -6,
+                3,
+                -6
+              ],
+              "rotation": [
+                72.5,
+                0,
+                0
+              ],
+              "uv": [
+                46,
+                35
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                1.5,
+                -8.1
+              ],
+              "size": [
+                2,
+                5,
+                1.5
+              ],
+              "inflate": -0.38,
+              "pivot": [
+                -6,
+                4,
+                -6
+              ],
+              "rotation": [
+                70,
+                0,
+                0
+              ],
+              "uv": [
+                14,
+                50
+              ]
+            },
+            {
+              "origin": [
+                -7,
+                0.3,
+                -6
+              ],
+              "size": [
+                2,
+                4,
+                2.75
+              ],
+              "inflate": -0.29,
+              "uv": [
+                0,
+                50
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Left",
+          "parent": "Assembly",
+          "pivot": [
+            5,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                4,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                40,
+                37
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Right",
+          "parent": "Assembly",
+          "pivot": [
+            -6,
+            0,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -1
+              ],
+              "size": [
+                4,
+                12,
+                4
+              ],
+              "uv": [
+                41,
+                37
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

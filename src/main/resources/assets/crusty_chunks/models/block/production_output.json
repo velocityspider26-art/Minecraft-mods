@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/productionoutput",
+  "textures": {
+    "all": "crusty_chunks:block/darkplating",
+    "particle": "crusty_chunks:block/darkplating",
+    "0": "crusty_chunks:block/productionoutput"
+  },
+  "render_type": "solid"
+}

@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/darkplating",
+    "up": "crusty_chunks:block/batterytop",
+    "north": "crusty_chunks:block/batteryside",
+    "east": "crusty_chunks:block/batteryside",
+    "south": "crusty_chunks:block/batteryside",
+    "west": "crusty_chunks:block/batteryside",
+    "particle": "crusty_chunks:block/darkplating"
+  },
+  "render_type": "solid"
+}

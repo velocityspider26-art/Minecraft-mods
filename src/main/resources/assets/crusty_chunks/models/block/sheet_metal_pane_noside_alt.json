@@ -1,0 +1,8 @@
+{
+  "parent": "block/template_glass_pane_noside_alt",
+  "textures": {
+    "particle": "crusty_chunks:block/sheetmetal",
+    "pane": "crusty_chunks:block/sheetmetal"
+  },
+  "render_type": "cutout_mipped"
+}

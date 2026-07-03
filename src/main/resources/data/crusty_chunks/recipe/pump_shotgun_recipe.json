@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "ab ",
+    "cd ",
+    "  e"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:large_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:wood_component"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_tube"
+    },
+    "d": {
+      "item": "crusty_chunks:bolt_action_receiver"
+    },
+    "e": {
+      "item": "crusty_chunks:rifle_stock"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:pump_action_shotgun_animated"
+  }
+}

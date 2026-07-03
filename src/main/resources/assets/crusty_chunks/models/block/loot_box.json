@@ -1,0 +1,13 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "crusty_chunks:block/lootbox",
+    "up": "crusty_chunks:block/lootbox",
+    "north": "crusty_chunks:block/lootbox",
+    "east": "crusty_chunks:block/lootbox",
+    "south": "crusty_chunks:block/lootbox",
+    "west": "crusty_chunks:block/lootbox",
+    "particle": "crusty_chunks:block/lootbox"
+  },
+  "render_type": "solid"
+}

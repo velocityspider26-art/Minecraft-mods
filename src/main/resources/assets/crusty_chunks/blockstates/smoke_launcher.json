@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/smoke_launcher"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/smoke_launcher",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/smoke_launcher",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/smoke_launcher",
+      "y": 270
+    }
+  }
+}

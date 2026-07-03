@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/magenta_armor_optic"
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/magenta_armor_optic",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/magenta_armor_optic",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/magenta_armor_optic",
+      "y": 270
+    }
+  }
+}

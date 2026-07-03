@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:zinc_ore",
+    "crusty_chunks:lead_ore",
+    "crusty_chunks:nickel_ore",
+    "crusty_chunks:deepslate_lead_ore",
+    "crusty_chunks:uranium_ore",
+    "crusty_chunks:sulfur_ore",
+    "crusty_chunks:beryllium_ore",
+    "crusty_chunks:lithium_ore"
+  ]
+}

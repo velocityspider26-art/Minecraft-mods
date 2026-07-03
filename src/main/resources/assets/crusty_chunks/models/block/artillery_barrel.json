@@ -1,0 +1,10 @@
+{
+  "parent": "crusty_chunks:custom/artillerybarrel",
+  "textures": {
+    "all": "crusty_chunks:block/artillerybarrelblock",
+    "particle": "crusty_chunks:block/artillerybarrelblock",
+    "1": "crusty_chunks:block/tankbarrel",
+    "2": "crusty_chunks:block/artillerybarrelblock"
+  },
+  "render_type": "solid"
+}

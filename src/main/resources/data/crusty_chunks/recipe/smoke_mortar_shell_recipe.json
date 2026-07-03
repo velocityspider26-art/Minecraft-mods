@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "bbb",
+    " c "
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:bored_component"
+    },
+    "b": {
+      "item": "crusty_chunks:smoke_agent"
+    },
+    "c": {
+      "item": "crusty_chunks:propellent"
+    }
+  },
+  "result": {
+    "count": 3,
+    "id": "crusty_chunks:smoke_mortar_shell"
+  }
+}

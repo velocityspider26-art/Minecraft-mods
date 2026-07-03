@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/jetcompressor",
+  "textures": {
+    "all": "crusty_chunks:block/jetcompressor",
+    "particle": "crusty_chunks:block/solidsteel",
+    "0": "crusty_chunks:block/jetcompressor"
+  },
+  "render_type": "cutout_mipped"
+}

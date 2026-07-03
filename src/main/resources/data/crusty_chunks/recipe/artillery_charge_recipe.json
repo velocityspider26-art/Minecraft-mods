@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "item": "crusty_chunks:propellent"
+    },
+    {
+      "item": "crusty_chunks:propellent"
+    },
+    {
+      "item": "crusty_chunks:propellent"
+    },
+    {
+      "item": "minecraft:paper"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:powder_charge"
+  }
+}

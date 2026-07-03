@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:uranium_neutral_dust"
+    }
+  },
+  "result": {
+    "count": 9,
+    "id": "crusty_chunks:uranium_neutraltiny_dust"
+  }
+}

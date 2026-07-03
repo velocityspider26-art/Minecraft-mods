@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "a"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:sulfur_block"
+    }
+  },
+  "result": {
+    "count": 9,
+    "id": "crusty_chunks:sulfur"
+  }
+}

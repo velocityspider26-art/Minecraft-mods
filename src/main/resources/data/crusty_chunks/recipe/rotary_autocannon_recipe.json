@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "abc",
+    "bde",
+    "fgc"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:rac_barrel"
+    },
+    "b": {
+      "tag": "forge:blocks/steel"
+    },
+    "c": {
+      "item": "crusty_chunks:advanced_alloy_component"
+    },
+    "d": {
+      "item": "crusty_chunks:mg_receiver"
+    },
+    "e": {
+      "item": "crusty_chunks:steel_spring"
+    },
+    "f": {
+      "item": "crusty_chunks:advanced_component"
+    },
+    "g": {
+      "item": "crusty_chunks:electric_motor"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:rotary_auto_cannon"
+  }
+}

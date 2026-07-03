@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "ab ",
+    "bcb",
+    " bd"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:huge_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "c": {
+      "item": "crusty_chunks:basic_receiver"
+    },
+    "d": {
+      "item": "crusty_chunks:rifle_stock"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:single_shot_rifle"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "experience": 1,
+  "cookingtime": 100,
+  "ingredient": {
+    "item": "crusty_chunks:lead_dust"
+  },
+  "result": {
+    "id": "crusty_chunks:lead_ingot"
+  }
+}

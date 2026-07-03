@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ab",
+    "cd",
+    " e"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:lithium_dust"
+    },
+    "b": {
+      "item": "minecraft:gunpowder"
+    },
+    "c": {
+      "item": "crusty_chunks:aluminum_dust"
+    },
+    "d": {
+      "item": "minecraft:paper"
+    },
+    "e": {
+      "item": "crusty_chunks:brass_plate"
+    }
+  },
+  "result": {
+    "count": 8,
+    "id": "crusty_chunks:chaff_charge"
+  }
+}

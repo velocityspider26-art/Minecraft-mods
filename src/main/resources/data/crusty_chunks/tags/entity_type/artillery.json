@@ -1,0 +1,27 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:artillery_solid_projectile",
+    "crusty_chunks:fire_artillery_projectile",
+    "crusty_chunks:gas_artillery_projectile",
+    "crusty_chunks:tank_fire_projectile",
+    "crusty_chunks:large_ap_fire",
+    "crusty_chunks:large_solid_projectile",
+    "crusty_chunks:mortar_projectile",
+    "crusty_chunks:smoke_mortar_projectile",
+    "crusty_chunks:cluster_rocket",
+    "crusty_chunks:fire_spear_rocket_projectile",
+    "crusty_chunks:incindiary_rocket_projectile",
+    "crusty_chunks:large_rocket",
+    "crusty_chunks:ir_missile",
+    "crusty_chunks:large_radar_missile_projectile",
+    "crusty_chunks:radar_spear_missile_projectile",
+    "crusty_chunks:seeker_spear_missile_projectile",
+    "crusty_chunks:eradicator_turret",
+    "crusty_chunks:strike_spear_projectile",
+    "crusty_chunks:large_flak_projectile",
+    "crusty_chunks:large_heat_fire",
+    "crusty_chunks:large_smoke_fire",
+    "crusty_chunks:artillery_fire_projectile"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "ab ",
+    "cdb",
+    " be"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:large_bored_barrel"
+    },
+    "b": {
+      "item": "crusty_chunks:bent_component"
+    },
+    "c": {
+      "item": "crusty_chunks:wood_component"
+    },
+    "d": {
+      "item": "crusty_chunks:bolt_action_receiver"
+    },
+    "e": {
+      "item": "crusty_chunks:rifle_stock"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:bolt_action_rifle_animated"
+  }
+}

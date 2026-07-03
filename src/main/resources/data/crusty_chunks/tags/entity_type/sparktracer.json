@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:huge_fragment",
+    "crusty_chunks:hv_particle_projectile",
+    "crusty_chunks:phosphorus_particle"
+  ]
+}

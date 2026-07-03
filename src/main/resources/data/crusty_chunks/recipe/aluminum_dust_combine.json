@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "crusty_chunks:aluminum_tiny_dust"
+    },
+    {
+      "item": "crusty_chunks:aluminum_tiny_dust"
+    },
+    {
+      "item": "crusty_chunks:aluminum_tiny_dust"
+    },
+    {
+      "item": "crusty_chunks:aluminum_tiny_dust"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:aluminum_dust"
+  }
+}

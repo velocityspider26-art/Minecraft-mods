@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:raw_iron",
+    "minecraft:raw_copper",
+    "minecraft:raw_gold",
+    "minecraft:gravel",
+    "crusty_chunks:bauxite",
+    "minecraft:cobblestone",
+    "#c:raw_materials/zinc",
+    "#c:raw_materials/uranium",
+    "#c:raw_materials/lithium",
+    "#c:raw_materials/beryllium",
+    "#c:raw_materials/nickel",
+    "#c:raw_materials/lead",
+    "crusty_chunks:pyrochlore"
+  ]
+}

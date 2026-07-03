@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/manualrockgrinder",
+  "textures": {
+    "all": "crusty_chunks:block/manualgrinder",
+    "particle": "crusty_chunks:block/manualgrinder",
+    "0": "crusty_chunks:block/manualgrinder"
+  },
+  "render_type": "solid"
+}

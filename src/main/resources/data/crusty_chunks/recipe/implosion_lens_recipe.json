@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "cdc",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "b": {
+      "item": "crusty_chunks:beryllium_ingot"
+    },
+    "c": {
+      "item": "crusty_chunks:implosion_module"
+    },
+    "d": {
+      "item": "crusty_chunks:uranium_enriched_ingot"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:implosion_lens"
+  }
+}

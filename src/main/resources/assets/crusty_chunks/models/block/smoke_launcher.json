@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/smokelauncher",
+  "textures": {
+    "all": "crusty_chunks:block/solidsteel",
+    "particle": "crusty_chunks:block/solidsteel",
+    "2": "crusty_chunks:block/smokelauncher"
+  },
+  "render_type": "solid"
+}

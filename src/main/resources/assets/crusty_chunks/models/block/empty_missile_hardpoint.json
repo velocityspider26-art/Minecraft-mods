@@ -1,0 +1,9 @@
+{
+  "parent": "crusty_chunks:custom/hardpointempty",
+  "textures": {
+    "all": "crusty_chunks:block/aluminumcasing",
+    "particle": "crusty_chunks:block/aluminumcasing",
+    "0": "crusty_chunks:block/hardpoint"
+  },
+  "render_type": "cutout"
+}

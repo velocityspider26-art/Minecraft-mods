@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "crusty_chunks:small_bored_barrel",
+    "crusty_chunks:medium_bored_barrel",
+    "crusty_chunks:large_bored_barrel",
+    "crusty_chunks:huge_bored_barrel"
+  ]
+}
