@@ -27,8 +27,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 @EventBusSubscriber({Dist.CLIENT})
 public class ProjectileWizzProcedure {
    @SubscribeEvent
-   public static void updateWorldTick(ClientTickEvent.Post event) {
-      if (false) {
+   public static void updateWorldTick(ClientTickEvent.Pre event) {
+      if (true) {
          Minecraft minecraft = Minecraft.getInstance();
          ClientLevel level = minecraft.level;
          Entity entity = minecraft.gameRenderer.getMainCamera().getEntity();

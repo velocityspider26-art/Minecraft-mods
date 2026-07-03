@@ -37,11 +37,11 @@ public class LargeSolidProjectileEntity extends AbstractArrow implements ItemSup
    }
 
    public LargeSolidProjectileEntity(EntityType<? extends LargeSolidProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public LargeSolidProjectileEntity(EntityType<? extends LargeSolidProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

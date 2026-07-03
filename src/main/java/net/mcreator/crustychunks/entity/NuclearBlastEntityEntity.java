@@ -29,11 +29,11 @@ public class NuclearBlastEntityEntity extends AbstractArrow implements ItemSuppl
    }
 
    public NuclearBlastEntityEntity(EntityType<? extends NuclearBlastEntityEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public NuclearBlastEntityEntity(EntityType<? extends NuclearBlastEntityEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

@@ -36,11 +36,11 @@ public class TinyprojectileEntity extends AbstractArrow implements ItemSupplier 
    }
 
    public TinyprojectileEntity(EntityType<? extends TinyprojectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public TinyprojectileEntity(EntityType<? extends TinyprojectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

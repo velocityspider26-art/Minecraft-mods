@@ -33,11 +33,11 @@ public class AimerBeamEntity extends AbstractArrow implements ItemSupplier {
    }
 
    public AimerBeamEntity(EntityType<? extends AimerBeamEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public AimerBeamEntity(EntityType<? extends AimerBeamEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

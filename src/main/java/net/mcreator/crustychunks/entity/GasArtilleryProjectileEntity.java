@@ -36,11 +36,11 @@ public class GasArtilleryProjectileEntity extends AbstractArrow implements ItemS
    }
 
    public GasArtilleryProjectileEntity(EntityType<? extends GasArtilleryProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public GasArtilleryProjectileEntity(EntityType<? extends GasArtilleryProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

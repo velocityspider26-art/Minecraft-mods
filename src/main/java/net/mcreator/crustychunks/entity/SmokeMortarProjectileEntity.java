@@ -36,11 +36,11 @@ public class SmokeMortarProjectileEntity extends AbstractArrow implements ItemSu
    }
 
    public SmokeMortarProjectileEntity(EntityType<? extends SmokeMortarProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public SmokeMortarProjectileEntity(EntityType<? extends SmokeMortarProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

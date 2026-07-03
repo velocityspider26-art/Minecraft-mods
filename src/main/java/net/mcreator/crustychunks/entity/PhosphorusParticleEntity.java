@@ -37,11 +37,11 @@ public class PhosphorusParticleEntity extends AbstractArrow implements ItemSuppl
    }
 
    public PhosphorusParticleEntity(EntityType<? extends PhosphorusParticleEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public PhosphorusParticleEntity(EntityType<? extends PhosphorusParticleEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

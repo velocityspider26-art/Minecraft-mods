@@ -36,11 +36,11 @@ public class SmallBombProjectileEntity extends AbstractArrow implements ItemSupp
    }
 
    public SmallBombProjectileEntity(EntityType<? extends SmallBombProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public SmallBombProjectileEntity(EntityType<? extends SmallBombProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

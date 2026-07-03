@@ -29,11 +29,11 @@ public class ShockClientsideBypassEntity extends AbstractArrow implements ItemSu
    }
 
    public ShockClientsideBypassEntity(EntityType<? extends ShockClientsideBypassEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public ShockClientsideBypassEntity(EntityType<? extends ShockClientsideBypassEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

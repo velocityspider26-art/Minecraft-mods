@@ -33,11 +33,11 @@ public class SmallBulletAltEntity extends AbstractArrow implements ItemSupplier 
    }
 
    public SmallBulletAltEntity(EntityType<? extends SmallBulletAltEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public SmallBulletAltEntity(EntityType<? extends SmallBulletAltEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

@@ -33,11 +33,11 @@ public class BulletfireProjectileEntity extends AbstractArrow implements ItemSup
    }
 
    public BulletfireProjectileEntity(EntityType<? extends BulletfireProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public BulletfireProjectileEntity(EntityType<? extends BulletfireProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

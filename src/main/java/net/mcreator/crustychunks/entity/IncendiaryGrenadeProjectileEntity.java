@@ -35,11 +35,11 @@ public class IncendiaryGrenadeProjectileEntity extends AbstractArrow implements 
    }
 
    public IncendiaryGrenadeProjectileEntity(EntityType<? extends IncendiaryGrenadeProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public IncendiaryGrenadeProjectileEntity(EntityType<? extends IncendiaryGrenadeProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

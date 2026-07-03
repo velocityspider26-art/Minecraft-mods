@@ -33,11 +33,11 @@ public class GenericlargeBulletEntity extends AbstractArrow implements ItemSuppl
    }
 
    public GenericlargeBulletEntity(EntityType<? extends GenericlargeBulletEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public GenericlargeBulletEntity(EntityType<? extends GenericlargeBulletEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)

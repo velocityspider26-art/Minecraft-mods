@@ -36,11 +36,11 @@ public class BunkerBusterProjectileEntity extends AbstractArrow implements ItemS
    }
 
    public BunkerBusterProjectileEntity(EntityType<? extends BunkerBusterProjectileEntity> type, double x, double y, double z, Level world) {
-      super(type, x, y, z, world, ItemStack.EMPTY, null);
+      super(type, x, y, z, world, PROJECTILE_ITEM.copy(), null);
    }
 
    public BunkerBusterProjectileEntity(EntityType<? extends BunkerBusterProjectileEntity> type, LivingEntity entity, Level world) {
-      super(type, entity, world, ItemStack.EMPTY, null);
+      super(type, entity, world, PROJECTILE_ITEM.copy(), null);
    }
 
    @OnlyIn(Dist.CLIENT)
