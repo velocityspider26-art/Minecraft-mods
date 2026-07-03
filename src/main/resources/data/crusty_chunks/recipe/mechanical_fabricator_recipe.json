@@ -14,7 +14,7 @@
       "item": "crusty_chunks:mechanical_bore"
     },
     "c": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     },
     "d": {
       "item": "crusty_chunks:bored_component"

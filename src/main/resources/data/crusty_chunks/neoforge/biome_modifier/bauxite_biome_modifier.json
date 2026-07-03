@@ -1,7 +1,7 @@
 {
-  "type": "forge:add_features",
+  "type": "neoforge:add_features",
   "biomes": {
-    "type": "forge:any"
+    "type": "neoforge:any"
   },
   "features": "crusty_chunks:bauxite",
   "step": "underground_ores"

@@ -20,7 +20,7 @@
       "item": "crusty_chunks:reactioncomponent"
     },
     "e": {
-      "tag": "forge:blocks/aluminum"
+      "tag": "c:blocks/aluminum"
     },
     "f": {
       "item": "crusty_chunks:tech_component"

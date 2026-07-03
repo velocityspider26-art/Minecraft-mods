@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "crusty_chunks:bent_component",
-  "process": "crusty_chunks:mechanical_shear",
-  "result": {
-    "id": "crusty_chunks:cut_component"
-  },
-  "runs": 3
+    "type": "crusty_chunks:assembly",
+
+        "item": "crusty_chunks:bent_component",
+        "process": "crusty_chunks:mechanical_shear",
+        "result": "crusty_chunks:cut_component",
+       "runs": 3
 }

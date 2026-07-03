@@ -11,12 +11,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.EventBusSubscriber.Bus;
 
-@EventBusSubscriber(
-   modid = "crusty_chunks",
-   bus = Bus.MOD
-)
+@EventBusSubscriber(modid = "crusty_chunks", bus = Bus.MOD, value = {Dist.CLIENT})
 public class ClientListener {
-   @OnlyIn(Dist.CLIENT)
    @SubscribeEvent
    public static void registerRenderers(RegisterRenderers event) {
       event.registerBlockEntityRenderer((BlockEntityType)CrustyChunksModBlockEntities.RAC_BARREL.get(), context -> new RACBarrelTileRenderer());

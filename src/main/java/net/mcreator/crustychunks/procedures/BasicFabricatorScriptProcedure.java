@@ -395,7 +395,7 @@ public class BasicFabricatorScriptProcedure {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.TECH_COMPONENT.get()).copy();
             Chance1 = 1.0;
             passes = 600.0;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:blocks/aluminum")))
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:blocks/aluminum")))
             && world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.ASSEMBLY_MECHANICAL_FABRICATOR.get()) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.PRECISION_COMPONENT.get()).copy();
             Chance1 = 1.0;

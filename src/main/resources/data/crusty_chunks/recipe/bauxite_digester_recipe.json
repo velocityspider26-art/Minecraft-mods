@@ -11,7 +11,7 @@
       "item": "crusty_chunks:bent_component"
     },
     "b": {
-      "tag": "forge:blocks/nickel"
+      "tag": "c:blocks/nickel"
     },
     "c": {
       "item": "crusty_chunks:steel_component"

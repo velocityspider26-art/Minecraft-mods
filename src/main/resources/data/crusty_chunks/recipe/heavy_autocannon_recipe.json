@@ -20,7 +20,7 @@
       "item": "crusty_chunks:steel_spring"
     },
     "e": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     }
   },
   "result": {

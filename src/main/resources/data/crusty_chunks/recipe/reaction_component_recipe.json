@@ -17,7 +17,7 @@
       "item": "crusty_chunks:uranium_neural_ingot"
     },
     "d": {
-      "tag": "forge:blocks/nickel"
+      "tag": "c:blocks/nickel"
     },
     "e": {
       "item": "crusty_chunks:advanced_alloy_component"

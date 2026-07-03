@@ -1,23 +1,26 @@
 package net.mcreator.crustychunks.init;
 
 import net.minecraft.world.level.GameRules;
-import net.minecraft.world.level.GameRules.BooleanValue;
-import net.minecraft.world.level.GameRules.Category;
-import net.minecraft.world.level.GameRules.IntegerValue;
-import net.minecraft.world.level.GameRules.Key;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.EventBusSubscriber.Bus;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
-@EventBusSubscriber(
-   bus = Bus.MOD
-)
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)
 public class CrustyChunksModGameRules {
-   public static final Key<IntegerValue> ENRICHMENT_TIME = GameRules.register("enrichmentTime", Category.MISC, IntegerValue.create(800));
-   public static final Key<BooleanValue> ALLOW_IMPACT_FUZE = GameRules.register("allowImpactFuze", Category.PLAYER, BooleanValue.create(true));
-   public static final Key<BooleanValue> STRATEGIC_WEAPONS = GameRules.register("strategicWeapons", Category.MISC, BooleanValue.create(true));
-   public static final Key<BooleanValue> APOCALYPSE_MODE = GameRules.register("apocalypseMode", Category.PLAYER, BooleanValue.create(false));
-   public static final Key<IntegerValue> BULLET_DAMAGE_MULTIPLIER = GameRules.register("bulletDamageMultiplier", Category.PLAYER, IntegerValue.create(1));
-   public static final Key<BooleanValue> WARIUM_APOCALYPSE_DYNAMIC_PRODUCTION = GameRules.register(
-      "wariumApocalypseDynamicProduction", Category.MOBS, BooleanValue.create(true)
-   );
+   public static GameRules.Key<GameRules.IntegerValue> ENRICHMENT_TIME;
+   public static GameRules.Key<GameRules.BooleanValue> ALLOW_IMPACT_FUZE;
+   public static GameRules.Key<GameRules.BooleanValue> STRATEGIC_WEAPONS;
+   public static GameRules.Key<GameRules.BooleanValue> APOCALYPSE_MODE;
+   public static GameRules.Key<GameRules.IntegerValue> BULLET_DAMAGE_MULTIPLIER;
+   public static GameRules.Key<GameRules.BooleanValue> WARIUM_APOCALYPSE_DYNAMIC_PRODUCTION;
+
+   @SubscribeEvent
+   public static void registerGameRules(FMLCommonSetupEvent event) {
+      ENRICHMENT_TIME = GameRules.register("enrichmentTime", GameRules.Category.MISC, GameRules.IntegerValue.create(800));
+      ALLOW_IMPACT_FUZE = GameRules.register("allowImpactFuze", GameRules.Category.PLAYER, GameRules.BooleanValue.create(true));
+      STRATEGIC_WEAPONS = GameRules.register("strategicWeapons", GameRules.Category.MISC, GameRules.BooleanValue.create(true));
+      APOCALYPSE_MODE = GameRules.register("apocalypseMode", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
+      BULLET_DAMAGE_MULTIPLIER = GameRules.register("bulletDamageMultiplier", GameRules.Category.PLAYER, GameRules.IntegerValue.create(1));
+      WARIUM_APOCALYPSE_DYNAMIC_PRODUCTION = GameRules.register("wariumApocalypseDynamicProduction", GameRules.Category.MOBS, GameRules.BooleanValue.create(true));
+   }
 }

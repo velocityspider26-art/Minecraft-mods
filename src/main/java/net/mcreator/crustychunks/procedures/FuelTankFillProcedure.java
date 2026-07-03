@@ -30,7 +30,7 @@ public class FuelTankFillProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
-            .is(ItemTags.create(ResourceLocation.parse("forge:buckets/diesel")))) {
+            .is(ItemTags.create(ResourceLocation.parse("c:buckets/diesel")))) {
             if ((
                   (new Object() {
                               public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
@@ -184,7 +184,7 @@ public class FuelTankFillProcedure {
                }
             }
          } else if ((entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY)
-            .is(ItemTags.create(ResourceLocation.parse("forge:buckets/kerosene")))) {
+            .is(ItemTags.create(ResourceLocation.parse("c:buckets/kerosene")))) {
             if ((
                   (new Object() {
                               public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
@@ -338,7 +338,7 @@ public class FuelTankFillProcedure {
                }
             }
          } else if ((entity instanceof LivingEntity _livEntxx ? _livEntxx.getMainHandItem() : ItemStack.EMPTY)
-            .is(ItemTags.create(ResourceLocation.parse("forge:buckets/gasoline")))) {
+            .is(ItemTags.create(ResourceLocation.parse("c:buckets/gasoline")))) {
             if ((
                   (new Object() {
                               public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
@@ -492,7 +492,7 @@ public class FuelTankFillProcedure {
                }
             }
          } else if ((entity instanceof LivingEntity _livEntxxx ? _livEntxxx.getMainHandItem() : ItemStack.EMPTY)
-            .is(ItemTags.create(ResourceLocation.parse("forge:buckets/hydrazine")))) {
+            .is(ItemTags.create(ResourceLocation.parse("c:buckets/hydrazine")))) {
             if ((
                   (new Object() {
                               public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {

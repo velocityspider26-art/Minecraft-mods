@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "c:ingots/brass",
-  "process": "crusty_chunks:mechanical_press",
-  "result": {
-    "id": "crusty_chunks:brass_plate"
-  },
-  "runs": 1
+    "type": "crusty_chunks:assembly",
+
+        "item": "c:ingots/brass",
+        "process": "crusty_chunks:mechanical_press",
+        "result": "crusty_chunks:brass_plate",
+       "runs": 1
 }

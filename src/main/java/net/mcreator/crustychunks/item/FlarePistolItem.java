@@ -1,8 +1,6 @@
 package net.mcreator.crustychunks.item;
 
 import net.minecraft.client.model.HumanoidModel;
-import net.neoforged.neoforge.client.IArmPoseTransformer;
-import net.neoforged.fml.common.asm.enumextension.EnumProxy;
 import software.bernie.geckolib.animatable.client.GeoRenderProvider;
 import java.util.List;
 import java.util.function.Consumer;
@@ -63,13 +61,6 @@ public class FlarePistolItem extends Item implements GeoItem {
       });
    }
 
-   public static final EnumProxy<HumanoidModel.ArmPose> ARM_POSE = new EnumProxy<>(HumanoidModel.ArmPose.class, false, (IArmPoseTransformer) (model, entity, arm) -> {
-            if (arm == HumanoidArm.LEFT) {
-               model.leftArm.xRot = -1.5F + model.head.xRot;
-            } else {
-               model.rightArm.xRot = -1.5F + model.head.xRot;
-            }
-   });
 
    private PlayState idlePredicate(AnimationState event) {
       if (this.animationprocedure.equals("empty")) {

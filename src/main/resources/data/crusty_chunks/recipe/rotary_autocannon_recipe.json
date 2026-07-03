@@ -11,7 +11,7 @@
       "item": "crusty_chunks:rac_barrel"
     },
     "b": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     },
     "c": {
       "item": "crusty_chunks:advanced_alloy_component"

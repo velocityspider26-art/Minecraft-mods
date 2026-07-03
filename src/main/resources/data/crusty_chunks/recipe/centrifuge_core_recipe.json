@@ -11,7 +11,7 @@
       "item": "crusty_chunks:advanced_component"
     },
     "b": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     },
     "c": {
       "item": "crusty_chunks:copper_coil"

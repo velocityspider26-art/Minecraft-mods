@@ -20,7 +20,7 @@
       "item": "crusty_chunks:brass_fitting"
     },
     "e": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     }
   },
   "result": {

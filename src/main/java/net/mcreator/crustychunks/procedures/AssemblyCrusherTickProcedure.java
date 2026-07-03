@@ -465,14 +465,14 @@ public class AssemblyCrusherTickProcedure {
             Chance2 = 0.33;
             Result3 = new ItemStack((ItemLike)CrustyChunksModItems.SULFUR.get()).copy();
             Chance3 = 0.05;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/lead")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/lead")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
             Chance2 = 0.33;
             Result3 = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
             Chance3 = 0.02;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/zinc")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/zinc")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.ZINC_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.ZINC_DUST.get()).copy();
@@ -495,21 +495,21 @@ public class AssemblyCrusherTickProcedure {
             Chance3 = 0.25;
             Result4 = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
             Chance4 = 0.25;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/nickel")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/nickel")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
             Chance2 = 0.33;
             Result3 = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
             Chance3 = 0.05;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/beryllium")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/beryllium")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.BERYLLIUM_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.BERYLLIUM_DUST.get()).copy();
             Chance2 = 0.33;
             Result3 = new ItemStack((ItemLike)CrustyChunksModItems.LITHIUM_NUGGET.get()).copy();
             Chance3 = 0.05;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/uranium")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/uranium")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.URANIUM_NEUTRALTINY_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.URANIUM_NEUTRALTINY_DUST.get()).copy();
@@ -518,7 +518,7 @@ public class AssemblyCrusherTickProcedure {
             Chance3 = 0.33;
             Result4 = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
             Chance4 = 0.15;
-         } else if (input.is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/lithium")))) {
+         } else if (input.is(ItemTags.create(ResourceLocation.parse("c:raw_materials/lithium")))) {
             Result1 = new ItemStack((ItemLike)CrustyChunksModItems.LITHIUM_DUST.get()).copy();
             Chance1 = 1.0;
             Result2 = new ItemStack((ItemLike)CrustyChunksModItems.LITHIUM_DUST.get()).copy();

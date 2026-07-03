@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "crusty_chunks:planks",
-  "process": "crusty_chunks:mechanical_shear",
-  "result": {
-    "id": "crusty_chunks:wood_component"
-  },
-  "runs": 1
+    "type": "crusty_chunks:assembly",
+
+        "item": "crusty_chunks:planks",
+        "process": "crusty_chunks:mechanical_shear",
+        "result": "crusty_chunks:wood_component",
+       "runs": 1
 }

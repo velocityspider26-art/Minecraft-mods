@@ -1,8 +1,6 @@
 package net.mcreator.crustychunks.item;
 
 import net.minecraft.client.model.HumanoidModel;
-import net.neoforged.neoforge.client.IArmPoseTransformer;
-import net.neoforged.fml.common.asm.enumextension.EnumProxy;
 import software.bernie.geckolib.animatable.client.GeoRenderProvider;
 import java.util.function.Consumer;
 import net.mcreator.crustychunks.item.renderer.ArmorPeelerAnimatedItemRenderer;
@@ -55,14 +53,6 @@ public class ArmorPeelerAnimatedItem extends Item implements GeoItem {
       });
    }
 
-   public static final EnumProxy<HumanoidModel.ArmPose> ARM_POSE = new EnumProxy<>(HumanoidModel.ArmPose.class, false, (IArmPoseTransformer) (model, entity, arm) -> {
-            if (arm != HumanoidArm.LEFT) {
-               model.rightArm.xRot = -1.5F + model.head.xRot;
-               model.rightArm.yRot = 0.0F + model.head.yRot;
-               model.leftArm.xRot = -1.5F + model.head.xRot;
-               model.leftArm.yRot = 0.75F + model.head.yRot;
-            }
-   });
 
    public void getTransformType(ItemDisplayContext type) {
       transformType = type;

@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "crusty_chunks:steelplate",
-  "process": "crusty_chunks:mechanical_press",
-  "result": {
-    "id": "crusty_chunks:bent_component"
-  },
-  "runs": 4
+    "type": "crusty_chunks:assembly",
+
+        "item": "crusty_chunks:steelplate",
+        "process": "crusty_chunks:mechanical_press",
+        "result": "crusty_chunks:bent_component",
+       "runs": 4
 }

@@ -285,7 +285,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:dusts/iron"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:dusts/iron"))) && (new Object() {
             public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -298,7 +298,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("forge:dusts/iron"))) && ((new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("c:dusts/iron"))) && ((new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -511,7 +511,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:dusts/zinc"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:dusts/zinc"))) && (new Object() {
             public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -524,7 +524,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("forge:dusts/copper"))) || (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("c:dusts/copper"))) || (new Object() {
             public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -537,7 +537,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:dusts/copper"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:dusts/copper"))) && (new Object() {
             public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -550,7 +550,7 @@ public class BlastFurnaceUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("forge:dusts/zinc")))) && ((new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 1).is(ItemTags.create(ResourceLocation.parse("c:dusts/zinc")))) && ((new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);

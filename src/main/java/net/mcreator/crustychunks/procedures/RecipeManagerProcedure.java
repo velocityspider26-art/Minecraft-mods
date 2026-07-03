@@ -71,7 +71,7 @@ public class RecipeManagerProcedure {
          ResourceManager rm = srvlvl_.getServer().getResourceManager();
          rm.listPacks().forEach(resource -> {
             output.setPackResources(resource);
-            resource.listResources(PackType.SERVER_DATA, "crusty_chunks", "recipes/assembly", output);
+            resource.listResources(PackType.SERVER_DATA, "crusty_chunks", "recipe/assembly", output);
          });
 
          for (JsonObject jsoniterator : jsons) {

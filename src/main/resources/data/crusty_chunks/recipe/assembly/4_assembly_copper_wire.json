@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "minecraft:copper_ingot",
-  "process": "crusty_chunks:mechanical_extruder",
-  "result": {
-    "id": "crusty_chunks:copper_wire"
-  },
-  "runs": 1
+    "type": "crusty_chunks:assembly",
+
+        "item": "minecraft:copper_ingot",
+        "process": "crusty_chunks:mechanical_extruder",
+        "result": "crusty_chunks:copper_wire",
+       "runs": 1
 }

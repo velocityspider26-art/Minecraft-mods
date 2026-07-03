@@ -14,7 +14,7 @@
       "item": "crusty_chunks:steelplate"
     },
     "c": {
-      "tag": "forge:blocks/steel"
+      "tag": "c:blocks/steel"
     },
     "d": {
       "item": "crusty_chunks:firing_pin"

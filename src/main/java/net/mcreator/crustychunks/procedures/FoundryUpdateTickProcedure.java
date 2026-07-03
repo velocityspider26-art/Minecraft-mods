@@ -464,7 +464,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && ((new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && ((new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -632,7 +632,7 @@ public class FoundryUpdateTickProcedure {
                      }
                   })
                   .getItemStack(world, BlockPos.containing(x, y, z), 0)
-                  .is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel")))
+                  .is(ItemTags.create(ResourceLocation.parse("c:ingots/steel")))
                && (
                   (new Object() {
                                  public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
@@ -951,7 +951,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:nuggets/lead"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:nuggets/lead"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1126,7 +1126,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:nuggets/lead"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:nuggets/lead"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1277,7 +1277,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:nuggets/lead"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:nuggets/lead"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1452,7 +1452,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/lead"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/lead"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1627,7 +1627,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/lead"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/lead"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1802,7 +1802,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -1977,7 +1977,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -2152,7 +2152,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -2327,7 +2327,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -2502,7 +2502,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -2677,7 +2677,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -2852,7 +2852,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);
@@ -3027,7 +3027,7 @@ public class FoundryUpdateTickProcedure {
 
                return _retval.get();
             }
-         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:ingots/steel"))) && (new Object() {
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:ingots/steel"))) && (new Object() {
             public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
                AtomicInteger _retval = new AtomicInteger(0);
                BlockEntity _ent = world.getBlockEntity(pos);

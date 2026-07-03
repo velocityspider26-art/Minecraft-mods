@@ -20,7 +20,7 @@
       "item": "minecraft:water_bucket"
     },
     "e": {
-      "tag": "forge:blocks/aluminum"
+      "tag": "c:blocks/aluminum"
     }
   },
   "result": {

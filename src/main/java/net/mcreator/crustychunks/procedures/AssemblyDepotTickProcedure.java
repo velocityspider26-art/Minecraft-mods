@@ -159,7 +159,7 @@ public class AssemblyDepotTickProcedure {
                      .getItem()
                   == BuiltInRegistries.ITEM.get(ResourceLocation.parse(Recipe.get("item").getAsString().toLowerCase(Locale.ENGLISH)))) {
                   tagged = false;
-               } else if (Recipe.get("item").getAsString().contains("forge")
+               } else if (Recipe.get("item").getAsString().contains("c:")
                   && (new Object() {
                         public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
                            AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);

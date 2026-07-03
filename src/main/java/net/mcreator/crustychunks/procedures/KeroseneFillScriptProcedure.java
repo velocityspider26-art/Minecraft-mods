@@ -54,7 +54,7 @@ public class KeroseneFillScriptProcedure {
                }
             }).getBlockTanks(world, BlockPos.containing(x, y, z))) <= 4000
             && (entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
-               .is(ItemTags.create(ResourceLocation.parse("forge:buckets/kerosene")))) {
+               .is(ItemTags.create(ResourceLocation.parse("c:buckets/kerosene")))) {
             if (world instanceof Level _level) {
                if (!_level.isClientSide()) {
                   _level.playSound(

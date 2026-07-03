@@ -1,8 +1,6 @@
 package net.mcreator.crustychunks.item;
 
 import net.minecraft.client.model.HumanoidModel;
-import net.neoforged.neoforge.client.IArmPoseTransformer;
-import net.neoforged.fml.common.asm.enumextension.EnumProxy;
 import software.bernie.geckolib.animatable.client.GeoRenderProvider;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.List;
@@ -66,21 +64,13 @@ public class SMGAnimatedItem extends Item implements GeoItem {
       });
    }
 
-   public static final EnumProxy<HumanoidModel.ArmPose> ARM_POSE = new EnumProxy<>(HumanoidModel.ArmPose.class, false, (IArmPoseTransformer) (model, entity, arm) -> {
-               if (arm != HumanoidArm.LEFT) {
-                  model.rightArm.xRot = -1.5F + model.head.xRot;
-                  model.rightArm.yRot = 0.0F + model.head.yRot;
-                  model.leftArm.xRot = -1.5F + model.head.xRot;
-                  model.leftArm.yRot = 0.75F + model.head.yRot;
-               }
-   });
 
    @Override
    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
       super.initializeClient(consumer);
       consumer.accept(new IClientItemExtensions() {
          public ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack itemStack) {
-               return !itemStack.isEmpty() && entityLiving.getUsedItemHand() == hand ? (ArmPose) ARM_POSE.getValue() : ArmPose.EMPTY;
+               return !itemStack.isEmpty() && entityLiving.getUsedItemHand() == hand ? (ArmPose) net.mcreator.crustychunks.client.pose.SMGAnimatedItemPose.ARM_POSE.getValue() : ArmPose.EMPTY;
             }
 
          public boolean applyForgeHandTransform(

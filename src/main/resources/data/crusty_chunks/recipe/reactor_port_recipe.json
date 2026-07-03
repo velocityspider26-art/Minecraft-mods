@@ -14,7 +14,7 @@
       "item": "crusty_chunks:reactioncomponent"
     },
     "c": {
-      "tag": "forge:blocks/aluminum"
+      "tag": "c:blocks/aluminum"
     },
     "d": {
       "item": "crusty_chunks:assembly_centrifuge_bottom"

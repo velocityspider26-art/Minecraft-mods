@@ -133,7 +133,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/lead")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/lead")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.LEAD_DUST.get()).copy();
       }
@@ -151,7 +151,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/zinc")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/zinc")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.ZINC_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.ZINC_DUST.get()).copy();
       }
@@ -205,7 +205,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/nickel")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/nickel")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.NICKEL_DUST.get()).copy();
       }
@@ -223,7 +223,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/beryllium")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/beryllium")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.BERYLLIUM_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.BERYLLIUM_DUST.get()).copy();
       }
@@ -241,7 +241,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/uranium")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/uranium")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.URANIUM_NEUTRALTINY_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.URANIUM_DEPLETED_TINY_DUST.get()).copy();
       }
@@ -259,7 +259,7 @@ public class MineralGrinderProcessProcedure {
 
             return _retval.get();
          }
-      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("forge:raw_materials/lithium")))) {
+      }).getItemStack(world, BlockPos.containing(x, y, z), 0).is(ItemTags.create(ResourceLocation.parse("c:raw_materials/lithium")))) {
          Grindresult = new ItemStack((ItemLike)CrustyChunksModItems.LITHIUM_DUST.get()).copy();
          SecondaryGrindresult = new ItemStack((ItemLike)CrustyChunksModItems.LITHIUM_DUST.get()).copy();
       }

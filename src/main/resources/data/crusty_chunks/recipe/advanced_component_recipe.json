@@ -29,7 +29,7 @@
       "item": "crusty_chunks:copper_coil"
     },
     "h": {
-      "tag": "forge:buckets/oil"
+      "tag": "c:buckets/oil"
     }
   },
   "result": {

@@ -1,9 +1,8 @@
 {
-  "type": "crusty_chunks:assembly",
-  "item": "crusty_chunks:copper_plate",
-  "process": "crusty_chunks:mechanical_shear",
-  "result": {
-    "id": "crusty_chunks:copper_wire"
-  },
-  "runs": 1
+    "type": "crusty_chunks:assembly",
+
+        "item": "crusty_chunks:copper_plate",
+        "process": "crusty_chunks:mechanical_shear",
+        "result": "crusty_chunks:copper_wire",
+       "runs": 1
 }

@@ -11,7 +11,7 @@
       "tag": "c:ingots/steel"
     },
     "b": {
-      "tag": "forge:blocks/lead"
+      "tag": "c:blocks/lead"
     },
     "c": {
       "item": "crusty_chunks:neutron_reflector"

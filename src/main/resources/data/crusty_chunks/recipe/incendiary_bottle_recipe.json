@@ -11,7 +11,7 @@
       "item": "minecraft:paper"
     },
     "b": {
-      "tag": "forge:buckets/gasoline"
+      "tag": "c:buckets/gasoline"
     },
     "c": {
       "item": "minecraft:glass_bottle"
