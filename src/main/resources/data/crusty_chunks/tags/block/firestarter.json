@@ -1,6 +1,6 @@
 {
   "replace": false,
   "values": [
-    "burnt:firestarter"
+    {"id": "burnt:firestarter", "required": false}
   ]
 }

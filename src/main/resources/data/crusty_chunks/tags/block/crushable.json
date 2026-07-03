@@ -75,8 +75,8 @@
     "minecraft:green_concrete",
     "minecraft:red_concrete",
     "minecraft:black_concrete",
-    "#c:cobblestone",
-    "#c:cobbblestone",
+    "#c:cobblestones",
+    "#c:cobblestones",
     "crusty_chunks:bauxite"
   ]
 }

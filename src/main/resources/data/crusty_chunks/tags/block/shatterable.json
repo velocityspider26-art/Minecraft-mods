@@ -78,7 +78,7 @@
     "minecraft:sea_lantern",
     "minecraft:glowstone",
     "minecraft:end_rod",
-    "#c:glass",
+    "#c:glass_blocks",
     "crusty_chunks:glass_trapdoor",
     "crusty_chunks:ancient_light"
   ]
