@@ -56,7 +56,7 @@ public class ThrusterBlock extends DirectionalBlock implements EntityBlock {
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(POWER, 0)
-                .setValue(PLUME, PlumeType.KEROLOX));
+                .setValue(PLUME, PlumeType.STANDARD));
     }
 
     @Override

@@ -18,28 +18,26 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 
 /**
- * Stores the thruster's fuel tank, the redstone-driven throttle, and the smoothed motion used to
- * deform the plume mesh.
+ * The thruster's server logic and the client-side state used to render the plume.
  *
- * <p>The thruster fires only when it has both fuel (a fluid: lava or kerosene) and a redstone signal.
- * The {@link ThrusterBlock#POWER} block-state mirrors the redstone level (1-15) while firing, so the
- * client renders 15 distinct plume intensities with no extra sync. Fuel is consumed faster at higher
- * throttle. The throttle is smoothed client-side for a soft spool up/down.</p>
+ * <p>Server: resolves the fuel from the fluid in its tank ({@link ThrusterFuelManager}), gates thrust
+ * on redstone, ramps thrust smoothly, consumes fuel at a rate scaled by burn-rate and throttle,
+ * applies force to any Sable body via {@link ThrusterPhysicsHandler}, and publishes throttle
+ * ({@link ThrusterBlock#POWER}) and fuel tier ({@link ThrusterBlock#PLUME}) through the block-state so
+ * clients stay in sync without custom packets.</p>
  *
- * <p>For motion reactivity, the renderer feeds back the nozzle's real world-space position and facing
- * each frame (which already accounts for Valkyrien Skies ships / Create contraptions, since their
- * transform is baked into the render pose). We keep a short history of those samples so the plume can
- * be drawn through the path the nozzle actually traced - trailing when the craft translates and
- * curving at the tail when it turns, like a real exhaust.</p>
+ * <p>Client: smooths the throttle for the plume and keeps a short history of the nozzle's world path so
+ * the plume can trail/curve with the craft's motion.</p>
  */
 public class ThrusterBlockEntity extends BlockEntity {
     public static final int TANK_CAPACITY = 8_000;   // 8 buckets
-    private static final int MAX_BURN_MB = 6;        // fuel per tick at full throttle
+    private static final int BASE_BURN_MB = 2;        // baseline fuel per tick at full throttle
+    private static final float CREATIVE_THRUST_MULT = 2.0f;
 
     private final FluidTank fuelTank = new FluidTank(TANK_CAPACITY) {
         @Override
         public boolean isFluidValid(FluidStack stack) {
-            return isFuel(stack.getFluid());
+            return isFuelFluid(stack.getFluid());
         }
 
         @Override
@@ -48,11 +46,14 @@ public class ThrusterBlockEntity extends BlockEntity {
         }
     };
 
+    // Server-authoritative ramped throttle in [0,1] (fuel multiplier applied separately for physics).
+    private float serverThrottle = 0f;
+
+    // Client-smoothed throttle for rendering.
     private float currentThrottle = 0f;
     private float prevThrottle = 0f;
 
-    // Client-only ring buffer of recent nozzle samples (world-space position + facing), newest at
-    // HEAD. Used to draw the plume through the path the nozzle actually traced.
+    // Client-only ring buffer of recent nozzle samples (world pos + facing).
     private static final int HIST = 96;
     private final double[] histX = new double[HIST];
     private final double[] histY = new double[HIST];
@@ -68,32 +69,63 @@ public class ThrusterBlockEntity extends BlockEntity {
         super(type, pos, state);
     }
 
-    public static boolean isFuel(Fluid fluid) {
-        return fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA
-                || fluid == ExampleMod.KEROSENE_FLUID.get() || fluid == ExampleMod.KEROSENE_FLOWING.get();
+    /** Which fluids the tank will physically accept (lava + any fuel-mapped fluid, or kerosene). */
+    public static boolean isFuelFluid(Fluid fluid) {
+        if (fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA
+                || fluid == ExampleMod.KEROSENE_FLUID.get() || fluid == ExampleMod.KEROSENE_FLOWING.get()) {
+            return true;
+        }
+        ThrusterFuelManager mgr = ThrusterFuelManager.getInstance();
+        return mgr != null && mgr.getFuel(fluid) != null;
     }
 
     public IFluidHandler getFuelTank() {
         return fuelTank;
     }
 
-    /** Server tick: gate on redstone + fuel, burn fuel scaled by throttle, publish POWER. */
+    /** Server tick: resolve fuel, gate on redstone, ramp thrust, consume fuel, apply physics. */
     public void serverTick() {
         if (level == null) {
             return;
         }
-        int signal = level.getBestNeighborSignal(getBlockPos());
-        int power = 0;
-        if (signal > 0 && !fuelTank.getFluid().isEmpty()) {
-            int burn = Math.max(1, Math.round(MAX_BURN_MB * (signal / 15f)));
-            FluidStack burned = fuelTank.drain(burn, IFluidHandler.FluidAction.EXECUTE);
-            if (!burned.isEmpty()) {
-                power = signal;
+        boolean creative = isCreative();
+
+        ThrusterFuelType fuel = null;
+        if (!creative) {
+            ThrusterFuelManager mgr = ThrusterFuelManager.getInstance();
+            if (mgr != null && !fuelTank.getFluid().isEmpty()) {
+                fuel = mgr.getFuel(fuelTank.getFluid().getFluid());
             }
         }
-        if (getBlockState().getValue(ThrusterBlock.POWER) != power) {
-            setPower(power);
+        boolean hasFuel = creative || fuel != null;
+        int signal = creative ? 15 : level.getBestNeighborSignal(getBlockPos());
+
+        float throttleTarget = (signal > 0 && hasFuel) ? (signal / 15f) : 0f;
+        float ramp = (float) (double) ThrusterConfig.THRUST_RAMP_RATE.get();
+        serverThrottle += (throttleTarget - serverThrottle) * ramp;
+        if (serverThrottle < 0.001f && throttleTarget <= 0f) {
+            serverThrottle = 0f;
         }
+
+        // Consume fuel only while actually producing thrust.
+        if (!creative && fuel != null && serverThrottle > 0.02f) {
+            int burn = Math.max(1, Math.round(BASE_BURN_MB * fuel.burnRate() * (signal / 15f)));
+            fuelTank.drain(burn, IFluidHandler.FluidAction.EXECUTE);
+        }
+
+        // Publish throttle (drives light + client plume) and fuel tier through the block-state.
+        int power = Math.round(serverThrottle * 15f);
+        if (getBlockState().getValue(ThrusterBlock.POWER) != power) {
+            level.setBlock(getBlockPos(), getBlockState().setValue(ThrusterBlock.POWER, power), 3);
+        }
+        PlumeType tier = fuel != null ? fuel.tier() : (creative ? PlumeType.EXOTIC : null);
+        if (tier != null && getBlockState().getValue(ThrusterBlock.PLUME) != tier) {
+            level.setBlock(getBlockPos(), getBlockState().setValue(ThrusterBlock.PLUME, tier), 3);
+        }
+
+        // Apply force to any Sable physics object we are mounted on.
+        float fuelMult = fuel != null ? fuel.thrustMultiplier() : (creative ? CREATIVE_THRUST_MULT : 0f);
+        ThrusterPhysicsHandler.applyThrust(level, getBlockPos(), getFacing(), serverThrottle * fuelMult);
     }
 
     /** Client tick: ease the current throttle towards the target for a smooth spool up/down. */
@@ -103,15 +135,6 @@ public class ThrusterBlockEntity extends BlockEntity {
         currentThrottle += (target - currentThrottle) * 0.12f;
         if (currentThrottle < 0.001f && target <= 0f) {
             currentThrottle = 0f;
-        }
-    }
-
-    private void setPower(int value) {
-        if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(ThrusterBlock.POWER) && state.getValue(ThrusterBlock.POWER) != value) {
-                level.setBlock(getBlockPos(), state.setValue(ThrusterBlock.POWER, value), 3);
-            }
         }
     }
 
@@ -131,7 +154,7 @@ public class ThrusterBlockEntity extends BlockEntity {
     /** Records the current nozzle world position + facing (called once per frame by the renderer). */
     public void pushNozzleSample(float time, double px, double py, double pz, float dx, float dy, float dz) {
         if (histSize > 0 && time <= histT[histHead]) {
-            return; // no time progress (e.g. paused); keep existing history
+            return;
         }
         histHead = (histHead + 1) % HIST;
         if (histSize < HIST) {
@@ -146,10 +169,7 @@ public class ThrusterBlockEntity extends BlockEntity {
         histT[histHead] = time;
     }
 
-    /**
-     * Interpolates the nozzle sample at {@code targetTime}, writing world position into {@code outPos}
-     * and facing into {@code outDir}. Clamps to the ends of the history. Returns false if no history.
-     */
+    /** Interpolates the nozzle sample at {@code targetTime}. Returns false if no history. */
     public boolean sampleNozzle(float targetTime, double[] outPos, float[] outDir) {
         if (histSize == 0) {
             return false;
@@ -207,7 +227,7 @@ public class ThrusterBlockEntity extends BlockEntity {
 
     public PlumeType getPlumeType() {
         BlockState state = getBlockState();
-        return state.hasProperty(ThrusterBlock.PLUME) ? state.getValue(ThrusterBlock.PLUME) : PlumeType.KEROLOX;
+        return state.hasProperty(ThrusterBlock.PLUME) ? state.getValue(ThrusterBlock.PLUME) : PlumeType.STANDARD;
     }
 
     public boolean isCreative() {
@@ -218,6 +238,7 @@ public class ThrusterBlockEntity extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.put("FuelTank", fuelTank.writeToNBT(registries, new CompoundTag()));
+        tag.putFloat("Throttle", serverThrottle);
     }
 
     @Override
@@ -226,5 +247,6 @@ public class ThrusterBlockEntity extends BlockEntity {
         if (tag.contains("FuelTank")) {
             fuelTank.readFromNBT(registries, tag.getCompound("FuelTank"));
         }
+        serverThrottle = tag.getFloat("Throttle");
     }
 }

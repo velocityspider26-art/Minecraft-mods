@@ -1,0 +1,9 @@
+{
+  "fluids": ["examplemod:exotic_fuel"],
+  "thrust_multiplier": 2.25,
+  "burn_rate": 1.8,
+  "tier": "exotic",
+  "heat": 1.0,
+  "smoke": 0.0,
+  "instability": 0.25
+}

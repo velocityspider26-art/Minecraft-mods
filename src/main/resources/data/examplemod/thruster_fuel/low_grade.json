@@ -1,0 +1,9 @@
+{
+  "fluids": ["minecraft:lava"],
+  "thrust_multiplier": 0.65,
+  "burn_rate": 0.8,
+  "tier": "low_grade",
+  "heat": 0.4,
+  "smoke": 0.6,
+  "instability": 0.15
+}

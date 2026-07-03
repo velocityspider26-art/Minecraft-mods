@@ -1,0 +1,9 @@
+{
+  "fluids": ["examplemod:refined_fuel"],
+  "thrust_multiplier": 1.35,
+  "burn_rate": 1.15,
+  "tier": "refined",
+  "heat": 0.8,
+  "smoke": 0.05,
+  "instability": 0.04
+}

@@ -42,10 +42,6 @@ public class CreativeThrusterBlock extends ThrusterBlock {
         return new CreativeThrusterBlockEntity(ExampleMod.CREATIVE_THRUSTER_BLOCK_ENTITY.get(), pos, state);
     }
 
-    @Override
-    @Nullable
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        // Creative thruster only needs the client-side throttle smoothing; it never burns fuel.
-        return level.isClientSide ? (lvl, pos, st, be) -> ((ThrusterBlockEntity) be).clientTick() : null;
-    }
+    // Inherits ThrusterBlock#getTicker: both client (smoothing) and server (physics) ticks run, and
+    // the base serverTick applies full-throttle physics for creative thrusters.
 }

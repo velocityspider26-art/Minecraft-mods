@@ -1,0 +1,9 @@
+{
+  "fluids": ["examplemod:high_energy_fuel"],
+  "thrust_multiplier": 1.75,
+  "burn_rate": 1.4,
+  "tier": "high_energy",
+  "heat": 0.95,
+  "smoke": 0.0,
+  "instability": 0.08
+}

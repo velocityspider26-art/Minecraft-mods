@@ -2,6 +2,7 @@ package com.example.examplemod.client;
 
 import com.example.examplemod.content.thruster.PlumeType;
 import com.example.examplemod.content.thruster.ThrusterBlockEntity;
+import com.example.examplemod.content.thruster.ThrusterConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
@@ -10,6 +11,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
@@ -19,25 +21,26 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * Renders a rocket exhaust plume as a real 3D mesh instead of particles.
+ * Renders a rocket exhaust plume as a layered 3D mesh.
  *
- * <p>The plume is drawn as nested, additively-blended tubes. Rather than a straight line, the tube's
- * centreline is traced through the path the nozzle actually moved through the world over the last
- * few ticks: each point down the plume is where an exhaust element emitted that long ago would be
- * now. So when the craft translates the plume trails behind it, and when it turns the tail curves -
- * like a real exhaust that keeps the momentum and direction it had when it left the bell.</p>
+ * <p>Structure: several additively-blended, concentric tubes - a thin bright core, a wider flame cone,
+ * and a soft outer flame, plus an optional very-faint heat-shimmer haze. Colour, length, width,
+ * brightness and shock (mach-diamond) structure come from a per-{@link PlumeType} {@link Profile}
+ * chosen by the fuel the thruster is burning. Length/brightness track the actual throttle (and the
+ * fuel's nominal thrust), so a weak burn is short and dim and a high-energy burn is long, bright and
+ * focused.</p>
  *
- * <p>On top of that, the surface radius is perturbed per-vertex by turbulence that grows downstream,
- * so the flame frays and billows instead of being a smooth cone, and engines with shock structure get
- * animated mach diamonds near the throat. Colour, width, length and shock come from a {@link Profile}
- * chosen by the thruster's {@link PlumeType}. Everything uses {@link RenderType#lightning()} - an
- * untextured, additively-blended, cull-off pass ideal for a glowing flame.</p>
+ * <p>The tube's centreline is traced through the nozzle's recent world path, so the plume trails when
+ * the craft translates and its tail curves when it turns - matching the physics. Surface radius is
+ * perturbed per-vertex by turbulence that grows downstream so the flame frays instead of being a
+ * smooth cone. Detail (layer count, shock diamonds, heat shimmer, render distance) follows
+ * {@link ThrusterConfig}.</p>
  */
 public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockEntity> {
 
-    private static final int RADIAL = 20;      // segments around each tube
-    private static final int SEGMENTS = 64;    // segments along each tube
-    private static final float AGE_TICKS = 7f; // how many ticks of nozzle history the plume spans
+    private static final int RADIAL = 20;
+    private static final int SEGMENTS = 64;
+    private static final float AGE_TICKS = 7f;
     private static final float ANG_STEP = (float) (Math.PI * 2.0 / RADIAL);
 
     private static final float[] COS = new float[RADIAL + 1];
@@ -50,7 +53,6 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         }
     }
 
-    // Scratch buffers reused per render call (BER is a singleton, render is single-threaded).
     private final float[] cx = new float[SEGMENTS + 1];
     private final float[] cy = new float[SEGMENTS + 1];
     private final float[] cz = new float[SEGMENTS + 1];
@@ -82,40 +84,51 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
             return;
         }
 
-        Profile profile = Profile.forType(be.getPlumeType());
+        // Distance culling.
+        BlockPos pos = be.getBlockPos();
+        Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        double maxD = ThrusterConfig.PLUME_RENDER_DISTANCE.get();
+        if (cam.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) > maxD * maxD) {
+            return;
+        }
+
+        PlumeType tier = be.getPlumeType();
+        Profile profile = Profile.forType(tier);
         float time = be.getLevel().getGameTime() + partialTick;
 
         Direction facing = be.getFacing();
         Vector3f dir = new Vector3f(facing.getStepX(), facing.getStepY(), facing.getStepZ());
-
         Vector3f helper = Math.abs(dir.y) < 0.99f ? new Vector3f(0f, 1f, 0f) : new Vector3f(1f, 0f, 0f);
         Vector3f u = new Vector3f(dir).cross(helper).normalize();
         Vector3f w = new Vector3f(dir).cross(u).normalize();
-
         Vector3f start = new Vector3f(0.5f, 0.5f, 0.5f).add(dir.x * 0.72f, dir.y * 0.72f, dir.z * 0.72f);
 
-        float length = (2.0f + throttle * 9.0f) * profile.lengthMul;
-        float maxRadius = (0.50f + throttle * 0.28f) * profile.widthMul;
-        float flicker = 0.88f + 0.12f * Mth.sin(time * 1.9f) * Mth.cos(time * 0.83f);
+        float effThrottle = throttle * tier.getNominalThrust();
+        float length = (2.0f + effThrottle * 9.0f) * profile.lengthMul;
+        float maxRadius = (0.42f + throttle * 0.30f) * profile.widthMul;
+
+        float pulse = profile.pulse > 0f ? (1f + profile.pulse * Mth.sin(time * 0.9f)) : 1f;
+        float flicker = (0.88f + 0.12f * Mth.sin(time * 1.9f) * Mth.cos(time * 0.83f)) * pulse;
 
         Matrix4f pose = ms.last().pose();
-
         buildCenterline(be, pose, dir, start, length, time);
 
         VertexConsumer vc = buffer.getBuffer(RenderType.lightning());
-        for (float[] layer : profile.layers) {
-            renderLayer(vc, pose, u, w, maxRadius, time, flicker, layer, profile.diamondAmp, profile.diamondCount);
+        float diamondAmp = ThrusterConfig.ENABLE_SHOCK_DIAMONDS.get() ? profile.diamondAmp : 0f;
+
+        int layerCount = Math.min(profile.layers.length, ThrusterConfig.layerCountForQuality());
+        for (int i = 0; i < layerCount; i++) {
+            renderLayer(vc, pose, u, w, maxRadius, time, flicker, profile.layers[i], diamondAmp, profile.diamondCount);
+        }
+
+        // Optional wide, very faint heat-shimmer haze.
+        if (ThrusterConfig.ENABLE_HEAT_SHIMMER.get() && ThrusterConfig.PLUME_QUALITY.get() != ThrusterConfig.PlumeQuality.LOW) {
+            renderLayer(vc, pose, u, w, maxRadius, time, flicker * 0.8f, profile.heatShimmer(), 0f, 0f);
         }
     }
 
-    /**
-     * Fills {@link #cx}/{@link #cy}/{@link #cz} with the plume centreline in block-local space, traced
-     * through the nozzle's recent world path so the plume trails and curves with the craft's motion.
-     */
     private void buildCenterline(ThrusterBlockEntity be, Matrix4f pose, Vector3f dir, Vector3f start, float length, float time) {
         Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-
-        // Current nozzle world position and facing (from the render pose, so VS ships / contraptions work).
         Vector3f nozzleRel = pose.transformPosition(new Vector3f(start));
         double nwx = cam.x + nozzleRel.x;
         double nwy = cam.y + nozzleRel.y;
@@ -142,7 +155,6 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
             float t = i / (float) SEGMENTS;
             float target = time - t * AGE_TICKS;
             if (invertible && be.sampleNozzle(target, samplePos, sampleDir)) {
-                // Where an element emitted at 'target' would be now: nozzle pos then + jet travel.
                 double wx = samplePos[0] + sampleDir[0] * (length * t);
                 double wy = samplePos[1] + sampleDir[1] * (length * t);
                 double wz = samplePos[2] + sampleDir[2] * (length * t);
@@ -195,7 +207,6 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         vc.addVertex(pose, x, y, z).setColor(color[0], color[1], color[2], color[3]);
     }
 
-    /** Rounded bulge past the nozzle tapering toward the tip (teardrop), kept wide enough to fray. */
     private static float radiusProfile(float t) {
         final float head = 0.14f;
         if (t < head) {
@@ -205,7 +216,6 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         return (float) Math.pow(1f - k, 0.55);
     }
 
-    /** Per-vertex radius including turbulence that grows downstream and mach-diamond modulation. */
     private static float radiusAt(float t, int jIndex, float baseRadius, float turbAmp,
                                   float time, float phase, float diamondAmp, float diamondCount) {
         float ang = (jIndex % RADIAL) * ANG_STEP;
@@ -244,54 +254,66 @@ public class ThrusterPlumeRenderer implements BlockEntityRenderer<ThrusterBlockE
         out[3] = Mth.clamp(alpha, 0f, 1f);
     }
 
-    /** Per-plume-type appearance data. */
+    /** Per-plume-type appearance. Layers are ordered core, mid, rim so low quality keeps the core. */
     private static final class Profile {
         final float[][] layers;
         final float lengthMul;
         final float widthMul;
         final float diamondAmp;
         final float diamondCount;
+        final float pulse;
 
-        private Profile(float[][] layers, float lengthMul, float widthMul, float diamondAmp, float diamondCount) {
+        private Profile(float[][] layers, float lengthMul, float widthMul, float diamondAmp, float diamondCount, float pulse) {
             this.layers = layers;
             this.lengthMul = lengthMul;
             this.widthMul = widthMul;
             this.diamondAmp = diamondAmp;
             this.diamondCount = diamondCount;
+            this.pulse = pulse;
+        }
+
+        /** A wide, very faint haze derived from the outer (rim) layer. */
+        float[] heatShimmer() {
+            float[] rim = layers[layers.length - 1];
+            return new float[]{
+                    rim[0] * 0.6f + 0.15f, rim[1] * 0.6f + 0.15f, rim[2] * 0.6f + 0.2f,
+                    rim[3] * 0.6f + 0.1f, rim[4] * 0.6f + 0.1f, rim[5] * 0.6f + 0.15f,
+                    0.07f, 2.2f, 1.35f, 1.0f, 0.16f
+            };
         }
 
         static Profile forType(PlumeType type) {
             return switch (type) {
-                // Kerolox (Merlin/F-1): warm, sooty orange, no shock diamonds.
-                case KEROLOX -> new Profile(new float[][]{
-                        {1.00f, 0.45f, 0.12f,  0.70f, 0.12f, 0.03f, 0.30f, 1.25f, 1.05f, 1.00f, 0.10f},
-                        {1.00f, 0.75f, 0.35f,  1.00f, 0.35f, 0.10f, 0.42f, 1.55f, 0.62f, 0.94f, 0.07f},
-                        {1.00f, 0.95f, 0.80f,  1.00f, 0.70f, 0.40f, 0.55f, 1.90f, 0.30f, 0.80f, 0.04f},
-                }, 1.00f, 1.00f, 0.0f, 0.0f);
-                // Methalox (Raptor): blue-white core with strong mach diamonds, long and slender.
-                case METHALOX -> new Profile(new float[][]{
-                        {0.55f, 0.45f, 1.00f,  0.30f, 0.18f, 0.65f, 0.28f, 1.30f, 1.05f, 1.00f, 0.08f},
-                        {0.80f, 0.88f, 1.00f,  0.45f, 0.55f, 1.00f, 0.40f, 1.55f, 0.60f, 0.95f, 0.05f},
-                        {1.00f, 1.00f, 1.00f,  0.75f, 0.85f, 1.00f, 0.62f, 1.95f, 0.30f, 0.82f, 0.04f},
-                }, 1.18f, 0.84f, 0.24f, 6.0f);
-                // Hydrolox (RS-25): faint, nearly transparent pale blue, long and thin, gentle diamonds.
-                case HYDROLOX -> new Profile(new float[][]{
-                        {0.55f, 0.66f, 1.00f,  0.30f, 0.42f, 0.85f, 0.10f, 1.60f, 1.05f, 1.00f, 0.05f},
-                        {0.72f, 0.85f, 1.00f,  0.40f, 0.62f, 1.00f, 0.15f, 1.80f, 0.55f, 0.96f, 0.04f},
-                        {0.88f, 0.96f, 1.00f,  0.62f, 0.82f, 1.00f, 0.22f, 2.00f, 0.26f, 0.84f, 0.03f},
-                }, 1.12f, 0.70f, 0.10f, 7.0f);
-                // Hypergolic (Draco/Proton): translucent reddish orange, rougher, shorter, thinner.
-                case HYPERGOLIC -> new Profile(new float[][]{
-                        {0.90f, 0.35f, 0.15f,  0.55f, 0.12f, 0.14f, 0.22f, 1.40f, 1.05f, 1.00f, 0.12f},
-                        {1.00f, 0.55f, 0.30f,  0.80f, 0.28f, 0.20f, 0.30f, 1.60f, 0.58f, 0.94f, 0.09f},
-                        {1.00f, 0.80f, 0.62f,  0.90f, 0.50f, 0.35f, 0.40f, 1.85f, 0.30f, 0.80f, 0.06f},
-                }, 0.90f, 0.82f, 0.0f, 0.0f);
-                // Solid (SRB/APCP): brilliant, wide, opaque white-orange, heavy fray.
-                case SOLID -> new Profile(new float[][]{
-                        {1.00f, 0.58f, 0.20f,  0.80f, 0.24f, 0.05f, 0.42f, 1.10f, 1.15f, 1.00f, 0.13f},
-                        {1.00f, 0.84f, 0.48f,  1.00f, 0.45f, 0.14f, 0.54f, 1.30f, 0.70f, 0.95f, 0.09f},
-                        {1.00f, 1.00f, 0.90f,  1.00f, 0.85f, 0.55f, 0.72f, 1.55f, 0.40f, 0.82f, 0.05f},
-                }, 1.05f, 1.22f, 0.0f, 0.0f);
+                // Low-grade: short, sooty orange, dirty/unstable edge.
+                case LOW_GRADE -> new Profile(new float[][]{
+                        {1.00f, 0.82f, 0.52f,  0.95f, 0.52f, 0.22f, 0.50f, 1.85f, 0.30f, 0.80f, 0.06f},
+                        {1.00f, 0.58f, 0.22f,  0.72f, 0.30f, 0.09f, 0.40f, 1.55f, 0.62f, 0.94f, 0.11f},
+                        {0.85f, 0.40f, 0.14f,  0.42f, 0.16f, 0.06f, 0.30f, 1.25f, 1.08f, 1.00f, 0.16f},
+                }, 0.85f, 1.06f, 0.0f, 0.0f, 0.0f);
+                // Standard: orange flame with a blue inner core.
+                case STANDARD -> new Profile(new float[][]{
+                        {0.60f, 0.80f, 1.00f,  1.00f, 0.88f, 0.62f, 0.58f, 1.90f, 0.28f, 0.80f, 0.04f},
+                        {1.00f, 0.75f, 0.35f,  1.00f, 0.40f, 0.12f, 0.42f, 1.55f, 0.60f, 0.94f, 0.06f},
+                        {1.00f, 0.50f, 0.15f,  0.70f, 0.20f, 0.05f, 0.30f, 1.25f, 1.00f, 1.00f, 0.08f},
+                }, 1.00f, 1.00f, 0.05f, 5.0f, 0.0f);
+                // Refined: longer, cleaner, sharp blue-orange.
+                case REFINED -> new Profile(new float[][]{
+                        {0.85f, 0.95f, 1.00f,  1.00f, 0.85f, 0.60f, 0.62f, 1.95f, 0.26f, 0.82f, 0.03f},
+                        {0.70f, 0.82f, 1.00f,  1.00f, 0.50f, 0.20f, 0.42f, 1.60f, 0.56f, 0.95f, 0.05f},
+                        {0.90f, 0.55f, 0.25f,  0.40f, 0.28f, 0.55f, 0.28f, 1.30f, 1.00f, 1.00f, 0.06f},
+                }, 1.15f, 0.90f, 0.12f, 6.0f, 0.0f);
+                // High-energy: blue-white core, long, bright, strong shock diamonds.
+                case HIGH_ENERGY -> new Profile(new float[][]{
+                        {0.95f, 1.00f, 1.00f,  0.80f, 0.90f, 1.00f, 0.70f, 1.95f, 0.28f, 0.82f, 0.03f},
+                        {0.80f, 0.90f, 1.00f,  0.50f, 0.62f, 1.00f, 0.46f, 1.60f, 0.56f, 0.95f, 0.04f},
+                        {0.50f, 0.58f, 1.00f,  0.25f, 0.32f, 0.72f, 0.30f, 1.30f, 1.00f, 1.00f, 0.05f},
+                }, 1.32f, 0.82f, 0.28f, 6.0f, 0.0f);
+                // Exotic: violet-blue, unstable glowing edges, very long, pulsing.
+                case EXOTIC -> new Profile(new float[][]{
+                        {0.95f, 0.90f, 1.00f,  0.85f, 0.60f, 1.00f, 0.66f, 1.85f, 0.30f, 0.82f, 0.08f},
+                        {0.75f, 0.60f, 1.00f,  0.72f, 0.30f, 1.00f, 0.46f, 1.50f, 0.60f, 0.95f, 0.12f},
+                        {0.60f, 0.30f, 1.00f,  0.55f, 0.10f, 0.72f, 0.32f, 1.20f, 1.06f, 1.00f, 0.18f},
+                }, 1.45f, 0.92f, 0.18f, 5.0f, 0.18f);
             };
         }
     }

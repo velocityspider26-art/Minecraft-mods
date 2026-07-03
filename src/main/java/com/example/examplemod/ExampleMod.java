@@ -6,6 +6,8 @@ import com.example.examplemod.content.thruster.CreativeThrusterBlock;
 import com.example.examplemod.content.thruster.CreativeThrusterBlockEntity;
 import com.example.examplemod.content.thruster.ThrusterBlock;
 import com.example.examplemod.content.thruster.ThrusterBlockEntity;
+import com.example.examplemod.content.thruster.ThrusterConfig;
+import com.example.examplemod.content.thruster.ThrusterFuelManager;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -37,6 +39,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.fluids.BaseFlowingFluid;
@@ -158,6 +161,14 @@ public class ExampleMod {
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Thruster tuning + plume quality config
+        modContainer.registerConfig(ModConfig.Type.COMMON, ThrusterConfig.SPEC, "examplemod-thruster.toml");
+    }
+
+    // Register the data-driven thruster fuel loader with the datapack reload system.
+    @SubscribeEvent
+    public void onAddReloadListeners(AddReloadListenerEvent event) {
+        event.addListener(new ThrusterFuelManager());
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {

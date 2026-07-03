@@ -1,0 +1,9 @@
+{
+  "fluids": ["examplemod:kerosene"],
+  "thrust_multiplier": 1.0,
+  "burn_rate": 1.0,
+  "tier": "standard",
+  "heat": 0.6,
+  "smoke": 0.15,
+  "instability": 0.05
+}
