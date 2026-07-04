@@ -3,7 +3,7 @@
   "category": "functional",
   "key": {
     "I": {
-      "tag": "forge:ingots/space_metal"
+      "tag": "c:ingots/iron"
     },
     "E": {
       "item": "minecraft:ender_pearl"
@@ -18,8 +18,8 @@
     "IOI"
   ],
   "result": {
-    "item": "genesis:void_engine_frame",
-    "count": 4
+    "count": 4,
+    "id": "genesis:void_engine_frame"
   },
   "show_notification": true
 }

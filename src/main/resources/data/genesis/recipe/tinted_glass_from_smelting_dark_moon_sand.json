@@ -7,5 +7,7 @@
   "ingredient": {
     "item": "genesis:dark_moon_sand"
   },
-  "result": "minecraft:tinted_glass"
+  "result": {
+    "id": "minecraft:tinted_glass"
+  }
 }

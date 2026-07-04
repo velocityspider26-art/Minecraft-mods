@@ -9,7 +9,7 @@
       "item": "genesis:void_engine_viewport"
     },
     "I": {
-      "tag": "forge:ingots/space_metal"
+      "tag": "c:ingots/iron"
     },
     "E": {
       "item": "minecraft:ender_pearl"
@@ -24,8 +24,8 @@
     "IOI"
   ],
   "result": {
-    "item": "genesis:nav_projector",
-    "count": 1
+    "count": 1,
+    "id": "genesis:nav_projector"
   },
   "show_notification": true
 }

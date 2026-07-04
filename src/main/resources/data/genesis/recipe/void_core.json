@@ -15,8 +15,8 @@
     "OOO"
   ],
   "result": {
-    "item": "genesis:void_core",
-    "count": 1
+    "count": 1,
+    "id": "genesis:void_core"
   },
   "show_notification": true
 }

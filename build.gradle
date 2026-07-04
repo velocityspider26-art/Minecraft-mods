@@ -100,15 +100,18 @@ dependencies {
     // create/ponder/flywheel/registrate (runtime).
     implementation "dev.ryanhcode.sable:sable-neoforge-${minecraft_version}:${sable_version}"
 
-    // Create Aeronautics itself (simulated = physics gameplay module, aeronautics = content module)
-    localRuntime "dev.simulated_team.simulated:simulated-neoforge-${minecraft_version}:${simulated_version}"
-    localRuntime "dev.eriksonn.aeronautics:aeronautics-neoforge-${minecraft_version}:${aeronautics_version}"
+    // Create Aeronautics itself (simulated = physics gameplay module, aeronautics = content module).
+    // Their POMs over-declare a number of purely-optional integration mods (curios, cc-tweaked,
+    // FTB, JourneyMap, architectury) that Genesis does not use; those are excluded so the dev
+    // runtime classpath resolves without extra mod mavens.
+    localRuntime("dev.simulated_team.simulated:simulated-neoforge-${minecraft_version}:${simulated_version}") { exclude group: 'top.theillusivec4.curios'; exclude group: 'cc.tweaked'; exclude group: 'dev.ftb.mods'; exclude group: 'info.journeymap'; exclude group: 'dev.architectury' }
+    localRuntime("dev.eriksonn.aeronautics:aeronautics-neoforge-${minecraft_version}:${aeronautics_version}") { exclude group: 'top.theillusivec4.curios'; exclude group: 'cc.tweaked'; exclude group: 'dev.ftb.mods'; exclude group: 'info.journeymap'; exclude group: 'dev.architectury' }
 
     // Create — compile against the slim jar for contraption/content integration
     compileOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     compileOnly "net.createmod.ponder:ponder-neoforge:${ponder_version}"
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
-    localRuntime "com.simibubi.create:create-${minecraft_version}:${create_version}"
+    localRuntime("com.simibubi.create:create-${minecraft_version}:${create_version}") { exclude group: 'top.theillusivec4.curios'; exclude group: 'cc.tweaked'; exclude group: 'dev.ftb.mods'; exclude group: 'info.journeymap'; exclude group: 'dev.architectury' }
 
     // Registrate (used by Genesis fluid registration; also a Create runtime dep)
     jarJar(implementation("com.tterrag.registrate:Registrate:${registrate_version}")) {

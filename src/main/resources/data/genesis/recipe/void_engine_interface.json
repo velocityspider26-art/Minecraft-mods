@@ -9,7 +9,7 @@
       "item": "minecraft:repeater"
     },
     "I": {
-      "tag": "forge:ingots/space_metal"
+      "tag": "c:ingots/iron"
     },
     "E": {
       "item": "minecraft:ender_pearl"
@@ -24,8 +24,8 @@
     "IOI"
   ],
   "result": {
-    "item": "genesis:void_engine_interface",
-    "count": 1
+    "count": 1,
+    "id": "genesis:void_engine_interface"
   },
   "show_notification": true
 }

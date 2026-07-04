@@ -7,5 +7,7 @@
   "ingredient": {
     "item": "genesis:hallow_moon_stone"
   },
-  "result": "genesis:moon_stone"
+  "result": {
+    "id": "genesis:moon_stone"
+  }
 }

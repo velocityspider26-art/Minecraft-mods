@@ -6,7 +6,7 @@
       "item": "minecraft:tinted_glass"
     },
     "E": {
-      "item": "zps:space_metal_mesh"
+      "item": "minecraft:iron_bars"
     }
   },
   "pattern": [
@@ -15,8 +15,8 @@
     "ETE"
   ],
   "result": {
-    "item": "genesis:void_engine_viewport",
-    "count": 4
+    "count": 4,
+    "id": "genesis:void_engine_viewport"
   },
   "show_notification": true
 }

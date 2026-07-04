@@ -3,13 +3,13 @@
   "category": "functional",
   "key": {
     "E": {
-      "item": "zps:space_metal_mesh"
+      "item": "minecraft:iron_bars"
     },
     "O": {
-      "item": "zps:void_caution_block"
+      "item": "minecraft:iron_block"
     },
     "I": {
-      "tag": "forge:ingots/space_metal"
+      "tag": "c:ingots/iron"
     }
   },
   "pattern": [
@@ -18,8 +18,8 @@
     "OOO"
   ],
   "result": {
-    "item": "genesis:void_core_reflector_panel",
-    "count": 4
+    "count": 4,
+    "id": "genesis:void_core_reflector_panel"
   },
   "show_notification": true
 }

@@ -6,10 +6,10 @@
       "item": "minecraft:glass"
     },
     "O": {
-      "item": "zps:space_metal_mesh"
+      "item": "minecraft:iron_bars"
     },
     "I": {
-      "tag": "forge:ingots/space_metal"
+      "tag": "c:ingots/iron"
     },
     "V": {
       "item": "genesis:verdite_cluster"
@@ -21,8 +21,8 @@
     "III"
   ],
   "result": {
-    "item": "genesis:void_focus",
-    "count": 1
+    "count": 1,
+    "id": "genesis:void_focus"
   },
   "show_notification": true
 }

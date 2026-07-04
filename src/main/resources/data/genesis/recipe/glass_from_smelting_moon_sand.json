@@ -7,5 +7,7 @@
   "ingredient": {
     "item": "genesis:moon_sand"
   },
-  "result": "minecraft:glass"
+  "result": {
+    "id": "minecraft:glass"
+  }
 }
