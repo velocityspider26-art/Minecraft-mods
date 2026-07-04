@@ -9,10 +9,10 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
-import org.valkyrienskies.mod.common.util.VectorConversionsMCKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsTransformHelper;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.config.GenesisClientConfig;
 import shipwrights.genesis.space.Celestial;
@@ -51,7 +51,7 @@ public class CelestialRenderDispatcher {
 
         VantagePoint vantagePoint = VantagePoint.get(level, new Vector3d(cameraPos.x, cameraPos.y, cameraPos.z), ticks, partialTick);
 
-        Vector3dc cameraForRenderOrder = vantagePoint instanceof VantagePoint.OnCelestial ? vantagePoint.getPosition() : VectorConversionsMCKt.toJOML(cameraPos);
+        Vector3dc cameraForRenderOrder = vantagePoint instanceof VantagePoint.OnCelestial ? vantagePoint.getPosition() : AeronauticsTransformHelper.toJoml(cameraPos);
 
         if (vantagePoint != null) {
             final Registry<Celestial> reg = registry;

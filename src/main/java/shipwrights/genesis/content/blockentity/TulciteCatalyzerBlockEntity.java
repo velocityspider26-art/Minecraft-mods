@@ -14,7 +14,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.items.ItemStackHandler;
-import org.jetbrains.annotations.Nonnull;
+import javax.annotation.Nonnull;
 import shipwrights.genesis.content.item.GenesisItems;
 
 public class TulciteCatalyzerBlockEntity extends BlockEntity implements Container {

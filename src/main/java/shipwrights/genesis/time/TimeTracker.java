@@ -5,9 +5,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.event.TickEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import shipwrights.genesis.networking.GenesisNetworking;
 import shipwrights.genesis.networking.SyncTimeOffsetPacket;
@@ -15,9 +15,8 @@ import shipwrights.genesis.networking.SyncTimeOffsetPacket;
 public class TimeTracker {
 
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.level instanceof ServerLevel serverLevel)) return;
+    public static void onLevelTick(LevelTickEvent.Post event) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
         if (!serverLevel.dimension().equals(Level.OVERWORLD)) return;
         if (serverLevel.getGameRules().getBoolean(GameRules.RULE_DAYLIGHT)) return;
 
@@ -34,8 +33,6 @@ public class TimeTracker {
         MinecraftServer server = player.getServer();
         if (server == null) return;
         long offset = GenesisTimeData.getOrCreate(server).getTimeOffset();
-        GenesisNetworking.INSTANCE.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                new SyncTimeOffsetPacket(offset));
+        PacketDistributor.sendToPlayer(player, new SyncTimeOffsetPacket(offset));
     }
 }

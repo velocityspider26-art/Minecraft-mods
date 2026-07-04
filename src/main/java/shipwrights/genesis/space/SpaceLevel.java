@@ -9,7 +9,7 @@ import org.joml.Matrix3d;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
-import org.valkyrienskies.mod.common.util.VectorConversionsMCKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsTransformHelper;
 import shipwrights.genesis.space.type.CelestialType;
 
 import java.util.Comparator;
@@ -56,7 +56,7 @@ public class SpaceLevel {
             double t = raycastOBB(
                     origin,
                     direction,
-                    VectorConversionsMCKt.toJOML(center),
+                    AeronauticsTransformHelper.toJoml(center),
                     new Matrix3d().rotation(rotFn.apply(body)),
                     new Vector3d(-oR, -oR, -oR),
                     new Vector3d(oR, oR, oR)

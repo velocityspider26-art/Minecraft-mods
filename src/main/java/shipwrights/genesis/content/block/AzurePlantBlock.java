@@ -10,10 +10,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathComputationType;
-import net.neoforged.neoforge.common.IPlantable;
 import shipwrights.genesis.content.GenesisTags;
 
-public class AzurePlantBlock extends Block implements IPlantable {
+public class AzurePlantBlock extends Block {
     public AzurePlantBlock(BlockBehaviour.Properties arg) {
         super(arg);
     }
@@ -40,8 +39,4 @@ public class AzurePlantBlock extends Block implements IPlantable {
         return arg4 == PathComputationType.AIR && !this.hasCollision ? true : super.isPathfindable(arg, arg2, arg3, arg4);
     }
 
-    public BlockState getPlant(BlockGetter world, BlockPos pos) {
-        BlockState state = world.getBlockState(pos);
-        return state.getBlock() != this ? this.defaultBlockState() : state;
-    }
 }

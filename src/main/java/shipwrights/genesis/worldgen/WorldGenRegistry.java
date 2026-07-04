@@ -3,13 +3,13 @@ package shipwrights.genesis.worldgen;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.RegisterEvent;
 import shipwrights.genesis.GenesisMod;
 
 import static shipwrights.genesis.GenesisMod.*;
 
-@EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)
 public class WorldGenRegistry {
     @SubscribeEvent
     public static void onRegisterEvent(RegisterEvent event) {

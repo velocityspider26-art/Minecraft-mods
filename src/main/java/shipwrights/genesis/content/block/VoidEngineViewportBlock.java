@@ -4,11 +4,11 @@ import shipwrights.genesis.content.blockentity.VoidCoreBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.GlassBlock;
+import net.minecraft.world.level.block.TransparentBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class VoidEngineViewportBlock extends GlassBlock {
+public class VoidEngineViewportBlock extends TransparentBlock {
     public VoidEngineViewportBlock() {
         super(BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.GLASS)
                 .strength(3.0f)

@@ -9,7 +9,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.TickEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import shipwrights.genesis.GenesisMod;
 
 import java.util.List;

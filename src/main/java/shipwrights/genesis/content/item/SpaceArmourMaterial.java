@@ -1,50 +1,40 @@
 package shipwrights.genesis.content.item;
 
-import net.minecraft.sounds.SoundEvent;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import shipwrights.genesis.GenesisMod;
 
-public class SpaceArmourMaterial implements ArmorMaterial {
-    @Override
-    public int getDurabilityForType(ArmorItem.Type arg) {
-        return 200;
-    }
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
-    @Override
-    public int getDefenseForType(ArmorItem.Type arg) {
-        return 1;
-    }
+/**
+ * The Space suit armour material. In 1.21.1 {@link ArmorMaterial} is a record rather than an
+ * interface, so this class simply builds a directly-held material instance.
+ */
+public final class SpaceArmourMaterial {
 
-    @Override
-    public int getEnchantmentValue() {
-        return 5;
-    }
+    public static final Holder<ArmorMaterial> HOLDER = Holder.direct(create());
 
-    @Override
-    public SoundEvent getEquipSound() {
-        return SoundEvents.WOOL_HIT;
-    }
+    private SpaceArmourMaterial() {}
 
-    @Override
-    public Ingredient getRepairIngredient() {
-        return Ingredient.of(Items.PHANTOM_MEMBRANE);
-    }
-
-    @Override
-    public String getName() {
-        return "genesis:space_suit";
-    }
-
-    @Override
-    public float getToughness() {
-        return 1;
-    }
-
-    @Override
-    public float getKnockbackResistance() {
-        return 0;
+    private static ArmorMaterial create() {
+        Map<ArmorItem.Type, Integer> defense = new EnumMap<>(ArmorItem.Type.class);
+        for (ArmorItem.Type type : ArmorItem.Type.values()) {
+            defense.put(type, 1);
+        }
+        return new ArmorMaterial(
+                defense,
+                5,
+                SoundEvents.ARMOR_EQUIP_LEATHER,
+                () -> Ingredient.of(Items.PHANTOM_MEMBRANE),
+                List.of(new ArmorMaterial.Layer(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "space"))),
+                1.0f,
+                0.0f);
     }
 }

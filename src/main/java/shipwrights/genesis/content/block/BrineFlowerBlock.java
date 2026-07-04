@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.common.ForgeHooks;
+import net.neoforged.neoforge.common.CommonHooks;
 import shipwrights.genesis.content.GenesisTags;
 
 import javax.annotation.Nullable;
@@ -48,7 +48,7 @@ public class BrineFlowerBlock extends Block {
         BlockPos blockpos = arg3.above();
         if (arg2.isEmptyBlock(blockpos) && blockpos.getY() < arg2.getMaxBuildHeight()) {
             int i = (Integer)arg.getValue(AGE);
-            if (i < 5 && ForgeHooks.onCropsGrowPre(arg2, blockpos, arg, true)) {
+            if (i < 5 && CommonHooks.canCropGrow(arg2, blockpos, arg, true)) {
                 boolean flag = false;
                 boolean flag1 = false;
                 BlockState blockstate = arg2.getBlockState(arg3.below());
@@ -109,7 +109,7 @@ public class BrineFlowerBlock extends Block {
                     }
                 }
 
-                ForgeHooks.onCropsGrowPost(arg2, arg3, arg);
+                CommonHooks.fireCropGrowPost(arg2, arg3, arg);
             }
         }
 

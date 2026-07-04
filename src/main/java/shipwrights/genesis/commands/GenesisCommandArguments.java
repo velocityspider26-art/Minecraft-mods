@@ -14,7 +14,7 @@ public final class GenesisCommandArguments {
     public static final DeferredRegister<ArgumentTypeInfo<?, ?>> ARGUMENT_TYPES =
             DeferredRegister.create(Registries.COMMAND_ARGUMENT_TYPE, GenesisMod.MOD_ID);
 
-    public static final RegistryObject<ArgumentTypeInfo<?, ?>> CELESTIAL =
+    public static final DeferredHolder<ArgumentTypeInfo<?, ?>, ArgumentTypeInfo<?, ?>> CELESTIAL =
             ARGUMENT_TYPES.register("celestial", () -> SingletonArgumentInfo.contextFree(CelestialArgument::celestial));
 
     public static void register(IEventBus bus) {

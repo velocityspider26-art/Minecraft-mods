@@ -8,7 +8,7 @@ import net.minecraft.sounds.SoundSource;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.event.TickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.content.sound.GenesisSounds;
 

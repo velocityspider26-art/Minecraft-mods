@@ -39,7 +39,7 @@ public interface CelestialTransformProvider {
     /**
      * Dispatch codec that handles serialization of any registered CelestialTransformProvider type.
      */
-    Codec<CelestialTransformProvider> DISPATCH_CODEC = ResourceLocation.CODEC.dispatchStable(
+    Codec<CelestialTransformProvider> DISPATCH_CODEC = ResourceLocation.CODEC.<CelestialTransformProvider>dispatchStable(
         CelestialTransformProvider::getType,
         type -> {
             Codec<? extends CelestialTransformProvider> codec = REGISTRY.get(type);
