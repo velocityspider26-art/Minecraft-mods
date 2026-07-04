@@ -31,11 +31,11 @@ public class GenesisBlocks {
         )
     );
 
-    static Optional<DeferredBlock<Block>> blockLookup(String name) {
+    static Optional<Block> blockLookup(String name) {
         for (var block: BLOCKS.getEntries()) {
             ResourceLocation id = block.getId();
             if (id != null && id.getPath().equals(name)) {
-                return Optional.of(block);
+                return Optional.of(block.value());
             }
         }
         return Optional.empty();
@@ -155,7 +155,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<DropExperienceBlock> ANORTHITE = BLOCKS.register("anorthite",
-            () -> new DropExperienceBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_ORE)
+            () -> new DropExperienceBlock(net.minecraft.util.valueproviders.UniformInt.of(2, 5), BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_ORE)
                     .mapColor(MapColor.COLOR_GRAY)
                     .sound(SoundType.DEEPSLATE)
             )
@@ -163,7 +163,7 @@ public class GenesisBlocks {
 
     // Alien sands
     public static final DeferredBlock<Block> LUNAR_DUST = BLOCKS.register("lunar_dust", () ->
-        new FallingBlock(BlockBehaviour.Properties.of()
+        new GenesisFallingBlock(BlockBehaviour.Properties.of()
             .mapColor(MapColor.SAND)
             .strength(0.5F)
             .sound(SoundType.SAND)
@@ -171,7 +171,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> STELLAR_SAND = BLOCKS.register("stellar_sand", () ->
-        new FallingBlock(BlockBehaviour.Properties.of()
+        new GenesisFallingBlock(BlockBehaviour.Properties.of()
             .mapColor(MapColor.TERRACOTTA_WHITE)
             .strength(0.5F)
             .sound(SoundType.SAND)
@@ -179,7 +179,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> RED_SALT = BLOCKS.register("red_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_RED)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -187,7 +187,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> PALE_RED_SALT = BLOCKS.register("pale_red_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.TERRACOTTA_RED)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -195,7 +195,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CRACKED_RED_SALT = BLOCKS.register("cracked_red_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_RED)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -203,7 +203,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CRACKED_PALE_RED_SALT = BLOCKS.register("cracked_pale_red_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.TERRACOTTA_RED)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -211,7 +211,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CYAN_SALT = BLOCKS.register("cyan_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_CYAN)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -219,7 +219,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> TURQUOISE_SALT = BLOCKS.register("turquoise_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.WARPED_NYLIUM)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -227,7 +227,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CRACKED_CYAN_SALT = BLOCKS.register("cracked_cyan_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_CYAN)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -235,7 +235,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CRACKED_TURQUOISE_SALT = BLOCKS.register("cracked_turquoise_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.WARPED_NYLIUM)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -243,7 +243,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> SALT = BLOCKS.register("salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.SNOW)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -251,7 +251,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> CRACKED_SALT = BLOCKS.register("cracked_salt", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.TERRACOTTA_WHITE)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -259,7 +259,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> MOON_SAND = BLOCKS.register("moon_sand", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_LIGHT_GRAY)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -267,7 +267,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> WAVY_MOON_SAND = BLOCKS.register("wavy_moon_sand", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_LIGHT_GRAY)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -275,7 +275,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> DARK_MOON_SAND = BLOCKS.register("dark_moon_sand", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_GRAY)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -283,7 +283,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> DARK_WAVY_MOON_SAND = BLOCKS.register("dark_wavy_moon_sand", () ->
-            new FallingBlock(BlockBehaviour.Properties.of()
+            new GenesisFallingBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_GRAY)
                     .strength(0.5F)
                     .sound(SoundType.SAND)
@@ -372,7 +372,7 @@ public class GenesisBlocks {
     );
 
     public static final DeferredBlock<Block> MIMIC_FEATHER = BLOCKS.register("mimic_feather", () ->
-            new BushBlock(BlockBehaviour.Properties.of()
+            new GenesisBushBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_GRAY)
                     .strength(0.5F)
                     .sound(SoundType.GRASS)
@@ -882,7 +882,7 @@ public class GenesisBlocks {
                     case slab -> {
                         String id = entry.getKey() + "_slab";
                         DeferredBlock<Block> slab = BLOCKS.register(id,
-                                () -> new SlabBlock(((BlockBehaviourAccessor) blockLookup(entry.getKey()).get().get()).getProperties()));
+                                () -> new SlabBlock(((BlockBehaviourAccessor) blockLookup(entry.getKey()).get()).getProperties()));
 
                         GenesisItems.DYNAMIC_ITEMS.put(id, GenesisItems.ITEMS.register(id,
                                 () -> new BlockItem(slab.get(), new Item.Properties())));
@@ -891,8 +891,8 @@ public class GenesisBlocks {
                         String id = entry.getKey() + "_stairs";
                         DeferredBlock<Block> stairs = BLOCKS.register(id,
                                 () -> {
-                                    Block block = blockLookup(entry.getKey()).get().get();
-                                    return new StairBlock(block::defaultBlockState, ((BlockBehaviourAccessor) block).getProperties());
+                                    Block block = blockLookup(entry.getKey()).get();
+                                    return new StairBlock(block.defaultBlockState(), ((BlockBehaviourAccessor) block).getProperties());
                                 });
 
                         GenesisItems.DYNAMIC_ITEMS.put(id, GenesisItems.ITEMS.register(id,

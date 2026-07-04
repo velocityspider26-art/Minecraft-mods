@@ -19,12 +19,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FlowingFluid;
 import shipwrights.genesis.content.sound.GenesisSounds;
 
-import java.util.function.Supplier;
 
 public class MiasmaLiquidBlock extends LiquidBlock {
 
-    public MiasmaLiquidBlock(Supplier<? extends FlowingFluid> fluidSupplier, Properties properties) {
-        super(fluidSupplier, properties);
+    public MiasmaLiquidBlock(FlowingFluid fluid, Properties properties) {
+        super(fluid, properties);
     }
 
     @Override

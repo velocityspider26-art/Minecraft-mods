@@ -75,7 +75,7 @@ public class TallAzurePlantBlock extends AzurePlantBlock {
         return arg3.hasProperty(BlockStateProperties.WATERLOGGED) ? (BlockState)arg3.setValue(BlockStateProperties.WATERLOGGED, arg.isWaterAt(arg2)) : arg3;
     }
 
-    public void playerWillDestroy(Level arg, BlockPos arg2, BlockState arg3, Player arg4) {
+    public BlockState playerWillDestroy(Level arg, BlockPos arg2, BlockState arg3, Player arg4) {
         if (!arg.isClientSide) {
             if (arg4.isCreative()) {
                 preventCreativeDropFromBottomPart(arg, arg2, arg3, arg4);
@@ -84,7 +84,7 @@ public class TallAzurePlantBlock extends AzurePlantBlock {
             }
         }
 
-        super.playerWillDestroy(arg, arg2, arg3, arg4);
+        return super.playerWillDestroy(arg, arg2, arg3, arg4);
     }
 
     public void playerDestroy(Level arg, Player arg2, BlockPos arg3, BlockState arg4, @Nullable BlockEntity arg5, ItemStack arg6) {

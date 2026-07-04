@@ -152,10 +152,10 @@ public class RadarDisplayBlockEntityRenderer implements BlockEntityRenderer<Rada
                          float r, float g, float b,
                          int light) {
 
-        vc.vertex(m, x0, y0, z).color(r, g, b, 1f).endVertex();
-        vc.vertex(m, x1, y0, z).color(r, g, b, 1f).endVertex();
-        vc.vertex(m, x1, y1, z2).color(r, g, b, 1f).endVertex();
-        vc.vertex(m, x0, y1, z2).color(r, g, b, 1f).endVertex();
+        vc.addVertex(m, x0, y0, z).setColor(r, g, b, 1f);
+        vc.addVertex(m, x1, y0, z).setColor(r, g, b, 1f);
+        vc.addVertex(m, x1, y1, z2).setColor(r, g, b, 1f);
+        vc.addVertex(m, x0, y1, z2).setColor(r, g, b, 1f);
     }
 
     @Override

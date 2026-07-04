@@ -35,8 +35,8 @@ public class AzurePlantBlock extends Block {
         return arg.getFluidState().isEmpty();
     }
 
-    public boolean isPathfindable(BlockState arg, BlockGetter arg2, BlockPos arg3, PathComputationType arg4) {
-        return arg4 == PathComputationType.AIR && !this.hasCollision ? true : super.isPathfindable(arg, arg2, arg3, arg4);
+    public boolean isPathfindable(BlockState arg, PathComputationType arg4) {
+        return arg4 == PathComputationType.AIR && !this.hasCollision ? true : super.isPathfindable(arg, arg4);
     }
 
 }

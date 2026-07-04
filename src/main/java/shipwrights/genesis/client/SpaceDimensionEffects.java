@@ -187,7 +187,7 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
         Matrix4f pose = poseStack.last().pose();
         Vector3d center = new Vector3d(toStar).mul(glowDistance);
         bufferbuilder.begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
-        bufferbuilder.vertex(pose, (float) center.x, (float) center.y, (float) center.z).color(r, g, b, 0.0f).endVertex();
+        bufferbuilder.addVertex(pose, (float) center.x, (float) center.y, (float) center.z).setColor(r, g, b, 0.0f);
 
         int steps = 32;
         for (int i = 0; i <= steps; i++) {
@@ -196,7 +196,7 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
             double sin = Math.sin(angle);
             Vector3d offset = new Vector3d(right).mul(cos * outerRadius).add(new Vector3d(upPerp).mul(sin * outerRadius));
             Vector3d pos = new Vector3d(center).add(offset);
-            bufferbuilder.vertex(pose, (float) pos.x, (float) pos.y, (float) pos.z).color(r, g, b, 1.0f).endVertex();
+            bufferbuilder.addVertex(pose, (float) pos.x, (float) pos.y, (float) pos.z).setColor(r, g, b, 1.0f);
         }
 
         BufferUploader.drawWithShader(bufferbuilder.end());
@@ -257,7 +257,7 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
                     double d24 = d17 * d12 - d21 * d13;
                     double d25 = d24 * d9 - d22 * d10;
                     double d26 = d22 * d9 + d24 * d10;
-                    bufferbuilder.vertex(d5 + d25, d6 + d23, d7 + d26).endVertex();
+                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26);
                 }
             }
         }

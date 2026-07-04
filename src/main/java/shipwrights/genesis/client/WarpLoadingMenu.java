@@ -173,7 +173,7 @@ public class WarpLoadingMenu extends ReceivingLevelScreen {
                     float u = ((j & 2) == 0) ? 0.0f : 1.0f;
                     float v = ((j + 1 & 2) == 0) ? 1.0f : 0.0f;
 
-                    bufferbuilder.vertex(d5 + d25, d6 + d23, d7 + d26).color(r, g, b, a).uv(u, v).endVertex();
+                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26).setColor(r, g, b, a).uv(u, v);
                 }
             }
         }

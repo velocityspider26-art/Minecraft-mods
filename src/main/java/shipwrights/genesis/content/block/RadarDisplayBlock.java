@@ -1,5 +1,7 @@
 package shipwrights.genesis.content.block;
 
+import com.mojang.serialization.MapCodec;
+
 import shipwrights.genesis.content.blockentity.RadarDisplayBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,6 +20,13 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import org.jetbrains.annotations.Nullable;
 
 public class RadarDisplayBlock extends BaseEntityBlock {
+    public static final MapCodec<RadarDisplayBlock> CODEC = simpleCodec(RadarDisplayBlock::new);
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     public RadarDisplayBlock(Properties properties) {

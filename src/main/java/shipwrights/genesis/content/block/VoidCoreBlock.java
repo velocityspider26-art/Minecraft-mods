@@ -1,5 +1,7 @@
 package shipwrights.genesis.content.block;
 
+import com.mojang.serialization.MapCodec;
+
 import shipwrights.genesis.content.blockentity.VoidCoreBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -12,6 +14,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class VoidCoreBlock extends BaseEntityBlock {
+    public static final MapCodec<VoidCoreBlock> CODEC = simpleCodec(VoidCoreBlock::new);
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
     public static final BooleanProperty DORMANT = BooleanProperty.create("dormant");
 
     public VoidCoreBlock(Properties properties) {

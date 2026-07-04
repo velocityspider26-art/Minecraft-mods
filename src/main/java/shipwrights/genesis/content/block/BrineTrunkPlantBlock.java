@@ -4,6 +4,7 @@
 //
 
 package shipwrights.genesis.content.block;
+import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,6 +31,13 @@ import net.minecraft.world.level.pathfinder.PathComputationType;
 import shipwrights.genesis.content.GenesisTags;
 
 public class BrineTrunkPlantBlock extends PipeBlock implements SimpleWaterloggedBlock {
+    public static final MapCodec<BrineTrunkPlantBlock> CODEC = simpleCodec(BrineTrunkPlantBlock::new);
+
+    @Override
+    protected MapCodec<? extends PipeBlock> codec() {
+        return CODEC;
+    }
+
     public static final BooleanProperty WATERLOGGED;
 
     public BrineTrunkPlantBlock(BlockBehaviour.Properties arg) {
@@ -101,7 +109,7 @@ public class BrineTrunkPlantBlock extends PipeBlock implements SimpleWaterlogged
         arg.add(new Property[]{NORTH, EAST, SOUTH, WEST, UP, DOWN, WATERLOGGED});
     }
 
-    public boolean isPathfindable(BlockState arg, BlockGetter arg2, BlockPos arg3, PathComputationType arg4) {
+    public boolean isPathfindable(BlockState arg, PathComputationType arg4) {
         return false;
     }
 

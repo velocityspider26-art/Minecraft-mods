@@ -45,10 +45,10 @@ public class TransitionScreen extends ReceivingLevelScreen {
         buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
 
         // Framebuffer textures are flipped vertically.
-        buffer.vertex(0, h, 0).uv(0, 0).endVertex();
-        buffer.vertex(w, h, 0).uv(1, 0).endVertex();
-        buffer.vertex(w, 0, 0).uv(1, 1).endVertex();
-        buffer.vertex(0, 0, 0).uv(0, 1).endVertex();
+        buffer.addVertex(0, h, 0).uv(0, 0);
+        buffer.addVertex(w, h, 0).uv(1, 0);
+        buffer.addVertex(w, 0, 0).uv(1, 1);
+        buffer.addVertex(0, 0, 0).uv(0, 1);
 
         tesselator.end();
 

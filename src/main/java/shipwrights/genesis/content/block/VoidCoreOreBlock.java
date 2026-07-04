@@ -19,7 +19,7 @@ public class VoidCoreOreBlock extends DropExperienceBlock {
     int soundTicks = 0;
 
     public VoidCoreOreBlock(Properties properties) {
-        super(properties);
+        super(net.minecraft.util.valueproviders.UniformInt.of(3, 7), properties);
     }
 
     @Override

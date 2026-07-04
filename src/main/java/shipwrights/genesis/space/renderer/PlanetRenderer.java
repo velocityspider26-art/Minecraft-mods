@@ -215,11 +215,11 @@ public class PlanetRenderer implements CelestialRenderer {
         Vector3f rotatedNormal = new Vector3f(x,y,z);
         rotatedNormal = rotation.transform(rotatedNormal.normalize());
 
-        buffer.vertex(matrix, x, y, z)
+        buffer.addVertex(matrix, x, y, z)
             .uv(u, v)
-            .color(fogRed, fogGreen, fogBlue, (int)(alpha * 255))
+            .setColor(fogRed, fogGreen, fogBlue, (int)(alpha * 255))
             .normal(rotatedNormal.x, rotatedNormal.y, rotatedNormal.z)
-            .endVertex();
+            ;
     }
 
     private void renderShadows(List<FaceShadow> shadows, PoseStack poseStack, double x, double y, double z, double halfExtent, Quaterniondc localRotation) {

@@ -131,7 +131,7 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         cachedRawDensity *= densityFade;
 
         cachedClampedDensity = density;
-        PlanetColorPalette palette = planetProps != null ? planetProps.atmosphere().color() : new PlanetColorPalette.Overworld();
+        PlanetColorPalette palette = planetProps != null ? planetProps.atmosphere().setColor() : new PlanetColorPalette.Overworld();
 
         float rainLevel = hasPrecipitation(level) ? level.getRainLevel(partialTick) : 0f;
         double rawStarBrightness = 2 * Math.min(Math.max(-starUpDot, 0), 0.5d) * (1f - rainLevel);
@@ -183,14 +183,14 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
             Matrix4f pose = poseStack.last().pose();
             
             bufferbuilder.begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
-            bufferbuilder.vertex(pose, 0.0F, 100.0F, 0.0F).color(r, g, b, a).endVertex();
+            bufferbuilder.addVertex(pose, 0.0F, 100.0F, 0.0F).setColor(r, g, b, a);
             int i = 16;
             
             for(int j = 0; j <= i; ++j) {
                 float angle = (float)j * ((float)Math.PI * 2F) / i;
                 float sin = Mth.sin(angle);
                 float cos = Mth.cos(angle);
-                bufferbuilder.vertex(pose, sin * 120.0F, cos * 120.0F, -cos * 40.0F * a).color(acolor[0], acolor[1], acolor[2], 0.0F).endVertex();
+                bufferbuilder.addVertex(pose, sin * 120.0F, cos * 120.0F, -cos * 40.0F * a).setColor(acolor[0], acolor[1], acolor[2], 0.0F);
             }
             
             BufferUploader.drawWithShader(bufferbuilder.end());
@@ -273,7 +273,7 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
                     double d24 = d17 * d12 - d21 * d13;
                     double d25 = d24 * d9 - d22 * d10;
                     double d26 = d22 * d9 + d24 * d10;
-                    bufferbuilder.vertex(d5 + d25, d6 + d23, d7 + d26).endVertex();
+                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26);
                 }
             }
         }

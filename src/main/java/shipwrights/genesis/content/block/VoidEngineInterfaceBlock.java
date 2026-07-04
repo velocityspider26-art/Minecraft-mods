@@ -1,5 +1,7 @@
 package shipwrights.genesis.content.block;
 
+import com.mojang.serialization.MapCodec;
+
 import shipwrights.genesis.content.blockentity.GenesisBlockEntities;
 import shipwrights.genesis.content.blockentity.VoidCoreBlockEntity;
 import shipwrights.genesis.content.blockentity.VoidEngineInterfaceBlockEntity;
@@ -22,6 +24,13 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import org.jetbrains.annotations.Nullable;
 
 public class VoidEngineInterfaceBlock extends BaseEntityBlock {
+    public static final MapCodec<VoidEngineInterfaceBlock> CODEC = simpleCodec(VoidEngineInterfaceBlock::new);
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
