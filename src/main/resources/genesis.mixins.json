@@ -1,0 +1,53 @@
+{
+  "required": true,
+  "package": "shipwrights.genesis.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+    "ChannelAccessor",
+    "ChunkBorderRendererMixin",
+    "ClientLevelMixin",
+    "DimensionSpecialEffectsManagerMixin",
+    "EntityRenderDispatcherMixin",
+    "FallingBlockRendererMixin",
+    "FlameParticleMixin",
+    "FogRendererMixin",
+    "GameRendererMixin",
+    "HugeExplosionSeedParticleMixin",
+    "LevelRendererMixin",
+    "MinecraftMixin",
+    "ParticleEngineMixin",
+    "ParticleMixin",
+    "PehkuiEntityRenderDispatcherMixin",
+    "RenderStateShardAccessor",
+    "RisingParticleMixin",
+    "SoundEngineMixin",
+    "SoundMixin"
+  ],
+  "mixins": [
+    "ArgumentTypeInfosMixin",
+    "BlockBehaviourAccessor",
+    "EntityDraggerMixin",
+    "EntityMixin",
+    "FallingBlockEntityAccessor",
+    "FallingBlockEntityMixin",
+    "FogRendererAccessor",
+    "LevelChunkMixin",
+    "LevelMixin",
+    "LevelRendererAccessor",
+    "LevelTimeAccessMixin",
+    "LivingEntityMixin",
+    "MinecraftServerMixin",
+    "ServerLevelMixin",
+    "TeleportCommandMixin",
+    "TimeCommandMixin",
+    "VSBlockItemMixin",
+    "VSExplosionForceMixin",
+    "VSMountedCameraMixin",
+    "compat.mekanism.AdvancedSolarGeneratorMixin",
+    "compat.mekanism.WorldUtilsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
