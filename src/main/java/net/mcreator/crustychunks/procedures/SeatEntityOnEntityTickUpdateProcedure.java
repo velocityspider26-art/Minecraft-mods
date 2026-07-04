@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class SeatEntityOnEntityTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (!entity.isVehicle()) {
             if (!entity.level().isClientSide()) {
@@ -102,6 +103,10 @@ public class SeatEntityOnEntityTickUpdateProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SeatEntityOnEntityTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

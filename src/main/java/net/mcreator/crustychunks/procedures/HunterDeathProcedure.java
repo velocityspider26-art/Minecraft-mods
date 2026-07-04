@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HunterDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          SmallExplosionProcedure.execute(world, x, y, z);
          GasolineExplosionProcedure.execute(world, x, y, z);
@@ -72,6 +73,10 @@ public class HunterDeathProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HunterDeathProcedure.execute", _wtSafe);
       }
    }
 }

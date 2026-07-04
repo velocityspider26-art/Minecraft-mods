@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class RocketPodFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -422,6 +423,10 @@ public class RocketPodFireScriptProcedure {
                _levelxx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RocketPodFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

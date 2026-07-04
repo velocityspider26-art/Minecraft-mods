@@ -18,6 +18,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class RevolverActionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if ((!(entity instanceof Player _plrCldCheck1) || !_plrCldCheck1.getCooldowns().isOnCooldown(itemstack.getItem()))
             && itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
@@ -58,6 +59,10 @@ public class RevolverActionProcedure {
                CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "bolt"));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RevolverActionProcedure.execute", _wtSafe);
       }
    }
 }

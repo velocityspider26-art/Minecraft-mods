@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class BulletTracerProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double magnitude = 0.0;
          double vx = 0.0;
@@ -47,6 +48,10 @@ public class BulletTracerProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BulletTracerProcedure.execute", _wtSafe);
       }
    }
 }

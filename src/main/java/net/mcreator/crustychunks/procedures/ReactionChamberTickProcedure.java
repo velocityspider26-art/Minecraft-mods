@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ReactionChamberTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean Ready = false;
       Ready = false;
       if ((new Object() {
@@ -118,6 +119,10 @@ public class ReactionChamberTickProcedure {
          if (world instanceof Level _levelx) {
             _levelx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ReactionChamberTickProcedure.execute", _wtSafe);
       }
    }
 }

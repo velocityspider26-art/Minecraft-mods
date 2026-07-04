@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BoltActionRifleEntitySwingsItemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof BoltActionRifleAnimatedItem) {
@@ -79,6 +80,10 @@ public class BoltActionRifleEntitySwingsItemProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BoltActionRifleEntitySwingsItemProcedure.execute", _wtSafe);
       }
    }
 }

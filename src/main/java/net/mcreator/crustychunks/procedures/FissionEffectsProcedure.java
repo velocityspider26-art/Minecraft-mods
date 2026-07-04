@@ -23,6 +23,8 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class FissionEffectsProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
+         net.mcreator.crustychunks.compat.WariumNukeEffects.play(world, x, y, z, net.mcreator.crustychunks.compat.WariumNukeEffects.Profile.STANDARD);
       double loop = 0.0;
       CrustyChunksMod.queueServerWork(
          1,
@@ -277,6 +279,10 @@ public class FissionEffectsProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FissionEffectsProcedure.execute", _wtSafe);
       }
    }
 }

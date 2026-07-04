@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class DirtupdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       BlockPos _bp = BlockPos.containing(x, y, z);
       BlockState _bs = Blocks.DIRT.defaultBlockState();
       BlockState _bso = world.getBlockState(_bp);
@@ -28,5 +29,9 @@ public class DirtupdateProcedure {
       }
 
       world.setBlock(_bp, _bs, 3);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DirtupdateProcedure.execute", _wtSafe);
+      }
    }
 }

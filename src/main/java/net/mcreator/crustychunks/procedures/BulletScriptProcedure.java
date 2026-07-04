@@ -9,6 +9,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class BulletScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) >= 2.0) {
             immediatesourceentity.setDeltaMovement(
@@ -27,6 +28,10 @@ public class BulletScriptProcedure {
             immediatesourceentity.getDeltaMovement().y() * 0.1,
             immediatesourceentity.getDeltaMovement().z() * 0.1
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BulletScriptProcedure.execute", _wtSafe);
       }
    }
 }

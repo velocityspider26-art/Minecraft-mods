@@ -21,10 +21,16 @@ public class ManualAimerFire2Procedure {
    }
 
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       execute(null, world, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ManualAimerFire2Procedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getRootVehicle() instanceof SeatEntityEntity
             && world.getBlockState(BlockPos.containing(entity.getRootVehicle().getX(), entity.getRootVehicle().getY(), entity.getRootVehicle().getZ())).getBlock()
@@ -36,6 +42,10 @@ public class ManualAimerFire2Procedure {
                world.setBlock(_pos, (BlockState)_bs.setValue(_integerProp, _value), 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ManualAimerFire2Procedure.execute", _wtSafe);
       }
    }
 }

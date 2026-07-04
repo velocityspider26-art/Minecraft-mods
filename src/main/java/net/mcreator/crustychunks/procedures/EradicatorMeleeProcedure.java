@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class EradicatorMeleeProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       int horizontalRadiusSquare = 5;
       int verticalRadiusSquare = 3;
       int yIterationsSquare = verticalRadiusSquare;
@@ -64,6 +65,10 @@ public class EradicatorMeleeProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EradicatorMeleeProcedure.execute", _wtSafe);
       }
    }
 }

@@ -15,6 +15,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FragmentSplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof Level _level) {
          if (!_level.isClientSide()) {
             _level.playSound(
@@ -69,6 +70,10 @@ public class FragmentSplosionProcedure {
 
       if (world instanceof ServerLevel _levelxx) {
          _levelxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.HUGE_SPARKS.get(), x + 0.5, y + 1.5, z + 0.5, 40, 0.5, 0.5, 0.5, 1.2);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FragmentSplosionProcedure.execute", _wtSafe);
       }
    }
 }

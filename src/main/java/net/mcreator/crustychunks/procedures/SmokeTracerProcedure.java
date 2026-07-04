@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmokeTracerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (!immediatesourceentity.isUnderWater()) {
             world.addParticle(
@@ -30,6 +31,10 @@ public class SmokeTracerProcedure {
                immediatesourceentity.discard();
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeTracerProcedure.execute", _wtSafe);
       }
    }
 }

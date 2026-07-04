@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class MediumBombRedstoneOnProcedure {
    public static void execute(final LevelAccessor world, double x, double y, double z) {
+      try {
       double launchoffsety = 0.0;
       launchoffsety = OffsetReturnProcedure.execute(world, x, y, z);
       if (world instanceof ServerLevel projectileLevel) {
@@ -121,5 +122,9 @@ public class MediumBombRedstoneOnProcedure {
       }
 
       world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MediumBombRedstoneOnProcedure.execute", _wtSafe);
+      }
    }
 }

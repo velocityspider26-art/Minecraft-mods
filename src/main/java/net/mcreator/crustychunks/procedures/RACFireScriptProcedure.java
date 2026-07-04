@@ -33,6 +33,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 public class RACFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -1393,6 +1394,10 @@ public class RACFireScriptProcedure {
                projectileLevel.addFreshEntity(_entityToSpawn);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RACFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

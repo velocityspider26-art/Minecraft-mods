@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class LargeSmokeHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          for (int index0 = 0; index0 < 45; index0++) {
             if (world instanceof ServerLevel projectileLevel) {
@@ -68,6 +69,10 @@ public class LargeSmokeHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeSmokeHitProcedure.execute", _wtSafe);
       }
    }
 }

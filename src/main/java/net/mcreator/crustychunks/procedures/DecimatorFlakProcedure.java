@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class DecimatorFlakProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Barrels = 0.0;
          double Xvector = 0.0;
@@ -185,6 +186,10 @@ public class DecimatorFlakProcedure {
          if (entity instanceof DecimatorEntity) {
             ((DecimatorEntity)entity).setAnimation("Shoot");
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorFlakProcedure.execute", _wtSafe);
       }
    }
 }

@@ -11,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class Rad10TickItemProcedure {
    public static void execute(Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (Mth.nextInt(RandomSource.create(), 1, 40) == 1) {
             entity.getPersistentData().putDouble("Radiation", entity.getPersistentData().getDouble("Radiation") + (double)(10 * itemstack.getCount()));
@@ -18,6 +19,10 @@ public class Rad10TickItemProcedure {
                _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 60, 1, false, false));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("Rad10TickItemProcedure.execute", _wtSafe);
       }
    }
 }

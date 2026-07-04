@@ -7,6 +7,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class NVDHelmetTickProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("HelmetState") == 0.0) {
             entity.getPersistentData().putDouble("HelmetState", 1.0);
@@ -21,6 +22,10 @@ public class NVDHelmetTickProcedure {
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 4, 3, false, false));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NVDHelmetTickProcedure.execute", _wtSafe);
       }
    }
 }

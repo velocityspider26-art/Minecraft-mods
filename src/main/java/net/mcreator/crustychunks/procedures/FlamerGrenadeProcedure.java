@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FlamerGrenadeProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof DecimatorEntity) {
             ((DecimatorEntity)entity).setAnimation("SmokeDeploy");
@@ -79,6 +80,10 @@ public class FlamerGrenadeProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlamerGrenadeProcedure.execute", _wtSafe);
       }
    }
 }

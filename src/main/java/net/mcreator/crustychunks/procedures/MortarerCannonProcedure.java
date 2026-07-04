@@ -25,6 +25,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MortarerCannonProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (1 == Mth.nextInt(RandomSource.create(), 1, 10)) {
             Level projectileLevel = entity.level();
@@ -192,6 +193,10 @@ public class MortarerCannonProcedure {
          }
 
          entity.getPersistentData().putDouble("T", (double)Mth.nextInt(RandomSource.create(), 320, 380));
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MortarerCannonProcedure.execute", _wtSafe);
       }
    }
 }

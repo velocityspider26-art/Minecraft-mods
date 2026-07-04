@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ArtilleryChargeLoaderUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean found = false;
       double Ammunition = 0.0;
       double sx = 0.0;
@@ -262,6 +263,10 @@ public class ArtilleryChargeLoaderUpdateProcedure {
             }
 }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryChargeLoaderUpdateProcedure.execute", _wtSafe);
       }
    }
 }

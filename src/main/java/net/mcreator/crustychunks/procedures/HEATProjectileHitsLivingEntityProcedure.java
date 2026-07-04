@@ -19,6 +19,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HEATProjectileHitsLivingEntityProcedure {
    public static void execute(LevelAccessor world, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          for (int index0 = 0; index0 < 10; index0++) {
             if (world instanceof ServerLevel projectileLevel) {
@@ -65,6 +66,10 @@ public class HEATProjectileHitsLivingEntityProcedure {
             ),
             150.0F
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HEATProjectileHitsLivingEntityProcedure.execute", _wtSafe);
       }
    }
 }

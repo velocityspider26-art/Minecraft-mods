@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class RocketHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          DamagesProcedure.execute(world, x, y, z);
          CrustyChunksMod.queueServerWork(
@@ -67,6 +68,10 @@ public class RocketHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RocketHitProcedure.execute", _wtSafe);
       }
    }
 }

@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class NukeBombTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          boolean Trigger = false;
          if (entity.getVehicle() != null) {
@@ -56,6 +57,10 @@ public class NukeBombTickProcedure {
 
             CrustyChunksMod.queueServerWork(1, () -> LargeRocketHitProcedure.execute(world, immediatesourceentity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NukeBombTickProcedure.execute", _wtSafe);
       }
    }
 }

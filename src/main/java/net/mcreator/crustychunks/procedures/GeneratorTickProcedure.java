@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class GeneratorTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double Kinetic = 0.0;
       Kinetic = TestShaftProcedure.execute(world, x, y, z, blockstate, (new Object() {
          public Direction getDirection(BlockState _bs) {
@@ -73,6 +74,10 @@ public class GeneratorTickProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GeneratorTickProcedure.execute", _wtSafe);
       }
    }
 }

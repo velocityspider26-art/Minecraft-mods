@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SMGHandTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("ShotQue") > 0.0) {
             SMGFireScriptProcedure.execute(world, x, y, z, entity, itemstack);
@@ -15,6 +16,10 @@ public class SMGHandTickProcedure {
          }
 
          PistolHandTickProcedure.execute(entity);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SMGHandTickProcedure.execute", _wtSafe);
       }
    }
 }

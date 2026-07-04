@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GasArtilleryTracerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (!immediatesourceentity.isUnderWater()) {
             world.addParticle(
@@ -61,6 +62,10 @@ public class GasArtilleryTracerProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GasArtilleryTracerProcedure.execute", _wtSafe);
       }
    }
 }

@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class AIPodTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean Trigger = false;
          if (!immediatesourceentity.isUnderWater()
@@ -117,6 +118,10 @@ public class AIPodTickProcedure {
 
             CrustyChunksMod.queueServerWork(1, () -> MicroExplosionProcedure.execute(world, x, y, z));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIPodTickProcedure.execute", _wtSafe);
       }
    }
 }

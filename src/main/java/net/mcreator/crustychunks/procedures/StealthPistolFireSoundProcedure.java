@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class StealthPistolFireSoundProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Movementinnacuracy = 0.0;
       double recoil = 0.0;
       CrustyChunksMod.queueServerWork(
@@ -91,5 +92,9 @@ public class StealthPistolFireSoundProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("StealthPistolFireSoundProcedure.execute", _wtSafe);
+      }
    }
 }

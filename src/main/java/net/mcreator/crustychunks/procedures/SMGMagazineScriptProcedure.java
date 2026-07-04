@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SMGMagazineScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Rounds = 0.0;
          double Capacity = 0.0;
@@ -301,6 +302,10 @@ public class SMGMagazineScriptProcedure {
                true
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SMGMagazineScriptProcedure.execute", _wtSafe);
       }
    }
 }

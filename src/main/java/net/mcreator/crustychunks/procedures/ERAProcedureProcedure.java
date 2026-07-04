@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ERAProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x - (double)(new Object() {
             public Direction getDirection(BlockState _bs) {
                if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
@@ -318,6 +319,10 @@ public class ERAProcedureProcedure {
                }
             }
          }).getDirection(world.getBlockState(BlockPos.containing(x, y, z))).getStepZ(), 2.0F, ExplosionInteraction.BLOCK);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ERAProcedureProcedure.execute", _wtSafe);
       }
    }
 }

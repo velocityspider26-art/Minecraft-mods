@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class BurntgrassUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (1 == Mth.nextInt(RandomSource.create(), 1, 5)) {
          BlockPos _bp = BlockPos.containing(x, y, z);
          BlockState _bs = Blocks.DIRT.defaultBlockState();
@@ -31,6 +32,10 @@ public class BurntgrassUpdateTickProcedure {
          }
 
          world.setBlock(_bp, _bs, 3);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BurntgrassUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

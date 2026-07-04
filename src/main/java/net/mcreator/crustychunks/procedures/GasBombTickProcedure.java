@@ -5,10 +5,15 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GasBombTickProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (immediatesourceentity.isUnderWater()) {
             GasBombHitsBlockProcedure.execute(world, immediatesourceentity);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GasBombTickProcedure.execute", _wtSafe);
       }
    }
 }

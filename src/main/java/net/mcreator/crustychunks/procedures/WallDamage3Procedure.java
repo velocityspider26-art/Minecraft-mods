@@ -8,7 +8,12 @@ import net.minecraft.world.level.block.Blocks;
 
 public class WallDamage3Procedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       world.setBlock(BlockPos.containing(x, y, z), ((Block)CrustyChunksModBlocks.DAMAGED_CONCRETE_WALL.get()).defaultBlockState(), 3);
       world.levelEvent(2001, BlockPos.containing(x, y, z), Block.getId(Blocks.COBBLESTONE.defaultBlockState()));
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WallDamage3Procedure.execute", _wtSafe);
+      }
    }
 }

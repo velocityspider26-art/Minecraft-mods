@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class StrikeSpearFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean detonate = false;
          boolean Trigger = false;
@@ -293,6 +294,10 @@ public class StrikeSpearFlightProcedure {
          if (Trigger) {
             CrustyChunksMod.queueServerWork(1, () -> LargeHEATHitProcedure.execute(world, x, y, z, immediatesourceentity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("StrikeSpearFlightProcedure.execute", _wtSafe);
       }
    }
 }

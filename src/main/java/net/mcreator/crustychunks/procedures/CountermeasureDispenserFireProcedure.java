@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class CountermeasureDispenserFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -602,6 +603,10 @@ public class CountermeasureDispenserFireProcedure {
                _levelxxxxxxxxx.sendBlockUpdated(_bpxxxx, _bsxxxx, _bsxxxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CountermeasureDispenserFireProcedure.execute", _wtSafe);
       }
    }
 }

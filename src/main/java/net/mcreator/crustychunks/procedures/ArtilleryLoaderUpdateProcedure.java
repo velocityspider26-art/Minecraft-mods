@@ -19,6 +19,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ArtilleryLoaderUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double Ammunition = 0.0;
       double sx = 0.0;
@@ -360,6 +361,10 @@ public class ArtilleryLoaderUpdateProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryLoaderUpdateProcedure.execute", _wtSafe);
       }
    }
 }

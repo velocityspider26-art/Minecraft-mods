@@ -15,6 +15,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AncientCoreTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          LootBoxOpenProcedure.execute(world, x, y, z);
 
@@ -49,6 +50,10 @@ public class AncientCoreTriggerProcedure {
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.IMPENDING_DOOM, 6000, 0));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AncientCoreTriggerProcedure.execute", _wtSafe);
       }
    }
 }

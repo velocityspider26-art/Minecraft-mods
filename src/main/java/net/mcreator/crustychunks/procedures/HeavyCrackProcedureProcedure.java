@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class HeavyCrackProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.DIORITE) {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.GRAVEL.defaultBlockState(), 3);
       }
@@ -147,6 +148,10 @@ public class HeavyCrackProcedureProcedure {
 
       if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:era")))) {
          ERAProcedureProcedure.execute(world, x, y, z);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HeavyCrackProcedureProcedure.execute", _wtSafe);
       }
    }
 }

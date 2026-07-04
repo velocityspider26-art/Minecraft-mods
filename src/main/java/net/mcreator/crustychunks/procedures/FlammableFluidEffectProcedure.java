@@ -8,10 +8,15 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class FlammableFluidEffectProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.FLAMMABLE, 400, 3, false, true));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlammableFluidEffectProcedure.execute", _wtSafe);
       }
    }
 }

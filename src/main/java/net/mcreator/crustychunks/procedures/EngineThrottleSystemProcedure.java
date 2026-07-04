@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class EngineThrottleSystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       String direction = "";
       double multiplier = 0.0;
       double throttlevalue = 0.0;
@@ -242,6 +243,10 @@ public class EngineThrottleSystemProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EngineThrottleSystemProcedure.execute", _wtSafe);
       }
    }
 }

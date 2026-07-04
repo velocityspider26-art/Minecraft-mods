@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ThermalFurnaceUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double previousRecipe = 0.0;
       if (world.getBlockState(BlockPos.containing(x, y + 1.0, z)).getBlock() == CrustyChunksModBlocks.BLAST_FUNNEL.get()
          && world.getBlockState(BlockPos.containing(x, y + 2.0, z)).getBlock() == CrustyChunksModBlocks.BLAST_FUNNEL.get()
@@ -313,6 +314,10 @@ public class ThermalFurnaceUpdateTickProcedure {
          if (world instanceof Level _levelx) {
             _levelx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ThermalFurnaceUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

@@ -12,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AIMineTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof LivingEntity && !entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:robot")))
             )
@@ -23,6 +24,10 @@ public class AIMineTriggerProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIMineTriggerProcedure.execute", _wtSafe);
       }
    }
 }

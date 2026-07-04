@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Mob;
 
 public class AlivecheckProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof Mob _mobEntxx ? _mobEntxx.getTarget() : null) != null
             && (
@@ -21,6 +22,10 @@ public class AlivecheckProcedure {
             && entity instanceof LivingEntity _ent) {
             _entity.setTarget(_ent);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AlivecheckProcedure.execute", _wtSafe);
       }
    }
 }

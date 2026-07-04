@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.Block;
 
 public class LootBoxOpenProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double random = 0.0;
       random = (double)Mth.nextInt(RandomSource.create(), 1, 17);
       if (1.0 == random) {
@@ -228,6 +229,10 @@ public class LootBoxOpenProcedure {
                false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LootBoxOpenProcedure.execute", _wtSafe);
       }
    }
 }

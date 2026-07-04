@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class FusionPlasmaCraterProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       int horizontalRadiusSphere = 89;
       int verticalRadiusSphere = 19;
       int yIterationsSphere = verticalRadiusSphere;
@@ -85,6 +86,10 @@ public class FusionPlasmaCraterProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FusionPlasmaCraterProcedure.execute", _wtSafe);
       }
    }
 }

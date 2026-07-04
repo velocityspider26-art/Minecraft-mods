@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class DamagesProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MEDIUM_DIESEL_ENGINE.get()
          || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.JET_TURBINE.get()
          || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MEDIUM_PETROL_ENGINE.get()
@@ -79,6 +80,10 @@ public class DamagesProcedure {
          }
       }).getAmount(world, new BlockPos((int)x, (int)y, (int)z))) {
          AmmoRackHitSystemProcedure.execute(world, x, y, z);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DamagesProcedure.execute", _wtSafe);
       }
    }
 }

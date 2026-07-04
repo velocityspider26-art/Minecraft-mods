@@ -23,6 +23,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class SmallSmokeExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double particleRadius = 0.0;
       double particleAmount = 0.0;
       if (world instanceof Level _level && !_level.isClientSide()) {
@@ -103,6 +104,10 @@ public class SmallSmokeExplosionProcedure {
             _entityToSpawn.shoot(0.0, 1.0, 0.0, (float)Mth.nextDouble(RandomSource.create(), 0.5, 0.7), 120.0F);
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallSmokeExplosionProcedure.execute", _wtSafe);
       }
    }
 }

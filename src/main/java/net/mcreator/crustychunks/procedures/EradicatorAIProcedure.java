@@ -35,6 +35,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class EradicatorAIProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          Entity target = null;
          double rev = 0.0;
@@ -576,6 +577,10 @@ public class EradicatorAIProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EradicatorAIProcedure.execute", _wtSafe);
       }
    }
 }

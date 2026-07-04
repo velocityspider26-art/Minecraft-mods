@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class LightMeltdownProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.ASH, x + 0.5, y + 3.0, z + 0.5, 90, 5.0, 3.0, 5.0, 0.0);
       }
@@ -65,6 +66,10 @@ public class LightMeltdownProcedure {
          _entityToSpawn.setPos(x + 0.5, y + 0.5, z + 0.5);
          _entityToSpawn.shoot(0.0, 0.0, 0.0, 0.0F, 0.0F);
          projectileLevel.addFreshEntity(_entityToSpawn);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LightMeltdownProcedure.execute", _wtSafe);
       }
    }
 }

@@ -15,6 +15,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DrillhandTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, ItemStack itemstack) {
+      try {
       if (0.0 < itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("T")) {
          { final var _fvcc1 = itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("T") - 1.0; CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("T", _fvcc1)); }
       }
@@ -91,6 +92,10 @@ public class DrillhandTickProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DrillhandTickProcedure.execute", _wtSafe);
       }
    }
 }

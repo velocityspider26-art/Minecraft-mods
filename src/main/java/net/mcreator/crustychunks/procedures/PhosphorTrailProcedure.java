@@ -9,6 +9,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class PhosphorTrailProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (40.0 >= immediatesourceentity.getPersistentData().getDouble("T")) {
             world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.PHOSPHORUS_TRAIL.get(), x, y, z, 0.0, 0.0, 0.0);
@@ -26,6 +27,10 @@ public class PhosphorTrailProcedure {
          }
 
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PhosphorTrailProcedure.execute", _wtSafe);
       }
    }
 }

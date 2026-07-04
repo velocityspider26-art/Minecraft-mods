@@ -28,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class BunkerBusterHitBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          DamagesProcedure.execute(world, x, y, z);
@@ -172,6 +173,10 @@ public class BunkerBusterHitBlockProcedure {
          } else {
             SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BunkerBusterHitBlockProcedure.execute", _wtSafe);
       }
    }
 }

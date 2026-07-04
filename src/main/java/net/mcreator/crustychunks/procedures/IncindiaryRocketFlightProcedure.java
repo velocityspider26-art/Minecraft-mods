@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class IncindiaryRocketFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean Trigger = false;
          double mvmultiplier = 0.0;
@@ -139,6 +140,10 @@ public class IncindiaryRocketFlightProcedure {
 
             CrustyChunksMod.queueServerWork(1, () -> IncindiaryRocketHitProcedure.execute(world, immediatesourceentity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("IncindiaryRocketFlightProcedure.execute", _wtSafe);
       }
    }
 }

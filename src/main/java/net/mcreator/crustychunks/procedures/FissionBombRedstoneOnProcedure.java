@@ -16,6 +16,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class FissionBombRedstoneOnProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
             AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
@@ -270,6 +271,10 @@ public class FissionBombRedstoneOnProcedure {
                _level.sendBlockUpdated(_bp, _bs, _bs, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FissionBombRedstoneOnProcedure.execute", _wtSafe);
       }
    }
 }

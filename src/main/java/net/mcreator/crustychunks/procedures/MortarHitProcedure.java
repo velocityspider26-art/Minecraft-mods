@@ -5,11 +5,16 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MortarHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MortarHitProcedure.execute", _wtSafe);
       }
    }
 }

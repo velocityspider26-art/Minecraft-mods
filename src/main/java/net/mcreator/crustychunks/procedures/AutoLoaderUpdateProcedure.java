@@ -26,6 +26,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class AutoLoaderUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double Ammunition = 0.0;
       double sx = 0.0;
       double sy = 0.0;
@@ -245,6 +246,10 @@ public class AutoLoaderUpdateProcedure {
                _levelx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AutoLoaderUpdateProcedure.execute", _wtSafe);
       }
    }
 }

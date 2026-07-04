@@ -33,6 +33,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class BauxiteDigesterScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean sufficientheat = false;
       double XTrigger = 0.0;
       double ZTrigger = 0.0;
@@ -797,6 +798,10 @@ public class BauxiteDigesterScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BauxiteDigesterScriptProcedure.execute", _wtSafe);
       }
    }
 }

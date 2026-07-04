@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ArmorPeelerReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEntx ? _livEntx.getOffhandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.ARMOR_PEELER_ROCKET.get()
             && (entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem()
@@ -87,6 +88,10 @@ public class ArmorPeelerReloadScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArmorPeelerReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

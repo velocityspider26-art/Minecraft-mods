@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class AutoscoutingProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          Entity targetcandidate = null;
          double oldyaw = 0.0;
@@ -163,6 +164,10 @@ public class AutoscoutingProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AutoscoutingProcedure.execute", _wtSafe);
       }
    }
 }

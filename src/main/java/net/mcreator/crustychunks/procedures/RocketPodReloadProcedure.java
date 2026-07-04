@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class RocketPodReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.ARMOR_PEELER_ROCKET.get()) {
             if (9.0 > (new Object() {
@@ -137,6 +138,10 @@ public class RocketPodReloadProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RocketPodReloadProcedure.execute", _wtSafe);
       }
    }
 }

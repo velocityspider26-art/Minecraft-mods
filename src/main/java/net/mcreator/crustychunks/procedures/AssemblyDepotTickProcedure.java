@@ -37,6 +37,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class AssemblyDepotTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       new JsonObject();
       boolean Success = false;
       boolean tagged = false;
@@ -653,6 +654,10 @@ public class AssemblyDepotTickProcedure {
                _levelxxxxxxxx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssemblyDepotTickProcedure.execute", _wtSafe);
       }
    }
 }

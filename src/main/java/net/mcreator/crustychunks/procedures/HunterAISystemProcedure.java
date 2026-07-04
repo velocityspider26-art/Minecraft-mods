@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class HunterAISystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          Entity target = null;
          boolean Trigger = false;
@@ -196,6 +197,10 @@ public class HunterAISystemProcedure {
          if (target != null && entity instanceof Mob _entity && target instanceof LivingEntity _ent) {
             _entity.setTarget(_ent);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HunterAISystemProcedure.execute", _wtSafe);
       }
    }
 }

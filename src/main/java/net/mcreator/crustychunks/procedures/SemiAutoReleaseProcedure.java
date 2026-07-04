@@ -43,6 +43,7 @@ public class SemiAutoReleaseProcedure {
    }
 
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          {
             CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
@@ -50,6 +51,10 @@ public class SemiAutoReleaseProcedure {
             _vars.syncPlayerVariables(entity);
          
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SemiAutoReleaseProcedure.execute", _wtSafe);
       }
    }
 

@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class ThermometerRightClickOnBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal(new DecimalFormat("####").format((new Object() {
@@ -19,6 +20,10 @@ public class ThermometerRightClickOnBlockProcedure {
                }
             }).getValue(world, BlockPos.containing(x, y, z), "Heat"))), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ThermometerRightClickOnBlockProcedure.execute", _wtSafe);
       }
    }
 }

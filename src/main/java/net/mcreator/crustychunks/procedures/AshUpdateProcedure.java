@@ -10,11 +10,16 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AshUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (1 == Mth.nextInt(RandomSource.create(), 1, 3)) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          if (world instanceof ServerLevel _level) {
             _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(), x, y, z, 3, 0.0, 0.0, 0.0, 0.3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AshUpdateProcedure.execute", _wtSafe);
       }
    }
 }

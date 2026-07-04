@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class AutoCannonShellTracerProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean trigger = false;
          if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) >= 2.0 && !immediatesourceentity.isNoGravity()) {
@@ -47,6 +48,10 @@ public class AutoCannonShellTracerProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AutoCannonShellTracerProcedure.execute", _wtSafe);
       }
    }
 }

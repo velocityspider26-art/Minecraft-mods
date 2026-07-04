@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class BunkerBusterRedstoneOnProcedure {
    public static void execute(final LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x + 0.5, y - 1.0, z + 0.5)).getBlock() == Blocks.AIR) {
          if (world instanceof ServerLevel projectileLevel) {
             Projectile _entityToSpawn = (new Object() {
@@ -129,6 +130,10 @@ public class BunkerBusterRedstoneOnProcedure {
       } else {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
          HugeExplosionProcedure.execute(world, x, y, z);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BunkerBusterRedstoneOnProcedure.execute", _wtSafe);
       }
    }
 }

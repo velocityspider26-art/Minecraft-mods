@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 
 public class SmallFraglessProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -163,6 +164,10 @@ public class SmallFraglessProcedure {
                false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallFraglessProcedure.execute", _wtSafe);
       }
    }
 }

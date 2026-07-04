@@ -14,6 +14,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FuelTankInputTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -643,6 +644,10 @@ public class FuelTankInputTickProcedure {
          }
 
          sx++;
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankInputTickProcedure.execute", _wtSafe);
       }
    }
 }

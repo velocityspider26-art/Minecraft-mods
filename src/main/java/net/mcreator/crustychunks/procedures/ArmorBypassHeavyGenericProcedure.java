@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ArmorBypassHeavyGenericProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          double Health = 0.0;
          if (!entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bulletproof")))) {
@@ -161,6 +162,10 @@ public class ArmorBypassHeavyGenericProcedure {
 
             entity.hurt(new DamageSource(world.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.ARROW)), 8.0F);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArmorBypassHeavyGenericProcedure.execute", _wtSafe);
       }
    }
 }

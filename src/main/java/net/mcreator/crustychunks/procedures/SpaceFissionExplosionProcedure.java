@@ -22,6 +22,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class SpaceFissionExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -116,6 +117,10 @@ public class SpaceFissionExplosionProcedure {
                false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SpaceFissionExplosionProcedure.execute", _wtSafe);
       }
    }
 }

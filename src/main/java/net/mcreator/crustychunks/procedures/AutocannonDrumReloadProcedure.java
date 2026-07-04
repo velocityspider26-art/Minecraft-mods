@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class AutocannonDrumReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Rounds = 0.0;
          if ((new Object() {
@@ -1160,6 +1161,10 @@ public class AutocannonDrumReloadProcedure {
                _levelxxxxxxxxxx.sendBlockUpdated(_bpxxxxxxxxxxxxxxxxxxxxx, _bsxxxxxxxxxxxxxxxxxxxxx, _bsxxxxxxxxxxxxxxxxxxxxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AutocannonDrumReloadProcedure.execute", _wtSafe);
       }
    }
 }

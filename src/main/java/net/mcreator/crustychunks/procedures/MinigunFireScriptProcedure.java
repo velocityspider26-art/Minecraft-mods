@@ -36,6 +36,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 public class MinigunFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -853,6 +854,10 @@ public class MinigunFireScriptProcedure {
             entityToSpawn.setPickUpDelay(10);
             _levelxxxx.addFreshEntity(entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MinigunFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 
 public class LargeFraglessProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -220,6 +221,10 @@ public class LargeFraglessProcedure {
          _entityToSpawn.setPos(x + 0.5, y + 1.5, z + 0.5);
          _entityToSpawn.shoot(0.0, 1.0, 0.0, 0.0F, 120.0F);
          projectileLevel.addFreshEntity(_entityToSpawn);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeFraglessProcedure.execute", _wtSafe);
       }
    }
 }

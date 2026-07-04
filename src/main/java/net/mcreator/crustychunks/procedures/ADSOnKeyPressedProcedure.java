@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class ADSOnKeyPressedProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
             .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:firearm")))) {
@@ -29,6 +30,10 @@ public class ADSOnKeyPressedProcedure {
             
          }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ADSOnKeyPressedProcedure.execute", _wtSafe);
       }
    }
 }

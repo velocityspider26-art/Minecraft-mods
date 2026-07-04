@@ -21,6 +21,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmokeGrenadeExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (world instanceof ServerLevel projectileLevel) {
             Projectile _entityToSpawn = (new Object() {
@@ -79,6 +80,10 @@ public class SmokeGrenadeExplosionProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeGrenadeExplosionProcedure.execute", _wtSafe);
       }
    }
 }

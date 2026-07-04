@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class AimerProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Multiplier = 0.0;
          if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:cannon")))) {
@@ -174,6 +175,10 @@ public class AimerProcedureProcedure {
          } else {
             DirectionUpdateProcedure.execute(world, entity, itemstack);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerProcedureProcedure.execute", _wtSafe);
       }
    }
 }

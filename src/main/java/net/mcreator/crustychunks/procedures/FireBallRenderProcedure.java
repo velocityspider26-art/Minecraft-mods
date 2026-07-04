@@ -214,10 +214,16 @@ public class FireBallRenderProcedure {
    }
 
    public static void execute(LevelAccessor world) {
+      try {
       execute(null, world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FireBallRenderProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world) {
+      try {
       double scale = 0.0;
       double pitch = 0.0;
       double Yaw = 0.0;
@@ -536,6 +542,10 @@ public class FireBallRenderProcedure {
                clear();
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FireBallRenderProcedure.execute", _wtSafe);
       }
    }
 }

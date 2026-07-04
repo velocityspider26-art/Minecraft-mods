@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class DecimatorHurtProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (Mth.nextInt(RandomSource.create(), 1, 2) == 1 && entity.getPersistentData().getDouble("T2") <= 0.0) {
             entity.getPersistentData().putDouble("T2", 20.0);
@@ -124,6 +125,10 @@ public class DecimatorHurtProcedure {
                _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(), x, y + 1.5, z, 15, 2.0, 0.0, 2.0, 1.0);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorHurtProcedure.execute", _wtSafe);
       }
    }
 }

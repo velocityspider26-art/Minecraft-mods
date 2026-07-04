@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 public class ArmorDegradeProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double valuebefore = 0.0;
       if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:variablearmor")))) {
          valuebefore = world.getBlockState(BlockPos.containing(x, y, z)).getBlock().getStateDefinition().getProperty("damage") instanceof IntegerProperty _getip3
@@ -35,6 +36,10 @@ public class ArmorDegradeProcedure {
             )) {
             world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArmorDegradeProcedure.execute", _wtSafe);
       }
    }
 }

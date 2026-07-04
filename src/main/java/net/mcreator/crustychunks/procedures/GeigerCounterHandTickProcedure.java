@@ -21,6 +21,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GeigerCounterHandTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          String severitycolor = "";
          if (0.0 <= entity.getPersistentData().getDouble("Radiation")) {
@@ -83,6 +84,10 @@ public class GeigerCounterHandTickProcedure {
                true
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GeigerCounterHandTickProcedure.execute", _wtSafe);
       }
    }
 }

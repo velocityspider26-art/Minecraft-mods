@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class DamagableBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.STEEL_PLATING.get()) {
          if (!world.isClientSide()) {
             BlockPos _bp = BlockPos.containing(x, y, z);
@@ -152,6 +153,10 @@ public class DamagableBlockProcedure {
          }).getValue(world, BlockPos.containing(x, y, z), "Damage") >= 50.0) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DamagableBlockProcedure.execute", _wtSafe);
       }
    }
 }

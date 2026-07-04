@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class LargeFragmentProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
          if (world instanceof Level _level && !_level.isClientSide()) {
@@ -16,6 +17,10 @@ public class LargeFragmentProjectileHitsBlockProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeFragmentProjectileHitsBlockProcedure.execute", _wtSafe);
       }
    }
 }

@@ -32,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class IncindiaryExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -226,6 +227,10 @@ public class IncindiaryExplosionProcedure {
                _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.FLAMMABLE, 1000, 3));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("IncindiaryExplosionProcedure.execute", _wtSafe);
       }
    }
 }

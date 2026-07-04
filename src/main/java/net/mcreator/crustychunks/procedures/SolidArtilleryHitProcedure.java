@@ -31,6 +31,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class SolidArtilleryHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          CrustyChunksMod.queueServerWork(3, () -> {
@@ -197,6 +198,10 @@ public class SolidArtilleryHitProcedure {
                immediatesourceentity.discard();
             }
          });
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SolidArtilleryHitProcedure.execute", _wtSafe);
       }
    }
 }

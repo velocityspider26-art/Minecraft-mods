@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DirectionUpdateProcedure {
    public static void execute(LevelAccessor world, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.AIMER.get()
             && (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSX") != 0.0 || itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSY") != 0.0 || itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSZ") != 0.0)
@@ -36,6 +37,10 @@ public class DirectionUpdateProcedure {
                world, itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSX"), itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSY"), itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("POSZ"), entity, itemstack
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DirectionUpdateProcedure.execute", _wtSafe);
       }
    }
 }

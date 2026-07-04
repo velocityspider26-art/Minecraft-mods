@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ArtilleryReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (!(new Object() {
             public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
@@ -282,6 +283,10 @@ public class ArtilleryReloadScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

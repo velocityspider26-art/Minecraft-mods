@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class FlamerAISystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double rev = 0.0;
          RandomVoicelinesProcedure.execute(world, x, y, z, entity);
@@ -318,6 +319,10 @@ public class FlamerAISystemProcedure {
                _entity.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20, 0));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlamerAISystemProcedure.execute", _wtSafe);
       }
    }
 }

@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BurstRifleReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getOffhandItem() : ItemStack.EMPTY).getCount() == 0) {
             if ((entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY).getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("Loaded")) {
@@ -151,6 +152,10 @@ public class BurstRifleReloadScriptProcedure {
             && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("§4Weapon still contains magazine."), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BurstRifleReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

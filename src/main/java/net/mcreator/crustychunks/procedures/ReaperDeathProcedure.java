@@ -12,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ReaperDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          MediumExplosionProcedure.execute(world, x, y, z);
          if (!entity.level().isClientSide()) {
@@ -104,6 +105,10 @@ public class ReaperDeathProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ReaperDeathProcedure.execute", _wtSafe);
       }
    }
 }

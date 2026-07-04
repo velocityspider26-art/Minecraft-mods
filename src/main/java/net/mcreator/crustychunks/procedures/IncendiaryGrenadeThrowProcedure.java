@@ -25,6 +25,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class IncendiaryGrenadeThrowProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.INCENDIARY_GRENADE.get()) {
             Level projectileLevel = entity.level();
@@ -115,6 +116,10 @@ public class IncendiaryGrenadeThrowProcedure {
                _player.getCooldowns().addCooldown(itemstack.getItem(), 40);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("IncendiaryGrenadeThrowProcedure.execute", _wtSafe);
       }
    }
 }

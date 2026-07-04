@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MachineCarbineReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Rounds = 0.0;
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getOffhandItem() : ItemStack.EMPTY).getCount() == 0) {
@@ -142,6 +143,10 @@ public class MachineCarbineReloadScriptProcedure {
             && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("§4Weapon still contains magazine."), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MachineCarbineReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SteelGolemEntityFallsProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -72,6 +73,10 @@ public class SteelGolemEntityFallsProcedure {
 
       if (world instanceof ServerLevel _levelx) {
          _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x, y, z, 15, 3.0, 1.0, 3.0, 0.1);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SteelGolemEntityFallsProcedure.execute", _wtSafe);
       }
    }
 }

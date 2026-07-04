@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class MachineGunReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.HEAVY_MACHINE_GUN.get()) {
             if (!(new Object() {
@@ -460,6 +461,10 @@ public class MachineGunReloadScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MachineGunReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

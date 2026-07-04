@@ -30,6 +30,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ConveyorUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double ZOffset = 0.0;
       double checkslotID = 0.0;
       double ItemCount = 0.0;
@@ -769,6 +770,10 @@ public class ConveyorUpdateTickProcedure {
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles(ParticleTypes.POOF, x + XOffset + 0.5, y + YOffset + 0.5, z + ZOffset + 0.5, 5, 0.5, 0.5, 0.5, 0.02);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ConveyorUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

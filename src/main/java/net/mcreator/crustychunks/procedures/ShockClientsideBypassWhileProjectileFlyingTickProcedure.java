@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ShockClientsideBypassWhileProjectileFlyingTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double xRadius = 0.0;
          double loop = 0.0;
@@ -48,6 +49,10 @@ public class ShockClientsideBypassWhileProjectileFlyingTickProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ShockClientsideBypassWhileProjectileFlyingTickProcedure.execute", _wtSafe);
       }
    }
 }

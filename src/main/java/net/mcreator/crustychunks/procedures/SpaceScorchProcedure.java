@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SpaceScorchProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, double scale) {
+      try {
       Vec3 _center = new Vec3(x, y, z);
 
       for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(60.0 * scale / 2.0), e -> true)
@@ -252,6 +253,10 @@ public class SpaceScorchProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SpaceScorchProcedure.execute", _wtSafe);
       }
    }
 }

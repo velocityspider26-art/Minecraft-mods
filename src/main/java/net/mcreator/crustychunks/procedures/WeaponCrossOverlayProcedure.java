@@ -38,10 +38,16 @@ public class WeaponCrossOverlayProcedure {
    }
 
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       execute(null, world, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WeaponCrossOverlayProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
             .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:firearm")))) {
@@ -98,6 +104,10 @@ public class WeaponCrossOverlayProcedure {
                   Minecraft.getInstance().getTextureManager().getTexture(ResourceLocation.parse("crusty_chunks:textures/screens/iconsdefault.png"))
                );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WeaponCrossOverlayProcedure.execute", _wtSafe);
       }
    }
 }

@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class HugeFragmentHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          DamagesProcedure.execute(world, x, y, z);
@@ -528,6 +529,10 @@ public class HugeFragmentHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HugeFragmentHitProcedure.execute", _wtSafe);
       }
    }
 }

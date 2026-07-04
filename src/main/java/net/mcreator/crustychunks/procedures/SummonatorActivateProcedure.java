@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class SummonatorActivateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.SONIC_BOOM, x, y, z, 15, 3.0, 3.0, 3.0, 1.0);
       }
@@ -183,5 +184,9 @@ public class SummonatorActivateProcedure {
 
       CrustyChunksModVariables.MapVariables.get(world).Production++;
       CrustyChunksModVariables.MapVariables.get(world).syncData(world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SummonatorActivateProcedure.execute", _wtSafe);
+      }
    }
 }

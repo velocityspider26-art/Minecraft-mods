@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.Block;
 
 public class ScoutDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -75,6 +76,10 @@ public class ScoutDeathProcedure {
          if (!entity.level().isClientSide()) {
             entity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ScoutDeathProcedure.execute", _wtSafe);
       }
    }
 }

@@ -29,6 +29,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class EradicatorFlakProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Barrels = 0.0;
          double Xvector = 0.0;
@@ -172,6 +173,10 @@ public class EradicatorFlakProcedure {
          if (entity instanceof EradicatorEntity) {
             ((EradicatorEntity)entity).setAnimation("Fire");
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EradicatorFlakProcedure.execute", _wtSafe);
       }
    }
 }

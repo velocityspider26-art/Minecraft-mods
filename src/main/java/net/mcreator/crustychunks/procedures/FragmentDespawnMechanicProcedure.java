@@ -7,6 +7,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 
 public class FragmentDespawnMechanicProcedure {
    public static void execute(Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
          if ((
@@ -16,6 +17,10 @@ public class FragmentDespawnMechanicProcedure {
             && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FragmentDespawnMechanicProcedure.execute", _wtSafe);
       }
    }
 }

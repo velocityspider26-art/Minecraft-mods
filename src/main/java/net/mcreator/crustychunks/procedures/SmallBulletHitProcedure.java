@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class SmallBulletHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
          if (world instanceof ServerLevel _level) {
             _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x + 0.5, y + 1.0, z + 0.5, 4, 0.0, 2.0, 0.0, 1.0);
@@ -214,6 +215,10 @@ public class SmallBulletHitProcedure {
                false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallBulletHitProcedure.execute", _wtSafe);
       }
    }
 }

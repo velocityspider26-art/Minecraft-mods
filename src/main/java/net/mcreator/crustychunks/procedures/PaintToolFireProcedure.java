@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class PaintToolFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, ItemStack itemstack) {
+      try {
       String BlockType = "";
       String result = "";
       if (1.0 <= itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Fluid")) {
@@ -257,6 +258,10 @@ public class PaintToolFireProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PaintToolFireProcedure.execute", _wtSafe);
       }
    }
 }

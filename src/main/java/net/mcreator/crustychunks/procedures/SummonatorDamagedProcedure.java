@@ -23,6 +23,7 @@ import net.minecraft.world.level.levelgen.Heightmap.Types;
 
 public class SummonatorDamagedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double spawnx = 0.0;
       double spawnz = 0.0;
       if (world instanceof ServerLevel _level) {
@@ -114,5 +115,9 @@ public class SummonatorDamagedProcedure {
       }
 
       world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SummonatorDamagedProcedure.execute", _wtSafe);
+      }
    }
 }

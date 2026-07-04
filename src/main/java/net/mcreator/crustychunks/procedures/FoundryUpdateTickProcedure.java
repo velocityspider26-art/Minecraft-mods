@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class FoundryUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
             AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
@@ -3216,6 +3217,10 @@ public class FoundryUpdateTickProcedure {
          if (world instanceof Level _levelxxxxxxxxxxxxxxx) {
             _levelxxxxxxxxxxxxxxx.sendBlockUpdated(_bpxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, _bsxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, _bsxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FoundryUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

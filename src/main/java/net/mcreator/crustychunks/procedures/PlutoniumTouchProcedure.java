@@ -12,12 +12,17 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class PlutoniumTouchProcedure {
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          entity.igniteForSeconds(1);
          entity.hurt(new DamageSource(world.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.HOT_FLOOR)), 2.0F);
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.CONTAMINATED, 1200, 4, false, true));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PlutoniumTouchProcedure.execute", _wtSafe);
       }
    }
 }

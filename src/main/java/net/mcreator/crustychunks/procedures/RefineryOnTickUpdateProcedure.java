@@ -28,6 +28,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class RefineryOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
                   public int getAmountInTank(LevelAccessor level, BlockPos pos, int tank) {
                      BlockEntity blockEntity = level.getBlockEntity(pos);
@@ -479,6 +480,10 @@ public class RefineryOnTickUpdateProcedure {
          if (world instanceof Level _levelx) {
             _levelx.sendBlockUpdated(_bpxxxxxxxxxxx, _bsxxxxxxxxxxx, _bsxxxxxxxxxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RefineryOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

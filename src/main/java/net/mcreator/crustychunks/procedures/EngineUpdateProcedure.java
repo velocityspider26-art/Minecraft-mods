@@ -25,6 +25,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class EngineUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       String direction = "";
       boolean found = false;
       double power = 0.0;
@@ -305,6 +306,10 @@ public class EngineUpdateProcedure {
          }
       }).getValue(world, BlockPos.containing(x, y, z), "Damage") >= 2.0 && world instanceof ServerLevel _levelx) {
          _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(), x + 0.5, y + 1.1, z + 0.5, 1, 0.0, 1.0, 0.0, 0.1);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EngineUpdateProcedure.execute", _wtSafe);
       }
    }
 }

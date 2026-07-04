@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.Block;
 
 public class StrikerDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -203,6 +204,10 @@ public class StrikerDeathProcedure {
          if (!entity.level().isClientSide()) {
             entity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("StrikerDeathProcedure.execute", _wtSafe);
       }
    }
 }

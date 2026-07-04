@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class CountermeasureDispenserReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (0.0 == (new Object() {
             public double getValue(LevelAccessor world, BlockPos pos, String tag) {
@@ -347,6 +348,10 @@ public class CountermeasureDispenserReloadProcedure {
                _levelxxxx.sendBlockUpdated(_bpxxxxxxxx, _bsxxxxxxxx, _bsxxxxxxxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CountermeasureDispenserReloadProcedure.execute", _wtSafe);
       }
    }
 }

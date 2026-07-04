@@ -26,6 +26,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmallAPCannonHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          CrustyChunksMod.queueServerWork(
@@ -179,6 +180,10 @@ public class SmallAPCannonHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallAPCannonHitProcedure.execute", _wtSafe);
       }
    }
 }

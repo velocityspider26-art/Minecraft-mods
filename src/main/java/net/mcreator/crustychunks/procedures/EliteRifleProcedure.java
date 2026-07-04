@@ -26,6 +26,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class EliteRifleProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double mvmultiplier = 0.0;
          mvmultiplier = ProjectileLibsSmallArmsProcedure.execute();
@@ -228,6 +229,10 @@ public class EliteRifleProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EliteRifleProcedure.execute", _wtSafe);
       }
    }
 }

@@ -212,10 +212,16 @@ public class NVDRenderProcedure {
    }
 
    public static void execute(Entity entity) {
+      try {
       execute(null, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NVDRenderProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, Entity entity) {
+      try {
       if (entity != null) {
          double scale = 0.0;
          if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY).getItem()
@@ -362,6 +368,10 @@ public class NVDRenderProcedure {
 
             clear();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NVDRenderProcedure.execute", _wtSafe);
       }
    }
 }

@@ -9,6 +9,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SmallHEShellTracerProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double magnitude = 0.0;
          double vx = 0.0;
@@ -43,6 +44,10 @@ public class SmallHEShellTracerProcedure {
                world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), immediatesourceentity
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallHEShellTracerProcedure.execute", _wtSafe);
       }
    }
 }

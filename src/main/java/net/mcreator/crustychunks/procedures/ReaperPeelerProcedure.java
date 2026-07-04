@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ReaperPeelerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("Rocket") < 28.0) {
             if (entity instanceof Mob _entity) {
@@ -107,6 +108,10 @@ public class ReaperPeelerProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ReaperPeelerProcedure.execute", _wtSafe);
       }
    }
 }

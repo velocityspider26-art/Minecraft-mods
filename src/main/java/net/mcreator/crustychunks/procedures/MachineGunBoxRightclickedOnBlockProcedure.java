@@ -7,11 +7,16 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MachineGunBoxRightclickedOnBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() != CrustyChunksModBlocks.MACHINE_GUN.get()
             && world.getBlockState(BlockPos.containing(x, y, z)).getBlock() != CrustyChunksModBlocks.HEAVY_MACHINE_GUN.get()) {
             MGBoxScriptProcedure.execute(world, x, y, z, entity);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MachineGunBoxRightclickedOnBlockProcedure.execute", _wtSafe);
       }
    }
 }

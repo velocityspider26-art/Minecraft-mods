@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MortarProjectileTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double RocketVelocity = 0.0;
          if (immediatesourceentity.isUnderWater()) {
@@ -46,6 +47,10 @@ public class MortarProjectileTickProcedure {
          }
 
          world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.BULLET_TRAIL.get(), x, y, z, 0.0, 0.0, 0.0);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MortarProjectileTickProcedure.execute", _wtSafe);
       }
    }
 }

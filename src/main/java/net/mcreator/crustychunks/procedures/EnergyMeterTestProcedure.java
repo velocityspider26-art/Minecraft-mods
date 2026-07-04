@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class EnergyMeterTestProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal((new Object() {
@@ -42,6 +43,10 @@ public class EnergyMeterTestProcedure {
                }
             }).getMaxEnergyStored(world, BlockPos.containing(x, y, z)) + " FE"), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EnergyMeterTestProcedure.execute", _wtSafe);
       }
    }
 }

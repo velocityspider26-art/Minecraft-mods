@@ -15,6 +15,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class AIAlertProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity sourceentity) {
+      try {
       if (entity != null && sourceentity != null) {
          if (!sourceentity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:robot")))) {
             if (entity instanceof Mob _entity && sourceentity instanceof LivingEntity _ent) {
@@ -37,6 +38,10 @@ public class AIAlertProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIAlertProcedure.execute", _wtSafe);
       }
    }
 }

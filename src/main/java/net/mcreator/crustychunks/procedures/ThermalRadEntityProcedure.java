@@ -17,6 +17,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ThermalRadEntityProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean found = false;
          double particleRadius = 0.0;
@@ -188,6 +189,10 @@ public class ThermalRadEntityProcedure {
                immediatesourceentity.discard();
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ThermalRadEntityProcedure.execute", _wtSafe);
       }
    }
 }

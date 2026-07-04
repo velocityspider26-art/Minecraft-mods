@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class OrdinanceCoreTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       if (0.0 < (new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -102,6 +103,10 @@ public class OrdinanceCoreTriggerProcedure {
                _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("OrdinanceCoreTriggerProcedure.execute", _wtSafe);
       }
    }
 }

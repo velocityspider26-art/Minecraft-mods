@@ -13,6 +13,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FuelTankTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -787,6 +788,10 @@ public class FuelTankTickProcedure {
    if (capability != null) capability.fill(new FluidStack((Fluid)CrustyChunksModFluids.KEROSENE.get(), _amountxxxxx), FluidAction.EXECUTE);
 }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankTickProcedure.execute", _wtSafe);
       }
    }
 }

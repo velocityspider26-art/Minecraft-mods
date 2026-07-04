@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class HoseConnectionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (0.0 == itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("SelectedX")
             && 0.0 == itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("SelectedY")
@@ -152,6 +153,10 @@ public class HoseConnectionProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HoseConnectionProcedure.execute", _wtSafe);
       }
    }
 }

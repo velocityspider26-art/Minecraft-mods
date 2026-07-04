@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ApocalypseSetMultiplierProcedure {
    public static void execute(LevelAccessor world, CommandContext<CommandSourceStack> arguments, Entity entity) {
+      try {
       if (entity != null) {
          double Riflers = 0.0;
          double Commanders = 0.0;
@@ -25,6 +26,10 @@ public class ApocalypseSetMultiplierProcedure {
          if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("Multiplier Set: " + DoubleArgumentType.getDouble(arguments, "multiplier")), false);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ApocalypseSetMultiplierProcedure.execute", _wtSafe);
       }
    }
 }

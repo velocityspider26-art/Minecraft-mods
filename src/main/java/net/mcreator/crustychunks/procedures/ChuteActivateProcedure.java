@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class ChuteActivateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       BlockPos _bp = BlockPos.containing(x, y, z);
       BlockState _bs = ((Block)CrustyChunksModBlocks.ACTIVE_ROBOT_CHUTE.get()).defaultBlockState();
       BlockState _bso = world.getBlockState(_bp);
@@ -29,5 +30,9 @@ public class ChuteActivateProcedure {
       }
 
       world.setBlock(_bp, _bs, 3);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ChuteActivateProcedure.execute", _wtSafe);
+      }
    }
 }

@@ -19,6 +19,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class TorpedoFlightTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
          if (immediatesourceentity.isUnderWater()) {
@@ -77,6 +78,10 @@ public class TorpedoFlightTickProcedure {
                immediatesourceentity.discard();
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("TorpedoFlightTickProcedure.execute", _wtSafe);
       }
    }
 }

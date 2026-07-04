@@ -6,6 +6,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AimerBeamWhileProjectileFlyingTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.noPhysics = true;
          immediatesourceentity.setInvisible(true);
@@ -15,6 +16,10 @@ public class AimerBeamWhileProjectileFlyingTickProcedure {
          if (immediatesourceentity.getPersistentData().getDouble("T") > 15.0 && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerBeamWhileProjectileFlyingTickProcedure.execute", _wtSafe);
       }
    }
 }

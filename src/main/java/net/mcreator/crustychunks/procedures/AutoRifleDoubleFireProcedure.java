@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AutoRifleDoubleFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Firemode") == 0.0) {
             RifleFireScriptProcedure.execute(world, x, y, z, entity, itemstack);
@@ -15,6 +16,10 @@ public class AutoRifleDoubleFireProcedure {
          } else if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Firemode") == 1.0 && itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("ShotQue") == 0.0) {
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("ShotQue", 4.0));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AutoRifleDoubleFireProcedure.execute", _wtSafe);
       }
    }
 }

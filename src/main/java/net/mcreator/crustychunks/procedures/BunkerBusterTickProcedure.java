@@ -7,10 +7,15 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BunkerBusterTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (immediatesourceentity.isUnderWater() && 1 == Mth.nextInt(RandomSource.create(), 1, 15)) {
             SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BunkerBusterTickProcedure.execute", _wtSafe);
       }
    }
 }

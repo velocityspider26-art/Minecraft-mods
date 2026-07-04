@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class HVParticleProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          DamagesProcedure.execute(world, x, y, z);
          if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
@@ -260,6 +261,10 @@ public class HVParticleProjectileHitsBlockProcedure {
          CrackProcedureProcedure.execute(world, x, y, z);
          world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y, z))));
          SmallBulletHitProcedure.execute(world, x, y, z);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HVParticleProjectileHitsBlockProcedure.execute", _wtSafe);
       }
    }
 }

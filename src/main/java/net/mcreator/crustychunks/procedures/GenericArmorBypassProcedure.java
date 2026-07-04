@@ -27,6 +27,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GenericArmorBypassProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          double Health = 0.0;
          double penetrationmult = 0.0;
@@ -182,6 +183,10 @@ public class GenericArmorBypassProcedure {
          if (entity.isInvulnerable() && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GenericArmorBypassProcedure.execute", _wtSafe);
       }
    }
 }

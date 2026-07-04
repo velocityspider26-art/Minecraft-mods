@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmokeStackSmokeWhileProjectileFlyingTickProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
@@ -27,6 +28,10 @@ public class SmokeStackSmokeWhileProjectileFlyingTickProcedure {
                immediatesourceentity.discard();
             }
          });
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeStackSmokeWhileProjectileFlyingTickProcedure.execute", _wtSafe);
       }
    }
 }

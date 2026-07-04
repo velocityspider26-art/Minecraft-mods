@@ -16,11 +16,21 @@ public class RecipeClearProcedure {
    }
 
    public static void execute() {
+      try {
       execute(null);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RecipeClearProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event) {
+      try {
       double indexclear = 0.0;
       CrustyChunksModVariables.recipesloaded = new JsonArray();
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RecipeClearProcedure.execute", _wtSafe);
+      }
    }
 }

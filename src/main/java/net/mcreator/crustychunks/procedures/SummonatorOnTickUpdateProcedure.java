@@ -33,6 +33,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SummonatorOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Modules = 0.0;
       double spawnx = 0.0;
       double spawnz = 0.0;
@@ -378,6 +379,10 @@ public class SummonatorOnTickUpdateProcedure {
             CrustyChunksModVariables.MapVariables.get(world).Production--;
             CrustyChunksModVariables.MapVariables.get(world).syncData(world);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SummonatorOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

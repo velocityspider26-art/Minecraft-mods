@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class RiflerAISystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          RandomVoicelinesProcedure.execute(world, x, y, z, entity);
          AutoscoutingProcedure.execute(world, x, y, z, entity);
@@ -162,6 +163,10 @@ public class RiflerAISystemProcedure {
          }
 
          ClankerfloatProcedure.execute(world, x, y, z, entity);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RiflerAISystemProcedure.execute", _wtSafe);
       }
    }
 }

@@ -18,6 +18,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class OilFireboxUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
             AtomicInteger _retval = new AtomicInteger(0);
@@ -189,6 +190,10 @@ public class OilFireboxUpdateProcedure {
    if (capability != null) capability.drain(_amount, FluidAction.EXECUTE);
 }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("OilFireboxUpdateProcedure.execute", _wtSafe);
       }
    }
 }

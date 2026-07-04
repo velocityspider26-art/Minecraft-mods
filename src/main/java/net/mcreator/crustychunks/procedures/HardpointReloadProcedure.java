@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class HardpointReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.EMPTY_MISSILE_HARDPOINT.get()) {
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.FIRE_SPEAR_ROCKET.get()) {
@@ -644,6 +645,10 @@ public class HardpointReloadProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HardpointReloadProcedure.execute", _wtSafe);
       }
    }
 }

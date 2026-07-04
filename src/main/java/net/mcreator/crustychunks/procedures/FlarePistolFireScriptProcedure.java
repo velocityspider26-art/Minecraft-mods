@@ -28,6 +28,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FlarePistolFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Movementinnacuracy = 0.0;
          if (entity.isSprinting()) {
@@ -191,6 +192,10 @@ public class FlarePistolFireScriptProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlarePistolFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

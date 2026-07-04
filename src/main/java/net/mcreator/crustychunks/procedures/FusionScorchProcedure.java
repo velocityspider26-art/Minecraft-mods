@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class FusionScorchProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       Vec3 _center = new Vec3(x, y, z);
 
       for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(90.0), e -> true)
@@ -380,6 +381,10 @@ public class FusionScorchProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FusionScorchProcedure.execute", _wtSafe);
       }
    }
 }

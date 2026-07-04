@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ACRedstoneOffProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -24,6 +25,10 @@ public class ACRedstoneOffProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bp, _bs, _bs, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ACRedstoneOffProcedure.execute", _wtSafe);
       }
    }
 }

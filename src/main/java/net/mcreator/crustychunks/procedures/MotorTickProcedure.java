@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class MotorTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double Power = 0.0;
       double sx = 0.0;
@@ -134,6 +135,10 @@ public class MotorTickProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MotorTickProcedure.execute", _wtSafe);
       }
    }
 }

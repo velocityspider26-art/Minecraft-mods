@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class CrankRotateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       if (blockstate.getBlock().getStateDefinition().getProperty("positioned") instanceof BooleanProperty _getbp1 && (Boolean)blockstate.getValue(_getbp1)) {
          return;
       }
@@ -63,5 +64,9 @@ public class CrankRotateProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CrankRotateProcedure.execute", _wtSafe);
+      }
    }
 }

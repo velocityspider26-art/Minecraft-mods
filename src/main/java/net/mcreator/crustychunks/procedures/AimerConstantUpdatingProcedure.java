@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class AimerConstantUpdatingProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          String WeaponAttatched = "";
          boolean Sneaking = false;
@@ -107,6 +108,10 @@ public class AimerConstantUpdatingProcedure {
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("Yaw", 0.0));
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("Pitch", 0.0));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerConstantUpdatingProcedure.execute", _wtSafe);
       }
    }
 }

@@ -30,6 +30,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class LMGFireScriptBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -412,6 +413,10 @@ public class LMGFireScriptBlockProcedure {
                _level.addFreshEntity(entityToSpawn);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LMGFireScriptBlockProcedure.execute", _wtSafe);
       }
    }
 }

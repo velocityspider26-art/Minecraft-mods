@@ -33,6 +33,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class StealthPistolFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Movementinnacuracy = 0.0;
          double recoil = 0.0;
@@ -241,6 +242,10 @@ public class StealthPistolFireProcedure {
             
          }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("StealthPistolFireProcedure.execute", _wtSafe);
       }
    }
 }

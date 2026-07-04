@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class AssassinAIProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("T") > 0.0) {
             entity.getPersistentData().putDouble("T", entity.getPersistentData().getDouble("T") - 1.0);
@@ -145,6 +146,10 @@ public class AssassinAIProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssassinAIProcedure.execute", _wtSafe);
       }
    }
 }

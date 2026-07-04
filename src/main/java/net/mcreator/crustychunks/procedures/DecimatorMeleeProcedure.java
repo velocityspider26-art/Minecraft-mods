@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.Block;
 
 public class DecimatorMeleeProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          int horizontalRadiusSquare = 3;
          int verticalRadiusSquare = 2;
@@ -88,6 +89,10 @@ public class DecimatorMeleeProcedure {
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(), x, y + 1.5, z, 15, 2.0, 0.0, 2.0, 1.0);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorMeleeProcedure.execute", _wtSafe);
       }
    }
 }

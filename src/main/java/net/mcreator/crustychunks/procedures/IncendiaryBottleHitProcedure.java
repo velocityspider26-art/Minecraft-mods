@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class IncendiaryBottleHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          GasolineExplosionProcedure.execute(
             world,
@@ -58,6 +59,10 @@ public class IncendiaryBottleHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("IncendiaryBottleHitProcedure.execute", _wtSafe);
       }
    }
 }

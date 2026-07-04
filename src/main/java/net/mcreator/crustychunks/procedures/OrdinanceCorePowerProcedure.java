@@ -58,6 +58,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class OrdinanceCorePowerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       BlockState module1 = Blocks.AIR.defaultBlockState();
       BlockState module2 = Blocks.AIR.defaultBlockState();
       BlockState module3 = Blocks.AIR.defaultBlockState();
@@ -2125,6 +2126,10 @@ public class OrdinanceCorePowerProcedure {
             );
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("OrdinanceCorePowerProcedure.execute", _wtSafe);
       }
    }
 }

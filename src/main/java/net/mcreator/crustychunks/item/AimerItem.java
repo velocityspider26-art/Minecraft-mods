@@ -40,6 +40,14 @@ public class AimerItem extends Item {
    public InteractionResultHolder<ItemStack> use(Level world, Player entity, InteractionHand hand) {
       InteractionResultHolder<ItemStack> ar = super.use(world, entity, hand);
       DirectionUpdateProcedure.execute(world, entity, (ItemStack)ar.getObject());
+      // Server-authoritative laser designation: mark a target point/entity for laser-guided munitions.
+      if (!world.isClientSide() && entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+         try {
+            net.mcreator.crustychunks.compat.AeronauticsLaserDesignationHandler.designate(serverPlayer);
+         } catch (Throwable t) {
+            net.mcreator.crustychunks.compat.WariumSafety.report("AimerItem.designate", t);
+         }
+      }
       return ar;
    }
 

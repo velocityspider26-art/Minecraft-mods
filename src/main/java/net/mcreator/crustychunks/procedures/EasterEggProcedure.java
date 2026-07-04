@@ -44,10 +44,16 @@ public class EasterEggProcedure {
    }
 
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, String text) {
+      try {
       execute(null, world, x, y, z, entity, text);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EasterEggProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, double x, double y, double z, Entity entity, String text) {
+      try {
       if (entity != null && text != null) {
          if (world.getLevelData().getGameRules().getBoolean(CrustyChunksModGameRules.APOCALYPSE_MODE)
             && 0.0
@@ -131,6 +137,10 @@ public class EasterEggProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EasterEggProcedure.execute", _wtSafe);
       }
    }
 }

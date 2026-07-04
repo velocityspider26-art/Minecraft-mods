@@ -216,10 +216,16 @@ public class RenderProjectileFlashProcedure {
    }
 
    public static void execute(LevelAccessor world) {
+      try {
       execute(null, world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RenderProjectileFlashProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world) {
+      try {
       double scale = 0.0;
       double yvector = 0.0;
       double vmagnitude = 0.0;
@@ -456,6 +462,10 @@ public class RenderProjectileFlashProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RenderProjectileFlashProcedure.execute", _wtSafe);
       }
    }
 }

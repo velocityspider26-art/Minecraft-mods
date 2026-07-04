@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GunMechanismSoundProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Movementinnacuracy = 0.0;
       double recoil = 0.0;
       CrustyChunksMod.queueServerWork(
@@ -43,5 +44,9 @@ public class GunMechanismSoundProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GunMechanismSoundProcedure.execute", _wtSafe);
+      }
    }
 }

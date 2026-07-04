@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 
 public class AdvancementBarrelProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if ((
                !(entity instanceof ServerPlayer _plr0)
@@ -25,6 +26,10 @@ public class AdvancementBarrelProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AdvancementBarrelProcedure.execute", _wtSafe);
       }
    }
 }

@@ -9,6 +9,7 @@ import net.minecraft.world.phys.HitResult.Type;
 
 public class MachineGunBoxRightclickedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.level()
                .clip(
@@ -18,6 +19,10 @@ public class MachineGunBoxRightclickedProcedure {
             != Type.BLOCK) {
             MGBoxScriptProcedure.execute(world, x, y, z, entity);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MachineGunBoxRightclickedProcedure.execute", _wtSafe);
       }
    }
 }

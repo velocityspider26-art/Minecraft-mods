@@ -35,6 +35,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class AssemblyCentrifugeTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean sufficientheat = false;
       ItemStack result = ItemStack.EMPTY;
       ItemStack input = ItemStack.EMPTY;
@@ -706,6 +707,10 @@ public class AssemblyCentrifugeTickProcedure {
          if (world instanceof Level _levelxxx) {
             _levelxxx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssemblyCentrifugeTickProcedure.execute", _wtSafe);
       }
    }
 }

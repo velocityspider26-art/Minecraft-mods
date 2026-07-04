@@ -10,6 +10,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class CannonMuzzleFlashProducerTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.noPhysics = true;
          immediatesourceentity.setNoGravity(true);
@@ -36,6 +37,10 @@ public class CannonMuzzleFlashProducerTickProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CannonMuzzleFlashProducerTickProcedure.execute", _wtSafe);
       }
    }
 }

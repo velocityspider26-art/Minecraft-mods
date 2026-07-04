@@ -40,10 +40,16 @@ public class ProjectileWizzProcedure {
    }
 
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       execute(null, world, x, y, z);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ProjectileWizzProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, double x, double y, double z) {
+      try {
       double locationy = 0.0;
       double distancewithvector = 0.0;
       double locationz = 0.0;
@@ -139,6 +145,10 @@ public class ProjectileWizzProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ProjectileWizzProcedure.execute", _wtSafe);
       }
    }
 }

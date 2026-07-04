@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class LargeHEATHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          DamagesProcedure.execute(world, x, y, z);
          CrustyChunksMod.queueServerWork(
@@ -70,6 +71,10 @@ public class LargeHEATHitProcedure {
             3,
             () -> SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ())
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeHEATHitProcedure.execute", _wtSafe);
       }
    }
 }

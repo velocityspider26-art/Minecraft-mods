@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class AimerNodeUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double Multiplier = 0.0;
       double sx = 0.0;
@@ -454,6 +455,10 @@ public class AimerNodeUpdateTickProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpxxxxxxxxx, _bsxxxxxxxxx, _bsxxxxxxxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerNodeUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

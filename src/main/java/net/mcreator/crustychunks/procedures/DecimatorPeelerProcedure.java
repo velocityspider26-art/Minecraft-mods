@@ -26,6 +26,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DecimatorPeelerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 100, 8, true, false));
@@ -113,6 +114,10 @@ public class DecimatorPeelerProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorPeelerProcedure.execute", _wtSafe);
       }
    }
 }

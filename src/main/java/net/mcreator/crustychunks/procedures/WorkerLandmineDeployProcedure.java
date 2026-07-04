@@ -7,9 +7,14 @@ import net.minecraft.world.level.block.Block;
 
 public class WorkerLandmineDeployProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y - 1.0, z)).canOcclude() && !world.getBlockState(BlockPos.containing(x, y, z)).canOcclude()) {
          world.setBlock(BlockPos.containing(x, y, z), ((Block)CrustyChunksModBlocks.AI_MINE.get()).defaultBlockState(), 3);
          world.levelEvent(2001, BlockPos.containing(x, y - 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y - 1.0, z))));
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WorkerLandmineDeployProcedure.execute", _wtSafe);
       }
    }
 }

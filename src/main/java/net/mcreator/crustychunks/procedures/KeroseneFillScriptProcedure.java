@@ -25,6 +25,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class KeroseneFillScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((new Object() {
                public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
@@ -180,6 +181,10 @@ public class KeroseneFillScriptProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("KeroseneFillScriptProcedure.execute", _wtSafe);
       }
    }
 }

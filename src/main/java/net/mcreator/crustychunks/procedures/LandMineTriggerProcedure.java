@@ -9,6 +9,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class LandMineTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof LivingEntity) {
             CrustyChunksMod.queueServerWork(7, () -> {
@@ -18,6 +19,10 @@ public class LandMineTriggerProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LandMineTriggerProcedure.execute", _wtSafe);
       }
    }
 }

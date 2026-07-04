@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class CuttersRightclickedOnBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, ItemStack itemstack) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.RAZOR_WIRE.get()) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          if (world instanceof Level _level) {
@@ -158,6 +159,10 @@ public class CuttersRightclickedOnBlockProcedure {
          }
 
          if (world instanceof ServerLevel _srvlvl) itemstack.hurtAndBreak(8, _srvlvl, null, _itmcns -> {});
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CuttersRightclickedOnBlockProcedure.execute", _wtSafe);
       }
    }
 }

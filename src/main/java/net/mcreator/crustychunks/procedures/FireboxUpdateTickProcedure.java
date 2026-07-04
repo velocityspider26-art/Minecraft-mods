@@ -20,6 +20,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class FireboxUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
             AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
@@ -184,6 +185,10 @@ public class FireboxUpdateTickProcedure {
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + 0.5, y + 0.5, z + 0.5, 10, 1.0, 1.0, 1.0, 0.01);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FireboxUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

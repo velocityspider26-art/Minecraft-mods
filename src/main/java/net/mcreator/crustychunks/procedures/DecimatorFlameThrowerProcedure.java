@@ -22,6 +22,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DecimatorFlameThrowerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("Mag") < 200.0) {
             for (int index0 = 0; index0 < 4; index0++) {
@@ -112,6 +113,10 @@ public class DecimatorFlameThrowerProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorFlameThrowerProcedure.execute", _wtSafe);
       }
    }
 }

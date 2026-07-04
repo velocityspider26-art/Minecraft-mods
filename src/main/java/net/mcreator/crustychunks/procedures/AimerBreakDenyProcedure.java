@@ -20,10 +20,16 @@ public class AimerBreakDenyProcedure {
    }
 
    public static void execute(Entity entity) {
+      try {
       execute(null, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerBreakDenyProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, Entity entity) {
+      try {
       if (entity != null) {
          if (CrustyChunksModItems.AIMER.get() == (entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem()
             || entity.getRootVehicle() instanceof SeatEntityEntity) {
@@ -31,6 +37,10 @@ public class AimerBreakDenyProcedure {
          _cancellable.setCanceled(true);
       }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerBreakDenyProcedure.execute", _wtSafe);
       }
    }
 }

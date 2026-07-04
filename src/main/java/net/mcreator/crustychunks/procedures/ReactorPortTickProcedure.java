@@ -12,6 +12,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ReactorPortTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -89,6 +90,10 @@ public class ReactorPortTickProcedure {
             }
 }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ReactorPortTickProcedure.execute", _wtSafe);
       }
    }
 }

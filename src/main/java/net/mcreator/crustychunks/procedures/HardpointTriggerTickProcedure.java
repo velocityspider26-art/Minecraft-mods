@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class HardpointTriggerTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double selectedtarget = 0.0;
       if (!world.isClientSide()) {
          BlockPos _bp = BlockPos.containing(x, y, z);
@@ -329,6 +330,10 @@ public class HardpointTriggerTickProcedure {
                _level.sendBlockUpdated(_bpxxxxxxxx, _bsxxxxxxxx, _bsxxxxxxxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HardpointTriggerTickProcedure.execute", _wtSafe);
       }
    }
 }

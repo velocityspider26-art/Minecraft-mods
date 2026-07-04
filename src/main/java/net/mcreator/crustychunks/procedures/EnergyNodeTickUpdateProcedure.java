@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class EnergyNodeTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean targetinputonly = false;
       boolean targetoutputonly = false;
       double TestNumber = 0.0;
@@ -701,6 +702,10 @@ public class EnergyNodeTickUpdateProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EnergyNodeTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

@@ -12,11 +12,16 @@ import net.minecraft.world.phys.Vec3;
 
 public class RazorWireEntityWalksOnTheBlockProcedure {
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          if (!entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:robot")))) {
             entity.hurt(new DamageSource(world.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.CACTUS)), 1.0F);
             entity.makeStuckInBlock(Blocks.AIR.defaultBlockState(), new Vec3(0.25, 0.05, 0.25));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RazorWireEntityWalksOnTheBlockProcedure.execute", _wtSafe);
       }
    }
 }

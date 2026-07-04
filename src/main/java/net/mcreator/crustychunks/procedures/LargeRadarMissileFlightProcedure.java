@@ -27,6 +27,8 @@ import net.minecraft.world.phys.Vec3;
 
 public class LargeRadarMissileFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
+         net.mcreator.crustychunks.compat.AeronauticsMissileGuidanceHandler.guide(immediatesourceentity, net.mcreator.crustychunks.compat.AeronauticsMissileGuidanceHandler.Guidance.RADAR);
       if (immediatesourceentity != null) {
          boolean detonate = false;
          boolean Trigger = false;
@@ -293,6 +295,10 @@ public class LargeRadarMissileFlightProcedure {
 
             CrustyChunksMod.queueServerWork(1, () -> ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeRadarMissileFlightProcedure.execute", _wtSafe);
       }
    }
 }

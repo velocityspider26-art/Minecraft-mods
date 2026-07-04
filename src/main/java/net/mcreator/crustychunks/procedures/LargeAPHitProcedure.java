@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class LargeAPHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          immediatesourceentity.getPersistentData()
@@ -343,6 +344,10 @@ public class LargeAPHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeAPHitProcedure.execute", _wtSafe);
       }
    }
 }

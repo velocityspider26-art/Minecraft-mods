@@ -33,10 +33,16 @@ public class WeightProcedure {
    }
 
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       execute(null, world, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WeightProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          double Weight = 0.0;
          if (1 == Mth.nextInt(RandomSource.create(), 1, 20)
@@ -93,6 +99,10 @@ public class WeightProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WeightProcedure.execute", _wtSafe);
       }
    }
 }

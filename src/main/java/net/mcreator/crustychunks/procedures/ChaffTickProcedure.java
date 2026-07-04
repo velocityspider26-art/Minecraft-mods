@@ -8,6 +8,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ChaffTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.SPARKS.get(), x, y, z, 0.0, 0.0, 0.0);
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
@@ -22,6 +23,10 @@ public class ChaffTickProcedure {
          if (immediatesourceentity.getPersistentData().getDouble("T") >= 40.0 && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ChaffTickProcedure.execute", _wtSafe);
       }
    }
 }

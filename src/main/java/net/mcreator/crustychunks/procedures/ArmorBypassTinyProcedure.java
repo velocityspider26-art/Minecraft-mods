@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ArmorBypassTinyProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity, Entity sourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null && sourceentity != null) {
          double Health = 0.0;
          if (!entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bulletproof")))) {
@@ -160,6 +161,10 @@ public class ArmorBypassTinyProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArmorBypassTinyProcedure.execute", _wtSafe);
       }
    }
 }

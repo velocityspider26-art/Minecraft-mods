@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ElectricFireboxUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof Level _level0 && _level0.hasNeighborSignal(BlockPos.containing(x, y, z)) && (new Object() {
          public int getEnergyStored(LevelAccessor level, BlockPos pos) {
             AtomicInteger _retval = new AtomicInteger(0);
@@ -150,6 +151,10 @@ public class ElectricFireboxUpdateTickProcedure {
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles(ParticleTypes.LAVA, x + 0.5, y + 0.5, z + 0.5, 10, 0.5, 0.5, 0.5, 0.01);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ElectricFireboxUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

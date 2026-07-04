@@ -16,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class FlakShellTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean trigger = false;
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
@@ -83,6 +84,10 @@ public class FlakShellTickProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlakShellTickProcedure.execute", _wtSafe);
       }
    }
 }

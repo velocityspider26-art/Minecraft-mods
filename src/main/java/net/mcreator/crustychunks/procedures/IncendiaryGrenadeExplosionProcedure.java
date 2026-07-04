@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class IncendiaryGrenadeExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          GasolineExplosionProcedure.execute(
             world,
@@ -79,6 +80,10 @@ public class IncendiaryGrenadeExplosionProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("IncendiaryGrenadeExplosionProcedure.execute", _wtSafe);
       }
    }
 }

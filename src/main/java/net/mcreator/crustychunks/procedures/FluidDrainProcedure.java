@@ -26,6 +26,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FluidDrainProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          ItemStack Bucket = ItemStack.EMPTY;
          if ((new Object() {
@@ -225,6 +226,10 @@ public class FluidDrainProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FluidDrainProcedure.execute", _wtSafe);
       }
    }
 }

@@ -9,9 +9,14 @@ import net.minecraft.world.level.block.Block;
 
 public class FuelTankExplodedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       world.setBlock(BlockPos.containing(x, y, z), ((Block)CrustyChunksModBlocks.DAMAGEDFUELTANK.get()).defaultBlockState(), 3);
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.FLAME, x + 0.5, y + 0.5, z + 0.5, 5, 0.25, 0.25, 0.25, 0.1);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankExplodedProcedure.execute", _wtSafe);
       }
    }
 }

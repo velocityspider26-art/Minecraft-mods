@@ -25,6 +25,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class RiflehandtickProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          boolean Sneaking = false;
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
@@ -383,6 +384,10 @@ public class RiflehandtickProcedure {
             && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 5, 2, false, false));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RiflehandtickProcedure.execute", _wtSafe);
       }
    }
 }

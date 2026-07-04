@@ -16,6 +16,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class WhitePhosphorusHitEntityProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          entity.igniteForSeconds(35);
          entity.hurt(new DamageSource(world.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.ON_FIRE)), 5.0F);
@@ -46,6 +47,10 @@ public class WhitePhosphorusHitEntityProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WhitePhosphorusHitEntityProcedure.execute", _wtSafe);
       }
    }
 }

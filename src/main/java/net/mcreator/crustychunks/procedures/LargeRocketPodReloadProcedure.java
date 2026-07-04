@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class LargeRocketPodReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (0.0 >= (new Object() {
             public double getValue(LevelAccessor world, BlockPos pos, String tag) {
@@ -485,6 +486,10 @@ public class LargeRocketPodReloadProcedure {
                _levelxxxxxx.sendBlockUpdated(_bpxxxxxxxxxx, _bsxxxxxxxxxx, _bsxxxxxxxxxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeRocketPodReloadProcedure.execute", _wtSafe);
       }
    }
 }

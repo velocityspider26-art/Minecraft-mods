@@ -24,6 +24,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FuelTankDamageTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (0 < (new Object() {
          public int getFluidTankLevel(LevelAccessor level, BlockPos pos, int tank) {
             AtomicInteger _retval = new AtomicInteger(0);
@@ -229,6 +230,10 @@ public class FuelTankDamageTickProcedure {
                z + (double)Mth.nextInt(RandomSource.create(), -1, 1)
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankDamageTickProcedure.execute", _wtSafe);
       }
    }
 }

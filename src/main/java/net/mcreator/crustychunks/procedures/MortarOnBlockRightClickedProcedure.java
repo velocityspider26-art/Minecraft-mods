@@ -36,6 +36,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class MortarOnBlockRightClickedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate, Entity entity) {
+      try {
       if (entity != null) {
          double RocketVelocity = 0.0;
          double Barrels = 0.0;
@@ -473,6 +474,10 @@ public class MortarOnBlockRightClickedProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MortarOnBlockRightClickedProcedure.execute", _wtSafe);
       }
    }
 }

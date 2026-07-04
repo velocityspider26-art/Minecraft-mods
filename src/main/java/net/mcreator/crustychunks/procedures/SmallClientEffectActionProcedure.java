@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SmallClientEffectActionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double xRadius = 0.0;
          double loop = 0.0;
@@ -41,6 +42,10 @@ public class SmallClientEffectActionProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallClientEffectActionProcedure.execute", _wtSafe);
       }
    }
 }

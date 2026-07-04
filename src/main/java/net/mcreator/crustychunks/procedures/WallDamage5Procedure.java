@@ -9,10 +9,15 @@ import net.minecraft.world.level.block.Blocks;
 
 public class WallDamage5Procedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (Mth.nextInt(RandomSource.create(), 1, 2) == 2) {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.GRAVEL.defaultBlockState(), 3);
       }
 
       world.levelEvent(2001, BlockPos.containing(x, y, z), Block.getId(Blocks.GRAVEL.defaultBlockState()));
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WallDamage5Procedure.execute", _wtSafe);
+      }
    }
 }

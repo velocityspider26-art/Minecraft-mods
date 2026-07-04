@@ -53,3 +53,24 @@ Environment: NeoForge 21.1.234 dev environment (ModDevGradle), Java 21, headless
 - [x] Client boots after all changes
 - [ ] In-game verification on a real Aeronautics craft (fire from moving craft, recoil pushback) —
       needs an interactive client with Sable + Create + Create: Aeronautics installed
+
+## Round 3 — physics hardening, radar, laser, missile guidance, cinematic nukes (RCON-driven dedicated server)
+
+- [x] Server boots clean with the radar/laser/guidance/nuke systems and the 587 crash-isolated procedures
+- [x] Radar-guided missiles (radar_spear, large_radar) fired at zombie targets fly with 0 recovered errors
+- [x] Heat-seeking missiles (seeker_spear, ir_missile) fly with 0 recovered errors
+- [x] `save-all flush` with 4 guided missiles in flight succeeds
+- [x] Nuclear bomb: full staged effect sequence runs, craters a stone platform, saves clean
+- [x] No per-nuke tick lag (single one-time chunk-gen spike at world load only)
+- [x] Restart on the saved world (missiles + nuke aftermath): loads in ~2.9s, 0 errors, 0 recovered errors
+- [x] Every gameplay procedure is crash-isolated: an exception logs once via WariumSafety and no-ops instead of crashing the world
+- [x] Laser designation wired to the Aimer item (server-side raycast); missile LASER guidance consumes it
+- [x] Client boots with the client-only ScreenShake / nuke-effect code (dedicated server never loads it)
+- [ ] Visual quality of cinematic nuke stages, screen-shake feel, radar/laser HUD — need an interactive client
+- [ ] Firing mounted guns from a real moving Create: Aeronautics craft (velocity inheritance, recoil pushback) — needs the full Sable+Create+Aeronautics stack in an interactive client
+
+## Remaining known issues / limits
+
+- The Aeronautics integration (velocity inheritance, construct forces, aircraft radar targeting) is implemented and null-safe but was verified only without Sable installed here; behavior with live constructs needs interactive testing.
+- Cinematic nuke visuals and screen shake cannot be visually graded in a headless container.
+- Assembly/Create recipe "parse error" log lines remain (unchanged original behavior; harmless).

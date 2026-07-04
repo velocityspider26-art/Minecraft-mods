@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class PlasmaCraterProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       int horizontalRadiusSphere = 44;
       int verticalRadiusSphere = 14;
       int yIterationsSphere = verticalRadiusSphere;
@@ -85,6 +86,10 @@ public class PlasmaCraterProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PlasmaCraterProcedure.execute", _wtSafe);
       }
    }
 }

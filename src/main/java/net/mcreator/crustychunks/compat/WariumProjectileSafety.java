@@ -20,9 +20,16 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 /**
- * Global safety net for all Warium projectiles:
- * lifetime cap, velocity clamp, NaN/position sanity, per-level projectile cap,
- * and velocity inheritance from vehicles / physics constructs.
+ * Global safety net for every Warium projectile. Runs on the server only.
+ *
+ * <p>Responsibilities: discard projectiles that load or tick with invalid state
+ * (NaN position/velocity, absurd altitude), enforce a configurable lifetime and
+ * speed clamp, cap the number of live projectiles per level, and let projectiles
+ * fired from a moving vehicle / physics construct inherit its velocity so they do
+ * not spawn behind the craft or immediately hit the shooter.</p>
+ *
+ * <p>Every handler body is wrapped so this safety layer can never itself crash a
+ * tick or a world load.</p>
  */
 @EventBusSubscriber
 public final class WariumProjectileSafety {
@@ -43,46 +50,69 @@ public final class WariumProjectileSafety {
 
 	@SubscribeEvent
 	public static void onJoin(EntityJoinLevelEvent event) {
-		Entity entity = event.getEntity();
-		if (event.getLevel().isClientSide() || !isWariumProjectile(entity))
-			return;
-		AtomicInteger counter = ACTIVE.computeIfAbsent(event.getLevel().dimension(), d -> new AtomicInteger());
-		if (counter.get() >= WariumConfig.MAX_ACTIVE_PROJECTILES.get()) {
-			event.setCanceled(true);
-			return;
+		try {
+			Entity entity = event.getEntity();
+			if (event.getLevel().isClientSide() || !isWariumProjectile(entity))
+				return;
+			AbstractArrow arrow = (AbstractArrow) entity;
+			// Discard projectiles that arrive already broken (e.g. loaded from an old/corrupt save).
+			if (!isFinite(arrow.position()) || !isFinite(arrow.getDeltaMovement()) || Math.abs(arrow.getY()) > 20000.0) {
+				arrow.discard();
+				return;
+			}
+			AtomicInteger counter = ACTIVE.computeIfAbsent(event.getLevel().dimension(), d -> new AtomicInteger());
+			if (counter.get() >= WariumConfig.MAX_ACTIVE_PROJECTILES.get()) {
+				event.setCanceled(true);
+				return;
+			}
+			counter.incrementAndGet();
+			// Only freshly fired projectiles inherit launch-platform velocity; skip on reload
+			// (tickCount > 0) and skip transient visual effect entities (they are not saved).
+			if (arrow.tickCount == 0 && arrow.shouldBeSaved()) {
+				Entity owner = arrow.getOwner();
+				if (owner != null) {
+					Vec3 inherited = AeronauticsCompat.inheritedShooterVelocity(owner);
+					if (inherited.lengthSqr() > 1.0E-4)
+						arrow.setDeltaMovement(arrow.getDeltaMovement().add(inherited));
+				}
+			}
+			sanitize(arrow);
+		} catch (Throwable t) {
+			WariumSafety.report("WariumProjectileSafety.onJoin", t);
 		}
-		counter.incrementAndGet();
-		// Inherit shooter's vehicle / physics-construct velocity so shots from
-		// moving craft do not spawn behind the vehicle or hit the shooter.
-		AbstractArrow arrow = (AbstractArrow) entity;
-		Entity owner = arrow.getOwner();
-		if (owner != null) {
-			Vec3 inherited = AeronauticsCompat.inheritedShooterVelocity(owner);
-			if (inherited.lengthSqr() > 1.0E-4)
-				arrow.setDeltaMovement(arrow.getDeltaMovement().add(inherited));
-		}
-		sanitize(arrow);
 	}
 
 	@SubscribeEvent
 	public static void onLeave(EntityLeaveLevelEvent event) {
-		if (event.getLevel().isClientSide() || !isWariumProjectile(event.getEntity()))
-			return;
-		AtomicInteger counter = ACTIVE.get(event.getLevel().dimension());
-		if (counter != null)
-			counter.updateAndGet(v -> Math.max(0, v - 1));
+		try {
+			if (event.getLevel().isClientSide() || !isWariumProjectile(event.getEntity()))
+				return;
+			AtomicInteger counter = ACTIVE.get(event.getLevel().dimension());
+			if (counter != null)
+				counter.updateAndGet(v -> Math.max(0, v - 1));
+		} catch (Throwable t) {
+			WariumSafety.report("WariumProjectileSafety.onLeave", t);
+		}
 	}
 
 	@SubscribeEvent
 	public static void onTick(EntityTickEvent.Post event) {
-		Entity entity = event.getEntity();
-		if (entity.level().isClientSide() || !isWariumProjectile(entity))
-			return;
-		if (entity.tickCount > WariumConfig.PROJECTILE_LIFETIME_TICKS.get()) {
-			entity.discard();
-			return;
+		try {
+			Entity entity = event.getEntity();
+			if (entity.level().isClientSide() || !isWariumProjectile(entity))
+				return;
+			if (entity.tickCount > WariumConfig.PROJECTILE_LIFETIME_TICKS.get()) {
+				entity.discard();
+				return;
+			}
+			sanitize((AbstractArrow) entity);
+		} catch (Throwable t) {
+			WariumSafety.report("WariumProjectileSafety.onTick", t);
+			try {
+				event.getEntity().discard();
+			} catch (Throwable ignored) {
+			}
 		}
-		sanitize((AbstractArrow) entity);
 	}
 
 	private static void sanitize(AbstractArrow arrow) {

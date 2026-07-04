@@ -19,6 +19,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class PistolHandTickProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("Stamina") < 400.0
             && (double)Mth.nextInt(RandomSource.create(), 100, 200) < entity.getPersistentData().getDouble("Stamina")) {
@@ -157,6 +158,10 @@ public class PistolHandTickProcedure {
             && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 3, 2, false, false));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PistolHandTickProcedure.execute", _wtSafe);
       }
    }
 }

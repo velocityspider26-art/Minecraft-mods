@@ -268,10 +268,16 @@ public class EnergyNodeRenderProcedure {
    }
 
    public static void execute(LevelAccessor world) {
+      try {
       execute(null, world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EnergyNodeRenderProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world) {
+      try {
       double distance = 0.0;
       double loop = 0.0;
       double powervectory = 0.0;
@@ -344,6 +350,10 @@ public class EnergyNodeRenderProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EnergyNodeRenderProcedure.execute", _wtSafe);
       }
    }
 }

@@ -22,6 +22,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HunterGrenadeLauncherProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          Level projectileLevel = entity.level();
          if (!projectileLevel.isClientSide()) {
@@ -76,6 +77,10 @@ public class HunterGrenadeLauncherProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HunterGrenadeLauncherProcedure.execute", _wtSafe);
       }
    }
 }

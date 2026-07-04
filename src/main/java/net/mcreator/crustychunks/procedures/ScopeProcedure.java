@@ -40,10 +40,16 @@ public class ScopeProcedure {
    }
 
    public static void execute(Entity entity) {
+      try {
       execute(null, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ScopeProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
             .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:firearm")))) {
@@ -140,6 +146,10 @@ public class ScopeProcedure {
                CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxx ? _livEntxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putBoolean("sight", false));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ScopeProcedure.execute", _wtSafe);
       }
    }
 }

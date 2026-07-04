@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class PassengerSeatOnBlockRightClickedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world instanceof ServerLevel _level) {
             Entity entityToSpawn = ((EntityType)CrustyChunksModEntities.SEAT_ENTITY.get())
@@ -68,6 +69,10 @@ public class PassengerSeatOnBlockRightClickedProcedure {
                entity.startRiding(entityiterator);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PassengerSeatOnBlockRightClickedProcedure.execute", _wtSafe);
       }
    }
 }

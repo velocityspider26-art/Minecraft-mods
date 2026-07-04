@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class BreederReactorTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y - 2.0, z)).getBlock() == CrustyChunksModBlocks.BREEDER_REACTOR_PORT.get()
          && world.getBlockState(BlockPos.containing(x, y - 1.0, z)).getBlock() == CrustyChunksModBlocks.BREEDER_REACTOR_CORE.get()
          && world.getBlockState(BlockPos.containing(x, y - 1.0, z - 2.0)).getBlock() == CrustyChunksModBlocks.REACTION_CHAMBER.get()
@@ -561,6 +562,10 @@ public class BreederReactorTickProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BreederReactorTickProcedure.execute", _wtSafe);
       }
    }
 }

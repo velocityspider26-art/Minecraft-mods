@@ -9,6 +9,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class ArtilleryHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (immediatesourceentity instanceof IRMissileEntity) {
             if (immediatesourceentity.getPersistentData().getDouble("Time") > 2.0) {
@@ -33,6 +34,10 @@ public class ArtilleryHitProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryHitProcedure.execute", _wtSafe);
       }
    }
 }

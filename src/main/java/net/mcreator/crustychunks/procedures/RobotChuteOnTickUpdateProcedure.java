@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class RobotChuteOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (null != world.getEntitiesOfClass(Player.class, AABB.ofSize(new Vec3(x + 0.5, y, z + 0.5), 10.0, 10.0, 10.0), e -> true).stream().sorted((new Object() {
          Comparator<Entity> compareDistOf(double _x, double _y, double _z) {
             return Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_x, _y, _z));
@@ -86,6 +87,10 @@ public class RobotChuteOnTickUpdateProcedure {
                _levelxx.sendBlockUpdated(_bp, _bs, _bs, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RobotChuteOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

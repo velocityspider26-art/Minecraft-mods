@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SummonationTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Modules = 0.0;
       double spawnx = 0.0;
       double spawnz = 0.0;
@@ -181,5 +182,9 @@ public class SummonationTriggerProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SummonationTriggerProcedure.execute", _wtSafe);
+      }
    }
 }

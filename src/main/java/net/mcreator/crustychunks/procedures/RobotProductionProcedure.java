@@ -34,10 +34,16 @@ public class RobotProductionProcedure {
    }
 
    public static void execute(LevelAccessor world) {
+      try {
       execute(null, world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RobotProductionProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world) {
+      try {
       double spawnx = 0.0;
       double spawnz = 0.0;
       double attempts = 0.0;
@@ -198,5 +204,9 @@ public class RobotProductionProcedure {
 
       locationx = 0.0;
       locationz = 0.0;
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RobotProductionProcedure.execute", _wtSafe);
+      }
    }
 }

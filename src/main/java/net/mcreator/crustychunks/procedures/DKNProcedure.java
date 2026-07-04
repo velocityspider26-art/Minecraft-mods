@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 
 public class DKNProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          boolean _setval = false;
          {
@@ -13,6 +14,10 @@ public class DKNProcedure {
             _vars.syncPlayerVariables(entity);
          
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DKNProcedure.execute", _wtSafe);
       }
    }
 }

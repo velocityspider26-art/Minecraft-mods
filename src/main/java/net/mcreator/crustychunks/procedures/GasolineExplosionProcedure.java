@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GasolineExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -86,6 +87,10 @@ public class GasolineExplosionProcedure {
 
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.5, 0.5, 0.5, 0.6);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GasolineExplosionProcedure.execute", _wtSafe);
       }
    }
 }

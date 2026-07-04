@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class CharredBlockOnRandomClientDisplayTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (5 == Mth.nextInt(RandomSource.create(), 1, 5)) {
          world.addParticle(
             (SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(),
@@ -18,6 +19,10 @@ public class CharredBlockOnRandomClientDisplayTickProcedure {
             1.0,
             0.0
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CharredBlockOnRandomClientDisplayTickProcedure.execute", _wtSafe);
       }
    }
 }

@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class PistolFireSoundProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Movementinnacuracy = 0.0;
       double recoil = 0.0;
       double pitch = 0.0;
@@ -92,5 +93,9 @@ public class PistolFireSoundProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PistolFireSoundProcedure.execute", _wtSafe);
+      }
    }
 }

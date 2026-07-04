@@ -18,10 +18,16 @@ public class EasterEggTimerProcedure {
    }
 
    public static void execute(Entity entity) {
+      try {
       execute(null, entity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EasterEggTimerProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, Entity entity) {
+      try {
       if (entity != null) {
          if (0.0
             < entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES)
@@ -36,6 +42,10 @@ public class EasterEggTimerProcedure {
             
          }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EasterEggTimerProcedure.execute", _wtSafe);
       }
    }
 }

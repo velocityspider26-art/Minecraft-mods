@@ -15,6 +15,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MuzzleFlashProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel projectileLevel) {
          Projectile _entityToSpawn = (new Object() {
                public Projectile getArrow(Level level, float damage, int knockback) {
@@ -39,6 +40,10 @@ public class MuzzleFlashProcedure {
          _entityToSpawn.setPos(x, y, z);
          _entityToSpawn.shoot(0.0, 0.0, 0.0, 0.0F, 0.0F);
          projectileLevel.addFreshEntity(_entityToSpawn);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MuzzleFlashProcedure.execute", _wtSafe);
       }
    }
 }

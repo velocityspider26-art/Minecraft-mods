@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 
 public class MediumFraglessProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -164,6 +165,10 @@ public class MediumFraglessProcedure {
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
          net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x, y, z, 8.0F, ExplosionInteraction.NONE);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MediumFraglessProcedure.execute", _wtSafe);
       }
    }
 }

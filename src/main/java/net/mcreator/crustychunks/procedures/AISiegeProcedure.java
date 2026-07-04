@@ -24,6 +24,7 @@ import net.minecraft.world.level.levelgen.Heightmap.Types;
 
 public class AISiegeProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Modules = 0.0;
       double spawnx = 0.0;
       double spawnz = 0.0;
@@ -235,6 +236,10 @@ public class AISiegeProcedure {
                entityToSpawn.setDeltaMovement(0.0, 0.0, 0.0);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AISiegeProcedure.execute", _wtSafe);
       }
    }
 }

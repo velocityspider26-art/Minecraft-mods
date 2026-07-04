@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ShotgunFireSoundProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Movementinnacuracy = 0.0;
       CrustyChunksMod.queueServerWork(
          1,
@@ -90,5 +91,9 @@ public class ShotgunFireSoundProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ShotgunFireSoundProcedure.execute", _wtSafe);
+      }
    }
 }

@@ -25,6 +25,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HugeBulletEntityHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          double Power = 0.0;
          if (world instanceof Level _level) {
@@ -103,6 +104,10 @@ public class HugeBulletEntityHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HugeBulletEntityHitProcedure.execute", _wtSafe);
       }
    }
 }

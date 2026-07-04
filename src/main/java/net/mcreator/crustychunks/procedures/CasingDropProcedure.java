@@ -12,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class CasingDropProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof Level _level) {
          if (!_level.isClientSide()) {
             _level.playSound(
@@ -34,6 +35,10 @@ public class CasingDropProcedure {
                false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CasingDropProcedure.execute", _wtSafe);
       }
    }
 }

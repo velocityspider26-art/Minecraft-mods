@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.Block;
 
 public class FuelRodsLoadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (CrustyChunksModItems.FUEL_ROD.get() == (entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem()
             && CrustyChunksModBlocks.FUEL_RODS_4.get() != world.getBlockState(BlockPos.containing(x, y, z)).getBlock()) {
@@ -158,6 +159,10 @@ public class FuelRodsLoadProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelRodsLoadProcedure.execute", _wtSafe);
       }
    }
 }

@@ -18,6 +18,7 @@ import net.neoforged.fml.ModList;
 
 public class MassBurnBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       CleaningProcedureProcedure.execute(world, x, y, z);
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.GRASS_BLOCK && !ModList.get().isLoaded("burnt")) {
          BlockPos _bp = BlockPos.containing(x, y, z);
@@ -182,6 +183,10 @@ public class MassBurnBlockProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MassBurnBlockProcedure.execute", _wtSafe);
       }
    }
 }

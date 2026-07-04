@@ -5,6 +5,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BlockBusterHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          GiantExplosionProcedure.execute(
             world,
@@ -15,6 +16,10 @@ public class BlockBusterHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BlockBusterHitProcedure.execute", _wtSafe);
       }
    }
 }

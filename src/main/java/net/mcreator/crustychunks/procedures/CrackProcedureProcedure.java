@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class CrackProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.DIORITE) {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.COBBLESTONE.defaultBlockState(), 3);
       }
@@ -68,6 +69,10 @@ public class CrackProcedureProcedure {
 
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.POLISHED_BLACKSTONE_BRICKS) {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS.defaultBlockState(), 3);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CrackProcedureProcedure.execute", _wtSafe);
       }
    }
 }

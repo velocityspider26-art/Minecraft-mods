@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class LargeSolidHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          CrustyChunksMod.queueServerWork(3, () -> MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5));
@@ -199,6 +200,10 @@ public class LargeSolidHitProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeSolidHitProcedure.execute", _wtSafe);
       }
    }
 }

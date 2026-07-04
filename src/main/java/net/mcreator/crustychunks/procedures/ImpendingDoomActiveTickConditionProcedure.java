@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ImpendingDoomActiveTickConditionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          CompoundTag var10000;
          double var10002;
@@ -28,6 +29,10 @@ public class ImpendingDoomActiveTickConditionProcedure {
          if (world instanceof ServerLevel _level2 && _level2.isVillage(BlockPos.containing(x, y, z)) && entity instanceof LivingEntity _entity) {
             _entity.removeEffect(CrustyChunksModMobEffects.IMPENDING_DOOM);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ImpendingDoomActiveTickConditionProcedure.execute", _wtSafe);
       }
    }
 }

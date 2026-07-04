@@ -32,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class WorkerDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -143,6 +144,10 @@ public class WorkerDeathProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WorkerDeathProcedure.execute", _wtSafe);
       }
    }
 }

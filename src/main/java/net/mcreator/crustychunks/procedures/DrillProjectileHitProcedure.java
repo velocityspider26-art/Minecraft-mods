@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 
 public class DrillProjectileHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -88,6 +89,10 @@ public class DrillProjectileHitProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DrillProjectileHitProcedure.execute", _wtSafe);
       }
    }
 }

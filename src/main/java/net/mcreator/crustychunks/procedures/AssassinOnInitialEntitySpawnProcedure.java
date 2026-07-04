@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Block;
 
 public class AssassinOnInitialEntitySpawnProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof AssassinEntity) {
             ((AssassinEntity)entity).setAnimation("Spawn");
@@ -35,6 +36,10 @@ public class AssassinOnInitialEntitySpawnProcedure {
          CrustyChunksMod.queueServerWork(
             30, () -> world.levelEvent(2001, BlockPos.containing(x, y, z), Block.getId(world.getBlockState(BlockPos.containing(x, y - 1.0, z))))
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssassinOnInitialEntitySpawnProcedure.execute", _wtSafe);
       }
    }
 }

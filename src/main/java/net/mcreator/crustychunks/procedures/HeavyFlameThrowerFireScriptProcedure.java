@@ -38,6 +38,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class HeavyFlameThrowerFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -506,6 +507,10 @@ public class HeavyFlameThrowerFireScriptProcedure {
                }
             }).getDirection(blockstate).getStepZ() * 2) + 0.5, 2, 0.1, 0.1, 0.1, 0.01);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HeavyFlameThrowerFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

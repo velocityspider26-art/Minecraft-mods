@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.Block;
 
 public class CommanderPodHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
@@ -46,6 +47,10 @@ public class CommanderPodHitProcedure {
             }
          );
          MicroExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CommanderPodHitProcedure.execute", _wtSafe);
       }
    }
 }

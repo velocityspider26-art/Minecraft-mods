@@ -26,6 +26,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class CIWSSAMProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Xvector = 0.0;
          double Zvector = 0.0;
@@ -117,6 +118,10 @@ public class CIWSSAMProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CIWSSAMProcedure.execute", _wtSafe);
       }
    }
 }

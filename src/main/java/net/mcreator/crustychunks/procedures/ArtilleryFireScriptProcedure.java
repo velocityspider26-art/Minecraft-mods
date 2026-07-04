@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class ArtilleryFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean found = false;
       boolean DetectedPlayer = false;
       double sx = 0.0;
@@ -1049,6 +1050,10 @@ public class ArtilleryFireScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

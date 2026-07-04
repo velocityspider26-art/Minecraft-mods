@@ -12,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ReloadOnKeyPressedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.SMG_ANIMATED.get()) {
             SMGReloadScriptProcedure.execute(world, x, y, z, entity);
@@ -132,6 +133,10 @@ public class ReloadOnKeyPressedProcedure {
             .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:firearm")))) {
             CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putBoolean("Reloading", true));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ReloadOnKeyPressedProcedure.execute", _wtSafe);
       }
    }
 }

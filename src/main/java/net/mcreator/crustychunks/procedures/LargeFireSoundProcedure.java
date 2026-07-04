@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class LargeFireSoundProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Movementinnacuracy = 0.0;
       CrustyChunksMod.queueServerWork(
          1,
@@ -114,5 +115,9 @@ public class LargeFireSoundProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeFireSoundProcedure.execute", _wtSafe);
+      }
    }
 }

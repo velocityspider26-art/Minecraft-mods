@@ -10,6 +10,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FlameTracerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          world.addParticle(
             (SimpleParticleType)CrustyChunksModParticleTypes.FLAME_PARTICLE.get(),
@@ -36,6 +37,10 @@ public class FlameTracerProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlameTracerProcedure.execute", _wtSafe);
       }
    }
 }

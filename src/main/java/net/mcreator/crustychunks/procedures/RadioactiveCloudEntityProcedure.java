@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class RadioactiveCloudEntityProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean found = false;
          double particleRadius = 0.0;
@@ -139,6 +140,10 @@ public class RadioactiveCloudEntityProcedure {
          } else if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RadioactiveCloudEntityProcedure.execute", _wtSafe);
       }
    }
 }

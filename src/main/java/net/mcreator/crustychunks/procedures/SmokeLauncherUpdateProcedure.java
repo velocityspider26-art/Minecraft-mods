@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class SmokeLauncherUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double Barrels = 0.0;
       double Xvector = 0.0;
       double Zvector = 0.0;
@@ -117,6 +118,10 @@ public class SmokeLauncherUpdateProcedure {
                _level.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeLauncherUpdateProcedure.execute", _wtSafe);
       }
    }
 }

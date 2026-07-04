@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ManualCrankOnBlockRightClickedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (!world.isClientSide()) {
          BlockPos _bp = BlockPos.containing(x, y, z);
          BlockEntity _blockEntity = world.getBlockEntity(_bp);
@@ -19,6 +20,10 @@ public class ManualCrankOnBlockRightClickedProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bp, _bs, _bs, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ManualCrankOnBlockRightClickedProcedure.execute", _wtSafe);
       }
    }
 }

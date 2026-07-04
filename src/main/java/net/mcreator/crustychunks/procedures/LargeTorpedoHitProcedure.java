@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class LargeTorpedoHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          HugeExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY() + 2.0, immediatesourceentity.getZ());
          if (world instanceof Level _level && !_level.isClientSide()) {
@@ -16,6 +17,10 @@ public class LargeTorpedoHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeTorpedoHitProcedure.execute", _wtSafe);
       }
    }
 }

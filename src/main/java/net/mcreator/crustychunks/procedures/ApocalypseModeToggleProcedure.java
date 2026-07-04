@@ -12,6 +12,7 @@ import net.minecraft.world.level.GameRules.BooleanValue;
 
 public class ApocalypseModeToggleProcedure {
    public static void execute(LevelAccessor world, CommandContext<CommandSourceStack> arguments, Entity entity) {
+      try {
       if (entity != null) {
          double Riflers = 0.0;
          double Commanders = 0.0;
@@ -30,6 +31,10 @@ public class ApocalypseModeToggleProcedure {
          } else if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("Apocalypse Mode set to False"), false);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ApocalypseModeToggleProcedure.execute", _wtSafe);
       }
    }
 }

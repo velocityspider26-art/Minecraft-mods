@@ -18,6 +18,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class UpPullOnKeyPressedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.AIMER.get()
             && (entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Pitch") <= 44.0) {
@@ -55,6 +56,10 @@ public class UpPullOnKeyPressedProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("UpPullOnKeyPressedProcedure.execute", _wtSafe);
       }
    }
 }

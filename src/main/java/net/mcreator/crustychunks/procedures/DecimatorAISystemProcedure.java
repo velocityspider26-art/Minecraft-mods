@@ -42,6 +42,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class DecimatorAISystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          boolean Trigger = false;
          boolean hottarget = false;
@@ -613,6 +614,10 @@ public class DecimatorAISystemProcedure {
                _entity.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20, 0));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorAISystemProcedure.execute", _wtSafe);
       }
    }
 }

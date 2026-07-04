@@ -29,6 +29,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FlameThrowerFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Movementinnacuracy = 0.0;
          if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY).getItem()
@@ -127,6 +128,10 @@ public class FlameThrowerFireScriptProcedure {
          } else if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("§4Fuel tank required."), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlameThrowerFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class FuelTankDamagedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK.get()
          || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK_MODULE.get()
          || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK_INPUT.get()) {
@@ -56,6 +57,10 @@ public class FuelTankDamagedProcedure {
          if (world instanceof ServerLevel _level) {
             _level.sendParticles(ParticleTypes.FLAME, x + 0.5, y + 0.5, z + 0.5, 15, 0.25, 0.25, 0.25, 0.1);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankDamagedProcedure.execute", _wtSafe);
       }
    }
 }

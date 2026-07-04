@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class AmmoRackHitSystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       BlockState targetblock = Blocks.AIR.defaultBlockState();
       boolean explosive = false;
       double ZOffset = 0.0;
@@ -160,6 +161,10 @@ public class AmmoRackHitSystemProcedure {
                });
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AmmoRackHitSystemProcedure.execute", _wtSafe);
       }
    }
 }

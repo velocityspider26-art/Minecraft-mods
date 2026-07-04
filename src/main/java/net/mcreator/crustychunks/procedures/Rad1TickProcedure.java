@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class Rad1TickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       Vec3 _center = new Vec3(x + 0.5, y + 0.5, z + 0.5);
 
       for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(5.0), e -> true)
@@ -27,6 +28,10 @@ public class Rad1TickProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("Rad1TickProcedure.execute", _wtSafe);
       }
    }
 }

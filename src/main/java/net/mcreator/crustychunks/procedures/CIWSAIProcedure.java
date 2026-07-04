@@ -35,6 +35,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class CIWSAIProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          Entity target = null;
          boolean hottarget = false;
@@ -325,6 +326,10 @@ public class CIWSAIProcedure {
          if (entity.isInWater()) {
             entity.setDeltaMovement(new Vec3(0.0, 0.1, 0.0));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CIWSAIProcedure.execute", _wtSafe);
       }
    }
 }

@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class DespawningBulletProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          world.addParticle(
             (SimpleParticleType)CrustyChunksModParticleTypes.BULLET_TRAIL.get(),
@@ -41,6 +42,10 @@ public class DespawningBulletProcedure {
                }
             });
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DespawningBulletProcedure.execute", _wtSafe);
       }
    }
 }

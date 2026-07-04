@@ -30,6 +30,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class AssemblyFurnaceOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double XTrigger = 0.0;
       double ZTrigger = 0.0;
       boolean sufficientheat = false;
@@ -404,6 +405,10 @@ public class AssemblyFurnaceOnTickUpdateProcedure {
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + 0.5, y + 10.0, z + 0.5, 10, 0.0, 3.0, 0.0, 0.01);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssemblyFurnaceOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

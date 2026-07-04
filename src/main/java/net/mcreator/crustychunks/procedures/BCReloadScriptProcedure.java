@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class BCReloadScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (!(new Object() {
             public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
@@ -341,6 +342,10 @@ public class BCReloadScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BCReloadScriptProcedure.execute", _wtSafe);
       }
    }
 }

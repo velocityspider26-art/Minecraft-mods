@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SmokeGrenadeHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (world instanceof ServerLevel _level) {
             Entity entityToSpawn = ((EntityType)CrustyChunksModEntities.SMOKE_GRENADE_PROJECTILE.get())
@@ -45,6 +46,10 @@ public class SmokeGrenadeHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeGrenadeHitProcedure.execute", _wtSafe);
       }
    }
 }

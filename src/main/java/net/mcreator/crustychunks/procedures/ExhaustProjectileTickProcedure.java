@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ExhaustProjectileTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          CrustyChunksMod.queueServerWork(9, () -> {
             if (!immediatesourceentity.level().isClientSide()) {
@@ -43,6 +44,10 @@ public class ExhaustProjectileTickProcedure {
                immediatesourceentity.discard();
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ExhaustProjectileTickProcedure.execute", _wtSafe);
       }
    }
 }

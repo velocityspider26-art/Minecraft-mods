@@ -36,6 +36,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class GenericRifleFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Movementinnacuracy = 0.0;
          double recoil = 0.0;
@@ -216,6 +217,10 @@ public class GenericRifleFireProcedure {
                entity.getPersistentData().putDouble("GunCooldown", 6.0);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GenericRifleFireProcedure.execute", _wtSafe);
       }
    }
 }

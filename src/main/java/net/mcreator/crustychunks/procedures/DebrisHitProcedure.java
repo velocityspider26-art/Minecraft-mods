@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class DebrisHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          DamagesProcedure.execute(world, x, y, z);
@@ -346,6 +347,10 @@ public class DebrisHitProcedure {
          }
 
          HeavyCrackProcedureProcedure.execute(world, x, y, z);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DebrisHitProcedure.execute", _wtSafe);
       }
    }
 }

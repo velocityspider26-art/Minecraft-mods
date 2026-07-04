@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ArtilleryWarningMarkerWhileProjectileFlyingTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double targetrange = 0.0;
          immediatesourceentity.setNoGravity(true);
@@ -36,6 +37,10 @@ public class ArtilleryWarningMarkerWhileProjectileFlyingTickProcedure {
          if (200.0 < immediatesourceentity.getPersistentData().getDouble("T") && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArtilleryWarningMarkerWhileProjectileFlyingTickProcedure.execute", _wtSafe);
       }
    }
 }

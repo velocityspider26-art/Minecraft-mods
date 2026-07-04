@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AimerUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Multiplier = 0.0;
          double Pitch = 0.0;
@@ -28,6 +29,10 @@ public class AimerUpdateProcedure {
          } else {
             AimerProcedureProcedure.execute(world, x, y, z, entity, itemstack);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerUpdateProcedure.execute", _wtSafe);
       }
    }
 }

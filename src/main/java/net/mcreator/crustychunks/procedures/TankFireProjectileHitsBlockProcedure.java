@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class TankFireProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          DamagesProcedure.execute(world, x, y, z);
          HeavyCrackProcedureProcedure.execute(world, x, y, z);
@@ -64,6 +65,10 @@ public class TankFireProjectileHitsBlockProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("TankFireProjectileHitsBlockProcedure.execute", _wtSafe);
       }
    }
 }

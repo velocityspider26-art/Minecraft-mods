@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 
 public class NanoExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -186,6 +187,10 @@ public class NanoExplosionProcedure {
 
       if (world instanceof ServerLevel _levelxx) {
          _levelxx.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.5, 0.5, 0.5, 0.6);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NanoExplosionProcedure.execute", _wtSafe);
       }
    }
 }

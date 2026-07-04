@@ -34,10 +34,16 @@ public class AIHurtProcedure {
    }
 
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity sourceentity) {
+      try {
       execute(null, world, x, y, z, entity, sourceentity);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIHurtProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, double x, double y, double z, Entity entity, Entity sourceentity) {
+      try {
       if (entity != null && sourceentity != null) {
          if (entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:robot")))
             && !sourceentity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:robot")))) {
@@ -57,6 +63,10 @@ public class AIHurtProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIHurtProcedure.execute", _wtSafe);
       }
    }
 }

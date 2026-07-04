@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class ToxicDisperseProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (!world.getBlockState(BlockPos.containing(x, y + 1.0, z)).canOcclude()
          || !world.getBlockState(BlockPos.containing(x, y - 1.0, z)).canOcclude()
          || !world.getBlockState(BlockPos.containing(x + 1.0, y, z)).canOcclude()
@@ -85,6 +86,10 @@ public class ToxicDisperseProcedure {
             _entityToSpawn.shoot(0.0, 1.0, 0.0, 0.1F, 0.0F);
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ToxicDisperseProcedure.execute", _wtSafe);
       }
    }
 }

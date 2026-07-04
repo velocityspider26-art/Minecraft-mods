@@ -37,6 +37,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class LeverGunFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Movementinnacuracy = 0.0;
          double recoil = 0.0;
@@ -247,6 +248,10 @@ public class LeverGunFireScriptProcedure {
          } else if (entity instanceof Player _player && !_player.level().isClientSide()) {
             _player.displayClientMessage(Component.literal("§4Weapon requires 2 hands to fire."), true);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LeverGunFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

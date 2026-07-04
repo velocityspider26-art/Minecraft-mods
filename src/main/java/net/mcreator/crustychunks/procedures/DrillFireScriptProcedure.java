@@ -18,6 +18,7 @@ import net.minecraft.world.level.Level;
 
 public class DrillFireScriptProcedure {
    public static void execute(Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (0.0 >= itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("T") && 2.0 <= itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Fluid")) {
             { final var _fvcc1 = itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Fluid") - 2.0; CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("Fluid", _fvcc1)); }
@@ -55,6 +56,10 @@ public class DrillFireScriptProcedure {
 
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putDouble("T", 7.0));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DrillFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

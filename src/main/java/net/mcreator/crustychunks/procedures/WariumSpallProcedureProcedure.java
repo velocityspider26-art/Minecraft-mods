@@ -16,6 +16,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class WariumSpallProcedureProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
          if (world instanceof ServerLevel projectileLevel) {
@@ -47,6 +48,10 @@ public class WariumSpallProcedureProcedure {
             );
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WariumSpallProcedureProcedure.execute", _wtSafe);
       }
    }
 }

@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class CleaningProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.MOSSY_COBBLESTONE) {
          BlockPos _bp = BlockPos.containing(x, y, z);
          BlockState _bs = Blocks.COBBLESTONE.defaultBlockState();
@@ -75,6 +76,10 @@ public class CleaningProcedureProcedure {
          }
 
          world.setBlock(_bp, _bs, 3);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CleaningProcedureProcedure.execute", _wtSafe);
       }
    }
 }

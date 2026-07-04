@@ -7,8 +7,13 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class CharredBlockBlockDestroyedByExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(), x + 0.5, y + 0.5, z + 0.5, 6, 0.05, 0.05, 0.05, 0.5);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CharredBlockBlockDestroyedByExplosionProcedure.execute", _wtSafe);
       }
    }
 }

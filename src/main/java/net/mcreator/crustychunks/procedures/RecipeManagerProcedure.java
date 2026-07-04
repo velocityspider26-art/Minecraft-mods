@@ -32,10 +32,16 @@ public class RecipeManagerProcedure {
    }
 
    public static void execute(LevelAccessor world) {
+      try {
       execute(null, world);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RecipeManagerProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world) {
+      try {
       double indexclear = 0.0;
       if (world instanceof ServerLevel srvlvl_) {
          List<JsonObject> jsons = new ArrayList<>();
@@ -77,6 +83,10 @@ public class RecipeManagerProcedure {
          for (JsonObject jsoniterator : jsons) {
             CrustyChunksModVariables.recipesloaded.add(jsoniterator);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RecipeManagerProcedure.execute", _wtSafe);
       }
    }
 }

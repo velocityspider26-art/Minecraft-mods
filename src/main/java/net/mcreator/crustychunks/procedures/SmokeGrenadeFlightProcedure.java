@@ -7,6 +7,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmokeGrenadeFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.getPersistentData().putDouble("t", immediatesourceentity.getPersistentData().getDouble("t") + 1.0);
          if (80.0 < immediatesourceentity.getPersistentData().getDouble("t")) {
@@ -17,6 +18,10 @@ public class SmokeGrenadeFlightProcedure {
          }
 
          world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.PHOSPHORUS_TRAIL.get(), x, y, z, 0.0, 0.1, 0.0);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmokeGrenadeFlightProcedure.execute", _wtSafe);
       }
    }
 }

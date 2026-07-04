@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class ACFireScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -1025,6 +1026,10 @@ public class ACFireScriptProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ACFireScriptProcedure.execute", _wtSafe);
       }
    }
 }

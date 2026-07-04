@@ -5,6 +5,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class FireBombProjectileHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          IncindiaryExplosionProcedure.execute(
             world,
@@ -15,6 +16,10 @@ public class FireBombProjectileHitProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FireBombProjectileHitProcedure.execute", _wtSafe);
       }
    }
 }

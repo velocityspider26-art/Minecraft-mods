@@ -278,10 +278,16 @@ public class ProjectilesTracersProcedure {
    }
 
    public static void execute(LevelAccessor world, double partialTick) {
+      try {
       execute(null, world, partialTick);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ProjectilesTracersProcedure.execute", _wtSafe);
+      }
    }
 
    private static void execute(@Nullable Event event, LevelAccessor world, double partialTick) {
+      try {
       double xvector = 0.0;
       double yvector = 0.0;
       double zvector = 0.0;
@@ -454,6 +460,10 @@ public class ProjectilesTracersProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ProjectilesTracersProcedure.execute", _wtSafe);
       }
    }
 }

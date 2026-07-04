@@ -10,6 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class ContaminatedEffectProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 20, 1, false, false));
@@ -28,6 +29,10 @@ public class ContaminatedEffectProcedure {
          if (var10000 >= Mth.nextInt(RandomSource.create(), 0, 12)) {
             entity.getPersistentData().putDouble("Radiation", entity.getPersistentData().getDouble("Radiation") + 1.0);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ContaminatedEffectProcedure.execute", _wtSafe);
       }
    }
 }

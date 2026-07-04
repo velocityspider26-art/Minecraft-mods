@@ -22,6 +22,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ItemIncineratorOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public int getAmount(LevelAccessor world, BlockPos pos, int slotid) {
             AtomicInteger _retval = new AtomicInteger(0);
@@ -139,6 +140,10 @@ public class ItemIncineratorOnTickUpdateProcedure {
          if (world instanceof ServerLevel _levelxx) {
             _levelxx.sendParticles(ParticleTypes.FLAME, x + 0.5, y + 1.5, z + 0.5, 5, 0.0, 0.0, 0.0, 0.1);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ItemIncineratorOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SpaceFusionThermalRadEntityProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean found = false;
          double particleRadius = 0.0;
@@ -215,6 +216,10 @@ public class SpaceFusionThermalRadEntityProcedureProcedure {
          } else if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SpaceFusionThermalRadEntityProcedureProcedure.execute", _wtSafe);
       }
    }
 }

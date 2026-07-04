@@ -10,6 +10,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ApocalypseStatsDeclareProcedure {
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          double Riflers = 0.0;
          double Commanders = 0.0;
@@ -84,6 +85,10 @@ public class ApocalypseStatsDeclareProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ApocalypseStatsDeclareProcedure.execute", _wtSafe);
       }
    }
 }

@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class RedirectorShaftTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double power = 0.0;
 
       for (Direction directioniterator : Direction.values()) {
@@ -57,6 +58,10 @@ public class RedirectorShaftTickProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RedirectorShaftTickProcedure.execute", _wtSafe);
       }
    }
 }

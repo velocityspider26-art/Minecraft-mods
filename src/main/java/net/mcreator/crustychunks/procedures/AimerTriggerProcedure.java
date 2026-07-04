@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class AimerTriggerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Multiplier = 0.0;
       if (!world.isClientSide()) {
          BlockPos _bp = BlockPos.containing(x, y, z);
@@ -25,6 +26,10 @@ public class AimerTriggerProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bp, _bs, _bs, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerTriggerProcedure.execute", _wtSafe);
       }
    }
 }

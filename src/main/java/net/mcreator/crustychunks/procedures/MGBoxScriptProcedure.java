@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class MGBoxScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Rounds = 0.0;
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getOffhandItem() : ItemStack.EMPTY).getCount() == 0) {
@@ -322,6 +323,10 @@ public class MGBoxScriptProcedure {
                   .addCooldown((entity instanceof LivingEntity _livEntxxxxxxxxxxxxxxx ? _livEntxxxxxxxxxxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem(), 1);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MGBoxScriptProcedure.execute", _wtSafe);
       }
    }
 }

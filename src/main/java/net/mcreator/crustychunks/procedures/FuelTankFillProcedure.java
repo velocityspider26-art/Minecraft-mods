@@ -28,6 +28,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FuelTankFillProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY)
             .is(ItemTags.create(ResourceLocation.parse("c:buckets/diesel")))) {
@@ -716,6 +717,10 @@ public class FuelTankFillProcedure {
                true
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FuelTankFillProcedure.execute", _wtSafe);
       }
    }
 }

@@ -24,6 +24,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class ArmorBypassPelletProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity, Entity sourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null && sourceentity != null) {
          double Health = 0.0;
          double penetrationmult = 0.0;
@@ -140,6 +141,10 @@ public class ArmorBypassPelletProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ArmorBypassPelletProcedure.execute", _wtSafe);
       }
    }
 }

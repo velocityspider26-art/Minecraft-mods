@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class EradicatorDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          MediumExplosionProcedure.execute(world, x, y, z);
          if (world instanceof ServerLevel projectileLevel) {
@@ -230,6 +231,10 @@ public class EradicatorDeathProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EradicatorDeathProcedure.execute", _wtSafe);
       }
    }
 }

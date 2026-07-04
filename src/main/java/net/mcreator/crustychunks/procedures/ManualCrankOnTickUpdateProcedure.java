@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class ManualCrankOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -82,6 +83,10 @@ public class ManualCrankOnTickUpdateProcedure {
          if (world instanceof Level _levelx) {
             _levelx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ManualCrankOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

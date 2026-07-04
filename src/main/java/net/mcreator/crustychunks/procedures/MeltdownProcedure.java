@@ -17,6 +17,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class MeltdownProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.ASH, x + 0.5, y + 3.0, z + 0.5, 90, 5.0, 3.0, 5.0, 0.0);
       }
@@ -37,5 +38,9 @@ public class MeltdownProcedure {
       }
 
       world.setBlock(BlockPos.containing(x, y, z), ((Block)CrustyChunksModBlocks.RADIOACTIVE_ASH.get()).defaultBlockState(), 3);
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MeltdownProcedure.execute", _wtSafe);
+      }
    }
 }

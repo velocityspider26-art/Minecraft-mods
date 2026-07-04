@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class DriveShaftTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       if ((new Object() {
             public double getValue(LevelAccessor world, BlockPos pos, String tag) {
                BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -364,6 +365,10 @@ public class DriveShaftTickProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DriveShaftTickProcedure.execute", _wtSafe);
       }
    }
 }

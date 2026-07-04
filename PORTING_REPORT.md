@@ -153,3 +153,74 @@ compileOnly (Modrinth maven + two Jar-in-Jar libs in `libs/`) and optional in
 
 **Performance**: per-player-tick ItemStack copies removed from the gun animation
 sync; transient entities eliminate saved-entity buildup from sustained fire.
+
+## Round 3: physics-crash hardening, radar, laser designation, missile guidance, cinematic nukes
+
+**World-crash isolation (the core stability fix).** Every one of the 587 `void
+execute(...)` gameplay procedures is now wrapped in a fail-safe try/catch that
+routes any exception to `WariumSafety.report` (logged once, then suppressed).
+A single malformed projectile, an unloaded construct, a NaN raycast, or a
+missing owner now degrades to a logged no-op instead of propagating into — and
+crashing — the server tick loop or a world save. The projectile safety layer and
+the physics adapter are wrapped the same way, so no Warium code path can take
+down a world.
+
+**SableAdapter hardened.** Every Sable dereference (`SubLevelContainer`,
+`SubLevel.logicalPose()`, `latestLinear/AngularVelocity`, `queryIntersecting`,
+`QueuedForceGroup`) is null-guarded and finite-checked; removed sublevels and
+null poses yield safe fallbacks. No Sable runtime object is stored beyond a
+single call, so a construct unloading/reloading mid-flight cannot leave a stale
+reference.
+
+**Load-time projectile safety.** `WariumProjectileSafety.onJoin` (which fires on
+world load) discards any projectile that arrives with a non-finite position/
+velocity or an absurd altitude, so a corrupt/old save cannot crash the load.
+Velocity inheritance is restricted to freshly-fired, saved projectiles (skips
+reloads and transient effect entities). A self-collision grace window is added.
+
+**Radar (`AeronauticsRadarHandler`).** Server-authoritative scan/track/resolve:
+finds valid targets (the `crusty_chunks:robotarget` tag, players, aircraft in
+physics space, optionally projectiles) within `radarRange`, nearest-first,
+capped, with optional line-of-sight. State is transient runtime data only, so
+locks always clear cleanly on reload. Radar-guided missiles call `bestTarget`/
+`resolve`.
+
+**Laser designation (`AeronauticsLaserDesignationHandler`).** Server-side raycast
+from a designator (wired to the existing Aimer item's right-click), entity or
+block designation with range + line-of-sight validation, keyed by designator
+UUID with automatic expiry — nothing invalid is saved or reloaded. Consumed by
+laser-guided munitions via `nearestActive`.
+
+**Missile guidance (`AeronauticsMissileGuidanceHandler`).** Guidance types
+UNGUIDED / RADAR / LASER / HEAT, clamped turn rate (`missileMaxTurnRate`),
+self-collision grace, lost-target grace (radar/laser configurable), and full
+null-safety: if the target or designation disappears, guidance quietly stops.
+Only a target UUID and last-known point are persisted (stable data), never
+runtime references. Wired into the radar-spear, large-radar, seeker-spear and
+IR-missile flight procedures.
+
+**Cinematic nuke effects (`WariumNukeEffects`).** Damage/visual split: damage,
+block destruction and fallout stay server-side in the existing explosion
+procedures; visuals are a staged, layered sequence (flash → fireball →
+shockwave ring → dust wall → mushroom stem → mushroom cap → rolling smoke →
+settling fallout) scheduled over ~50 ticks via `queueServerWork` and emitted with
+`ServerLevel.sendParticles` (auto distance-culled per client). Five per-type
+profiles (SMALL_TACTICAL, STANDARD, HIGH_YIELD, DIRTY, THERMOBARIC) drive
+fireball size, colours, dust, mushroom shape and shake. Every stage is particle-
+capped and scaled by `nukeEffectsQuality` (LOW/MEDIUM/HIGH/CINEMATIC). A
+client-only decaying camera shake (`WariumScreenShake`, `Dist.CLIENT`) is driven
+by a broadcast `ScreenShakeMessage`; dedicated servers never load it.
+
+**Config** grew radar, laserDesignator, missiles and nukeEffects sections with
+all requested knobs (radarRange/scanRate/lockTime/maxTargets/lineOfSight/track
+filters; laser range/grace/LOS/targets/updateRate; missile turnRate/unguided
+fallback; nuke quality/shake/mushroom/shockwave/particle+block caps/radius
+multiplier/radiation).
+
+**Verified (RCON-driven dedicated server):** server boots clean with all systems;
+radar/heat/laser guided missiles (radar-spear, large-radar, seeker-spear, IR)
+fly with zero recovered errors and save cleanly; a nuke detonation runs the full
+staged sequence, craters blocks, and saves clean; restart on that world loads in
+~2.9s with zero errors; no per-nuke tick lag. Still requires an interactive
+client with the full Sable+Create+Aeronautics stack to visually confirm
+cinematic quality, HUD feel, and firing from a real moving aircraft.

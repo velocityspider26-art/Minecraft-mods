@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class GasDisperseProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (!world.getBlockState(BlockPos.containing(x, y + 1.0, z)).canOcclude()
          || !world.getBlockState(BlockPos.containing(x, y - 1.0, z)).canOcclude()
          || !world.getBlockState(BlockPos.containing(x + 1.0, y, z)).canOcclude()
@@ -50,6 +51,10 @@ public class GasDisperseProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GasDisperseProcedure.execute", _wtSafe);
       }
    }
 }

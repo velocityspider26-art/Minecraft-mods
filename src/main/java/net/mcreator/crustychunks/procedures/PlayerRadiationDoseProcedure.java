@@ -17,6 +17,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class PlayerRadiationDoseProcedure {
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          if (Mth.nextInt(RandomSource.create(), 1, 100) == 1
             && (double)Mth.nextInt(RandomSource.create(), 10, 1000) <= entity.getPersistentData().getDouble("Radiation")
@@ -58,6 +59,10 @@ public class PlayerRadiationDoseProcedure {
                _entity.removeEffect(CrustyChunksModMobEffects.RADIATION);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PlayerRadiationDoseProcedure.execute", _wtSafe);
       }
    }
 }

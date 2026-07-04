@@ -24,6 +24,7 @@ import net.neoforged.fml.ModList;
 
 public class FusionBlastTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean found = false;
          double particleRadius = 0.0;
@@ -252,6 +253,10 @@ public class FusionBlastTickProcedure {
          if (450.0 <= immediatesourceentity.getPersistentData().getDouble("T") && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FusionBlastTickProcedure.execute", _wtSafe);
       }
    }
 }

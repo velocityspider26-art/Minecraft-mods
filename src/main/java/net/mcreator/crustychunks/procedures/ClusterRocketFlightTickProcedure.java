@@ -31,6 +31,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ClusterRocketFlightTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          boolean Trigger = false;
          double mvmultiplier = 0.0;
@@ -185,6 +186,10 @@ public class ClusterRocketFlightTickProcedure {
 
             CrustyChunksMod.queueServerWork(1, () -> ClusterRocketHitProcedure.execute(world, immediatesourceentity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ClusterRocketFlightTickProcedure.execute", _wtSafe);
       }
    }
 }

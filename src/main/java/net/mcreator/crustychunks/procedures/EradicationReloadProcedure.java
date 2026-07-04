@@ -25,6 +25,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class EradicationReloadProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double Rounds = 0.0;
          double Capacity = 0.0;
@@ -379,6 +380,10 @@ public class EradicationReloadProcedure {
                true
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EradicationReloadProcedure.execute", _wtSafe);
       }
    }
 }

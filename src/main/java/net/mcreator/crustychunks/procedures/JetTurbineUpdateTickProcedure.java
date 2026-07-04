@@ -28,6 +28,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class JetTurbineUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean found = false;
       boolean Afterburner = false;
       double power = 0.0;
@@ -829,6 +830,10 @@ public class JetTurbineUpdateTickProcedure {
          if (world instanceof Level _levelxxxx) {
             _levelxxxx.sendBlockUpdated(_bpxxxxxxxxxxxxx, _bsxxxxxxxxxxxxx, _bsxxxxxxxxxxxxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("JetTurbineUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

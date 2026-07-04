@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class LargeRocketPodFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction playerdirection = Direction.NORTH;
       boolean found = false;
       boolean DetectedPlayer = false;
@@ -691,6 +692,10 @@ public class LargeRocketPodFireProcedure {
                _levelxxx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeRocketPodFireProcedure.execute", _wtSafe);
       }
    }
 }

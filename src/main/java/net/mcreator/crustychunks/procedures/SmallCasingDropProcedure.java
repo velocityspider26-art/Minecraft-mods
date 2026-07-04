@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SmallCasingDropProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       CrustyChunksMod.queueServerWork(
          4,
          () -> {
@@ -41,5 +42,9 @@ public class SmallCasingDropProcedure {
             }
          }
       );
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallCasingDropProcedure.execute", _wtSafe);
+      }
    }
 }

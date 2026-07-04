@@ -13,6 +13,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class EmberParticleProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -46,6 +47,10 @@ public class EmberParticleProjectileHitsBlockProcedure {
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("EmberParticleProjectileHitsBlockProcedure.execute", _wtSafe);
       }
    }
 }

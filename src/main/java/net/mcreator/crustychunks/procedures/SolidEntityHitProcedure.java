@@ -9,6 +9,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SolidEntityHitProcedure {
    public static void execute(LevelAccessor world, Entity entity) {
+      try {
       if (entity != null) {
          entity.hurt(
             new DamageSource(
@@ -18,6 +19,10 @@ public class SolidEntityHitProcedure {
             ),
             150.0F
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SolidEntityHitProcedure.execute", _wtSafe);
       }
    }
 }

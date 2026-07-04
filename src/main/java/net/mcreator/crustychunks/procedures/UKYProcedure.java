@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 
 public class UKYProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          boolean _setval = true;
          {
@@ -13,6 +14,10 @@ public class UKYProcedure {
             _vars.syncPlayerVariables(entity);
          
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("UKYProcedure.execute", _wtSafe);
       }
    }
 }

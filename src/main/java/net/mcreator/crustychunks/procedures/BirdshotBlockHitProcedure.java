@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class BirdshotBlockHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          if (world instanceof Level _level) {
@@ -223,6 +224,10 @@ public class BirdshotBlockHitProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BirdshotBlockHitProcedure.execute", _wtSafe);
       }
    }
 }

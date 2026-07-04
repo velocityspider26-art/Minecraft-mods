@@ -23,6 +23,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HunterCannonProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getPersistentData().getDouble("Mag") < 15.0) {
             Level projectileLevel = entity.level();
@@ -140,6 +141,10 @@ public class HunterCannonProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HunterCannonProcedure.execute", _wtSafe);
       }
    }
 }

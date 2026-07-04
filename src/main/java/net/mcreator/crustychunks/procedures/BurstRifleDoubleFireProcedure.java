@@ -9,6 +9,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BurstRifleDoubleFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getDouble("Firemode") == 0.0) {
             BurstRifleFireScriptProcedure.execute(world, x, y, z, entity, itemstack);
@@ -22,6 +23,10 @@ public class BurstRifleDoubleFireProcedure {
                _player.getCooldowns().addCooldown(itemstack.getItem(), 10);
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BurstRifleDoubleFireProcedure.execute", _wtSafe);
       }
    }
 }

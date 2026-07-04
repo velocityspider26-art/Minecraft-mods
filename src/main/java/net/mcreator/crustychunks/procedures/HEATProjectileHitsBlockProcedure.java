@@ -20,6 +20,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class HEATProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:era")))) {
             ERAProcedureProcedure.execute(world, x, y, z);
@@ -79,6 +80,10 @@ public class HEATProjectileHitsBlockProcedure {
                immediatesourceentity.discard();
             }
          });
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("HEATProjectileHitsBlockProcedure.execute", _wtSafe);
       }
    }
 }

@@ -28,6 +28,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AIArmorBypassProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, Entity immediatesourceentity) {
+      try {
       if (entity != null && immediatesourceentity != null) {
          double Health = 0.0;
          double damagemultiplier = 0.0;
@@ -191,6 +192,10 @@ public class AIArmorBypassProcedure {
          if (entity.isInvulnerable() && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AIArmorBypassProcedure.execute", _wtSafe);
       }
    }
 }

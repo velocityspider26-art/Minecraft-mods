@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class MediumExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -316,6 +317,10 @@ public class MediumExplosionProcedure {
             _entityToSpawn.shoot(0.0, 1.0, 0.0, (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4), 45.0F);
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MediumExplosionProcedure.execute", _wtSafe);
       }
    }
 }

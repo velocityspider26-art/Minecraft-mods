@@ -28,6 +28,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DecimatorCannonFireProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double mvmultiplier = 0.0;
          mvmultiplier = ProjectilelibsProcedure.execute();
@@ -169,6 +170,10 @@ public class DecimatorCannonFireProcedure {
          if (entity instanceof DecimatorEntity) {
             ((DecimatorEntity)entity).setAnimation("Shoot");
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorCannonFireProcedure.execute", _wtSafe);
       }
    }
 }

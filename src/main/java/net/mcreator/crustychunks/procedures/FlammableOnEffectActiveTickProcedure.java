@@ -7,6 +7,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class FlammableOnEffectActiveTickProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if (entity.getRemainingFireTicks() > 0) {
             int var10001;
@@ -21,6 +22,10 @@ public class FlammableOnEffectActiveTickProcedure {
 
             entity.igniteForSeconds(var10001);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FlammableOnEffectActiveTickProcedure.execute", _wtSafe);
       }
    }
 }

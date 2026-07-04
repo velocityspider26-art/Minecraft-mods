@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class BlastArmorChestplateTickEventProcedure {
    public static void execute(Entity entity) {
+      try {
       if (entity != null) {
          if ((entity instanceof LivingEntity _entGetArmorxxx ? _entGetArmorxxx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY).getItem()
                == CrustyChunksModItems.BLAST_ARMOR_HELMET.get()
@@ -23,6 +24,10 @@ public class BlastArmorChestplateTickEventProcedure {
             && !_entity.level().isClientSide()) {
             _entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 20, 0, false, false));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BlastArmorChestplateTickEventProcedure.execute", _wtSafe);
       }
    }
 }

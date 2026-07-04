@@ -16,6 +16,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AimerEntitySwingsItemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double Multiplier = 0.0;
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.AIMER.get()) {
@@ -46,6 +47,10 @@ public class AimerEntitySwingsItemProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AimerEntitySwingsItemProcedure.execute", _wtSafe);
       }
    }
 }

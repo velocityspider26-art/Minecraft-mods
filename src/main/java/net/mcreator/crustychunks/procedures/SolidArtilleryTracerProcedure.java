@@ -8,6 +8,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SolidArtilleryTracerProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (!immediatesourceentity.isUnderWater()) {
             world.addParticle(
@@ -27,6 +28,10 @@ public class SolidArtilleryTracerProcedure {
          }
 
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SolidArtilleryTracerProcedure.execute", _wtSafe);
       }
    }
 }

@@ -28,6 +28,7 @@ import net.minecraft.world.level.levelgen.Heightmap.Types;
 
 public class AssassinationAttemptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Riflers = 0.0;
       double spawnx = 0.0;
       double spawnz = 0.0;
@@ -220,6 +221,10 @@ public class AssassinationAttemptProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AssassinationAttemptProcedure.execute", _wtSafe);
       }
    }
 }

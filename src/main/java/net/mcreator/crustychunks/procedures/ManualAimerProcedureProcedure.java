@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 public class ManualAimerProcedureProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean found = false;
       double FX = 0.0;
       double FY = 0.0;
@@ -220,6 +221,10 @@ public class ManualAimerProcedureProcedure {
          if (_bsxxxxx.getBlock().getStateDefinition().getProperty("firing") instanceof IntegerProperty _integerProp && _integerProp.getPossibleValues().contains(_value)) {
             world.setBlock(_pos, (BlockState)_bsxxxxx.setValue(_integerProp, _value), 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ManualAimerProcedureProcedure.execute", _wtSafe);
       }
    }
 }

@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class XLBulletHitBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
             if (world instanceof ServerLevel _level) {
@@ -263,6 +264,10 @@ public class XLBulletHitBlockProcedure {
                }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("XLBulletHitBlockProcedure.execute", _wtSafe);
       }
    }
 }

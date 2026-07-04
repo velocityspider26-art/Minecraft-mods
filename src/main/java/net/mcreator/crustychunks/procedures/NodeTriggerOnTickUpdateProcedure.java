@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class NodeTriggerOnTickUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double Power = 0.0;
       if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.NODE_TRIGGER.get()) {
          if (0.0 < (new Object() {
@@ -103,6 +104,10 @@ public class NodeTriggerOnTickUpdateProcedure {
 
             world.setBlock(_bpx, _bsx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("NodeTriggerOnTickUpdateProcedure.execute", _wtSafe);
       }
    }
 }

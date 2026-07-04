@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class RandomVoicelinesProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (1 == Mth.nextInt(RandomSource.create(), 1, 700) && world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -110,6 +111,10 @@ public class RandomVoicelinesProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("RandomVoicelinesProcedure.execute", _wtSafe);
       }
    }
 }

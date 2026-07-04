@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class AncientLightOnRandomClientDisplayTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (1 == Mth.nextInt(RandomSource.create(), 1, 20)) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -67,6 +68,10 @@ public class AncientLightOnRandomClientDisplayTickProcedure {
                x, y, z, (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:humm")), SoundSource.NEUTRAL, 6.0F, 1.2F, false
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AncientLightOnRandomClientDisplayTickProcedure.execute", _wtSafe);
       }
    }
 }

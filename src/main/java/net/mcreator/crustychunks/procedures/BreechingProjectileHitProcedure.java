@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class BreechingProjectileHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          if (world instanceof Level _level) {
@@ -150,6 +151,10 @@ public class BreechingProjectileHitProcedure {
          }
 
          world.destroyBlock(BlockPos.containing(x, y, z), false);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BreechingProjectileHitProcedure.execute", _wtSafe);
       }
    }
 }

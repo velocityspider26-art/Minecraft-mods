@@ -8,12 +8,17 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class PlacementTickingProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          if (entity instanceof CIWSEntity) {
             CrustyChunksMod.queueServerWork(1, () -> CIWSAIProcedure.execute(world, x, y, z, entity));
          } else if (entity instanceof MortarerEntity) {
             CrustyChunksMod.queueServerWork(1, () -> MortarerAIProcedure.execute(world, x, y, z, entity));
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("PlacementTickingProcedure.execute", _wtSafe);
       }
    }
 }

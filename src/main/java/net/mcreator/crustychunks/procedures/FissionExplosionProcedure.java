@@ -25,6 +25,7 @@ import net.neoforged.fml.ModList;
 
 public class FissionExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       double sx = 0.0;
       double sy = 0.0;
       double sz = 0.0;
@@ -153,6 +154,10 @@ public class FissionExplosionProcedure {
             _entityToSpawn.shoot(0.0, 0.0, 0.0, 0.0F, 0.0F);
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("FissionExplosionProcedure.execute", _wtSafe);
       }
    }
 }

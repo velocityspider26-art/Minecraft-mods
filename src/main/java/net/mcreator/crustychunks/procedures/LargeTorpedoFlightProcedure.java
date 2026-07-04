@@ -20,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class LargeTorpedoFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
          if (immediatesourceentity.isUnderWater()) {
@@ -223,6 +224,10 @@ public class LargeTorpedoFlightProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("LargeTorpedoFlightProcedure.execute", _wtSafe);
       }
    }
 }

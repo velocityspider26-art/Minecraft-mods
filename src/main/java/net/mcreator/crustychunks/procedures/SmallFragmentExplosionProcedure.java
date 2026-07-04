@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class SmallFragmentExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -234,6 +235,10 @@ public class SmallFragmentExplosionProcedure {
             );
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SmallFragmentExplosionProcedure.execute", _wtSafe);
       }
    }
 }

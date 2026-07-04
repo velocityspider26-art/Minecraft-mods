@@ -26,6 +26,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class ConveyorSplitterUpdateProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       Direction behind = Direction.NORTH;
       Direction ahead = Direction.NORTH;
       Direction orange = Direction.NORTH;
@@ -637,6 +638,10 @@ public class ConveyorSplitterUpdateProcedure {
 }
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ConveyorSplitterUpdateProcedure.execute", _wtSafe);
       }
    }
 }

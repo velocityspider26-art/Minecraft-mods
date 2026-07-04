@@ -7,6 +7,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DebrisTrailProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (100.0 <= immediatesourceentity.getPersistentData().getDouble("T") && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
@@ -17,6 +18,10 @@ public class DebrisTrailProcedure {
          }
 
          immediatesourceentity.getPersistentData().putDouble("T", immediatesourceentity.getPersistentData().getDouble("T") + 1.0);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DebrisTrailProcedure.execute", _wtSafe);
       }
    }
 }

@@ -61,6 +61,27 @@ The first build downloads NeoForge and Minecraft artifacts; later builds are fas
   without them everything falls back to vanilla behavior. Valkyrien Skies
   integration data was removed; VS is not referenced or required.
 
+## Targeting, guidance & effects (round 3)
+
+- **Radar** (`AeronauticsRadarHandler`) — server-authoritative detection of valid
+  targets (hostiles, players, aircraft/physics constructs) in range, nearest-first,
+  with optional line-of-sight; feeds radar-guided missiles. Locks are runtime-only
+  and clear on reload. Config: `radar` section.
+- **Laser designator** — the Aimer item right-click performs a server-side raycast
+  to designate a block or entity for laser-guided munitions (`laserDesignator`
+  config). Designations validate range/LOS and expire safely.
+- **Missile guidance** (`AeronauticsMissileGuidanceHandler`) — UNGUIDED / RADAR /
+  LASER / HEAT with clamped turn rate, self-collision grace, and lost-target grace.
+  Null-safe: if the target/designation vanishes, guidance stops instead of crashing.
+  Only stable IDs are persisted on the missile.
+- **Cinematic nukes** (`WariumNukeEffects`) — damage stays server-side; visuals are a
+  staged flash→fireball→shockwave→dust-wall→mushroom→smoke→fallout sequence with five
+  per-type profiles, particle caps, and a `nukeEffectsQuality` knob (LOW→CINEMATIC).
+  A client-only decaying screen shake is broadcast per detonation.
+- **Crash isolation** — every gameplay procedure is wrapped so any error (unloaded
+  construct, NaN raycast, missing owner) logs once and no-ops rather than crashing
+  the world. This is the core stability fix for guns and moving physics objects.
+
 ## Known issues / notes
 
 - The original mod's custom `crusty_chunks:assembly` recipes are parsed by the mod

@@ -35,6 +35,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class GasDispenserTickProcedure {
    public static void execute(final LevelAccessor world, double x, double y, double z) {
+      try {
       if ((new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -295,6 +296,10 @@ public class GasDispenserTickProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("GasDispenserTickProcedure.execute", _wtSafe);
       }
    }
 }

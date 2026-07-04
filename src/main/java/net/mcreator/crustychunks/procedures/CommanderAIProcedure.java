@@ -25,6 +25,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class CommanderAIProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double distancetotarget = 0.0;
          Entity Robotarget = null;
@@ -249,6 +250,10 @@ public class CommanderAIProcedure {
                }
             );
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("CommanderAIProcedure.execute", _wtSafe);
       }
    }
 }

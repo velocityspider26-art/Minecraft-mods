@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class TinyExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       boolean found = false;
       double sx = 0.0;
       double sy = 0.0;
@@ -256,6 +257,10 @@ public class TinyExplosionProcedure {
       });
       if (world instanceof ServerLevel _levelxxx) {
          _levelxxx.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.5, 0.5, 0.5, 0.6);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("TinyExplosionProcedure.execute", _wtSafe);
       }
    }
 }

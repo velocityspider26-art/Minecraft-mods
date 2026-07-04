@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class AmmorackDetonatedUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.FLAME, x + 0.5, y + 0.5, z + 0.5, 5, 1.0, 1.0, 1.0, 0.1);
       }
@@ -144,6 +145,10 @@ public class AmmorackDetonatedUpdateTickProcedure {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             SmallExplosionProcedure.execute(world, x, y, z);
          });
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("AmmorackDetonatedUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

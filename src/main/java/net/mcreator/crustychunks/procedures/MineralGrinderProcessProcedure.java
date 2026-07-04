@@ -28,6 +28,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class MineralGrinderProcessProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       ItemStack Grindresult = ItemStack.EMPTY;
       ItemStack SecondaryGrindresult = ItemStack.EMPTY;
       if ((new Object() {
@@ -558,6 +559,10 @@ public class MineralGrinderProcessProcedure {
          if (world instanceof Level _levelx) {
             _levelx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("MineralGrinderProcessProcedure.execute", _wtSafe);
       }
    }
 }

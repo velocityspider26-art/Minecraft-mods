@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class TankbreechUpdateTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double Barrels = 0.0;
       double Xvector = 0.0;
       double Zvector = 0.0;
@@ -135,6 +136,10 @@ public class TankbreechUpdateTickProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("TankbreechUpdateTickProcedure.execute", _wtSafe);
       }
    }
 }

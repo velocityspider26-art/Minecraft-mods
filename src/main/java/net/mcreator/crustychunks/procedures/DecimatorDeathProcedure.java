@@ -12,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class DecimatorDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          MediumExplosionProcedure.execute(world, x, y, z);
          if (!entity.level().isClientSide()) {
@@ -116,6 +117,10 @@ public class DecimatorDeathProcedure {
                }
             }
          );
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DecimatorDeathProcedure.execute", _wtSafe);
       }
    }
 }

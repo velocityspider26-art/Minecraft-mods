@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 
 public class WelderRightclickedOnBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
+      try {
       if (entity != null) {
          double valuebefore = 0.0;
          boolean success = false;
@@ -107,6 +108,10 @@ public class WelderRightclickedOnBlockProcedure {
          if (entity instanceof Player _player) {
             _player.getCooldowns().addCooldown(itemstack.getItem(), 20);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("WelderRightclickedOnBlockProcedure.execute", _wtSafe);
       }
    }
 }

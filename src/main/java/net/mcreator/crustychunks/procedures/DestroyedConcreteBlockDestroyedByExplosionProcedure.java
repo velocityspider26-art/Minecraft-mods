@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Blocks;
 
 public class DestroyedConcreteBlockDestroyedByExplosionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (Mth.nextInt(RandomSource.create(), 1, 3) == 3) {
          world.setBlock(BlockPos.containing(x, y, z), ((Block)CrustyChunksModBlocks.REBAR.get()).defaultBlockState(), 3);
       } else {
@@ -17,5 +18,9 @@ public class DestroyedConcreteBlockDestroyedByExplosionProcedure {
       }
 
       world.levelEvent(2001, BlockPos.containing(x, y, z), Block.getId(Blocks.GRAVEL.defaultBlockState()));
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("DestroyedConcreteBlockDestroyedByExplosionProcedure.execute", _wtSafe);
+      }
    }
 }

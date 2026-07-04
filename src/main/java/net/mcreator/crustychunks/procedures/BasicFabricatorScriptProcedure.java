@@ -34,6 +34,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class BasicFabricatorScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       boolean sufficientheat = false;
       BlockState bottomblock = Blocks.AIR.defaultBlockState();
       double XTrigger = 0.0;
@@ -966,6 +967,10 @@ public class BasicFabricatorScriptProcedure {
          if (world instanceof Level _levelxxxxxxxxxxx) {
             _levelxxxxxxxxxxx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BasicFabricatorScriptProcedure.execute", _wtSafe);
       }
    }
 }

@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class StrikerAISystemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          double rev = 0.0;
          double LeadRange = 0.0;
@@ -164,6 +165,10 @@ public class StrikerAISystemProcedure {
          }
 
          ClankerfloatProcedure.execute(world, x, y, z, entity);
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("StrikerAISystemProcedure.execute", _wtSafe);
       }
    }
 }

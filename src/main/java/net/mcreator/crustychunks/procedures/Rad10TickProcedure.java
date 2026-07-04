@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class Rad10TickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof ServerLevel _level) {
          _level.sendParticles(ParticleTypes.ASH, x + 0.5, y + 3.0, z + 0.5, 40, 5.0, 3.0, 5.0, 0.0);
       }
@@ -31,6 +32,10 @@ public class Rad10TickProcedure {
                _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 60, 1, false, false));
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("Rad10TickProcedure.execute", _wtSafe);
       }
    }
 }

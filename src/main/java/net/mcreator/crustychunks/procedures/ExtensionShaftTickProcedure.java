@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class ExtensionShaftTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, BlockState blockstate) {
+      try {
       double power = 0.0;
       power = TestShaftProcedure.execute(world, x, y, z, blockstate, (new Object() {
          public Direction getDirection(BlockState _bs) {
@@ -51,6 +52,10 @@ public class ExtensionShaftTickProcedure {
          if (world instanceof Level _level) {
             _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ExtensionShaftTickProcedure.execute", _wtSafe);
       }
    }
 }

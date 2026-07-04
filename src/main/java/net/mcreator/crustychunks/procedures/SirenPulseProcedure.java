@@ -10,6 +10,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class SirenPulseProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
+      try {
       if (world instanceof Level _level0 && _level0.hasNeighborSignal(BlockPos.containing(x, y, z))) {
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -58,6 +59,10 @@ public class SirenPulseProcedure {
                );
             }
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("SirenPulseProcedure.execute", _wtSafe);
       }
    }
 }

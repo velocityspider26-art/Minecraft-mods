@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class VehicleFlareTickProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.FLARE.get(), x, y, z, 0.0, 1.0, 0.0);
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
@@ -43,6 +44,10 @@ public class VehicleFlareTickProcedure {
          if (immediatesourceentity.getPersistentData().getDouble("Time") >= 100.0 && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("VehicleFlareTickProcedure.execute", _wtSafe);
       }
    }
 }

@@ -16,6 +16,7 @@ import net.minecraft.world.level.LevelAccessor;
 
 public class BSDespawnProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+      try {
       if (immediatesourceentity != null) {
          if (immediatesourceentity instanceof ThermalProjectileEntity) {
             world.addParticle(
@@ -73,6 +74,10 @@ public class BSDespawnProcedure {
          } else if (immediatesourceentity.getPersistentData().getDouble("T") >= 20.0 && !immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("BSDespawnProcedure.execute", _wtSafe);
       }
    }
 }

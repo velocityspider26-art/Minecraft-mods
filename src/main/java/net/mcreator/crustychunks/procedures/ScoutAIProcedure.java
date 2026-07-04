@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class ScoutAIProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
+      try {
       if (entity != null) {
          boolean schedoodlemode = false;
          double buddydistance = 0.0;
@@ -234,6 +235,10 @@ public class ScoutAIProcedure {
          if (target != null && entity instanceof Mob _entity && target instanceof LivingEntity _ent) {
             _entity.setTarget(_ent);
          }
+      }
+   
+      } catch (Throwable _wtSafe) {
+         net.mcreator.crustychunks.compat.WariumSafety.report("ScoutAIProcedure.execute", _wtSafe);
       }
    }
 }
