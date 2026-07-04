@@ -77,37 +77,37 @@ public class VoidCoreBlockEntityRenderer implements BlockEntityRenderer<VoidCore
             // For negative normals, draw clockwise
             consumer.addVertex(rotatedMatrix, -size , -size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(0, 0)
+                    .setUv(0, 0)
                     ;
             consumer.addVertex(rotatedMatrix, size , -size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(1, 0)
+                    .setUv(1, 0)
                     ;
             consumer.addVertex(rotatedMatrix, size , size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(1, 1)
+                    .setUv(1, 1)
                     ;
             consumer.addVertex(rotatedMatrix, -size, size, x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(0, 1)
+                    .setUv(0, 1)
                     ;
         } else {
             // For positive normals, draw counter-clockwise
             consumer.addVertex(rotatedMatrix, -size , -size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(0, 0)
+                    .setUv(0, 0)
                     ;
             consumer.addVertex(rotatedMatrix, -size , size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(0, 1)
+                    .setUv(0, 1)
                     ;
             consumer.addVertex(rotatedMatrix, size , size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(1, 1)
+                    .setUv(1, 1)
                     ;
             consumer.addVertex(rotatedMatrix, size , -size , x + y + z)
                     .setColor(0, 0, 0, 255)
-                    .uv(1, 0)
+                    .setUv(1, 0)
                     ;
         }
     }

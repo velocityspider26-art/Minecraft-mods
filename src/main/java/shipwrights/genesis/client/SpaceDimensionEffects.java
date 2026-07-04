@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexBuffer;
@@ -66,22 +67,18 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
         return null;
     }
 
-    @Override
     public boolean renderSnowAndRain(ClientLevel level, int ticks, float partialTick, LightTexture lightTexture, double camX, double camY, double camZ) {
         return true;
     }
 
-    @Override
     public boolean tickRain(ClientLevel level, int ticks, Camera camera) {
         return true;
     }
 
-    @Override
     public boolean renderClouds(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, double camX, double camY, double camZ, Matrix4f projectionMatrix) {
         return true;
     }
 
-    @Override
     public boolean renderSky(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, Camera camera, Matrix4f projectionMatrix, boolean isFoggy, Runnable setupFog) {
         FogRenderer.setupNoFog();
         RenderSystem.depthMask(false);
@@ -172,21 +169,12 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        ShaderInstance shader = ShaderRegistry.STAR_GLOW_SHADER.getInstance().get();
-        if (shader == null) {
-            RenderSystem.disableBlend();
-            return;
-        }
-        RenderSystem.setShader(() -> shader);
-        Uniform baseAlpha = shader.getUniform("BaseAlpha");
-        if (baseAlpha != null) {
-            baseAlpha.set(innerAlpha);
-        }
+        // Vanilla-pipeline star glow (custom BaseAlpha uniform shader retired in the 1.21 port).
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
         Matrix4f pose = poseStack.last().pose();
         Vector3d center = new Vector3d(toStar).mul(glowDistance);
-        bufferbuilder.begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
         bufferbuilder.addVertex(pose, (float) center.x, (float) center.y, (float) center.z).setColor(r, g, b, 0.0f);
 
         int steps = 32;
@@ -199,7 +187,7 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
             bufferbuilder.addVertex(pose, (float) pos.x, (float) pos.y, (float) pos.z).setColor(r, g, b, 1.0f);
         }
 
-        BufferUploader.drawWithShader(bufferbuilder.end());
+        BufferUploader.drawWithShader(bufferbuilder.build());
         RenderSystem.disableBlend();
     }
 
@@ -207,10 +195,9 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
         starBuffers.forEach(VertexBuffer::close);
         starBuffers.clear();
 
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
         for(int i = 0; i < starBufferCount; i++) {
             VertexBuffer starBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            BufferBuilder.RenderedBuffer renderedBuffer = this.drawStars(bufferbuilder, 10842L / (i + 4));
+            MeshData renderedBuffer = this.drawStars(10842L / (i + 4));
             starBuffer.bind();
             starBuffer.upload(renderedBuffer);
             VertexBuffer.unbind();
@@ -218,9 +205,9 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
         }
     }
 
-    private BufferBuilder.RenderedBuffer drawStars(BufferBuilder bufferbuilder, long seed) {
+    private MeshData drawStars(long seed) {
         RandomSource randomsource = RandomSource.create(seed);
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
 
         for(int i = 0; i < 1600; ++i) {
             double d0 = (double)(randomsource.nextFloat() * 2.0F - 1.0F);
@@ -257,11 +244,11 @@ public class SpaceDimensionEffects extends DimensionSpecialEffects {
                     double d24 = d17 * d12 - d21 * d13;
                     double d25 = d24 * d9 - d22 * d10;
                     double d26 = d22 * d9 + d24 * d10;
-                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26);
+                    bufferbuilder.addVertex((float)(d5 + d25), (float)(d6 + d23), (float)(d7 + d26));
                 }
             }
         }
 
-        return bufferbuilder.end();
+        return bufferbuilder.build();
     }
 }

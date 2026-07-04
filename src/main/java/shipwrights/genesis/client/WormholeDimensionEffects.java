@@ -1,8 +1,10 @@
 package shipwrights.genesis.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.renderer.GameRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexBuffer;
@@ -50,21 +52,18 @@ public class WormholeDimensionEffects extends DimensionSpecialEffects {
         return null;
     }
 
-    @Override
     public boolean renderSnowAndRain(ClientLevel level, int ticks, float partialTick, LightTexture lightTexture, double camX, double camY, double camZ) {
         return true;
     }
 
-    @Override
     public boolean tickRain(ClientLevel level, int ticks, Camera camera) {
         return true;
     }
 
-    @Override
     public boolean renderSky(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, Camera camera, Matrix4f projectionMatrix, boolean isFoggy, Runnable setupFog) {
         FogRenderer.setupNoFog();
 
-        ShaderInstance shader = ShaderRegistry.WORMHOLE_SHADER.getInstance().get();
+        ShaderInstance shader = GameRenderer.getPositionTexColorShader();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
@@ -86,10 +85,9 @@ public class WormholeDimensionEffects extends DimensionSpecialEffects {
         starBuffers.forEach(VertexBuffer::close);
         starBuffers.clear();
 
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
         for(int i = 0; i < starBufferCount; i++) {
             VertexBuffer starBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            BufferBuilder.RenderedBuffer renderedBuffer = this.drawStars(bufferbuilder, 10842L / (i + 4));
+            MeshData renderedBuffer = this.drawStars(10842L / (i + 4));
             starBuffer.bind();
             starBuffer.upload(renderedBuffer);
             VertexBuffer.unbind();
@@ -97,9 +95,9 @@ public class WormholeDimensionEffects extends DimensionSpecialEffects {
         }
     }
 
-    private BufferBuilder.RenderedBuffer drawStars(BufferBuilder bufferbuilder, long seed) {
+    private MeshData drawStars(long seed) {
         RandomSource randomsource = RandomSource.create(seed);
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         for(int i = 0; i < 300; ++i) {
             double d0 = (double)(randomsource.nextFloat() * 2.0F - 1.0F);
@@ -149,11 +147,11 @@ public class WormholeDimensionEffects extends DimensionSpecialEffects {
                     float u = ((j & 2) == 0) ? 0.0f : 1.0f;
                     float v = ((j + 1 & 2) == 0) ? 1.0f : 0.0f;
 
-                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26).setColor(r, g, b, a).uv(u, v);
+                    bufferbuilder.addVertex((float)(d5 + d25), (float)(d6 + d23), (float)(d7 + d26)).setColor(r, g, b, a).setUv(u, v);
                 }
             }
         }
 
-        return bufferbuilder.end();
+        return bufferbuilder.build();
     }
 }

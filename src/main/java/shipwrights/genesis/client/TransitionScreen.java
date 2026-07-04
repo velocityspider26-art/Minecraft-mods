@@ -6,13 +6,14 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.ReceivingLevelScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.GameRenderer;
 import org.jetbrains.annotations.NotNull;
 
-public class TransitionScreen extends ReceivingLevelScreen {
+public class TransitionScreen extends Screen {
     public TransitionScreen() {
-        super();
+        super(Component.empty());
     }
 
     @Override
@@ -40,17 +41,15 @@ public class TransitionScreen extends ReceivingLevelScreen {
         RenderSystem.setShaderTexture(0, TransitionFrame.capturedTarget.getColorTextureId());
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
 
         // Framebuffer textures are flipped vertically.
-        buffer.addVertex(0, h, 0).uv(0, 0);
-        buffer.addVertex(w, h, 0).uv(1, 0);
-        buffer.addVertex(w, 0, 0).uv(1, 1);
-        buffer.addVertex(0, 0, 0).uv(0, 1);
+        buffer.addVertex(0, h, 0).setUv(0, 0);
+        buffer.addVertex(w, h, 0).setUv(1, 0);
+        buffer.addVertex(w, 0, 0).setUv(1, 1);
+        buffer.addVertex(0, 0, 0).setUv(0, 1);
 
-        tesselator.end();
+        com.mojang.blaze3d.vertex.BufferUploader.drawWithShader(buffer.build());
 
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();

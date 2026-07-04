@@ -1,6 +1,6 @@
 package shipwrights.genesis.client;
 
-import net.minecraft.client.gui.screens.MenuScreens;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
@@ -25,10 +25,9 @@ import shipwrights.genesis.content.fluid.GenesisFluids;
 import shipwrights.genesis.content.particle.GenesisParticles;
 import shipwrights.genesis.content.particle.VerditeParticle;
 import shipwrights.genesis.content.particle.ZapBubbleParticle;
-import team.lodestar.lodestone.systems.postprocess.PostProcessHandler;
 
 @SuppressWarnings("removal")
-@EventBusSubscriber(modid = GenesisMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@EventBusSubscriber(modid = GenesisMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class GenesisClientSetup {
     @SuppressWarnings("removal")
     @SubscribeEvent
@@ -38,10 +37,6 @@ public class GenesisClientSetup {
             BlockEntityRenderers.register(GenesisBlockEntities.RADAR_DISPLAY.get(), RadarDisplayBlockEntityRenderer::new);
             BlockEntityRenderers.register(GenesisBlockEntities.VOID_CORE.get(), VoidCoreBlockEntityRenderer::new);
             BlockEntityRenderers.register(GenesisBlockEntities.VOID_ENGINE_INTERFACE.get(), VoidEngineInterfaceBlockEntityRenderer::new);
-            MenuScreens.register(GenesisBlocks.TULCITE_CATALYZER_CONTAINER.get(), TulciteCatalyzerScreen::new);
-
-            // Register post-processing shader for space dimension
-            PostProcessHandler.addInstance(SpaceInvertPostProcessor.INSTANCE);
 
             // IDK why it's whining, it says that it's depreciated for 1.21.4+, but were not on that version sooo
             // also this is how im changing render types for plants
@@ -105,5 +100,10 @@ public class GenesisClientSetup {
     public static void registerParticleProvider(RegisterParticleProvidersEvent event){
         event.registerSpriteSet(GenesisParticles.ZAP_BUBBLE_PARTICLES.get(), ZapBubbleParticle.Provider::new);
         event.registerSpriteSet(GenesisParticles.VERDITE_PARTICLES.get(), VerditeParticle.Provider::new);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(GenesisBlocks.TULCITE_CATALYZER_CONTAINER.get(), TulciteCatalyzerScreen::new);
     }
 }

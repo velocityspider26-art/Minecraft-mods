@@ -82,24 +82,20 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         return props.atmosphere().precipitation();
     }
 
-    @Override
     public boolean renderClouds(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, double camX, double camY, double camZ, Matrix4f projectionMatrix) {
         PlanetProperties planetProps = getPlanetProperties(level);
         double density = planetProps != null ? planetProps.atmosphere().density() : 1.0;
         return camY > 500 || density <= 0.7;
     }
 
-    @Override
     public boolean renderSnowAndRain(ClientLevel level, int ticks, float partialTick, LightTexture lightTexture, double camX, double camY, double camZ) {
         return !hasPrecipitation(level) || camY > 360;
     }
 
-    @Override
     public boolean tickRain(ClientLevel level, int ticks, Camera camera) {
         return !hasPrecipitation(level);
     }
 
-    @Override
     public boolean renderSky(ClientLevel level, int unused, float partialTick, PoseStack poseStack, Camera camera, Matrix4f projectionMatrix, boolean isFoggy, Runnable setupFog) {
 
         long gameTime = GenesisMod.getTicks(level);
@@ -131,7 +127,7 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         cachedRawDensity *= densityFade;
 
         cachedClampedDensity = density;
-        PlanetColorPalette palette = planetProps != null ? planetProps.atmosphere().setColor() : new PlanetColorPalette.Overworld();
+        PlanetColorPalette palette = planetProps != null ? planetProps.atmosphere().color() : new PlanetColorPalette.Overworld();
 
         float rainLevel = hasPrecipitation(level) ? level.getRainLevel(partialTick) : 0f;
         double rawStarBrightness = 2 * Math.min(Math.max(-starUpDot, 0), 0.5d) * (1f - rainLevel);
@@ -146,7 +142,6 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         float skyG = (float)skyColor.y;
         float skyB = (float)skyColor.z;
         FogRenderer.levelFogColor();
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
         RenderSystem.depthMask(false);
         RenderSystem.setShaderColor(skyR, skyG, skyB, 1.0F);
         ShaderInstance shader = RenderSystem.getShader();
@@ -182,7 +177,7 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
             poseStack.mulPose(fullRot);
             Matrix4f pose = poseStack.last().pose();
             
-            bufferbuilder.begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
             bufferbuilder.addVertex(pose, 0.0F, 100.0F, 0.0F).setColor(r, g, b, a);
             int i = 16;
             
@@ -193,7 +188,7 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
                 bufferbuilder.addVertex(pose, sin * 120.0F, cos * 120.0F, -cos * 40.0F * a).setColor(acolor[0], acolor[1], acolor[2], 0.0F);
             }
             
-            BufferUploader.drawWithShader(bufferbuilder.end());
+            BufferUploader.drawWithShader(bufferbuilder.build());
             poseStack.popPose();
         }
         
@@ -224,10 +219,9 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         starBuffers.forEach(VertexBuffer::close);
         starBuffers.clear();
 
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
         for(int i = 0; i < starBufferCount; i++) {
             VertexBuffer starBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            BufferBuilder.RenderedBuffer renderedBuffer = this.drawStars(bufferbuilder, 10842L / (i + 4));
+            MeshData renderedBuffer = this.drawStars(10842L / (i + 4));
             starBuffer.bind();
             starBuffer.upload(renderedBuffer);
             VertexBuffer.unbind();
@@ -235,9 +229,9 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         }
     }
 
-    private BufferBuilder.RenderedBuffer drawStars(BufferBuilder bufferbuilder, long seed) {
+    private MeshData drawStars(long seed) {
         RandomSource randomsource = RandomSource.create(seed);
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
 
         for(int i = 0; i < 1600; ++i) {
             double d0 = randomsource.nextFloat() * 2.0F - 1.0F;
@@ -273,12 +267,12 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
                     double d24 = d17 * d12 - d21 * d13;
                     double d25 = d24 * d9 - d22 * d10;
                     double d26 = d22 * d9 + d24 * d10;
-                    bufferbuilder.addVertex(d5 + d25, d6 + d23, d7 + d26);
+                    bufferbuilder.addVertex((float)(d5 + d25), (float)(d6 + d23), (float)(d7 + d26));
                 }
             }
         }
 
-        return bufferbuilder.end();
+        return bufferbuilder.build();
     }
     
     public static Vec3 getSkyColor(Vec3 position, float partialTick, long time, ClientLevel level, PlanetColorPalette palette) {

@@ -7,9 +7,7 @@ import shipwrights.genesis.space.properties.CelestialProperties;
 import shipwrights.genesis.space.properties.EmptyProperties;
 import shipwrights.genesis.space.properties.PlanetProperties;
 import shipwrights.genesis.space.renderer.CelestialRenderer;
-import shipwrights.genesis.space.renderer.PlanetRenderer;
-import shipwrights.genesis.space.renderer.StarRenderer;
-import shipwrights.genesis.space.renderer.BlackholeRenderer;
+import shipwrights.genesis.space.renderer.SimpleBillboardCelestialRenderer;
 import shipwrights.genesis.space.properties.StarProperties;
 
 public class BuiltinCelestialTypes {
@@ -21,7 +19,7 @@ public class BuiltinCelestialTypes {
 
         private static CelestialRenderer renderer = null;
         public @NotNull CelestialRenderer getRenderer() {
-            if (renderer == null) renderer = new StarRenderer();
+            if (renderer == null) renderer = new SimpleBillboardCelestialRenderer(1.0f, 0.95f, 0.7f, 1.0f);
             return renderer;
         }
 
@@ -41,7 +39,7 @@ public class BuiltinCelestialTypes {
 
         private static CelestialRenderer renderer = null;
         public @NotNull CelestialRenderer getRenderer() {
-            if (renderer == null) renderer = new PlanetRenderer();
+            if (renderer == null) renderer = new SimpleBillboardCelestialRenderer(0.55f, 0.7f, 1.0f, 1.0f);
             return renderer;
         }
 
@@ -61,7 +59,7 @@ public class BuiltinCelestialTypes {
 
         private static CelestialRenderer renderer = null;
         public @NotNull CelestialRenderer getRenderer() {
-            if (renderer == null) renderer = new BlackholeRenderer();
+            if (renderer == null) renderer = new SimpleBillboardCelestialRenderer(0.05f, 0.0f, 0.1f, 1.0f);
             return renderer;
         }
 

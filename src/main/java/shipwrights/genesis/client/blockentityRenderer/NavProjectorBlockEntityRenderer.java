@@ -17,8 +17,8 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.*;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
+import shipwrights.genesis.compat.aeronautics.AeronauticsContraptionLookup;
 import shipwrights.genesis.space.type.BuiltinCelestialTypes;
 
 import java.lang.Math;
@@ -48,7 +48,7 @@ public class NavProjectorBlockEntityRenderer implements BlockEntityRenderer<NavP
         poseStack.scale(0.02f, 0.02f, 0.02f);
         BlockPos pos = blockEntity.getBlockPos();
 
-        Ship ship = VSGameUtilsKt.getShipManagingPos(level, pos);
+        AeronauticsConstruct ship = AeronauticsContraptionLookup.getConstructManaging(level, pos);
         boolean isOnShip = ship != null;
 
         Vector3dc currentPos = null;
@@ -74,7 +74,7 @@ public class NavProjectorBlockEntityRenderer implements BlockEntityRenderer<NavP
             poseStack.mulPose(new Quaternionf(currentPlanet.getRotation(ticks, partialTick, registry)).invert());
 
             if (isOnShip) {
-                Quaterniondc rot1 = ship.getTransform().getShipToWorldRotation().invert(new Quaterniond());
+                Quaterniondc rot1 = new Quaterniond(ship.rotation()).invert();
                 poseStack.mulPose(new Quaternionf(rot1));
             }
 
@@ -84,9 +84,9 @@ public class NavProjectorBlockEntityRenderer implements BlockEntityRenderer<NavP
         } else if(!isOnShip) {
             poseStack.translate((float) -pos.getX() / scale_factor, (float) -pos.getY() / scale_factor, (float) -pos.getZ() / scale_factor);
         } else {
-            Quaterniondc rot = ship.getTransform().getShipToWorldRotation().invert(new Quaterniond());
+            Quaterniondc rot = new Quaterniond(ship.rotation()).invert();
             poseStack.mulPose(new Quaternionf(rot.x(), rot.y(), rot.z(), rot.w()));
-            currentPos = ship.getWorldAABB().center(new Vector3d());
+            currentPos = new Vector3d((ship.worldBounds().minX()+ship.worldBounds().maxX())/2, (ship.worldBounds().minY()+ship.worldBounds().maxY())/2, (ship.worldBounds().minZ()+ship.worldBounds().maxZ())/2);
             ResourceLocation currentDimension = Objects.requireNonNull(blockEntity.getLevel()).dimension().location();
 
             if (currentDimension.toString().equals(GenesisMod.WORMHOLE_DIM.toString())) {
