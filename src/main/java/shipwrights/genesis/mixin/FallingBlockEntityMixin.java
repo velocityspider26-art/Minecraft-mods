@@ -27,10 +27,10 @@ public class FallingBlockEntityMixin implements FallingBlockEntityExtension {
     private static final EntityDataAccessor<Float> GENESIS_ROT_Z = SynchedEntityData.defineId(FallingBlockEntity.class, EntityDataSerializers.FLOAT);
 
     @Inject(method = "defineSynchedData", at = @At("RETURN"))
-    private void defineRotationData(CallbackInfo ci) {
-        ((FallingBlockEntity)(Object)this).getEntityData().define(GENESIS_ROT_X, 0.0f);
-        ((FallingBlockEntity)(Object)this).getEntityData().define(GENESIS_ROT_Y, 0.0f);
-        ((FallingBlockEntity)(Object)this).getEntityData().define(GENESIS_ROT_Z, 0.0f);
+    private void defineRotationData(SynchedEntityData.Builder builder, CallbackInfo ci) {
+        builder.define(GENESIS_ROT_X, 0.0f);
+        builder.define(GENESIS_ROT_Y, 0.0f);
+        builder.define(GENESIS_ROT_Z, 0.0f);
     }
 
     @Override

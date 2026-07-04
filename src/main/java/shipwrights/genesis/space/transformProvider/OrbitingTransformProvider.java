@@ -1,6 +1,7 @@
 package shipwrights.genesis.space.transformProvider;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
@@ -131,7 +132,7 @@ public class OrbitingTransformProvider implements CelestialTransformProvider {
     }
 
     // Codec for serialization/deserialization
-    public static final Codec<OrbitingTransformProvider> CODEC = RecordCodecBuilder.create(instance ->
+    public static final MapCodec<OrbitingTransformProvider> CODEC = RecordCodecBuilder.mapCodec(instance ->
             instance.group(
                     ResourceLocation.CODEC.fieldOf("parentID").forGetter(p -> p.parentID),
                     Codec.INT.fieldOf("seed").forGetter(p -> p.seed),

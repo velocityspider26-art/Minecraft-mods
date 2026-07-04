@@ -6,7 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,8 +20,8 @@ public class LightningTicker {
     private static int ticks = 0;
 
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onLevelTick(final TickEvent.LevelTickEvent event) {
-        if (TickEvent.Phase.END.equals(event.phase) && event.level instanceof ServerLevel serverLevel) {
+    public static void onLevelTick(final LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof ServerLevel serverLevel) {
 
             if (!(serverLevel.getPlayers(u -> true, 1).isEmpty()) && GenesisMod.WORMHOLE_DIM.equals(serverLevel.dimension().location())) {
                 wormholeLightningTick(serverLevel);

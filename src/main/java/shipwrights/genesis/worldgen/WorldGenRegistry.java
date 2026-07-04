@@ -16,29 +16,29 @@ public class WorldGenRegistry {
         event.register(Registries.DENSITY_FUNCTION_TYPE, helper -> {
             helper.register(
                     ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "random_noise"),
-                    RandomNoise.MAP_CODEC.codec()
+                    RandomNoise.MAP_CODEC
             );
             helper.register(
                     ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "asteroid_belt"),
-                    AsteroidBelt.MAP_CODEC.codec()
+                    AsteroidBelt.MAP_CODEC
             );
             helper.register(
                     ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "radial_gradient"),
-                    RadialGradientDensity.MAP_CODEC.codec()
+                    RadialGradientDensity.MAP_CODEC
             );
             helper.register(
                     CraterNoise.resourceLocation,
-                    CraterNoise.CODEC.codec()
+                    CraterNoise.MAP_CODEC
             );
 
             helper.register(
                     MultiCraterNoise.resourceLocation,
-                    MultiCraterNoise.CODEC.codec()
+                    MultiCraterNoise.MAP_CODEC
             );
         });
 
         event.register(Registries.MATERIAL_RULE, helper -> {
-            helper.register(ASTEROID_RULE_ID, AsteroidBlockSurfaceRule.CODEC.codec());
+            helper.register(ASTEROID_RULE_ID, AsteroidBlockSurfaceRule.MAP_CODEC);
         });
     }
 }

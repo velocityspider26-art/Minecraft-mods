@@ -1,6 +1,7 @@
 package shipwrights.genesis.space.transformProvider;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import org.joml.Quaterniondc;
@@ -24,7 +25,7 @@ public interface CelestialTransformProvider {
     ResourceLocation getType();
 
     // Registry for CelestialTransformProvider codecs
-    Map<ResourceLocation, Codec<? extends CelestialTransformProvider>> REGISTRY = new HashMap<>();
+    Map<ResourceLocation, MapCodec<? extends CelestialTransformProvider>> REGISTRY = new HashMap<>();
 
     /**
      * Register a CelestialTransformProvider type with its codec.
@@ -32,7 +33,7 @@ public interface CelestialTransformProvider {
      * @param type The unique identifier for this provider type
      * @param codec The codec to serialize/deserialize this provider type
      */
-    static void register(ResourceLocation type, Codec<? extends CelestialTransformProvider> codec) {
+    static void register(ResourceLocation type, MapCodec<? extends CelestialTransformProvider> codec) {
         REGISTRY.put(type, codec);
     }
 
@@ -42,7 +43,7 @@ public interface CelestialTransformProvider {
     Codec<CelestialTransformProvider> DISPATCH_CODEC = ResourceLocation.CODEC.<CelestialTransformProvider>dispatchStable(
         CelestialTransformProvider::getType,
         type -> {
-            Codec<? extends CelestialTransformProvider> codec = REGISTRY.get(type);
+            MapCodec<? extends CelestialTransformProvider> codec = REGISTRY.get(type);
             if (codec == null) {
                 throw new IllegalArgumentException("Unknown CelestialTransformProvider type: " + type);
             }

@@ -13,8 +13,8 @@ import java.util.List;
 
 
 public class AsteroidBlockSurfaceRule implements SurfaceRules.RuleSource {
-    public static final KeyDispatchDataCodec<AsteroidBlockSurfaceRule> CODEC =
-            KeyDispatchDataCodec.of(MapCodec.unit(new AsteroidBlockSurfaceRule()));
+    public static final MapCodec<AsteroidBlockSurfaceRule> MAP_CODEC = MapCodec.unit(new AsteroidBlockSurfaceRule());
+    public static final KeyDispatchDataCodec<AsteroidBlockSurfaceRule> CODEC = KeyDispatchDataCodec.of(MAP_CODEC);
 
     private static List<BlockState> states;
 

@@ -52,8 +52,8 @@ public interface PlanetColorPalette {
             "type",
             palette -> palette.isOverworld() ? "genesis:overworld" : "genesis:rgb",
             type -> switch (type) {
-                case "genesis:rgb" -> RGB.MAP_CODEC.codec();
-                case "genesis:overworld" -> Overworld.MAP_CODEC.codec();
+                case "genesis:rgb" -> RGB.MAP_CODEC;
+                case "genesis:overworld" -> Overworld.MAP_CODEC;
                 default -> throw new IllegalArgumentException("Unknown PlanetColorPalette type: " + type);
             }
     );
