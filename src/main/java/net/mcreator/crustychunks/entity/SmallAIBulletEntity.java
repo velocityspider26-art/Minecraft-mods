@@ -130,4 +130,9 @@ public class SmallAIBulletEntity extends AbstractArrow implements ItemSupplier {
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

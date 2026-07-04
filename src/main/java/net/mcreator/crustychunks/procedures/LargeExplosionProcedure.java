@@ -213,7 +213,7 @@ public class LargeExplosionProcedure {
          }
 
          if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-            _levelxxx.explode(null, x + 0.5, y + 1.5, z + 0.5, 6.0F, ExplosionInteraction.TNT);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x + 0.5, y + 1.5, z + 0.5, 6.0F, ExplosionInteraction.TNT);
          }
       }
 
@@ -222,11 +222,11 @@ public class LargeExplosionProcedure {
       }
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-         _levelxxx.explode(null, x + 0.5, y + 0.5, z + 0.5, 9.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x + 0.5, y + 0.5, z + 0.5, 9.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-         _levelxxx.explode(null, x + 0.5, y + 0.5, z + 0.5, 10.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x + 0.5, y + 0.5, z + 0.5, 10.0F, ExplosionInteraction.NONE);
       }
 
       for (int index3 = 0; index3 < 150; index3++) {

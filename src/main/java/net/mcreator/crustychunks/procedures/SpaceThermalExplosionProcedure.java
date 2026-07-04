@@ -94,9 +94,7 @@ public class SpaceThermalExplosionProcedure {
                   )
                   && world instanceof Level _level
                   && !_level.isClientSide()) {
-                  _level.explode(
-                     null,
-                     (double)immediatesourceentity.level()
+                  net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, (double)immediatesourceentity.level()
                         .clip(
                            new ClipContext(
                               immediatesourceentity.getEyePosition(1.0F),
@@ -107,8 +105,7 @@ public class SpaceThermalExplosionProcedure {
                            )
                         )
                         .getBlockPos()
-                        .getX(),
-                     (double)immediatesourceentity.level()
+                        .getX(), (double)immediatesourceentity.level()
                         .clip(
                            new ClipContext(
                               immediatesourceentity.getEyePosition(1.0F),
@@ -119,8 +116,7 @@ public class SpaceThermalExplosionProcedure {
                            )
                         )
                         .getBlockPos()
-                        .getY(),
-                     (double)immediatesourceentity.level()
+                        .getY(), (double)immediatesourceentity.level()
                         .clip(
                            new ClipContext(
                               immediatesourceentity.getEyePosition(1.0F),
@@ -131,10 +127,7 @@ public class SpaceThermalExplosionProcedure {
                            )
                         )
                         .getBlockPos()
-                        .getZ(),
-                     5.0F,
-                     ExplosionInteraction.BLOCK
-                  );
+                        .getZ(), 5.0F, ExplosionInteraction.BLOCK);
                }
 
                if (1 == Mth.nextInt(RandomSource.create(), 1, 3)) {

@@ -36,7 +36,7 @@ public class SolidArtilleryHitProcedure {
          CrustyChunksMod.queueServerWork(3, () -> {
             TinyExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
             if (world instanceof Level _level && !_level.isClientSide()) {
-               _level.explode(null, x + 0.5, y + 0.5, z + 0.5, 3.0F, ExplosionInteraction.NONE);
+               net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5, y + 0.5, z + 0.5, 3.0F, ExplosionInteraction.NONE);
             }
          });
          DamagesProcedure.execute(world, x, y, z);

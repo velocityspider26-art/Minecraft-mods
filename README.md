@@ -40,7 +40,26 @@ The first build downloads NeoForge and Minecraft artifacts; later builds are fas
 | NeoForge | 21.1.234+ | both | required |
 | GeckoLib | 4.7.7 (`geckolib-neoforge-1.21.1`) | both | required |
 | Create (integration recipes) | — | both | optional; 4 pressing recipes load only when Create is present |
-| Valkyrien Skies / Warium VS / Ritchie's Projectile Lib / Ad Astra data | — | both | data shipped as in the original; these 1.20.1 integrations have no effect unless those mods exist for 1.21.1 |
+| Sable (physics engine used by Create: Aeronautics) | 2.0.3+ | both | optional; enables construct-aware ballistics, recoil and explosion forces |
+| Create: Aeronautics | 1.x for 1.21.1 | both | optional; detected through Sable |
+
+## Weapon stability & physics integration
+
+- Projectile save data was hardened: bullets alive during a world save no longer
+  crash chunk saving (the 1.21.1 `AbstractArrow` empty-pickup-stack crash).
+- Fast bullets, tracers and explosion-effect entities are transient: they are never
+  written to disk, so chunk reload cannot resurrect stale projectiles or replay
+  explosion animations. Bombs, shells, missiles and torpedoes still persist.
+- A global safety layer clamps projectile speed, enforces a configurable lifetime,
+  discards NaN/out-of-range projectiles, and caps live projectiles per level.
+- Every Warium explosion is routed through one wrapper that applies the configured
+  radius cap and block-damage policy.
+- Config file: `config/crusty_chunks-common.toml` (projectile lifetime/cap/speed,
+  explosion radius cap, block damage toggle, physics-construct coupling).
+- With Sable / Create: Aeronautics installed: projectiles inherit shooter construct
+  velocity, explosions and recoil push constructs (`AeronauticsCompat` layer);
+  without them everything falls back to vanilla behavior. Valkyrien Skies
+  integration data was removed; VS is not referenced or required.
 
 ## Known issues / notes
 

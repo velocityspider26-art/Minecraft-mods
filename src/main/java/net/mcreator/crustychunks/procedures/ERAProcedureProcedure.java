@@ -281,7 +281,7 @@ public class ERAProcedureProcedure {
          }
       }).getDirection(world.getBlockState(BlockPos.containing(x, y, z))).getStepZ());
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x + 0.5 + (double)(new Object() {
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + (double)(new Object() {
             public Direction getDirection(BlockState _bs) {
                if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                   return (Direction)_bs.getValue(_dp);

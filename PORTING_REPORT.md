@@ -115,3 +115,41 @@ Nerdy's GeckoLib plugin templates for both versions) as ground truth.
   (dedicated server + world lifecycle + registries + datapacks; client boot).
   Deep interactive testing (aiming feel, recoil tuning, multiplayer combat) should
   be done in a real client session.
+
+## Round 2: weapon stability and Create: Aeronautics migration
+
+**World corruption fix.** In 1.21.1, `AbstractArrow.addAdditionalSaveData` calls
+`ItemStack.save()` unconditionally, which throws on empty stacks. The port had
+passed `ItemStack.EMPTY` as every projectile's pickup stack, so any bullet alive
+during a chunk/world save crashed the save. All 110 projectile constructors now
+pass their real `PROJECTILE_ITEM`.
+
+**Projectile safety layer** (`compat/WariumProjectileSafety`): per-level live
+projectile cap, configurable lifetime, speed clamp, NaN/position sanity discard,
+and vehicle/construct velocity inheritance at spawn — implemented once on the
+game bus instead of in 110 entity classes.
+
+**Transient effects.** 66 visual/effect/tracer entity classes (muzzle flashes,
+blasts, thermal radiation, debris, fast bullets from the `crusty_chunks:bullet`
+tag) now override `shouldBeSaved()` to false: chunk reload can no longer replay
+explosion animations or resurrect stale projectiles.
+
+**Explosion policy** (`compat/WariumExplosions`): all 60+ `level.explode` sites
+route through one wrapper (radius cap, block-damage toggle, construct impulse).
+
+**Networking hardening**: all serverbound weapon/GUI payload handlers validate a
+living, non-spectator `ServerPlayer` before acting.
+
+**Valkyrien Skies → Create: Aeronautics.** Warium never had VS code, only VS
+integration data (`warium_vs`, `ritchiesprojectilelib`, `vs_mass`) — removed.
+New optional integration targets **Sable**, the physics engine under
+Create: Aeronautics 1.x for 1.21.1: `compat/AeronauticsCompat` (facade, safe
+no-op without Sable) + `compat/SableAdapter` (the only class touching Sable
+types: sublevel lookup via `SubLevelContainer.queryIntersecting`, world/local
+transforms via `Pose3d`, velocity at point from linear+angular body velocity,
+point forces via `QueuedForceGroup`, explosion impulse falloff). Declared as
+compileOnly (Modrinth maven + two Jar-in-Jar libs in `libs/`) and optional in
+`neoforge.mods.toml`; the mod runs without Sable installed.
+
+**Performance**: per-player-tick ItemStack copies removed from the gun animation
+sync; transient entities eliminate saved-entity buildup from sustained fire.

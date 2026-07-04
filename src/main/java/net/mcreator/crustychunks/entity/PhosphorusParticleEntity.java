@@ -155,4 +155,9 @@ public class PhosphorusParticleEntity extends AbstractArrow implements ItemSuppl
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

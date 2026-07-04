@@ -26,7 +26,7 @@ public class GasExplosionProcedure {
       double particleRadius = 0.0;
       double particleAmount = 0.0;
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x, y, z, 2.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y, z, 2.0F, ExplosionInteraction.NONE);
       }
 
       if (world instanceof Level _level) {

@@ -30,7 +30,10 @@ public record ADSMessage(int eventType, int pressedms) implements CustomPacketPa
 
    public static void handleData(final ADSMessage message, final IPayloadContext context) {
       if (context.flow() == PacketFlow.SERVERBOUND) {
-         context.enqueueWork(() -> pressAction(context.player(), message.eventType, message.pressedms)).exceptionally(e -> {
+         context.enqueueWork(() -> {
+            if (context.player() instanceof net.minecraft.server.level.ServerPlayer _sender && _sender.isAlive() && !_sender.isSpectator())
+               pressAction(_sender, message.eventType, message.pressedms);
+         }).exceptionally(e -> {
             context.connection().disconnect(Component.literal(e.getMessage()));
             return null;
          });

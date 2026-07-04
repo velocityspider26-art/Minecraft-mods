@@ -24,7 +24,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.util.Tuple;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.util.thread.SidedThreadGroups;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -39,7 +41,8 @@ public class CrustyChunksMod {
    public static final Logger LOGGER = LogManager.getLogger(CrustyChunksMod.class);
    public static final String MODID = "crusty_chunks";
 
-   public CrustyChunksMod(IEventBus modEventBus) {
+   public CrustyChunksMod(IEventBus modEventBus, ModContainer container) {
+      container.registerConfig(ModConfig.Type.COMMON, WariumConfig.SPEC);
       NeoForge.EVENT_BUS.register(this);
       modEventBus.addListener(this::registerNetworking);
       CrustyChunksModSounds.REGISTRY.register(modEventBus);

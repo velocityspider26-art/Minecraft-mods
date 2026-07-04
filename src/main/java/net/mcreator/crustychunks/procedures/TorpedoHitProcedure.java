@@ -10,14 +10,7 @@ public class TorpedoHitProcedure {
       if (immediatesourceentity != null) {
          LargeExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY() + 2.0, immediatesourceentity.getZ());
          if (world instanceof Level _level && !_level.isClientSide()) {
-            _level.explode(
-               null,
-               immediatesourceentity.getX() + immediatesourceentity.getLookAngle().x * 2.0,
-               immediatesourceentity.getY() + 2.5,
-               immediatesourceentity.getZ() - immediatesourceentity.getLookAngle().z * 2.0,
-               6.0F,
-               ExplosionInteraction.NONE
-            );
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, immediatesourceentity.getX() + immediatesourceentity.getLookAngle().x * 2.0, immediatesourceentity.getY() + 2.5, immediatesourceentity.getZ() - immediatesourceentity.getLookAngle().z * 2.0, 6.0F, ExplosionInteraction.NONE);
          }
 
          if (!immediatesourceentity.level().isClientSide()) {

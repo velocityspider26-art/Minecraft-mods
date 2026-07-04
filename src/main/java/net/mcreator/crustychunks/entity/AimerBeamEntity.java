@@ -134,4 +134,9 @@ public class AimerBeamEntity extends AbstractArrow implements ItemSupplier {
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

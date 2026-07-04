@@ -240,11 +240,11 @@ public class FusionEffectsProcedure {
          }
       );
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x, y + 4.0, z, 30.0F, ExplosionInteraction.BLOCK);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y + 4.0, z, 30.0F, ExplosionInteraction.BLOCK);
       }
 
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x, y + 4.0, z, 60.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y + 4.0, z, 60.0F, ExplosionInteraction.NONE);
       }
 
       for (Entity entityiterator : new ArrayList<>(world.players())) {

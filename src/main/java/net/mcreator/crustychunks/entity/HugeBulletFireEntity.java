@@ -128,4 +128,9 @@ public class HugeBulletFireEntity extends AbstractArrow implements ItemSupplier 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

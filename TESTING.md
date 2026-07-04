@@ -36,3 +36,20 @@ Environment: NeoForge 21.1.234 dev environment (ModDevGradle), Java 21, headless
 - [ ] Vehicle/turret riding (seat entity) edge cases across dimension changes
 - [ ] Full machine chains (blast furnace → foundry → assembly depot production lines)
 - [ ] Nuke/fusion detonation performance on large worlds
+
+## Round 2 — weapon stability & Create: Aeronautics migration (verified via RCON-driven dedicated server)
+
+- [x] Root cause of world corruption found and fixed: 1.21.1 `AbstractArrow.addAdditionalSaveData`
+      throws on empty pickup stacks; all 110 projectile constructors now pass real projectile items
+- [x] `save-all flush` succeeds with live bullets, bombs, missiles, torpedo and blast entities in flight
+- [x] Server restart on that world: loads clean, no ticking-entity crashes, no save errors
+- [x] Transient entities verified: a saved `large_ap_bullet` does NOT survive restart (no stale bullets,
+      no explosion-animation replay); a saved `small_bomb_projectile` DOES survive (count: 1)
+- [x] Nuclear bomb dropped on a stone platform: detonates, destroys blocks through the capped
+      explosion wrapper, full effect sequence runs, follow-up `save-all flush` clean
+- [x] Explosion effect entities self-discard and are never saved (fixes replay on chunk re-entry)
+- [x] Mod builds and boots with no Sable/Aeronautics installed (compat is compileOnly + runtime-gated)
+- [x] Config file generates with projectile/explosion/aeronautics sections
+- [x] Client boots after all changes
+- [ ] In-game verification on a real Aeronautics craft (fire from moving craft, recoil pushback) —
+      needs an interactive client with Sable + Create + Create: Aeronautics installed

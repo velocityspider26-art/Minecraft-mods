@@ -136,4 +136,9 @@ public class MuzzleFlashProducerEntity extends AbstractArrow implements ItemSupp
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

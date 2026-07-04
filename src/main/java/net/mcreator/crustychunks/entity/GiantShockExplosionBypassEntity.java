@@ -111,4 +111,9 @@ public class GiantShockExplosionBypassEntity extends AbstractArrow implements It
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

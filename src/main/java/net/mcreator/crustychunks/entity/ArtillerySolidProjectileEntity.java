@@ -156,4 +156,9 @@ public class ArtillerySolidProjectileEntity extends AbstractArrow implements Ite
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

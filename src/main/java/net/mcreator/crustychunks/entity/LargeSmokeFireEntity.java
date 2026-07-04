@@ -155,4 +155,9 @@ public class LargeSmokeFireEntity extends AbstractArrow implements ItemSupplier 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

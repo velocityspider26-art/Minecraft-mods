@@ -37,6 +37,8 @@ public record MineralGrinderGUIButtonMessage(int buttonID, int x, int y, int z) 
       if (context.flow() == PacketFlow.SERVERBOUND) {
          context.enqueueWork(() -> {
             Player entity = context.player();
+            if (!(entity instanceof net.minecraft.server.level.ServerPlayer _sender) || !_sender.isAlive() || _sender.isSpectator())
+               return;
             handleButtonAction(entity, message.buttonID, message.x, message.y, message.z);
          }).exceptionally(e -> {
             context.connection().disconnect(Component.literal(e.getMessage()));

@@ -149,4 +149,9 @@ public class SmokeMortarProjectileEntity extends AbstractArrow implements ItemSu
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

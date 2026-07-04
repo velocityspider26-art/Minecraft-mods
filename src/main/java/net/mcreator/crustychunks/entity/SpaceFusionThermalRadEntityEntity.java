@@ -136,4 +136,9 @@ public class SpaceFusionThermalRadEntityEntity extends AbstractArrow implements 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -156,4 +156,9 @@ public class HVParticleProjectileEntity extends AbstractArrow implements ItemSup
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

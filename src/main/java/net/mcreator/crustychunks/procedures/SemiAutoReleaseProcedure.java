@@ -66,7 +66,7 @@ public class SemiAutoReleaseProcedure {
          if (context.flow() == PacketFlow.SERVERBOUND) {
             context.enqueueWork(() -> {
                Entity sender = context.player();
-               if (sender != null) {
+               if (sender instanceof net.minecraft.server.level.ServerPlayer _sp && _sp.isAlive() && !_sp.isSpectator()) {
                   SemiAutoReleaseProcedure.execute(sender);
                }
             }).exceptionally(e -> {

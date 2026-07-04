@@ -136,4 +136,9 @@ public class SpaceThermalRadEntityEntity extends AbstractArrow implements ItemSu
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -158,4 +158,9 @@ public class EmberParticleProjectileEntity extends AbstractArrow implements Item
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

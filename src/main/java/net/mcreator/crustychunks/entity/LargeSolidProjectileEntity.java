@@ -153,4 +153,9 @@ public class LargeSolidProjectileEntity extends AbstractArrow implements ItemSup
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

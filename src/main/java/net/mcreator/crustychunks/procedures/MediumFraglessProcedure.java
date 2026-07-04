@@ -130,7 +130,7 @@ public class MediumFraglessProcedure {
          }
 
          if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-            _levelxxx.explode(null, x, y, z, 4.0F, ExplosionInteraction.TNT);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x, y, z, 4.0F, ExplosionInteraction.TNT);
          }
       } else if (world instanceof ServerLevel projectileLevel) {
          Projectile _entityToSpawn = (new Object() {
@@ -159,11 +159,11 @@ public class MediumFraglessProcedure {
       }
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-         _levelxxx.explode(null, x, y, z, 5.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x, y, z, 5.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-         _levelxxx.explode(null, x, y, z, 8.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x, y, z, 8.0F, ExplosionInteraction.NONE);
       }
    }
 }

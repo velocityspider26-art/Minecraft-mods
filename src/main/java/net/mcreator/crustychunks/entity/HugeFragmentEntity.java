@@ -131,4 +131,9 @@ public class HugeFragmentEntity extends AbstractArrow implements ItemSupplier {
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

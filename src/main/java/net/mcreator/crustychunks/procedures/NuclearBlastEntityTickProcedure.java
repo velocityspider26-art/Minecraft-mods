@@ -142,21 +142,14 @@ public class NuclearBlastEntityTickProcedure {
                      && world instanceof Level) {
                      Level _level = (Level)world;
                      if (!_level.isClientSide()) {
-                        _level.explode(
-                           null,
-                           x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius,
-                           (double)(
+                        net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius, (double)(
                               world.getHeight(
                                     Types.MOTION_BLOCKING_NO_LEAVES,
                                     (int)(x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius),
                                     (int)(z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius)
                                  )
                                  + 9
-                           ),
-                           z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius,
-                           6.25F,
-                           ExplosionInteraction.BLOCK
-                        );
+                           ), z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius, 6.25F, ExplosionInteraction.BLOCK);
                      }
                   }
 
@@ -171,10 +164,7 @@ public class NuclearBlastEntityTickProcedure {
                      && world instanceof Level) {
                      Level _level = (Level)world;
                      if (!_level.isClientSide()) {
-                        _level.explode(
-                           null,
-                           x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius,
-                           Math.max(
+                        net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius, Math.max(
                               (double)(
                                  world.getHeight(
                                        Types.MOTION_BLOCKING_NO_LEAVES,
@@ -184,11 +174,7 @@ public class NuclearBlastEntityTickProcedure {
                                     + 22
                               ),
                               y + 7.0
-                           ),
-                           z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius,
-                           (float)(12.0 / Math.ceil((xRadius + 1.0) / 100.0) + 6.0),
-                           ExplosionInteraction.BLOCK
-                        );
+                           ), z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius, (float)(12.0 / Math.ceil((xRadius + 1.0) / 100.0) + 6.0), ExplosionInteraction.BLOCK);
                      }
                   }
 
@@ -240,21 +226,14 @@ public class NuclearBlastEntityTickProcedure {
                } else if (!ModList.get().isLoaded("explosionoverhaul") && world instanceof Level) {
                   Level _level = (Level)world;
                   if (!_level.isClientSide()) {
-                     _level.explode(
-                        null,
-                        x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius,
-                        (double)(
+                     net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius, (double)(
                            world.getHeight(
                                  Types.MOTION_BLOCKING_NO_LEAVES,
                                  (int)(x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius),
                                  (int)(z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius)
                               )
                               + 1
-                        ),
-                        z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius,
-                        2.0F,
-                        ExplosionInteraction.NONE
-                     );
+                        ), z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius, 2.0F, ExplosionInteraction.NONE);
                   }
                }
 

@@ -127,4 +127,9 @@ public class SmallShellFireEntity extends AbstractArrow implements ItemSupplier 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

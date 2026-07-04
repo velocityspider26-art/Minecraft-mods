@@ -87,7 +87,7 @@ public class IncindiaryExplosionProcedure {
 
       if (world.getFluidState(BlockPos.containing(x, y + 1.0, z)).createLegacyBlock().getBlock() instanceof LiquidBlock) {
          if (world instanceof Level _levelxx && !_levelxx.isClientSide()) {
-            _levelxx.explode(null, x, y, z, 2.0F, ExplosionInteraction.MOB);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxx, null, x, y, z, 2.0F, ExplosionInteraction.MOB);
          }
       } else if (world instanceof ServerLevel projectileLevel) {
          Projectile _entityToSpawn = (new Object() {
@@ -121,7 +121,7 @@ public class IncindiaryExplosionProcedure {
       }
 
       if (world instanceof Level _levelxx && !_levelxx.isClientSide()) {
-         _levelxx.explode(null, x, y + 1.0, z, 2.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxx, null, x, y + 1.0, z, 2.0F, ExplosionInteraction.TNT);
       }
 
       for (int index0 = 0; index0 < 200; index0++) {

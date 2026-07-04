@@ -154,4 +154,9 @@ public class LargeAPFireEntity extends AbstractArrow implements ItemSupplier {
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

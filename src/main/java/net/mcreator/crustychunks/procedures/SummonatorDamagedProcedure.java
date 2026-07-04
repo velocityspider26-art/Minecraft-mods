@@ -110,7 +110,7 @@ public class SummonatorDamagedProcedure {
       }
 
       if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-         _levelxxx.explode(null, x, y, z, 3.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x, y, z, 3.0F, ExplosionInteraction.NONE);
       }
 
       world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);

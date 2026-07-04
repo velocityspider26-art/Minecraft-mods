@@ -155,4 +155,9 @@ public class FireBombProjectileEntity extends AbstractArrow implements ItemSuppl
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -18,18 +18,11 @@ public class ArtilleryHitProcedure {
                }
 
                if (world instanceof Level _level && !_level.isClientSide()) {
-                  _level.explode(null, x, y, z, 5.0F, ExplosionInteraction.BLOCK);
+                  net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y, z, 5.0F, ExplosionInteraction.BLOCK);
                }
 
                if (world instanceof Level _level && !_level.isClientSide()) {
-                  _level.explode(
-                     null,
-                     immediatesourceentity.getX(),
-                     immediatesourceentity.getY(),
-                     immediatesourceentity.getZ(),
-                     6.0F,
-                     ExplosionInteraction.BLOCK
-                  );
+                  net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 6.0F, ExplosionInteraction.BLOCK);
                }
             }
          } else {

@@ -131,4 +131,9 @@ public class MediumAIBulletEntity extends AbstractArrow implements ItemSupplier 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

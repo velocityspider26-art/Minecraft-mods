@@ -131,4 +131,9 @@ public class APMediumBulletEntity extends AbstractArrow implements ItemSupplier 
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

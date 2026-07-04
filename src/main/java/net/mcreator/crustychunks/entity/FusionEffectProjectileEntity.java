@@ -111,4 +111,9 @@ public class FusionEffectProjectileEntity extends AbstractArrow implements ItemS
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

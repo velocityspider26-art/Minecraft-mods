@@ -28,6 +28,13 @@ sourceSets.main.resources {
 
 repositories {
     maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup("maven.modrinth")
+        }
+    }
+    maven {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
         content {
@@ -142,6 +149,12 @@ dependencies {
 
     // GeckoLib animation library (required by Warium's animated weapons/entities)
     implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
+
+    // Sable physics engine (the platform used by Create: Aeronautics) - optional integration, compile-time only.
+    compileOnly "maven.modrinth:sable:1L6XJqnY"
+    // Sable's companion math library and Veil, which Sable bundles via Jar-in-Jar (needed on the compile classpath).
+    compileOnly files("libs/sable-companion-common-1.21.1-1.6.0.jar")
+    compileOnly files("libs/veil-neoforge-1.21.1-4.1.4.jar")
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

@@ -10,9 +10,7 @@ public class LargeFragmentProjectileHitsBlockProcedure {
       if (immediatesourceentity != null) {
          SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
          if (world instanceof Level _level && !_level.isClientSide()) {
-            _level.explode(
-               null, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 1.0F, ExplosionInteraction.NONE
-            );
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 1.0F, ExplosionInteraction.NONE);
          }
 
          if (!immediatesourceentity.level().isClientSide()) {

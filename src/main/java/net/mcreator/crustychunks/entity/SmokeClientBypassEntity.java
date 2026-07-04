@@ -111,4 +111,9 @@ public class SmokeClientBypassEntity extends AbstractArrow implements ItemSuppli
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

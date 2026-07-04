@@ -263,7 +263,7 @@ public class GiantExplosionProcedure {
          }
 
          if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-            _levelxxxxx.explode(null, x + 0.5, y + 1.0, z + 0.5, 10.0F, ExplosionInteraction.TNT);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5, y + 1.0, z + 0.5, 10.0F, ExplosionInteraction.TNT);
          }
       } else {
          if (world instanceof ServerLevel _levelxxxxx) {
@@ -276,27 +276,27 @@ public class GiantExplosionProcedure {
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5, y + 0.5, z + 0.5, 22.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5, y + 0.5, z + 0.5, 22.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5 + 6.0, y + 0.5, z + 0.5, 8.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5 + 6.0, y + 0.5, z + 0.5, 8.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5 - 6.0, y + 0.5, z + 0.5, 8.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5 - 6.0, y + 0.5, z + 0.5, 8.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5, y + 0.5, z + 0.5 + 6.0, 8.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5, y + 0.5, z + 0.5 + 6.0, 8.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5, y + 0.5, z + 0.5 - 6.0, 8.0F, ExplosionInteraction.TNT);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5, y + 0.5, z + 0.5 - 6.0, 8.0F, ExplosionInteraction.TNT);
       }
 
       if (world instanceof Level _levelxxxxx && !_levelxxxxx.isClientSide()) {
-         _levelxxxxx.explode(null, x + 0.5, y + 0.5, z + 0.5, 25.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxxxx, null, x + 0.5, y + 0.5, z + 0.5, 25.0F, ExplosionInteraction.NONE);
       }
 
       if (world instanceof ServerLevel projectileLevel) {

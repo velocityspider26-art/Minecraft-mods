@@ -67,7 +67,7 @@ public class ManualAimerFireProcedure {
          if (context.flow() == PacketFlow.SERVERBOUND) {
             context.enqueueWork(() -> {
                Entity sender = context.player();
-               if (sender != null) {
+               if (sender instanceof net.minecraft.server.level.ServerPlayer _sp && _sp.isAlive() && !_sp.isSpectator()) {
                   ManualAimerFireProcedure.execute(sender.level(), sender);
                }
             }).exceptionally(e -> {

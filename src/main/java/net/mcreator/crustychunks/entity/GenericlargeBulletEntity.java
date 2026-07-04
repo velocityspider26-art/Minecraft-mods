@@ -131,4 +131,9 @@ public class GenericlargeBulletEntity extends AbstractArrow implements ItemSuppl
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

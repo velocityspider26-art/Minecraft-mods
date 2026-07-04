@@ -623,7 +623,7 @@ public class ArtilleryFireScriptProcedure {
             }).getValue(world, BlockPos.containing(x, y, z), "Barrels") >= 1.0) {
                CrustyChunksMod.queueServerWork(5, () -> {
                   if (world instanceof Level _levelxxx && !_levelxxx.isClientSide()) {
-                     _levelxxx.explode(null, x + (double)(new Object() {
+                     net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxxx, null, x + (double)(new Object() {
                         public Direction getDirection(BlockState _bs) {
                            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                               return (Direction)_bs.getValue(_dp);

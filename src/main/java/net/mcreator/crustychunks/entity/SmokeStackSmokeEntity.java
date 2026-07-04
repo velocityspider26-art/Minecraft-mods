@@ -133,4 +133,9 @@ public class SmokeStackSmokeEntity extends AbstractArrow implements ItemSupplier
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

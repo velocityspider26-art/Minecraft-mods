@@ -131,4 +131,9 @@ public class StealthMediumBulletEntity extends AbstractArrow implements ItemSupp
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -38,8 +38,8 @@ public class ItemAnimationFactory {
    @SubscribeEvent
    public static void animatedItems(PlayerTickEvent.Post event) {
       String animation = "";
-      ItemStack mainhandItem = event.getEntity().getMainHandItem().copy();
-      ItemStack offhandItem = event.getEntity().getOffhandItem().copy();
+      ItemStack mainhandItem = event.getEntity().getMainHandItem();
+      ItemStack offhandItem = event.getEntity().getOffhandItem();
       if (false && (mainhandItem.getItem() instanceof GeoItem || offhandItem.getItem() instanceof GeoItem)) {
          if (mainhandItem.getItem() instanceof SemiAutomaticRifleAnimatedItem animatable) {
             animation = mainhandItem.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString("geckoAnim");

@@ -130,4 +130,9 @@ public class SmallBulletStealthEntity extends AbstractArrow implements ItemSuppl
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -130,4 +130,9 @@ public class SmallAPCannonFireEntity extends AbstractArrow implements ItemSuppli
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -37,11 +37,11 @@ public class SpaceFissionExplosionProcedure {
       }
 
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x, y, z, 60.0F, ExplosionInteraction.BLOCK);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y, z, 60.0F, ExplosionInteraction.BLOCK);
       }
 
       if (world instanceof Level _level && !_level.isClientSide()) {
-         _level.explode(null, x, y, z, 45.0F, ExplosionInteraction.NONE);
+         net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y, z, 45.0F, ExplosionInteraction.NONE);
       }
 
       if (world instanceof ServerLevel projectileLevel) {

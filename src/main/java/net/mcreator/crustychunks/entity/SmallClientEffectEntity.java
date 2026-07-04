@@ -111,4 +111,9 @@ public class SmallClientEffectEntity extends AbstractArrow implements ItemSuppli
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

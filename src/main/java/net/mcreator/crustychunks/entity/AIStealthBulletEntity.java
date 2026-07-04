@@ -130,4 +130,9 @@ public class AIStealthBulletEntity extends AbstractArrow implements ItemSupplier
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

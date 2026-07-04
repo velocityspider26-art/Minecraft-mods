@@ -142,21 +142,14 @@ public class FusionBlastTickProcedure {
                      && world instanceof Level) {
                      Level _level = (Level)world;
                      if (!_level.isClientSide()) {
-                        _level.explode(
-                           null,
-                           x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius,
-                           (double)(
+                        net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius, (double)(
                               world.getHeight(
                                     Types.MOTION_BLOCKING_NO_LEAVES,
                                     (int)(x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius),
                                     (int)(z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius)
                                  )
                                  + 9
-                           ),
-                           z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius,
-                           6.0F,
-                           ExplosionInteraction.BLOCK
-                        );
+                           ), z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius, 6.0F, ExplosionInteraction.BLOCK);
                      }
                   }
 
@@ -171,10 +164,7 @@ public class FusionBlastTickProcedure {
                      && world instanceof Level) {
                      Level _level = (Level)world;
                      if (!_level.isClientSide()) {
-                        _level.explode(
-                           null,
-                           x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius,
-                           Math.max(
+                        net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + Math.cos((Math.PI * 2) / var31 * loop) * xRadius, Math.max(
                               (double)(
                                  world.getHeight(
                                        Types.MOTION_BLOCKING_NO_LEAVES,
@@ -184,11 +174,7 @@ public class FusionBlastTickProcedure {
                                     + 22
                               ),
                               y + 8.0
-                           ),
-                           z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius,
-                           (float)(16.0 / Math.ceil(xRadius / 75.0) + 4.0),
-                           ExplosionInteraction.BLOCK
-                        );
+                           ), z + 0.5 + Math.sin((Math.PI * 2) / var31 * loop) * zRadius, (float)(16.0 / Math.ceil(xRadius / 75.0) + 4.0), ExplosionInteraction.BLOCK);
                      }
                   }
 

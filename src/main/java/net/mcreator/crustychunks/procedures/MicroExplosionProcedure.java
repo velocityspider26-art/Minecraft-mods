@@ -60,7 +60,7 @@ public class MicroExplosionProcedure {
          }
 
          if (world instanceof Level _level && !_level.isClientSide()) {
-            _level.explode(null, x, y, z, 1.0F, ExplosionInteraction.TNT);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x, y, z, 1.0F, ExplosionInteraction.TNT);
          }
       } else if (world instanceof ServerLevel projectileLevel) {
          Projectile _entityToSpawn = (new Object() {
@@ -90,11 +90,11 @@ public class MicroExplosionProcedure {
 
       CrustyChunksMod.queueServerWork(2, () -> {
          if (world instanceof Level _levelxx && !_levelxx.isClientSide()) {
-            _levelxx.explode(null, x + 0.0, y + 0.0, z + 0.0, 2.0F, ExplosionInteraction.TNT);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelxx, null, x + 0.0, y + 0.0, z + 0.0, 2.0F, ExplosionInteraction.TNT);
          }
 
          if (world instanceof Level _levelx && !_levelx.isClientSide()) {
-            _levelx.explode(null, x + 0.0, y + 0.0, z + 0.0, 3.0F, ExplosionInteraction.NONE);
+            net.mcreator.crustychunks.compat.WariumExplosions.explode(_levelx, null, x + 0.0, y + 0.0, z + 0.0, 3.0F, ExplosionInteraction.NONE);
          }
       });
       if (world instanceof Level _level) {

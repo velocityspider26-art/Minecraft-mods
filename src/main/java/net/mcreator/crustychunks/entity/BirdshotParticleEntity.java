@@ -130,4 +130,9 @@ public class BirdshotParticleEntity extends AbstractArrow implements ItemSupplie
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

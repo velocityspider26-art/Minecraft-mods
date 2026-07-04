@@ -136,4 +136,9 @@ public class CannonMuzzleFlashProducerEntity extends AbstractArrow implements It
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

@@ -149,4 +149,9 @@ public class FireArtilleryProjectileEntity extends AbstractArrow implements Item
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }

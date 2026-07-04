@@ -136,4 +136,9 @@ public class SmallMuzzleFlashProducerEntity extends AbstractArrow implements Ite
          }
       }
    }
+
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
+   }
 }
