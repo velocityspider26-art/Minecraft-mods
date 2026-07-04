@@ -1,64 +1,56 @@
 package shipwrights.genesis.networking;
 
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.NetworkDirection;
-import net.neoforged.neoforge.network.NetworkRegistry;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.simple.SimpleChannel;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
-import shipwrights.genesis.GenesisMod;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import shipwrights.genesis.networking.client.GenesisClientPacketHandlers;
 
+/**
+ * Genesis networking, ported to the NeoForge 1.21.1 payload system.
+ *
+ * <p>All Genesis packets are clientbound (server -&gt; client) sound / warp UI cues. The actual
+ * physics / construct state is synced by Sable, so Genesis never sends construct data itself.</p>
+ */
 public class GenesisNetworking {
 
     private static final String PROTOCOL_VERSION = "1";
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
-            ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "channel"),
-            () -> PROTOCOL_VERSION,
-            PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals
-    );
 
-    public static final PacketDistributor<SimpleChannel> ALL = new PacketDistributor<>(
-            (distributor, channelGetter) -> packet -> ServerLifecycleHooks.getCurrentServer()
-                    .getPlayerList()
-                    .getPlayers()
-                    .forEach(player -> player.connection.connection.send(packet)),
-            NetworkDirection.PLAY_TO_CLIENT);
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION).optional();
 
-    public static <PACKET> void sendToAll(SimpleChannel channel, PACKET packet)
-    {
-        channel.send(ALL.with(()->channel), packet);
+        registrar.playToClient(WormholeTravelSoundPacket.TYPE, WormholeTravelSoundPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> GenesisClientPacketHandlers.handleWormholeTravel(payload)));
+
+        registrar.playToClient(VoidEngineSoundPacket.TYPE, VoidEngineSoundPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> GenesisClientPacketHandlers.handleVoidEngineSound(payload)));
+
+        registrar.playToClient(StopVoidEngineStartSoundPacket.TYPE, StopVoidEngineStartSoundPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(GenesisClientPacketHandlers::handleStopVoidEngineStart));
+
+        registrar.playToClient(EnteringWarpPacket.TYPE, EnteringWarpPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(GenesisClientPacketHandlers::handleEnteringWarp));
+
+        registrar.playToClient(SyncTimeOffsetPacket.TYPE, SyncTimeOffsetPacket.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> GenesisClientPacketHandlers.handleSyncTimeOffset(payload)));
     }
 
-    public static void init() {
-        INSTANCE.messageBuilder(WormholeTravelSoundPacket.class, 0)
-                .encoder(WormholeTravelSoundPacket::encode)
-                .decoder(WormholeTravelSoundPacket::decode)
-                .consumerMainThread(WormholeTravelSoundPacket::handle)
-                .add();
+    /** Send a clientbound payload to every connected player. */
+    public static void sendToAll(CustomPacketPayload payload) {
+        PacketDistributor.sendToAllPlayers(payload);
+    }
 
-        INSTANCE.messageBuilder(VoidEngineSoundPacket.class, 1)
-                .encoder(VoidEngineSoundPacket::encode)
-                .decoder(VoidEngineSoundPacket::decode)
-                .consumerMainThread(VoidEngineSoundPacket::handle)
-                .add();
+    /** Send a clientbound payload to all players tracking the given chunk. */
+    public static void sendToChunk(LevelChunk chunk, CustomPacketPayload payload) {
+        if (chunk.getLevel() instanceof ServerLevel serverLevel) {
+            PacketDistributor.sendToPlayersTrackingChunk(serverLevel, chunk.getPos(), payload);
+        }
+    }
 
-        INSTANCE.messageBuilder(StopVoidEngineStartSoundPacket.class, 2)
-                .encoder(StopVoidEngineStartSoundPacket::encode)
-                .decoder(StopVoidEngineStartSoundPacket::decode)
-                .consumerMainThread(StopVoidEngineStartSoundPacket::handle)
-                .add();
-
-        INSTANCE.messageBuilder(EnteringWarpPacket.class, 6)
-                .encoder(EnteringWarpPacket::encode)
-                .decoder(EnteringWarpPacket::decode)
-                .consumerMainThread(EnteringWarpPacket::handle)
-                .add();
-
-        INSTANCE.messageBuilder(SyncTimeOffsetPacket.class, 7)
-                .encoder(SyncTimeOffsetPacket::encode)
-                .decoder(SyncTimeOffsetPacket::decode)
-                .consumerMainThread(SyncTimeOffsetPacket::handle)
-                .add();
+    public static void sendToChunk(ServerLevel level, ChunkPos pos, CustomPacketPayload payload) {
+        PacketDistributor.sendToPlayersTrackingChunk(level, pos, payload);
     }
 }

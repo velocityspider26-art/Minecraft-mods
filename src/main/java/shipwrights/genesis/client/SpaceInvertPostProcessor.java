@@ -16,7 +16,7 @@ import shipwrights.genesis.space.Celestial;
 import shipwrights.genesis.space.SpaceLevel;
 import shipwrights.genesis.space.type.BuiltinCelestialTypes;
 import team.lodestar.lodestone.systems.postprocess.PostProcessor;
-import kotlin.Pair;
+import shipwrights.genesis.util.Pair;
 
 import java.util.function.Predicate;
 

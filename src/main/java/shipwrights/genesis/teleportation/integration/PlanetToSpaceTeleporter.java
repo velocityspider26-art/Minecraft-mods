@@ -3,22 +3,21 @@ package shipwrights.genesis.teleportation.integration;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.event.TickEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import org.joml.Quaterniondc;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
 import shipwrights.genesis.GenesisMod;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
 import shipwrights.genesis.config.GenesisCommonConfig;
 import shipwrights.genesis.space.Celestial;
 import shipwrights.genesis.space.VantagePoint;
 import shipwrights.genesis.teleportation.DimensionTravelTeleporter;
 import shipwrights.genesis.teleportation.TravelDirection;
 
-import static shipwrights.genesis.teleportation.integration.Util.getSortedShips;
+import static shipwrights.genesis.teleportation.integration.Util.getSortedConstructs;
 
 public class PlanetToSpaceTeleporter {
 	private final boolean gameTest;
@@ -28,8 +27,8 @@ public class PlanetToSpaceTeleporter {
 	}
 
 	@SubscribeEvent(priority = EventPriority.HIGH)
-	public void onLevelTick(TickEvent.LevelTickEvent event) {
-		if (TickEvent.Phase.END.equals(event.phase) && event.level instanceof ServerLevel serverLevel) {
+	public void onLevelTick(LevelTickEvent.Post event) {
+		if (event.getLevel() instanceof ServerLevel serverLevel) {
 			if (gameTest || !serverLevel.getPlayers(u -> true, 1).isEmpty()) {
 				tick(serverLevel);
 			}
@@ -46,14 +45,12 @@ public class PlanetToSpaceTeleporter {
 
 		long ticks = GenesisMod.getTicks(level);
 
-		for (LoadedServerShip ship : getSortedShips(level)) {
-			Vector3dc shipPos = ship.getTransform().getPositionInWorld();
-			if (!ship.isStatic() && shipPos.y() > GenesisCommonConfig.getAtmosphereExitHeight()) {
-
-
-				if (VantagePoint.get(level, shipPos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-					DimensionTravelTeleporter.teleportShip(
-							ship,
+		for (AeronauticsConstruct construct : getSortedConstructs(level)) {
+			Vector3dc pos = construct.positionInWorld();
+			if (pos.y() > GenesisCommonConfig.getAtmosphereExitHeight()) {
+				if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
+					DimensionTravelTeleporter.teleportConstruct(
+							construct,
 							TravelDirection.PLANET_TO_SPACE,
 							level,
 							spaceLevel,
@@ -63,11 +60,6 @@ public class PlanetToSpaceTeleporter {
 				}
 			}
 		}
-	}
-
-    // Package-private — accessed by tests
-	static Quaterniondc computeSpaceRotation(Quaterniondc vantageRotation, Quaterniondc shipRotation) {
-		return new Quaterniond(vantageRotation).mul(shipRotation, new Quaterniond());
 	}
 
 	private static Vector3d computeSpaceTarget(VantagePoint.OnCelestial vantagePoint) {

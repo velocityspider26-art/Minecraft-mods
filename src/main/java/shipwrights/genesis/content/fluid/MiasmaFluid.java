@@ -13,11 +13,11 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.fluids.ForgeFlowingFluid;
+import net.neoforged.neoforge.fluids.BaseFlowingFluid;
 
 import java.util.Map;
 
-public abstract class MiasmaFluid extends ForgeFlowingFluid {
+public abstract class MiasmaFluid extends BaseFlowingFluid {
     protected MiasmaFluid(Properties properties) {
         super(properties);
     }

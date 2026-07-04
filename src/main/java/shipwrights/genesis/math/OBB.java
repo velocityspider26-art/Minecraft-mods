@@ -68,11 +68,20 @@ public record OBB(AABBdc localAabb, Quaterniondc orientation, Vector3dc center) 
      * @return a new OBB representing the transformed bounding box in world space
      */
     public static OBB fromShip(AABBic shipyardAABB, Matrix4dc shipToWorldTransform) {
-        // Convert integer AABB to double AABB for calculations
-        AABBd shipyardAABBd = new AABBd(
+        return fromLocalBounds(
                 shipyardAABB.minX(), shipyardAABB.minY(), shipyardAABB.minZ(),
-                shipyardAABB.maxX(), shipyardAABB.maxY(), shipyardAABB.maxZ()
-        );
+                shipyardAABB.maxX(), shipyardAABB.maxY(), shipyardAABB.maxZ(),
+                shipToWorldTransform);
+    }
+
+    /**
+     * Creates an OBB from local (construct/plot-space) integer block bounds and a local-to-world
+     * transform matrix. Create Aeronautics-friendly entry point used by Genesis in place of the old
+     * Valkyrien Skies shipyard-AABB overload.
+     */
+    public static OBB fromLocalBounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ, Matrix4dc shipToWorldTransform) {
+        // Convert integer AABB to double AABB for calculations
+        AABBd shipyardAABBd = new AABBd(minX, minY, minZ, maxX, maxY, maxZ);
 
         // Calculate the center of the AABB in shipyard space
         double localCenterX = (shipyardAABBd.minX() + shipyardAABBd.maxX()) / 2.0;

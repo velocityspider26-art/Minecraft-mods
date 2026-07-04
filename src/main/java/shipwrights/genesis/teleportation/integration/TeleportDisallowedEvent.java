@@ -1,26 +1,25 @@
 package shipwrights.genesis.teleportation.integration;
 
 import net.neoforged.bus.api.Event;
-import org.valkyrienskies.core.api.ships.Ship;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
 import shipwrights.genesis.space.Celestial;
 
-
-/// Fired when a ship is denied entry to a planet due to addon or datapack functionality
+/// Fired when a construct is denied entry to a planet due to addon or datapack functionality
 public final class TeleportDisallowedEvent extends Event {
-    private final Ship ship;
+    private final AeronauticsConstruct construct;
     private final Celestial celestial;
 
-    public TeleportDisallowedEvent(Ship ship, Celestial celestial) {
-        this.ship = ship;
+    public TeleportDisallowedEvent(AeronauticsConstruct construct, Celestial celestial) {
+        this.construct = construct;
         this.celestial = celestial;
     }
 
-    /// ship that tried to teleport to a Celestial
-    public Ship ship() {
-        return ship;
+    /// construct that tried to teleport to a Celestial
+    public AeronauticsConstruct construct() {
+        return construct;
     }
 
-    /// Celestial that the ship tried to teleport to
+    /// Celestial that the construct tried to teleport to
     public Celestial celestial() {
         return celestial;
     }

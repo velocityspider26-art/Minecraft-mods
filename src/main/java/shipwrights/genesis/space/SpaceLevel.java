@@ -1,6 +1,6 @@
 package shipwrights.genesis.space;
 
-import kotlin.Pair;
+import shipwrights.genesis.util.Pair;
 import net.minecraft.core.Registry;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;

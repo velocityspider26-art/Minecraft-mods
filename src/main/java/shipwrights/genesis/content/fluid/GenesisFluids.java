@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidType;
-import net.neoforged.neoforge.fluids.ForgeFlowingFluid;
+import net.neoforged.neoforge.fluids.BaseFlowingFluid;
 import shipwrights.genesis.GenesisMod;
 
 import java.util.function.Consumer;
@@ -86,8 +86,8 @@ public class GenesisFluids {
     }
 
     // Helper methods to access source/flowing fluids
-    public static ForgeFlowingFluid.Source getSource() {
-        return (ForgeFlowingFluid.Source) MIASMA.getSource();
+    public static BaseFlowingFluid.Source getSource() {
+        return (BaseFlowingFluid.Source) MIASMA.getSource();
     }
 
     public static MiasmaFluid.Flowing getFlowing() {

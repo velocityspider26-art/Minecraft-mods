@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
+import shipwrights.genesis.compat.aeronautics.AeronauticsContraptionLookup;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.networking.GenesisNetworking;
 import shipwrights.genesis.networking.SyncTimeOffsetPacket;
@@ -38,7 +38,7 @@ public abstract class ServerLevelMixin {
 
         GenesisTimeData data = GenesisTimeData.getOrCreate(self.getServer());
         data.addOffset(delta);
-        GenesisNetworking.sendToAll(GenesisNetworking.INSTANCE, new SyncTimeOffsetPacket(data.getTimeOffset()));
+        GenesisNetworking.sendToAll(new SyncTimeOffsetPacket(data.getTimeOffset()));
     }
 
     @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;getDayTime()J"))
@@ -62,9 +62,9 @@ public abstract class ServerLevelMixin {
         if (GenesisMod.shouldCancelVoidDamage(level)) {
             return false;
         }
-        Ship ship = VSGameUtilsKt.getShipManagingPos(level, pos);
+        AeronauticsConstruct construct = AeronauticsContraptionLookup.getConstructManaging(level, pos);
 
-        if (ship != null && ship.getTransform().getPositionInWorld().y() > 400) {
+        if (construct != null && construct.positionInWorld().y() > 400) {
             return false;
         }
 

@@ -27,7 +27,6 @@
   "mixins": [
     "ArgumentTypeInfosMixin",
     "BlockBehaviourAccessor",
-    "EntityDraggerMixin",
     "EntityMixin",
     "FallingBlockEntityAccessor",
     "FallingBlockEntityMixin",
@@ -37,15 +36,9 @@
     "LevelRendererAccessor",
     "LevelTimeAccessMixin",
     "LivingEntityMixin",
-    "MinecraftServerMixin",
     "ServerLevelMixin",
     "TeleportCommandMixin",
-    "TimeCommandMixin",
-    "VSBlockItemMixin",
-    "VSExplosionForceMixin",
-    "VSMountedCameraMixin",
-    "compat.mekanism.AdvancedSolarGeneratorMixin",
-    "compat.mekanism.WorldUtilsMixin"
+    "TimeCommandMixin"
   ],
   "injectors": {
     "defaultRequire": 1

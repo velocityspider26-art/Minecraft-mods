@@ -1,37 +1,23 @@
 package shipwrights.genesis.networking;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.network.NetworkEvent;
-import shipwrights.genesis.client.WormholeAmbianceHandler;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import shipwrights.genesis.GenesisMod;
 
-import java.util.function.Supplier;
+public record VoidEngineSoundPacket(BlockPos enginePos) implements CustomPacketPayload {
+    public static final Type<VoidEngineSoundPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "void_engine_sound"));
 
-public record VoidEngineSoundPacket(BlockPos enginePos) {
+    public static final StreamCodec<RegistryFriendlyByteBuf, VoidEngineSoundPacket> STREAM_CODEC =
+            StreamCodec.composite(
+                    BlockPos.STREAM_CODEC, VoidEngineSoundPacket::enginePos,
+                    VoidEngineSoundPacket::new);
 
-    public static void encode(VoidEngineSoundPacket packet, FriendlyByteBuf buf) {
-        buf.writeBlockPos(packet.enginePos);
-    }
-
-    public static VoidEngineSoundPacket decode(FriendlyByteBuf buf) {
-        return new VoidEngineSoundPacket(buf.readBlockPos());
-    }
-
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            context.enqueueWork(() -> ClientHandler.handle(this));
-        }
-        context.setPacketHandled(true);
-    }
-
-    private static class ClientHandler {
-
-        public static void handle(VoidEngineSoundPacket packet) {
-            WormholeAmbianceHandler.voidEngineStartPos = packet.enginePos;
-            WormholeAmbianceHandler.playVoidEngineStart();
-        }
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

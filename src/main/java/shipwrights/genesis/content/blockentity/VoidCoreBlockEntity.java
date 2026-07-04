@@ -5,8 +5,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
+import shipwrights.genesis.compat.aeronautics.AeronauticsContraptionLookup;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.content.block.GenesisBlocks;
 import shipwrights.genesis.content.block.VoidCoreBlock;
@@ -82,10 +82,10 @@ public class VoidCoreBlockEntity extends BlockEntity {
         } else {
             level.setBlock(this.getBlockPos(), GenesisBlocks.VOID_CORE.get().defaultBlockState().setValue(VoidCoreBlock.DORMANT, true), Block.UPDATE_CLIENTS);
             if (level.dimension().location().equals(GenesisMod.WORMHOLE_DIM)) {
-                Ship ship = VSGameUtilsKt.getShipManagingPos(level, pos);
-                if (ship != null) {
+                AeronauticsConstruct construct = AeronauticsContraptionLookup.getConstructManaging(level, pos);
+                if (construct != null) {
                     ServerLevel returnLevel = level.getServer().getLevel(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("genesis", "great_unknown")));
-                    VoidEngineInterfaceBlockEntity.returnFromWormhole(level, pos, returnLevel, ship, true);
+                    VoidEngineInterfaceBlockEntity.returnFromWormhole(level, pos, returnLevel, construct, true);
                 }
             }
         }

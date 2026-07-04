@@ -3,6 +3,8 @@ package shipwrights.genesis.content.blockentity;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.content.block.GenesisBlocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -33,4 +35,22 @@ public class GenesisBlockEntities {
         BLOCK_ENTITIES.register("radar_display",
             () -> BlockEntityType.Builder.of(RadarDisplayBlockEntity::new,
                 GenesisBlocks.RADAR_DISPLAY.get()).build(null));
+
+    /** Registered on the mod event bus from {@link GenesisMod}; exposes Genesis machine capabilities. */
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.EnergyStorage.BLOCK,
+                VOID_ENGINE_INTERFACE.get(),
+                (be, side) -> be.getEnergyStorage());
+
+        event.registerBlockEntity(
+                Capabilities.EnergyStorage.BLOCK,
+                TULCITE_CATALYZER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getEnergyView());
+
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                TULCITE_CATALYZER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getItemHandler());
+    }
 }

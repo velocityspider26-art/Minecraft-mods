@@ -2,6 +2,8 @@ package shipwrights.genesis.tests.commands;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
+import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
@@ -10,7 +12,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import org.valkyrienskies.mod.common.assembly.ShipAssembler;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -19,6 +20,11 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+/**
+ * Dev command {@code /genesis assemble <pos>}: flood-fills the structure at {@code pos} and
+ * assembles it into a Create Aeronautics construct via Sable. Replaces the old Valkyrien Skies
+ * {@code ShipAssembler} test command.
+ */
 public class AssembleShipCommand {
 
     private static final int MAX_BLOCKS = 256;
@@ -44,28 +50,25 @@ public class AssembleShipCommand {
             return 0;
         }
 
-        ShipAssembler.INSTANCE.assembleToShip(level, blocks, true, 1.0, false);
+        BoundingBox3i bounds = new BoundingBox3i(origin.getX(), origin.getY(), origin.getZ(), origin.getX(), origin.getY(), origin.getZ());
+        for (BlockPos p : blocks) {
+            bounds = bounds.expandTo(p.getX(), p.getY(), p.getZ(), bounds);
+        }
+        SubLevelAssemblyHelper.assembleBlocks(level, origin, blocks, bounds);
         ctx.getSource().sendSuccess(
-                () -> Component.literal("Assembled " + blocks.size() + " blocks into a ship at " + origin),
+                () -> Component.literal("Assembled " + blocks.size() + " blocks into a construct at " + origin),
                 false);
         return blocks.size();
     }
 
-    /**
-     * Flood-fills from {@code origin} collecting all 6-connected non-air blocks up to
-     * {@value MAX_BLOCKS} blocks. This gathers the contiguous platform/structure to be
-     * assembled into a VS ship.
-     */
     private static List<BlockPos> collectBlocks(ServerLevel level, BlockPos origin) {
         List<BlockPos> result = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         Queue<BlockPos> queue = new ArrayDeque<>();
-
         if (!level.getBlockState(origin).isAir()) {
             visited.add(origin);
             queue.add(origin);
         }
-
         while (!queue.isEmpty() && result.size() < MAX_BLOCKS) {
             BlockPos pos = queue.poll();
             result.add(pos);
@@ -76,7 +79,6 @@ public class AssembleShipCommand {
                 }
             }
         }
-
         return result;
     }
 }

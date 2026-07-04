@@ -1,29 +1,23 @@
 package shipwrights.genesis.networking;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.neoforged.neoforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import shipwrights.genesis.GenesisMod;
 
-import java.util.function.Supplier;
+public record SyncTimeOffsetPacket(long timeOffset) implements CustomPacketPayload {
+    public static final Type<SyncTimeOffsetPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "sync_time_offset"));
 
-public class SyncTimeOffsetPacket {
+    public static final StreamCodec<RegistryFriendlyByteBuf, SyncTimeOffsetPacket> STREAM_CODEC =
+            StreamCodec.composite(
+                    ByteBufCodecs.VAR_LONG, SyncTimeOffsetPacket::timeOffset,
+                    SyncTimeOffsetPacket::new);
 
-    public final long timeOffset;
-
-    public SyncTimeOffsetPacket(long timeOffset) {
-        this.timeOffset = timeOffset;
-    }
-
-    public static void encode(SyncTimeOffsetPacket msg, FriendlyByteBuf buf) {
-        buf.writeLong(msg.timeOffset);
-    }
-
-    public static SyncTimeOffsetPacket decode(FriendlyByteBuf buf) {
-        return new SyncTimeOffsetPacket(buf.readLong());
-    }
-
-    public static void handle(SyncTimeOffsetPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> GenesisMod.clientTimeOffset = msg.timeOffset);
-        ctx.get().setPacketHandled(true);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

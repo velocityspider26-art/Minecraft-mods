@@ -131,6 +131,11 @@ dependencies {
         }
     }
 
+    // JOML primitives (AABBd/AABBi etc.) used by Genesis math; JOML itself ships with Minecraft.
+    jarJar(implementation("org.joml:joml-primitives:1.10.0")) {
+        version { strictly "[1.10.0,)"; prefer "1.10.0" }
+    }
+
     // Earcut (polygon triangulation, used by the planet shadow renderer)
     jarJar(implementation("org.maplibre:earcut4j:${earcut_version}")) {
         version {

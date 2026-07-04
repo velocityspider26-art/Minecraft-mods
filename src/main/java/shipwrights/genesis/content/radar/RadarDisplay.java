@@ -6,13 +6,15 @@ import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import org.joml.primitives.AABBd;
 import org.joml.primitives.AABBdc;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
+import shipwrights.genesis.compat.aeronautics.AeronauticsContraptionLookup;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.space.Celestial;
 
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class RadarDisplay {
 
@@ -27,7 +29,7 @@ public class RadarDisplay {
         this.data = new double[resolution][resolution];
     }
 
-    public void scan(Level level, Vector3dc camera, Vector3dc direction, Vector3dc up, List<Long> excludedShips) {
+    public void scan(Level level, Vector3dc camera, Vector3dc direction, Vector3dc up, List<UUID> excludedConstructs) {
         clear();
 
         // Normalize direction and up vectors
@@ -42,7 +44,7 @@ public class RadarDisplay {
 
         scanner.update(camera, directionNormalized, upNormalized, right);
 
-        scanShips(level, camera, excludedShips);
+        scanConstructs(level, camera, excludedConstructs);
 
         if (GenesisMod.isSpaceDimension(level)) {
             scanPlanets(level, camera);
@@ -50,12 +52,13 @@ public class RadarDisplay {
         }
     }
 
-    private void scanShips(Level level, Vector3dc camera, List<Long> excludedShips) {
-        VSGameUtilsKt.getShipObjectWorld(level).getAllShips().forEach(ship -> {
-            if (!excludedShips.contains(ship.getId())) {
-                scanBox(ship.getWorldAABB());
+    private void scanConstructs(Level level, Vector3dc camera, List<UUID> excludedConstructs) {
+        for (AeronauticsConstruct construct : AeronauticsContraptionLookup.getAllConstructs(level)) {
+            if (!excludedConstructs.contains(construct.id())) {
+                var b = construct.worldBounds();
+                scanBox(new AABBd(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ()));
             }
-        });
+        }
     }
 
     private void scanPlanets(Level level, Vector3dc camera) {

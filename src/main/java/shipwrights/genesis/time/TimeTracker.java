@@ -25,7 +25,7 @@ public class TimeTracker {
         // keeping genesisTime frozen. Sync every tick so clients stay in step.
         GenesisTimeData data = GenesisTimeData.getOrCreate(serverLevel.getServer());
         data.addOffset(-1);
-        GenesisNetworking.sendToAll(GenesisNetworking.INSTANCE, new SyncTimeOffsetPacket(data.getTimeOffset()));
+        GenesisNetworking.sendToAll(new SyncTimeOffsetPacket(data.getTimeOffset()));
     }
 
     @SubscribeEvent

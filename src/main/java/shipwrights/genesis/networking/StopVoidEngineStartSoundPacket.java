@@ -1,35 +1,22 @@
 package shipwrights.genesis.networking;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.network.NetworkEvent;
-import shipwrights.genesis.client.WormholeAmbianceHandler;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import shipwrights.genesis.GenesisMod;
 
-import java.util.function.Supplier;
+public record StopVoidEngineStartSoundPacket() implements CustomPacketPayload {
+    public static final StopVoidEngineStartSoundPacket INSTANCE = new StopVoidEngineStartSoundPacket();
 
-public record StopVoidEngineStartSoundPacket() {
+    public static final Type<StopVoidEngineStartSoundPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "stop_void_engine_start_sound"));
 
-    public static void encode(StopVoidEngineStartSoundPacket packet, FriendlyByteBuf buf) {
-    }
+    public static final StreamCodec<RegistryFriendlyByteBuf, StopVoidEngineStartSoundPacket> STREAM_CODEC =
+            StreamCodec.unit(INSTANCE);
 
-    public static StopVoidEngineStartSoundPacket decode(FriendlyByteBuf buf) {
-        return new StopVoidEngineStartSoundPacket();
-    }
-
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            context.enqueueWork(() -> ClientHandler.handle(this));
-        }
-        context.setPacketHandled(true);
-    }
-
-    private static class ClientHandler {
-
-        public static void handle(StopVoidEngineStartSoundPacket packet) {
-            WormholeAmbianceHandler.stopVoidEngineStart();
-        }
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

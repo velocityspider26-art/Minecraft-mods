@@ -8,19 +8,16 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.TickEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
-import org.joml.primitives.AABBic;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.util.VectorConversionsMCKt;
 import shipwrights.genesis.GenesisMod;
+import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
 import shipwrights.genesis.config.GenesisCommonConfig;
 import shipwrights.genesis.math.OBB;
 import shipwrights.genesis.space.Celestial;
@@ -29,11 +26,10 @@ import shipwrights.genesis.teleportation.TravelDirection;
 
 import java.util.*;
 
-import static shipwrights.genesis.teleportation.integration.Util.getSortedShips;
+import static shipwrights.genesis.teleportation.integration.Util.getSortedConstructs;
 
 public class SpaceToPlanetTeleporter {
 	private static final int LANDING_ACCURACY = 8; // Randomization range in chunks
-
 
 	private final boolean gameTest;
 
@@ -42,8 +38,8 @@ public class SpaceToPlanetTeleporter {
 	}
 
 	@SubscribeEvent(priority = EventPriority.HIGH)
-	public void onLevelTick(TickEvent.LevelTickEvent event) {
-		if (TickEvent.Phase.END.equals(event.phase) && event.level instanceof ServerLevel serverLevel && GenesisMod.isSpaceDimension(serverLevel)) {
+	public void onLevelTick(LevelTickEvent.Post event) {
+		if (event.getLevel() instanceof ServerLevel serverLevel && GenesisMod.isSpaceDimension(serverLevel)) {
 			if (gameTest || !serverLevel.getPlayers(u -> true, 1).isEmpty()) {
 				tick(serverLevel);
 			}
@@ -54,22 +50,21 @@ public class SpaceToPlanetTeleporter {
 		long ticks = GenesisMod.getTicks(level);
 		Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
 
-		for (LoadedServerShip ship : getSortedShips(level)) {
-			Vec3 shipCenter = VectorConversionsMCKt.toMinecraft(ship.getWorldAABB().center(new Vector3d()));
-			AABBic shipAABB = ship.getShipAABB();
+		for (AeronauticsConstruct construct : getSortedConstructs(level)) {
+			var box = construct.worldBounds();
+			Vec3 shipCenter = new Vec3((box.minX() + box.maxX()) / 2, (box.minY() + box.maxY()) / 2, (box.minZ() + box.maxZ()) / 2);
 
-			Celestial nearest = getNearestPlanet(ship, ticks, registry);
-			if (ship.isStatic() || nearest == null || shipAABB == null) continue;
+			Celestial nearest = getNearestPlanet(construct, ticks, registry);
+			if (nearest == null || construct.localBounds() == null) continue;
 
-			if (!shipOverlapsCelestial(ship, shipAABB, nearest, ticks, registry)) continue;
+			if (!constructOverlapsCelestial(construct, nearest, ticks, registry)) continue;
 
 			PlayerTeam team = level.getScoreboard().getPlayerTeam(registry.getResourceKey(nearest).orElseThrow().location().getPath());
-			if(team!=null)
-			{
+			if (team != null) {
 				Collection<String> teamShips = team.getPlayers();
-				if(!teamShips.contains(ship.getSlug()))
-				{
-					NeoForge.EVENT_BUS.post(new TeleportDisallowedEvent(ship, nearest));
+				String slug = construct.name();
+				if (slug == null || !teamShips.contains(slug)) {
+					NeoForge.EVENT_BUS.post(new TeleportDisallowedEvent(construct, nearest));
 					continue;
 				}
 			}
@@ -80,12 +75,14 @@ public class SpaceToPlanetTeleporter {
 			Vector3d newPos = computePlanetTarget(level);
 			Quaterniond rotation = getNewShipRot(shipCenter, nearest, ticks, registry);
 
-			DimensionTravelTeleporter.teleportShip(ship, TravelDirection.SPACE_TO_PLANET, level, targetLevel, newPos, rotation);
+			DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.SPACE_TO_PLANET, level, targetLevel, newPos, rotation);
 		}
 	}
 
-	private static boolean shipOverlapsCelestial(LoadedServerShip ship, AABBic shipAABB, Celestial nearest, long ticks, Registry<Celestial> registry) {
-		return OBB.fromShip(shipAABB, ship.getShipToWorld()).overlapsWith(nearest.getOBB(ticks, registry));
+	private static boolean constructOverlapsCelestial(AeronauticsConstruct construct, Celestial nearest, long ticks, Registry<Celestial> registry) {
+		var b = construct.localBounds();
+		OBB constructOBB = OBB.fromLocalBounds(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), construct.toWorldMatrix());
+		return constructOBB.overlapsWith(nearest.getOBB(ticks, registry));
 	}
 
 	private static @Nullable ServerLevel getTargetLevel(ServerLevel level, Celestial nearest, Registry<Celestial> registry) {
@@ -120,10 +117,10 @@ public class SpaceToPlanetTeleporter {
 		return rotation;
 	}
 
-	@Nullable static Celestial getNearestPlanet(Ship ship, long ticks, Registry<Celestial> registry) {
-		AABBic shipAABB = ship.getShipAABB();
-		if (shipAABB != null) {
-			OBB shipOBB = OBB.fromShip(shipAABB, ship.getShipToWorld());
+	@Nullable static Celestial getNearestPlanet(AeronauticsConstruct construct, long ticks, Registry<Celestial> registry) {
+		var b = construct.localBounds();
+		if (b != null) {
+			OBB shipOBB = OBB.fromLocalBounds(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), construct.toWorldMatrix());
 
 			Optional<Celestial> nearest = registry.stream()
 							.filter(c -> c.type().isVisitable())

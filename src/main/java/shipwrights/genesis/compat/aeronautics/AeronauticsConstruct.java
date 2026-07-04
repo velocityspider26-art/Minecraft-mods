@@ -128,6 +128,12 @@ public final class AeronauticsConstruct {
         return subLevel.isRemoved();
     }
 
+    /** Construct-local to world transform matrix (translation + rotation), the CA analog of {@code ship.getShipToWorld()}. */
+    public org.joml.Matrix4d toWorldMatrix() {
+        Vector3dc p = positionInWorld();
+        return new org.joml.Matrix4d().translate(p.x(), p.y(), p.z()).rotate(rotation());
+    }
+
     @Override
     public boolean equals(Object o) {
         return o instanceof AeronauticsConstruct other && other.subLevel == this.subLevel;
