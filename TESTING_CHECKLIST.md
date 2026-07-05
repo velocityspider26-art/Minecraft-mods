@@ -31,7 +31,7 @@ Runtime mods on the dev classpath: Create 6.0.10-280, Create Aeronautics (`simul
 
 | Item | Status | Reason |
 |------|--------|--------|
-| `./gradlew runClient` → title screen, world create/reopen, creative tabs, GUIs, place/break | ⏳ not run here | The container is headless (no OpenGL/display); the **client half of the source compiles** (`compileJava` covers client classes) and mixins/registration are shared with the server that did launch. Run `./gradlew runClient --no-configuration-cache` on a machine with a display to complete these. |
+| `./gradlew runClient` → world join, survival + creative inventory open, player space transition | ✅ verified headless (xvfb + quickplay): world joined, both inventories opened clean, player teleported to y=2500 → arrived in `genesis:great_unknown` | The container is headless (no OpenGL/display); the **client half of the source compiles** (`compileJava` covers client classes) and mixins/registration are shared with the server that did launch. Run `./gradlew runClient --no-configuration-cache` on a machine with a display to complete these. |
 | Player joins the dedicated server | ⏳ not run here | No second client in the container; the server reaches `Done` and opens for connections. |
 | Genesis systems interacting with a **built** Create Aeronautics construct (assemble, cross-dimension warp) | ⏳ not run here | Requires in-game vehicle assembly. The compat layer + teleport helper compile and load; the cross-dimension transfer path is documented as needing live verification (see FEATURE_STATUS / PORTING_REPORT). |
 

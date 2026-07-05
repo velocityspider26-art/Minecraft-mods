@@ -17,8 +17,14 @@ import java.util.function.Consumer;
  */
 public class GenesisFluids {
 
-    // Registrate.create() auto-registers event listeners via getModEventBus()
-    public static final Registrate REGISTRATE = Registrate.create(GenesisMod.MOD_ID);
+    // Registrate.create() auto-registers event listeners via getModEventBus().
+    // The bucket item is inserted into the Genesis Natural tab by Registrate itself;
+    // it must not ALSO be accepted manually in GenesisCreativeTabs or NeoForge's
+    // duplicate-entry assertion crashes the creative inventory.
+    public static final Registrate REGISTRATE = Registrate.create(GenesisMod.MOD_ID)
+            .defaultCreativeTab(net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.CREATIVE_MODE_TAB,
+                    ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "genesis_natural_tab")));
 
     private static final ResourceLocation STILL_RL = ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "block/miasma_still");
     private static final ResourceLocation FLOWING_RL = ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "block/miasma_flow");

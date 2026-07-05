@@ -10,7 +10,7 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 | Items (block items, tools, ingredients, space armour) | ✅ | Armour on 1.21 `ArmorMaterial` record + `CUSTOM_DATA` modules |
 | Fluids (Miasma) | ✅ | Registrate `BaseFlowingFluid`; bucket + liquid block |
 | Sounds / particles (zap bubble, verdite) | ✅ | DeferredRegister on 1.21 registries |
-| Paintings (space_0) | ✅ | `PaintingVariant(w,h,assetId)`; creative tab via `CustomData` |
+| Paintings (space_0) | ✅ | Datapack `painting_variant/space_0.json` (dynamic registry in 1.21.1); creative tab via `CustomData` |
 | Creative tabs (Genesis, Genesis Natural) | ✅ | `Registries.CREATIVE_MODE_TAB`; dynamic slab/stair items included |
 | Void Engine machine (warp drive) | ✅ | NeoForge energy capability; charge/warp/return logic on compat layer |
 | Tulcite Catalyzer (menu + generator) | ✅ | `useWithoutItem`/`openMenu`; item+energy capabilities; container menu |
@@ -28,7 +28,7 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 | Biome modifiers (ore/miasma placement) | ✅ | `neoforge:add_features` |
 | Celestial datapack registry + transform providers | ✅ | `MapCodec` dispatch; static/orbiting providers |
 | Frozen-time system (time offset) | ✅ | `SavedData` (1.21 Factory) + payload sync |
-| Dimension travel (planet ↔ space, wormhole) | ✅ | Construct + entity teleport on compat layer |
+| Dimension travel (planet ↔ space, wormhole) | ✅ | Construct + entity teleport on compat layer; free-flying players above the atmosphere exit height (2048) now enter space, and re-enter a planet on contact in space — verified in-game |
 | Recipes (crafting, smelting, blasting) | ✅ | Migrated to 1.21 format (`result.id`, string ingredients); removed-mod items substituted |
 | Loot tables / tags / advancements | ✅ | Folders migrated (`loot_table`, `recipe`, `tags/block`…) |
 | Networking (warp/sound/time packets) | ✅ | NeoForge `CustomPacketPayload` system |

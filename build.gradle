@@ -135,6 +135,8 @@ dependencies {
     }
 
     // JOML primitives (AABBd/AABBi etc.) used by Genesis math; JOML itself ships with Minecraft.
+    additionalRuntimeClasspath "org.joml:joml-primitives:1.10.0"
+    additionalRuntimeClasspath "org.maplibre:earcut4j:${earcut_version}"
     jarJar(implementation("org.joml:joml-primitives:1.10.0")) {
         version { strictly "[1.10.0,)"; prefer "1.10.0" }
     }

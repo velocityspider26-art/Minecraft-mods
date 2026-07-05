@@ -119,7 +119,6 @@ public class GenesisCreativeTabs {
                         output.accept(GenesisItems.WITHERING_WILLOW_LOG.get());
                         output.accept(GenesisItems.WITHERING_WILLOW_BRANCH.get());
                         output.accept(GenesisItems.WITHERING_WILLOW_LEAVES.get());
-                        output.accept(shipwrights.genesis.content.fluid.GenesisFluids.MIASMA.getBucket().get());
 
                         output.accept(GenesisItems.VERDITE_ORE.get());
                         output.accept(GenesisItems.VERDITE_CLUSTER.get());

@@ -33,7 +33,7 @@ public final class SpaceArmourMaterial {
                 5,
                 SoundEvents.ARMOR_EQUIP_LEATHER,
                 () -> Ingredient.of(Items.PHANTOM_MEMBRANE),
-                List.of(new ArmorMaterial.Layer(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "space"))),
+                List.of(new ArmorMaterial.Layer(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "space_suit"))),
                 1.0f,
                 0.0f);
     }

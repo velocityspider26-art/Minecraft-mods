@@ -77,6 +77,34 @@ public class SpaceToPlanetTeleporter {
 
 			DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.SPACE_TO_PLANET, level, targetLevel, newPos, rotation);
 		}
+
+		// Free-flying players (not aboard a construct) re-enter a planet's atmosphere on contact.
+		for (net.minecraft.server.level.ServerPlayer player : List.copyOf(level.players())) {
+			if (player.isPassenger() || player.isRemoved()) continue;
+
+			var bb = player.getBoundingBox();
+			OBB playerOBB = OBB.fromAABB(new org.joml.primitives.AABBd(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ));
+
+			Optional<Celestial> nearestOpt = registry.stream()
+					.filter(c -> c.type().isVisitable())
+					.map(c -> Map.entry(c, c.getOBB(ticks, registry).distanceTo(playerOBB)))
+					.min(Comparator.comparingDouble(Map.Entry::getValue))
+					.map(Map.Entry::getKey);
+			if (nearestOpt.isEmpty()) continue;
+			Celestial nearest = nearestOpt.get();
+
+			if (!playerOBB.overlapsWith(nearest.getOBB(ticks, registry))) continue;
+
+			ServerLevel targetLevel = getTargetLevel(level, nearest, registry);
+			if (targetLevel == null) continue;
+
+			Vector3d newPos = computePlanetTarget(level);
+			Quaterniond rotation = getNewShipRot(player.position(), nearest, ticks, registry);
+
+			GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), targetLevel.dimension().location());
+			shipwrights.genesis.teleportation.impl.EntityTeleporter.teleportEntityAndPassengers(
+					player, targetLevel, new Vec3(newPos.x, newPos.y, newPos.z), rotation);
+		}
 	}
 
 	private static boolean constructOverlapsCelestial(AeronauticsConstruct construct, Celestial nearest, long ticks, Registry<Celestial> registry) {

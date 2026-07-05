@@ -96,7 +96,6 @@ public final class GenesisMod {
         shipwrights.genesis.content.sound.GenesisSounds.SOUND_EVENTS.register(modEventBus);
         shipwrights.genesis.content.item.GenesisItems.ITEMS.register(modEventBus);
         shipwrights.genesis.content.item.GenesisCreativeTabs.register(modEventBus);
-        shipwrights.genesis.content.painting.GenesisPaintings.PAINTING_VARIANTS.register(modEventBus);
 
         boolean isGameTest = System.getProperty("neoforge.enabledGameTestNamespaces") != null;
         NeoForge.EVENT_BUS.register(new PlanetToSpaceTeleporter(isGameTest));
