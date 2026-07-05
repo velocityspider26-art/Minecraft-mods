@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "genesis:block/rainbow_chalcopyrite_block"
+    }
+  }
+}

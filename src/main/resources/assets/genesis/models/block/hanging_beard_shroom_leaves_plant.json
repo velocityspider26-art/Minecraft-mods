@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "genesis:block/hanging_beard_shroom_leaves_plant"
+  }
+}

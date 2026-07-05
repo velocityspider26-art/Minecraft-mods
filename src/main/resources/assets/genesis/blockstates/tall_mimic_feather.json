@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "half=lower": { "model": "genesis:block/tall_mimic_feather_bottom" },
+    "half=upper": { "model": "genesis:block/tall_mimic_feather_top" }
+  }
+}

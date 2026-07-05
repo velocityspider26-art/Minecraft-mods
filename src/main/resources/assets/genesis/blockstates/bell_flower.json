@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "half=lower": {
+      "model": "genesis:block/bell_flower_bottom"
+    },
+    "half=upper": {
+      "model": "genesis:block/bell_flower_top"
+    }
+  }
+}

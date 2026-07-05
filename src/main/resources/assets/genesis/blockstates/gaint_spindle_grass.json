@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "half=lower": { "model": "genesis:block/gaint_spindle_grass_bottom" },
+    "half=upper": { "model": "genesis:block/gaint_spindle_grass_top" }
+  }
+}

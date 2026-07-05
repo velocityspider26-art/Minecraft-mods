@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "axis=x": { "model": "genesis:block/beard_shroom_log", "x": 90, "y": 90 },
+    "axis=y": { "model": "genesis:block/beard_shroom_log" },
+    "axis=z": { "model": "genesis:block/beard_shroom_log", "x": 90 }
+  }
+}
