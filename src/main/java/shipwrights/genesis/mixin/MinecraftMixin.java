@@ -22,7 +22,7 @@ public abstract class MinecraftMixin {
     @Unique
     private static boolean genesis$settingTransition = false;
     @Inject(method = "setLevel", at = @At("HEAD"))
-    private void setLevelInject(ClientLevel newLevel, CallbackInfo ci) {
+    private void setLevelInject(ClientLevel newLevel, ReceivingLevelScreen.Reason reason, CallbackInfo ci) {
         ClientLevel oldLevel = instance.level;
 
         if (oldLevel == null) {

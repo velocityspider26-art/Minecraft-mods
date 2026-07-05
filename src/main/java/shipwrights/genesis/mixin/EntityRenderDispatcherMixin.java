@@ -20,12 +20,12 @@ public class EntityRenderDispatcherMixin {
     private static final ThreadLocal<Entity> genesis$currentEntity = new ThreadLocal<>();
 
     @Inject(method = "renderHitbox", at = @At("HEAD"))
-    private static void captureEntity(PoseStack arg, VertexConsumer arg2, Entity arg3, float arg4, CallbackInfo ci) {
+    private static void captureEntity(PoseStack arg, VertexConsumer arg2, Entity arg3, float red, float green, float blue, float alpha, CallbackInfo ci) {
         genesis$currentEntity.set(arg3);
     }
 
     @Inject(method = "renderHitbox", at = @At("RETURN"))
-    private static void clearEntity(PoseStack arg, VertexConsumer arg2, Entity arg3, float arg4, CallbackInfo ci) {
+    private static void clearEntity(PoseStack arg, VertexConsumer arg2, Entity arg3, float red, float green, float blue, float alpha, CallbackInfo ci) {
         genesis$currentEntity.remove();
     }
 

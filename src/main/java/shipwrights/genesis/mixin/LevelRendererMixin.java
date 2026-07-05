@@ -33,7 +33,7 @@ public class LevelRendererMixin {
     }
 
     @WrapMethod(method = "renderClouds")
-    public void genesis$renderClouds(PoseStack poseStack, Matrix4f projectionMatrix, float partialTick,
+    public void genesis$renderClouds(PoseStack poseStack, Matrix4f frustumMatrix, Matrix4f projectionMatrix, float partialTick,
                                      double camX, double camY, double camZ, Operation<Void> original) {
 
         float fade = 1.0f - (float)((camY - 320.0) / 80.0);
@@ -42,7 +42,7 @@ public class LevelRendererMixin {
         // Apply fade BEFORE rendering
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, fade);
 
-        original.call(poseStack, projectionMatrix, partialTick, camX, camY, camZ);
+        original.call(poseStack, frustumMatrix, projectionMatrix, partialTick, camX, camY, camZ);
 
         // Reset after
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
