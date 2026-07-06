@@ -14,5 +14,6 @@ public class DimensionEffectsRegistration {
         event.register(SPACE_DIM, new SpaceDimensionEffects());
         event.register(WORMHOLE_DIM, new WormholeDimensionEffects());
         event.register(GENERIC_PLANET_ID, new PlanetDimensionEffects());
+        LOGGER.info("Registered Genesis dimension special effects (space sky, wormhole, planet atmosphere)");
     }
 }

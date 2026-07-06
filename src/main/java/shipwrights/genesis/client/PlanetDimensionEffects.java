@@ -82,21 +82,27 @@ public class PlanetDimensionEffects extends DimensionSpecialEffects {
         return props.atmosphere().precipitation();
     }
 
-    public boolean renderClouds(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, double camX, double camY, double camZ, Matrix4f projectionMatrix) {
+    @Override
+    public boolean renderClouds(ClientLevel level, int ticks, float partialTick, PoseStack poseStack, double camX, double camY, double camZ, Matrix4f frustumMatrix, Matrix4f projectionMatrix) {
         PlanetProperties planetProps = getPlanetProperties(level);
         double density = planetProps != null ? planetProps.atmosphere().density() : 1.0;
         return camY > 500 || density <= 0.7;
     }
 
+    @Override
     public boolean renderSnowAndRain(ClientLevel level, int ticks, float partialTick, LightTexture lightTexture, double camX, double camY, double camZ) {
         return !hasPrecipitation(level) || camY > 360;
     }
 
+    @Override
     public boolean tickRain(ClientLevel level, int ticks, Camera camera) {
         return !hasPrecipitation(level);
     }
 
-    public boolean renderSky(ClientLevel level, int unused, float partialTick, PoseStack poseStack, Camera camera, Matrix4f projectionMatrix, boolean isFoggy, Runnable setupFog) {
+    @Override
+    public boolean renderSky(ClientLevel level, int unused, float partialTick, Matrix4f modelViewMatrix, Camera camera, Matrix4f projectionMatrix, boolean isFoggy, Runnable setupFog) {
+        PoseStack poseStack = new PoseStack();
+        poseStack.mulPose(modelViewMatrix);
 
         long gameTime = GenesisMod.getTicks(level);
         VantagePoint vp = VantagePoint.get(level, new Vector3d(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z), gameTime, partialTick);

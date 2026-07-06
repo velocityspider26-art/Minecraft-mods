@@ -82,6 +82,10 @@ public class SpaceToPlanetTeleporter {
 		for (net.minecraft.server.level.ServerPlayer player : List.copyOf(level.players())) {
 			if (player.isPassenger() || player.isRemoved()) continue;
 
+			// Grace period after arriving in space so the player isn't bounced straight back down.
+			long arrival = player.getPersistentData().getLong(PlanetToSpaceTeleporter.SPACE_ARRIVAL_TAG);
+			if (level.getGameTime() - arrival < 200) continue;
+
 			var bb = player.getBoundingBox();
 			OBB playerOBB = OBB.fromAABB(new org.joml.primitives.AABBd(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ));
 
@@ -104,6 +108,10 @@ public class SpaceToPlanetTeleporter {
 			GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), targetLevel.dimension().location());
 			shipwrights.genesis.teleportation.impl.EntityTeleporter.teleportEntityAndPassengers(
 					player, targetLevel, new Vec3(newPos.x, newPos.y, newPos.z), rotation);
+			player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+					net.minecraft.world.effect.MobEffects.SLOW_FALLING, 20 * 300, 0, false, false, true));
+			player.displayClientMessage(net.minecraft.network.chat.Component.literal("Entering the atmosphere")
+					.withStyle(net.minecraft.ChatFormatting.GOLD), true);
 		}
 	}
 

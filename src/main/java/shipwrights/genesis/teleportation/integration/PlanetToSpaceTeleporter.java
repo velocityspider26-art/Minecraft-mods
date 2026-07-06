@@ -1,9 +1,15 @@
 package shipwrights.genesis.teleportation.integration;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -25,6 +31,9 @@ import java.util.List;
 import static shipwrights.genesis.teleportation.integration.Util.getSortedConstructs;
 
 public class PlanetToSpaceTeleporter {
+	/** Persistent-data tag holding the game time a player arrived in space (re-entry grace). */
+	public static final String SPACE_ARRIVAL_TAG = "genesis_space_arrival_tick";
+
 	private final boolean gameTest;
 
 	public PlanetToSpaceTeleporter(boolean gameTest) {
@@ -41,44 +50,62 @@ public class PlanetToSpaceTeleporter {
 	}
 
 	private static void tick(ServerLevel level) {
-		Celestial body = GenesisMod.getCelestialForLevel(level);
+		if (GenesisMod.isSpaceDimension(level)) return;
+
 		ServerLevel spaceLevel = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.SPACE_DIM));
+		if (spaceLevel == null) return;
 
-		if (body == null || spaceLevel == null) {
-			return;
-		}
-
+		Celestial body = GenesisMod.getCelestialForLevel(level);
 		long ticks = GenesisMod.getTicks(level);
 
-		for (AeronauticsConstruct construct : getSortedConstructs(level)) {
-			Vector3dc pos = construct.positionInWorld();
-			if (pos.y() > GenesisCommonConfig.getAtmosphereExitHeight()) {
-				if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-					DimensionTravelTeleporter.teleportConstruct(
-							construct,
-							TravelDirection.PLANET_TO_SPACE,
-							level,
-							spaceLevel,
-							computeSpaceTarget(vantagePoint),
-							vantagePoint.getCelestialRotation().mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond())
-					);
+		if (body != null) {
+			for (AeronauticsConstruct construct : getSortedConstructs(level)) {
+				Vector3dc pos = construct.positionInWorld();
+				if (pos.y() > GenesisCommonConfig.getAtmosphereExitHeight()) {
+					if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
+						DimensionTravelTeleporter.teleportConstruct(
+								construct,
+								TravelDirection.PLANET_TO_SPACE,
+								level,
+								spaceLevel,
+								computeSpaceTarget(vantagePoint),
+								vantagePoint.getCelestialRotation().mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond())
+						);
+					}
 				}
 			}
 		}
 
-		// Free-flying players (not aboard a construct) leave the atmosphere the same way ships do.
+		// Free-flying players (not aboard a construct) always leave the atmosphere when high
+		// enough — even if this level has no celestial mapping, they still reach space.
 		for (ServerPlayer player : List.copyOf(level.players())) {
 			if (player.isPassenger() || player.isRemoved()) continue;
 			if (player.getY() <= GenesisCommonConfig.getAtmosphereExitHeight()) continue;
 
+			Vector3d target;
+			Quaterniond rotation;
 			Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
 			if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-				Vector3d target = computeSpaceTarget(vantagePoint);
-				Quaterniond rotation = vantagePoint.getCelestialRotation()
+				// Arrive well clear of the celestial so re-entry doesn't immediately trigger.
+				target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
+				rotation = vantagePoint.getCelestialRotation()
 						.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
-				GenesisMod.LOGGER.info("Player {} left the atmosphere of {}; entering space", player.getGameProfile().getName(), level.dimension().location());
-				EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
+			} else {
+				// No celestial mapping for this level — send them into the Great Unknown anyway.
+				target = new Vector3d(player.getX() / 16.0, 320.0, player.getZ() / 16.0);
+				rotation = new Quaterniond();
 			}
+
+			GenesisMod.LOGGER.info("Player {} left the atmosphere of {}; entering space at ({}, {}, {})",
+					player.getGameProfile().getName(), level.dimension().location(),
+					(int) target.x, (int) target.y, (int) target.z);
+
+			EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
+
+			player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, spaceLevel.getGameTime());
+			player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
+			player.displayClientMessage(Component.literal("Entering the Great Unknown").withStyle(ChatFormatting.AQUA), true);
+			player.playNotifySound(SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.25f, 1.5f);
 		}
 	}
 

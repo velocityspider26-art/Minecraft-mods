@@ -30,6 +30,10 @@ public class FogRendererMixin {
                                             @Share("apparentAngle") LocalDoubleRef apparentAngle) {
         long gameTime = GenesisMod.getTicks(instance);
         VantagePoint vp = VantagePoint.get(instance, new Vector3d(pos.x, pos.y, pos.z), gameTime, partialTick);
+        if (vp instanceof VantagePoint.InSpace) {
+            apparentAngle.set(instance.getSunAngle(partialTick) / Mth.TWO_PI);
+            return new Vec3(0.005, 0.005, 0.012);
+        }
         if (vp instanceof VantagePoint.OnCelestial oc) {
             Celestial star = oc.celestial().getNearestStar(gameTime, partialTick, oc.registry());
             Vector3d toStar = new Vector3d(star.getPosition(gameTime, partialTick, oc.registry()))
