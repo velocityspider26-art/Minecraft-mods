@@ -19,7 +19,7 @@ public interface VantagePoint {
     /// if null, the observer has no access to space. Example: the observer is in The Nether
     static @Nullable VantagePoint get(Level level, Vector3dc posInLevel, long ticks, float partialTick) {
         if (GenesisMod.isSpaceDimension(level)) {
-            return new VantagePoint.InSpace();
+            return new VantagePoint.InSpace(new Vector3d(posInLevel));
         } else {
             Celestial celestial = GenesisMod.getCelestialForLevel(level);
             if (celestial != null) {
@@ -36,10 +36,12 @@ public interface VantagePoint {
     }
 
 
-    record InSpace () implements VantagePoint {
+    /// In the space dimension the observer's position IS the space-level position; celestial
+    /// coordinates live in the same space, so rendering and fog must use the real camera position.
+    record InSpace (Vector3dc position) implements VantagePoint {
         @Override
         public Vector3dc getPosition() {
-            return new Vector3d();
+            return position;
         }
 
         @Override

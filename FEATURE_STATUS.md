@@ -49,13 +49,19 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 | Construct-cluster teleport | 🟡 | Proximity-based (CA has no ship↔ship revolute joints like VS) |
 | Velocity inheritance for riders | ✅ | `AeronauticsMovementHelper` |
 
+## Atmosphere flight effects
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Re-entry / atmosphere-exit heating | ✅ (code-verified) | `AtmosphereBurnEffects`: plasma builds on the leading face of **Sable physics objects only** (constructs from `AeronauticsContraptionLookup`), scaling with speed (15–65 blocks/s) and air density, fading to nothing at the atmosphere exit height; flame→blue-white plasma→sparks as heat rises, smoke trail, swelling roar. Players/mobs/items are never affected. Needs a built CA vehicle for live tuning. |
+
 ## Client rendering
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Block-entity renderers (nav, radar, void core, void engine) | ✅ | 1.21 vertex API (`addVertex`/`setColor`/`setUv`) |
 | Dimension sky/fog effects (space, planet, wormhole) | 🟡 | Fog colour + sky type preserved; custom `renderSky`/`renderClouds` hooks removed in 1.21.1 → vanilla sky fallback |
-| Celestial rendering (stars/planets/black holes) | 🟡 | Drawn as vanilla billboards (`SimpleBillboardCelestialRenderer`); bespoke GLSL surfaces/atmospheres retired |
+| Celestial rendering (stars/planets/black holes) | ✅ | Earth/Moon render as hemisphere-projected textured globes with additive atmosphere rims; the Sun as a layered core/glow/corona star; black holes as void discs with accretion rims — verified in-game from the space dimension |
 | Custom GLSL shaders (sun/planet/atmosphere/blackhole/wormhole) | ❌ | Lodestone-1.20 shader API rewritten for 1.21 core shaders; no drop-in — documented in PORTING_REPORT |
 | Space colour-invert post-process | ❌ | Depended on the removed shader pipeline |
 | Planet shadow projector (`client/shading/*`) | ❌ | Part of the removed GLSL subsystem |
