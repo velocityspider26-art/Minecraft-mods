@@ -19,7 +19,7 @@ public class BuiltinCelestialTypes {
 
         private static CelestialRenderer renderer = null;
         public @NotNull CelestialRenderer getRenderer() {
-            if (renderer == null) renderer = new SimpleBillboardCelestialRenderer(1.0f, 0.95f, 0.7f, 1.0f);
+            if (renderer == null) renderer = new shipwrights.genesis.space.renderer.StarRenderer();
             return renderer;
         }
 
@@ -39,7 +39,7 @@ public class BuiltinCelestialTypes {
 
         private static CelestialRenderer renderer = null;
         public @NotNull CelestialRenderer getRenderer() {
-            if (renderer == null) renderer = new SimpleBillboardCelestialRenderer(0.55f, 0.7f, 1.0f, 1.0f);
+            if (renderer == null) renderer = new shipwrights.genesis.space.renderer.PlanetRenderer(0.55f, 0.7f, 1.0f, 1.0f);
             return renderer;
         }
 

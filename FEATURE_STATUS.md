@@ -67,9 +67,9 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 |---------|--------|-------|
 | Block-entity renderers (nav, radar, void core, void engine) | ✅ | 1.21 vertex API (`addVertex`/`setColor`/`setUv`) |
 | Dimension sky/fog effects (space, planet, wormhole) | 🟡 | Fog colour + sky type preserved; custom `renderSky`/`renderClouds` hooks removed in 1.21.1 → vanilla sky fallback |
-| Celestial rendering (stars/planets/black holes) | ✅ | Earth/Moon render as hemisphere-projected textured globes with additive atmosphere rims; the Sun as a layered core/glow/corona star; black holes as void discs with accretion rims — verified in-game from the space dimension |
-| Custom GLSL shaders (sun/planet/atmosphere/blackhole/wormhole) | ❌ | Lodestone-1.20 shader API rewritten for 1.21 core shaders; no drop-in — documented in PORTING_REPORT |
-| Space colour-invert post-process | ❌ | Depended on the removed shader pipeline |
+| Celestial rendering (stars/planets/black holes) | ✅ | Restored VS Genesis' original raymarched/textured **cube** celestials via `StarRenderer` + `PlanetRenderer`: the Sun ray-marches a rounded cube in the `sun` fragment shader tinted between its two colours; Earth/Moon draw as six-faced cubes sampling the original 3×2 surface net through `planet_textured`, directionally lit from the nearest star with an additive atmosphere rim. Automatic vanilla-pipeline billboard fallback if a shader can't compile. |
+| Custom GLSL shaders (sun/planet/atmosphere/blackhole/wormhole) | ✅ | VS Genesis' original `.vsh`/`.fsh`/`.json` shaders ported onto **Lodestone 1.8.2's** `ShaderHolder`/`ExtendedShaderInstance` API (`client/ShaderRegistry`). All five Genesis shaders (`sun`, `planet_textured`, `planet_atmosphere`, `blackhole`, `star_glow`) compile and link — verified in a headless llvmpipe client boot. Toggle with `UseProceduralCelestialShaders` in the client config. |
+| Space colour-invert post-process | ❌ | Depended on the removed full-screen post pipeline |
 | Planet shadow projector (`client/shading/*`) | ❌ | Part of the removed GLSL subsystem |
 | Screens (Tulcite catalyzer, transition, warp loading) | ✅ | Menu screen via `RegisterMenuScreensEvent`; overlays rebased on `Screen` |
 | Sound handlers / ambiance | ✅ | `ClientTickEvent.Post` |

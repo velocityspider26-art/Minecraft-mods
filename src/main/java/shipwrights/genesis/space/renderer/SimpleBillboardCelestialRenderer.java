@@ -164,6 +164,33 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
         RenderSystem.defaultBlendFunc();
     }
 
+    /**
+     * Camera-facing additive atmosphere rim around a body — used by the shader planet renderer to
+     * give the cube planet the same blue limb the billboard planet has.
+     */
+    public void drawAtmosphereRim(Matrix4f pose, Vector3d center, org.joml.Quaternionf ignoredRot, float half,
+                                  PlanetProperties pp) {
+        if (pp.atmosphere() == null || pp.atmosphere().density() <= 0) return;
+        Vector3d dir = new Vector3d(center);
+        if (dir.lengthSquared() < 1.0e-9) return;
+        dir.normalize();
+        Vector3d up = Math.abs(dir.y) > 0.99 ? new Vector3d(1, 0, 0) : new Vector3d(0, 1, 0);
+        Vector3d right = new Vector3d(dir).cross(up).normalize();
+        Vector3d realUp = new Vector3d(right).cross(dir).normalize();
+
+        float density = (float) Math.min(1.0, pp.atmosphere().density());
+        float thickness = (float) Math.max(0.15, Math.min(1.0, pp.atmosphere().thickness()));
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        drawRadialFan(pose, center, right, realUp,
+                half * 1.02f, half * (1.0f + 0.28f * thickness),
+                0.35f, 0.60f, 1.0f, 0.55f * density,
+                0.30f, 0.55f, 1.0f, 0.0f);
+        RenderSystem.defaultBlendFunc();
+    }
+
     private void renderBlackHole(Matrix4f pose, Vector3d center, Vector3d right, Vector3d up, float half) {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         // Thin hot accretion rim...
