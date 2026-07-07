@@ -30,3 +30,25 @@ NeoForged Discord: https://discord.neoforged.net/
 - `/genesis land` — drop from space into the nearest planet's atmosphere (slow falling included).
 - Flying or teleporting above y=2048 (`atmosphereExitHeight` in `genesis-common.toml`) also
   transfers you automatically; an actionbar countdown appears from ~y=1130 upward.
+
+## Space travel loop
+
+The full loop, all dimension hops hidden behind the frame-capture transition screen (no vanilla
+loading screen), with player/craft momentum, rotation and passengers preserved:
+
+1. **Earth -> space** — fly a Sable/Create Aeronautics craft (or yourself) above `atmosphereExitHeight`
+   (default y=2048). The sky darkens and stars fade in on the climb (surface -> lower -> upper
+   atmosphere -> near-space) via the planet atmosphere renderer, then you slip into the Great Unknown
+   just off the cube face you launched from.
+2. **Space** — the Great Unknown holds Earth, Moon, Sun and the black hole at their real positions.
+   The Moon orbits ~10,000 blocks from Earth and grows as you approach.
+3. **Space -> Moon** — come within the Moon's approach radius and you drop into the Moon dimension
+   (`genesis:moon`) — its own dimension for gravity/terrain, entered seamlessly.
+4. **Deep space** — stray past `deepSpaceRadius` (default 30,000 from Earth, i.e. ~20,000 past the
+   Moon) and you cross into deep space (`genesis:subspace`).
+5. **Return** — approach Earth and you re-enter the atmosphere; **which cube face you approach picks a
+   distinct overworld region** (top / bottom / N / S / E / W never collapse to the same coordinates),
+   and where on the face you approach shifts where in that region you land.
+
+Re-entry / atmosphere-exit plasma heating applies to Sable physics objects only. All distances live
+in `genesis-common.toml` under `[travel]`.

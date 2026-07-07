@@ -1,12 +1,12 @@
 {
   "type": "genesis:body",
-  "size": 29,
+  "size": 387,
   "gravity": 0.1622,
   "transformProvider": {
     "type": "genesis:orbiting",
     "parentID": "minecraft:overworld",
     "seed": 67890,
-    "orbitDistance": 750,
+    "orbitDistance": 10000,
     "orbitTime": 184329,
     "dayLength": 0
   },

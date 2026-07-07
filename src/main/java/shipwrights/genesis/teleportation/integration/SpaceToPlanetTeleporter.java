@@ -1,213 +1,246 @@
 package shipwrights.genesis.teleportation.integration;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
-import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.scores.PlayerTeam;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
+import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
 import shipwrights.genesis.config.GenesisCommonConfig;
-import shipwrights.genesis.math.OBB;
 import shipwrights.genesis.space.Celestial;
+import shipwrights.genesis.space.CubePlanetMapping;
 import shipwrights.genesis.teleportation.DimensionTravelTeleporter;
 import shipwrights.genesis.teleportation.TravelDirection;
+import shipwrights.genesis.teleportation.impl.EntityTeleporter;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 import static shipwrights.genesis.teleportation.integration.Util.getSortedConstructs;
 
+/**
+ * Space-side half of the travel loop, run every tick in the Great Unknown.
+ *
+ * <p>Players and constructs are "captured" by a body's atmosphere when they come within its
+ * approach radius (not when they clip inside it), and fall into that body's dimension — the Earth
+ * via cube-face mapping so the side you approach decides where you land, the Moon via a surface
+ * drop. Anyone who strays past {@code deepSpaceRadius} from Earth slips into deep space (subspace).
+ * Every hop is a dimension change with a space dimension on one side, so the client's transition
+ * screen hides the load and it never feels like a portal.</p>
+ */
 public class SpaceToPlanetTeleporter {
-	private static final int LANDING_ACCURACY = 8; // Randomization range in chunks
 
-	private final boolean gameTest;
+    private static final ResourceLocation EARTH_ID = ResourceLocation.parse("minecraft:overworld");
 
-	public SpaceToPlanetTeleporter(boolean gameTest) {
-		this.gameTest = gameTest;
-	}
+    private final boolean gameTest;
 
-	@SubscribeEvent(priority = EventPriority.HIGH)
-	public void onLevelTick(LevelTickEvent.Post event) {
-		if (event.getLevel() instanceof ServerLevel serverLevel && GenesisMod.isSpaceDimension(serverLevel)) {
-			if (gameTest || !serverLevel.getPlayers(u -> true, 1).isEmpty()) {
-				tick(serverLevel);
-			}
-		}
-	}
+    public SpaceToPlanetTeleporter(boolean gameTest) {
+        this.gameTest = gameTest;
+    }
 
-	private static void tick(ServerLevel level) {
-		long ticks = GenesisMod.getTicks(level);
-		Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+    @SubscribeEvent(priority = EventPriority.HIGH)
+    public void onLevelTick(LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof ServerLevel serverLevel && GenesisMod.isSpaceDimension(serverLevel)) {
+            if (gameTest || !serverLevel.getPlayers(u -> true, 1).isEmpty()) {
+                tick(serverLevel);
+            }
+        }
+    }
 
-		for (AeronauticsConstruct construct : getSortedConstructs(level)) {
-			var box = construct.worldBounds();
-			Vec3 shipCenter = new Vec3((box.minX() + box.maxX()) / 2, (box.minY() + box.maxY()) / 2, (box.minZ() + box.maxZ()) / 2);
+    private void tick(ServerLevel level) {
+        long ticks = GenesisMod.getTicks(level);
+        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
 
-			Celestial nearest = getNearestPlanet(construct, ticks, registry);
-			if (nearest == null || construct.localBounds() == null) continue;
+        Celestial earth = registry.get(EARTH_ID);
+        Vector3dc earthPos = earth != null ? earth.getPosition(ticks, registry) : new Vector3d();
+        double deepSpace = GenesisCommonConfig.getDeepSpaceRadius();
 
-			if (!constructOverlapsCelestial(construct, nearest, ticks, registry)) continue;
+        // ---- constructs (Sable physics objects) ----
+        for (AeronauticsConstruct construct : getSortedConstructs(level)) {
+            if (construct.isRemoved() || construct.localBounds() == null) continue;
+            var box = construct.worldBounds();
+            Vector3d center = new Vector3d((box.minX() + box.maxX()) / 2, (box.minY() + box.maxY()) / 2, (box.minZ() + box.maxZ()) / 2);
 
-			PlayerTeam team = level.getScoreboard().getPlayerTeam(registry.getResourceKey(nearest).orElseThrow().location().getPath());
-			if (team != null) {
-				Collection<String> teamShips = team.getPlayers();
-				String slug = construct.name();
-				if (slug == null || !teamShips.contains(slug)) {
-					NeoForge.EVENT_BUS.post(new TeleportDisallowedEvent(construct, nearest));
-					continue;
-				}
-			}
+            if (earth != null && center.distance(earthPos.x(), earthPos.y(), earthPos.z()) > deepSpace) {
+                sendConstructToDeepSpace(level, construct);
+                continue;
+            }
 
-			ServerLevel targetLevel = getTargetLevel(level, nearest, registry);
-			if (targetLevel == null) continue;
+            Celestial body = nearestWithinApproach(registry, ticks, center);
+            if (body == null) continue;
 
-			Vector3d newPos = computePlanetTarget(level);
-			Quaterniond rotation = getNewShipRot(shipCenter, nearest, ticks, registry);
+            ResourceLocation bodyId = registry.getKey(body);
+            ServerLevel target = dimensionFor(level, bodyId);
+            if (target == null) continue;
 
-			DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.SPACE_TO_PLANET, level, targetLevel, newPos, rotation);
-		}
+            Vector3d landing = landingPosition(body, bodyId, ticks, registry, center);
+            Quaterniond rotation = orientationToward(center, body, ticks, registry);
+            DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.SPACE_TO_PLANET, level, target, landing, rotation);
+        }
 
-		// Free-flying players (not aboard a construct) re-enter a planet's atmosphere on contact.
-		for (net.minecraft.server.level.ServerPlayer player : List.copyOf(level.players())) {
-			if (player.isPassenger() || player.isRemoved()) continue;
+        // ---- free-flying players ----
+        for (ServerPlayer player : List.copyOf(level.players())) {
+            if (player.isPassenger() || player.isRemoved()) continue;
+            long arrival = player.getPersistentData().getLong(PlanetToSpaceTeleporter.SPACE_ARRIVAL_TAG);
+            if (level.getGameTime() - arrival < 200) continue; // grace period after arriving in space
 
-			// Grace period after arriving in space so the player isn't bounced straight back down.
-			long arrival = player.getPersistentData().getLong(PlanetToSpaceTeleporter.SPACE_ARRIVAL_TAG);
-			if (level.getGameTime() - arrival < 200) continue;
+            Vector3d p = new Vector3d(player.getX(), player.getY(), player.getZ());
 
-			var bb = player.getBoundingBox();
-			OBB playerOBB = OBB.fromAABB(new org.joml.primitives.AABBd(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ));
+            if (earth != null && p.distance(earthPos.x(), earthPos.y(), earthPos.z()) > deepSpace) {
+                sendPlayerToDeepSpace(player);
+                continue;
+            }
 
-			Optional<Celestial> nearestOpt = registry.stream()
-					.filter(c -> c.type().isVisitable())
-					.map(c -> Map.entry(c, c.getOBB(ticks, registry).distanceTo(playerOBB)))
-					.min(Comparator.comparingDouble(Map.Entry::getValue))
-					.map(Map.Entry::getKey);
-			if (nearestOpt.isEmpty()) continue;
-			Celestial nearest = nearestOpt.get();
+            Celestial body = nearestWithinApproach(registry, ticks, p);
+            if (body == null) continue;
 
-			if (!playerOBB.overlapsWith(nearest.getOBB(ticks, registry))) continue;
+            ResourceLocation bodyId = registry.getKey(body);
+            ServerLevel target = dimensionFor(level, bodyId);
+            if (target == null) continue;
 
-			ServerLevel targetLevel = getTargetLevel(level, nearest, registry);
-			if (targetLevel == null) continue;
+            Vector3d landing = landingPosition(body, bodyId, ticks, registry, p);
+            Quaterniond rotation = orientationToward(p, body, ticks, registry);
+            enterAtmosphere(player, target, landing, rotation, bodyId);
+        }
+    }
 
-			Vector3d newPos = computePlanetTarget(level);
-			Quaterniond rotation = getNewShipRot(player.position(), nearest, ticks, registry);
+    /** Nearest visitable body whose atmosphere (radius + approach margin) already contains {@code point}. */
+    private static @Nullable Celestial nearestWithinApproach(Registry<Celestial> registry, long ticks, Vector3dc point) {
+        return registry.stream()
+                .filter(c -> c.type().isVisitable())
+                .filter(c -> {
+                    Vector3dc bp = c.getPosition(ticks, registry);
+                    double approach = isEarth(registry.getKey(c))
+                            ? GenesisCommonConfig.getEarthApproachRadius()
+                            : GenesisCommonConfig.getMoonApproachRadius();
+                    return point.distance(bp.x(), bp.y(), bp.z()) <= c.getActualSize() * 0.5 + approach;
+                })
+                .min(Comparator.comparingDouble(c -> {
+                    Vector3dc bp = c.getPosition(ticks, registry);
+                    return point.distance(bp.x(), bp.y(), bp.z());
+                }))
+                .orElse(null);
+    }
 
-			GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), targetLevel.dimension().location());
-			shipwrights.genesis.teleportation.impl.EntityTeleporter.teleportEntityAndPassengers(
-					player, targetLevel, new Vec3(newPos.x, newPos.y, newPos.z), rotation);
-			player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-					net.minecraft.world.effect.MobEffects.SLOW_FALLING, 20 * 300, 0, false, false, true));
-			player.displayClientMessage(net.minecraft.network.chat.Component.literal("Entering the atmosphere")
-					.withStyle(net.minecraft.ChatFormatting.GOLD), true);
-		}
-	}
+    /** Landing coordinate: cube-face mapped for the Earth, a plain surface drop otherwise. */
+    private static Vector3d landingPosition(Celestial body, ResourceLocation bodyId, long ticks,
+                                            Registry<Celestial> registry, Vector3dc approachPoint) {
+        int y = GenesisCommonConfig.getAtmosphereEntryHeight();
+        if (isEarth(bodyId)) {
+            Vector3dc bodyPos = body.getPosition(ticks, registry);
+            Vector3d dirWorld = new Vector3d(approachPoint).sub(bodyPos);
+            // into the planet's local frame so the cube faces are axis-aligned
+            Quaterniond rot = new Quaterniond(body.getRotation(ticks, 0f, registry)).conjugate();
+            Vector3d dirLocal = new Vector3d(dirWorld).rotate(rot);
+            double[] xz = CubePlanetMapping.landingXZ(dirLocal,
+                    GenesisCommonConfig.getCubeFaceRegionSpacing(),
+                    GenesisCommonConfig.getCubeFaceRegionSpacing() * 0.2);
+            return new Vector3d(xz[0], y, xz[1]);
+        }
+        // Moon (and any other body): drop near its dimension origin.
+        return new Vector3d(0, y, 0);
+    }
 
-	/**
-	 * Drops a player out of space into the nearest visitable planet's atmosphere
-	 * (falling back to the overworld when no celestial is available).
-	 */
-	public static boolean sendToNearestPlanet(net.minecraft.server.level.ServerPlayer player) {
-		ServerLevel level = player.serverLevel();
-		if (!GenesisMod.isSpaceDimension(level)) return false;
+    private static Quaterniond orientationToward(Vector3dc from, Celestial body, long ticks, Registry<Celestial> registry) {
+        Vector3dc bp = body.getPosition(ticks, registry);
+        Vector3d down = new Vector3d(from).sub(bp);
+        if (down.lengthSquared() < 1.0e-9) return new Quaterniond();
+        down.normalize();
+        Quaterniond rotation = new Quaterniond().rotateTo(new Vector3d(0, 1, 0), down);
+        body.getRotation(ticks, 0f, registry).mul(rotation, rotation).conjugate();
+        return rotation;
+    }
 
-		long ticks = GenesisMod.getTicks(level);
-		Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+    private static void enterAtmosphere(ServerPlayer player, ServerLevel target, Vector3d landing,
+                                        Quaterniondc rotation, ResourceLocation bodyId) {
+        Vec3 carried = player.getDeltaMovement();
+        GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), target.dimension().location());
+        EntityTeleporter.teleportEntityAndPassengers(player, target, new Vec3(landing.x, landing.y, landing.z), rotation);
+        player.setDeltaMovement(carried); // preserve momentum through the transition
+        player.hurtMarked = true;
+        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 300, 0, false, false, true));
+        player.displayClientMessage(Component.literal(isEarth(bodyId) ? "Entering the atmosphere" : "Descending to the surface")
+                .withStyle(ChatFormatting.GOLD), true);
+    }
 
-		var bb = player.getBoundingBox();
-		OBB playerOBB = OBB.fromAABB(new org.joml.primitives.AABBd(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ));
-		Optional<Celestial> nearestOpt = registry.stream()
-				.filter(c -> c.type().isVisitable())
-				.map(c -> Map.entry(c, c.getOBB(ticks, registry).distanceTo(playerOBB)))
-				.min(Comparator.comparingDouble(Map.Entry::getValue))
-				.map(Map.Entry::getKey);
+    private static void sendPlayerToDeepSpace(ServerPlayer player) {
+        ServerLevel subspace = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.WORMHOLE_DIM));
+        if (subspace == null) return;
+        Vec3 carried = player.getDeltaMovement();
+        Vector3d landing = new Vector3d(player.getX() / 16.0, 256.0, player.getZ() / 16.0);
+        GenesisMod.LOGGER.info("Player {} crossed into deep space", player.getGameProfile().getName());
+        EntityTeleporter.teleportEntityAndPassengers(player, subspace, new Vec3(landing.x, landing.y, landing.z), new Quaterniond());
+        player.setDeltaMovement(carried);
+        player.getPersistentData().putLong(PlanetToSpaceTeleporter.SPACE_ARRIVAL_TAG, subspace.getGameTime());
+        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
+        player.displayClientMessage(Component.literal("Crossing into deep space").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+    }
 
-		ServerLevel targetLevel = null;
-		Quaterniond rotation = new Quaterniond();
-		if (nearestOpt.isPresent()) {
-			targetLevel = getTargetLevel(level, nearestOpt.get(), registry);
-			rotation = getNewShipRot(player.position(), nearestOpt.get(), ticks, registry);
-		}
-		if (targetLevel == null) {
-			targetLevel = level.getServer().overworld();
-			rotation = new Quaterniond();
-		}
+    private static void sendConstructToDeepSpace(ServerLevel level, AeronauticsConstruct construct) {
+        ServerLevel subspace = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.WORMHOLE_DIM));
+        if (subspace == null) return;
+        var box = construct.worldBounds();
+        Vector3d landing = new Vector3d((box.minX() + box.maxX()) / 32.0, 256.0, (box.minZ() + box.maxZ()) / 32.0);
+        DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.SPACE_TO_PLANET, level, subspace, landing, new Quaterniond());
+    }
 
-		Vector3d newPos = computePlanetTarget(level);
-		GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), targetLevel.dimension().location());
-		shipwrights.genesis.teleportation.impl.EntityTeleporter.teleportEntityAndPassengers(
-				player, targetLevel, new Vec3(newPos.x, newPos.y, newPos.z), rotation);
-		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-				net.minecraft.world.effect.MobEffects.SLOW_FALLING, 20 * 300, 0, false, false, true));
-		player.displayClientMessage(net.minecraft.network.chat.Component.literal("Entering the atmosphere")
-				.withStyle(net.minecraft.ChatFormatting.GOLD), true);
-		return true;
-	}
+    private static @Nullable ServerLevel dimensionFor(ServerLevel level, @Nullable ResourceLocation bodyId) {
+        if (bodyId == null) return null;
+        return level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, bodyId));
+    }
 
-	private static boolean constructOverlapsCelestial(AeronauticsConstruct construct, Celestial nearest, long ticks, Registry<Celestial> registry) {
-		var b = construct.localBounds();
-		OBB constructOBB = OBB.fromLocalBounds(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), construct.toWorldMatrix());
-		return constructOBB.overlapsWith(nearest.getOBB(ticks, registry));
-	}
+    private static boolean isEarth(@Nullable ResourceLocation bodyId) {
+        return EARTH_ID.equals(bodyId);
+    }
 
-	private static @Nullable ServerLevel getTargetLevel(ServerLevel level, Celestial nearest, Registry<Celestial> registry) {
-		ResourceKey<Level> targetDimension = ResourceKey.create(
-			net.minecraft.core.registries.Registries.DIMENSION,
-			registry.getResourceKey(nearest).orElseThrow().location()
-		);
-        return level.getServer().getLevel(targetDimension);
-	}
+    /**
+     * Public entry point for {@code /genesis land}: drop a player from space into the nearest
+     * visitable body's atmosphere (Earth via cube-face mapping), overworld fallback.
+     */
+    public static boolean sendToNearestPlanet(ServerPlayer player) {
+        ServerLevel level = player.serverLevel();
+        if (!GenesisMod.isSpaceDimension(level)) return false;
 
-	private static Vector3d computePlanetTarget(ServerLevel level) {
-		ChunkPos landingChunkPos = new ChunkPos(
-			level.random.nextInt(LANDING_ACCURACY * 2 + 1) - LANDING_ACCURACY,
-			level.random.nextInt(LANDING_ACCURACY * 2 + 1) - LANDING_ACCURACY
-		);
-		return new Vector3d(
-			SectionPos.sectionToBlockCoord(landingChunkPos.x),
-				GenesisCommonConfig.getAtmosphereEntryHeight(),
-			SectionPos.sectionToBlockCoord(landingChunkPos.z)
-		);
-	}
+        long ticks = GenesisMod.getTicks(level);
+        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+        Vector3d p = new Vector3d(player.getX(), player.getY(), player.getZ());
 
-	private static Quaterniond getNewShipRot(Vec3 shipCenter, Celestial nearest, long ticks, Registry<Celestial> registry) {
-		Vector3dc planetPos = nearest.getPosition(ticks, registry);
-		Vector3d directionToPlanet = new Vector3d(
-			shipCenter.x - planetPos.x(),
-			shipCenter.y - planetPos.y(),
-			shipCenter.z - planetPos.z()
-		).normalize();
-		Quaterniond rotation = new Quaterniond().rotateTo(new Vector3d(0, 1, 0), directionToPlanet);
-		nearest.getRotation(ticks, 0f, registry).mul(rotation, rotation).conjugate();
-		return rotation;
-	}
+        Optional<Celestial> nearest = registry.stream()
+                .filter(c -> c.type().isVisitable())
+                .min(Comparator.comparingDouble(c -> {
+                    Vector3dc bp = c.getPosition(ticks, registry);
+                    return p.distance(bp.x(), bp.y(), bp.z());
+                }));
 
-	@Nullable static Celestial getNearestPlanet(AeronauticsConstruct construct, long ticks, Registry<Celestial> registry) {
-		var b = construct.localBounds();
-		if (b != null) {
-			OBB shipOBB = OBB.fromLocalBounds(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), construct.toWorldMatrix());
-
-			Optional<Celestial> nearest = registry.stream()
-							.filter(c -> c.type().isVisitable())
-							.map(c -> Map.entry(c, c.getOBB(ticks, registry).distanceTo(shipOBB)))
-							.min(Comparator.comparingDouble(Map.Entry::getValue))
-							.map(Map.Entry::getKey);
-			if (nearest.isPresent()) {
-				return nearest.get();
-			}
-		}
-		return null;
-	}
+        Celestial body = nearest.orElse(null);
+        ResourceLocation bodyId = body != null ? registry.getKey(body) : null;
+        ServerLevel target = dimensionFor(level, bodyId);
+        Quaterniond rotation = body != null ? orientationToward(p, body, ticks, registry) : new Quaterniond();
+        Vector3d landing;
+        if (target == null || body == null) {
+            target = level.getServer().overworld();
+            landing = new Vector3d(0, GenesisCommonConfig.getAtmosphereEntryHeight(), 0);
+        } else {
+            landing = landingPosition(body, bodyId, ticks, registry, p);
+        }
+        enterAtmosphere(player, target, landing, rotation, bodyId);
+        return true;
+    }
 }

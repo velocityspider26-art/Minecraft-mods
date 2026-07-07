@@ -28,12 +28,18 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 | Biome modifiers (ore/miasma placement) | ✅ | `neoforge:add_features` |
 | Celestial datapack registry + transform providers | ✅ | `MapCodec` dispatch; static/orbiting providers |
 | Frozen-time system (time offset) | ✅ | `SavedData` (1.21 Factory) + payload sync |
-| Dimension travel (planet ↔ space, wormhole) | ✅ | Construct + entity teleport on compat layer; free-flying players above the atmosphere exit height (2048) now enter space, and re-enter a planet on contact in space — verified in-game |
+| Dimension travel (full loop) | ✅ | Earth↔space↔Moon↔deep-space loop, all hops behind the transition screen (no loading screen). Moon at 10,000 blocks (verified =10000 in-game), Moon-approach→`genesis:moon` and deep-space(>30,000)→`genesis:subspace` both verified live; player/craft momentum + rotation + passengers preserved. Distances in `genesis-common.toml`. |
 | Recipes (crafting, smelting, blasting) | ✅ | Migrated to 1.21 format (`result.id`, string ingredients); removed-mod items substituted |
 | Loot tables / tags / advancements | ✅ | Folders migrated (`loot_table`, `recipe`, `tags/block`…) |
 | Networking (warp/sound/time packets) | ✅ | NeoForge `CustomPacketPayload` system |
 | Configs (client + common) | ✅ | `ModConfigSpec` |
 | Save/load safety | ✅ | Only UUIDs / block positions / resource locations persisted; never live constructs |
+
+## Cubed Earth landing
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Cube-face → overworld region mapping | ✅ | `CubePlanetMapping`: each of the 6 faces maps to a distinct overworld region (cross-net layout), and position on the face shifts landing within the region; launches reverse it (leave a region → exit the matching face). Unit tested (`CubePlanetMappingTest`, 6 cases) + verified live (top→(0,0), west→(19331,0)). |
 
 ## Create Aeronautics integration (was Valkyrien Skies)
 

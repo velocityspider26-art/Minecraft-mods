@@ -34,6 +34,9 @@ public class PlanetToSpaceTeleporter {
 	/** Persistent-data tag holding the game time a player arrived in space (re-entry grace). */
 	public static final String SPACE_ARRIVAL_TAG = "genesis_space_arrival_tick";
 
+	private static final net.minecraft.resources.ResourceLocation EARTH_ID =
+			net.minecraft.resources.ResourceLocation.parse("minecraft:overworld");
+
 	private final boolean gameTest;
 
 	public PlanetToSpaceTeleporter(boolean gameTest) {
@@ -111,8 +114,14 @@ public class PlanetToSpaceTeleporter {
 		Quaterniond rotation;
 		Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
 		if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-			// Arrive well clear of the celestial so re-entry doesn't immediately trigger.
-			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
+			if (level.dimension().location().equals(EARTH_ID)) {
+				// Leaving the cubed Earth: exit toward the face matching where you took off from,
+				// so the loop is symmetric with cube-face landings.
+				target = cubeFaceExit(player.getX(), player.getZ(), vantagePoint);
+			} else {
+				// Arrive well clear of the celestial so re-entry doesn't immediately trigger.
+				target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
+			}
 			rotation = vantagePoint.getCelestialRotation()
 					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
 		} else {
@@ -141,4 +150,18 @@ public class PlanetToSpaceTeleporter {
 		targetPos.add(vantagePoint.getPosition());
 		return targetPos;
     }
+
+	/**
+	 * The point in the Great Unknown to arrive at when launching from the cubed Earth: just off the
+	 * cube face that the take-off region maps to (reverse of {@link shipwrights.genesis.space.CubePlanetMapping}),
+	 * so leaving the region you landed in puts you back on the correct side of Earth.
+	 */
+	private static Vector3d cubeFaceExit(double overworldX, double overworldZ, VantagePoint.OnCelestial vp) {
+		int spacing = GenesisCommonConfig.getCubeFaceRegionSpacing();
+		var exit = shipwrights.genesis.space.CubePlanetMapping.exitFor(overworldX, overworldZ, spacing, spacing * 0.2);
+		double clearance = vp.celestial().getActualSize() + 80;
+		Vector3d local = new Vector3d(exit.localExitDir()).mul(clearance);
+		vp.getCelestialRotation().transform(local);   // local face frame -> world
+		return local.add(vp.getPosition());
+	}
 }
