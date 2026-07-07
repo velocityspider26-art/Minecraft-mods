@@ -115,6 +115,47 @@ public class SpaceToPlanetTeleporter {
 		}
 	}
 
+	/**
+	 * Drops a player out of space into the nearest visitable planet's atmosphere
+	 * (falling back to the overworld when no celestial is available).
+	 */
+	public static boolean sendToNearestPlanet(net.minecraft.server.level.ServerPlayer player) {
+		ServerLevel level = player.serverLevel();
+		if (!GenesisMod.isSpaceDimension(level)) return false;
+
+		long ticks = GenesisMod.getTicks(level);
+		Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+
+		var bb = player.getBoundingBox();
+		OBB playerOBB = OBB.fromAABB(new org.joml.primitives.AABBd(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ));
+		Optional<Celestial> nearestOpt = registry.stream()
+				.filter(c -> c.type().isVisitable())
+				.map(c -> Map.entry(c, c.getOBB(ticks, registry).distanceTo(playerOBB)))
+				.min(Comparator.comparingDouble(Map.Entry::getValue))
+				.map(Map.Entry::getKey);
+
+		ServerLevel targetLevel = null;
+		Quaterniond rotation = new Quaterniond();
+		if (nearestOpt.isPresent()) {
+			targetLevel = getTargetLevel(level, nearestOpt.get(), registry);
+			rotation = getNewShipRot(player.position(), nearestOpt.get(), ticks, registry);
+		}
+		if (targetLevel == null) {
+			targetLevel = level.getServer().overworld();
+			rotation = new Quaterniond();
+		}
+
+		Vector3d newPos = computePlanetTarget(level);
+		GenesisMod.LOGGER.info("Player {} entered the atmosphere of {}", player.getGameProfile().getName(), targetLevel.dimension().location());
+		shipwrights.genesis.teleportation.impl.EntityTeleporter.teleportEntityAndPassengers(
+				player, targetLevel, new Vec3(newPos.x, newPos.y, newPos.z), rotation);
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+				net.minecraft.world.effect.MobEffects.SLOW_FALLING, 20 * 300, 0, false, false, true));
+		player.displayClientMessage(net.minecraft.network.chat.Component.literal("Entering the atmosphere")
+				.withStyle(net.minecraft.ChatFormatting.GOLD), true);
+		return true;
+	}
+
 	private static boolean constructOverlapsCelestial(AeronauticsConstruct construct, Celestial nearest, long ticks, Registry<Celestial> registry) {
 		var b = construct.localBounds();
 		OBB constructOBB = OBB.fromLocalBounds(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), construct.toWorldMatrix());

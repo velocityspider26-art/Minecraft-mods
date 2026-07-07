@@ -76,37 +76,62 @@ public class PlanetToSpaceTeleporter {
 			}
 		}
 
+		int exitHeight = GenesisCommonConfig.getAtmosphereExitHeight();
+
 		// Free-flying players (not aboard a construct) always leave the atmosphere when high
 		// enough — even if this level has no celestial mapping, they still reach space.
 		for (ServerPlayer player : List.copyOf(level.players())) {
 			if (player.isPassenger() || player.isRemoved()) continue;
-			if (player.getY() <= GenesisCommonConfig.getAtmosphereExitHeight()) continue;
 
-			Vector3d target;
-			Quaterniond rotation;
-			Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
-			if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-				// Arrive well clear of the celestial so re-entry doesn't immediately trigger.
-				target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
-				rotation = vantagePoint.getCelestialRotation()
-						.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
-			} else {
-				// No celestial mapping for this level — send them into the Great Unknown anyway.
-				target = new Vector3d(player.getX() / 16.0, 320.0, player.getZ() / 16.0);
-				rotation = new Quaterniond();
+			if (player.getY() > exitHeight) {
+				sendToSpace(player);
+			} else if (player.getY() > exitHeight * 0.55 && level.getGameTime() % 40 == 0) {
+				// Climbing feedback so players know the transition is ahead of them.
+				player.displayClientMessage(Component.literal(
+								"Leaving the atmosphere... " + (int) player.getY() + " / " + exitHeight)
+						.withStyle(ChatFormatting.DARK_AQUA), true);
 			}
-
-			GenesisMod.LOGGER.info("Player {} left the atmosphere of {}; entering space at ({}, {}, {})",
-					player.getGameProfile().getName(), level.dimension().location(),
-					(int) target.x, (int) target.y, (int) target.z);
-
-			EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
-
-			player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, spaceLevel.getGameTime());
-			player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
-			player.displayClientMessage(Component.literal("Entering the Great Unknown").withStyle(ChatFormatting.AQUA), true);
-			player.playNotifySound(SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.25f, 1.5f);
 		}
+	}
+
+	/**
+	 * Teleports a player (and passengers) into the Great Unknown from wherever they are.
+	 * Uses the celestial vantage math when this level maps to a celestial; otherwise falls
+	 * back to plain scaled coordinates so the trip always succeeds.
+	 */
+	public static boolean sendToSpace(ServerPlayer player) {
+		ServerLevel level = player.serverLevel();
+		if (GenesisMod.isSpaceDimension(level)) return false;
+
+		ServerLevel spaceLevel = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.SPACE_DIM));
+		if (spaceLevel == null) return false;
+
+		long ticks = GenesisMod.getTicks(level);
+		Vector3d target;
+		Quaterniond rotation;
+		Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
+		if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
+			// Arrive well clear of the celestial so re-entry doesn't immediately trigger.
+			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
+			rotation = vantagePoint.getCelestialRotation()
+					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
+		} else {
+			// No celestial mapping for this level — send them into the Great Unknown anyway.
+			target = new Vector3d(player.getX() / 16.0, 320.0, player.getZ() / 16.0);
+			rotation = new Quaterniond();
+		}
+
+		GenesisMod.LOGGER.info("Player {} left the atmosphere of {}; entering space at ({}, {}, {})",
+				player.getGameProfile().getName(), level.dimension().location(),
+				(int) target.x, (int) target.y, (int) target.z);
+
+		EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
+
+		player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, spaceLevel.getGameTime());
+		player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
+		player.displayClientMessage(Component.literal("Entering the Great Unknown").withStyle(ChatFormatting.AQUA), true);
+		player.playNotifySound(SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.25f, 1.5f);
+		return true;
 	}
 
 	private static Vector3d computeSpaceTarget(VantagePoint.OnCelestial vantagePoint) {

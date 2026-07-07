@@ -100,6 +100,7 @@ public final class GenesisMod {
         boolean isGameTest = System.getProperty("neoforge.enabledGameTestNamespaces") != null;
         NeoForge.EVENT_BUS.register(new PlanetToSpaceTeleporter(isGameTest));
         NeoForge.EVENT_BUS.register(new SpaceToPlanetTeleporter(isGameTest));
+        NeoForge.EVENT_BUS.addListener(shipwrights.genesis.command.GenesisCommands::onRegisterCommands);
         NeoForge.EVENT_BUS.register(TimeTracker.class);
 
         if (isGameTest) {

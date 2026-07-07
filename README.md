@@ -23,3 +23,10 @@ Additional Resources:
 ==========
 Community Documentation: https://docs.neoforged.net/  
 NeoForged Discord: https://discord.neoforged.net/
+
+## Space access commands
+
+- `/genesis space` — jump straight into the Great Unknown from anywhere (any player, no OP needed).
+- `/genesis land` — drop from space into the nearest planet's atmosphere (slow falling included).
+- Flying or teleporting above y=2048 (`atmosphereExitHeight` in `genesis-common.toml`) also
+  transfers you automatically; an actionbar countdown appears from ~y=1130 upward.
