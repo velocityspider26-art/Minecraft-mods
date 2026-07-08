@@ -20,6 +20,8 @@ public class StaticTransformProvider implements CelestialTransformProvider {
     private final double xRot;
     private final double yRot;
     private final double zRot;
+    /** Ticks for one full spin about the local Y axis; 0 = no spin (a fixed star still turns slowly). */
+    private final double spinPeriod;
     private final Quaterniondc rotation;
 
 
@@ -33,14 +35,19 @@ public class StaticTransformProvider implements CelestialTransformProvider {
      * @param yRot rotation around the y-axis in radians
      * @param zRot rotation around the z-axis in radians
      */
-    public StaticTransformProvider(double x, double y, double z, double xRot, double yRot, double zRot) {
+    public StaticTransformProvider(double x, double y, double z, double xRot, double yRot, double zRot, double spinPeriod) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.xRot = xRot;
         this.yRot = yRot;
         this.zRot = zRot;
+        this.spinPeriod = spinPeriod;
         this.rotation = new Quaterniond().rotationXYZ(xRot, yRot, zRot);
+    }
+
+    public StaticTransformProvider(double x, double y, double z, double xRot, double yRot, double zRot) {
+        this(x, y, z, xRot, yRot, zRot, 0.0);
     }
 
     /**
@@ -51,12 +58,15 @@ public class StaticTransformProvider implements CelestialTransformProvider {
      * @param z the z coordinate
      */
     public StaticTransformProvider(double x, double y, double z) {
-        this(x, y, z, 0, 0, 0);
+        this(x, y, z, 0, 0, 0, 0.0);
     }
 
     @Override
     public Quaterniondc getRotation(long ticks, float subticks, Registry<Celestial> registry) {
-        return rotation;
+        if (spinPeriod <= 0.0) return rotation;
+        // Slow, steady spin about the local Y axis, tied to game time.
+        double angle = 2.0 * Math.PI * (ticks + subticks) / spinPeriod;
+        return new Quaterniond(rotation).rotateY(angle);
     }
 
     @Override
@@ -77,7 +87,8 @@ public class StaticTransformProvider implements CelestialTransformProvider {
                     Codec.DOUBLE.fieldOf("z").forGetter(p -> p.z),
                     Codec.DOUBLE.optionalFieldOf("xRot", 0.0).forGetter(p -> p.xRot),
                     Codec.DOUBLE.optionalFieldOf("yRot", 0.0).forGetter(p -> p.yRot),
-                    Codec.DOUBLE.optionalFieldOf("zRot", 0.0).forGetter(p -> p.zRot)
+                    Codec.DOUBLE.optionalFieldOf("zRot", 0.0).forGetter(p -> p.zRot),
+                    Codec.DOUBLE.optionalFieldOf("spinPeriod", 0.0).forGetter(p -> p.spinPeriod)
             ).apply(instance, StaticTransformProvider::new)
     );
 

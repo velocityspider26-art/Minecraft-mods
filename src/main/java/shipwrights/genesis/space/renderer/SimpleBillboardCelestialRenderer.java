@@ -218,10 +218,26 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
         RenderSystem.depthMask(false);
+
+        // Atmospheric limb / Kármán-line glow — the beautiful banded horizon from orbit. Three stacked
+        // additive rings recreate atmospheric scattering: a warm troposphere glow hugging the surface,
+        // a bright whitish middle, and a blue upper band fading to the black of space.
+        float t = 1.0f + 0.34f * thickness;
+        // Warm inner band (sunrise/sunset colours right at the limb).
         drawRadialFan(pose, center, right, realUp,
-                half * 1.02f, half * (1.0f + 0.28f * thickness),
-                0.35f, 0.60f, 1.0f, 0.55f * density,
-                0.30f, 0.55f, 1.0f, 0.0f);
+                half * 1.0f, half * (1.0f + 0.09f * t),
+                1.0f, 0.55f, 0.20f, 0.65f * density,
+                1.0f, 0.75f, 0.35f, 0.30f * density);
+        // Bright scattering middle.
+        drawRadialFan(pose, center, right, realUp,
+                half * (1.0f + 0.06f * t), half * (1.0f + 0.16f * t),
+                0.80f, 0.90f, 1.0f, 0.45f * density,
+                0.45f, 0.70f, 1.0f, 0.12f * density);
+        // Blue upper atmosphere fading into space.
+        drawRadialFan(pose, center, right, realUp,
+                half * (1.0f + 0.12f * t), half * (1.0f + 0.30f * t),
+                0.30f, 0.55f, 1.0f, 0.40f * density,
+                0.20f, 0.40f, 1.0f, 0.0f);
         RenderSystem.defaultBlendFunc();
     }
 

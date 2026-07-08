@@ -163,9 +163,9 @@ public final class ReentryPlasmaRenderer {
         // Three additive passes — a broad outer halo, the main plasma layer and a searing thin core —
         // stack up into a bright, hot sheath; brightness is concentrated on the windward side with a
         // tail streaming off the back.
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.8 + 1.6 * heat, 0.30f, 4.5 + 9.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.4 + 0.8 * heat, 0.80f, 3.0 + 6.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.15 + 0.4 * heat, 1.0f, 1.8 + 3.5 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.8 + 1.6 * heat, 0.30f, 9.0 + 20.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.4 + 0.8 * heat, 0.80f, 6.0 + 13.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.15 + 0.4 * heat, 1.0f, 3.0 + 7.0 * heat);
 
         poseStack.popPose();
     }
@@ -224,16 +224,19 @@ public final class ReentryPlasmaRenderer {
         double stretch = wakeLen * back * back;
         px -= dir.x * stretch; py -= dir.y * stretch; pz -= dir.z * stretch;
 
-        // Colour: white-gold where it slams the air, through orange, to deep red on the flanks/wake.
-        float c = (float) Math.pow(front, 0.7);
+        // Colour to match real hypersonic plasma (the reference photo): a searing white-gold cap where
+        // the hull slams the air, bleeding into pink → magenta → violet plasma that streams back down
+        // the wake, with brighter white streak highlights.
+        float fr = (float) front;
+        float bk = (float) back;
         float r = 1.0f;
-        float g = lerp(0.22f, 0.97f, c);
-        float b = lerp(0.04f, 0.80f, (float) Math.pow(front, 1.5));
-        float white = (float) (0.35 * heat * front);
+        float g = lerp(0.40f, 0.93f, (float) Math.pow(fr, 0.7));   // magenta-pink flanks -> gold cap
+        float b = lerp(0.92f, 0.62f, (float) Math.pow(fr, 1.3));   // violet/magenta flanks -> warm cap
+        float white = (float) Math.min(1.0, heat * (0.55 * fr + 0.32 * bk));
         r += (1f - r) * white; g += (1f - g) * white; b += (1f - b) * white;
 
-        // Bright windward cap, plus a dimmer glow all around and down the wake so the whole hull reads hot.
-        float a = (float) (heat * alphaScale * (0.14 + 0.95 * Math.pow(front, 1.25) + 0.30 * Math.pow(back, 0.6)));
+        // Bright windward cap, plus streaking plasma down the wake so the craft is engulfed and trailing.
+        float a = (float) (heat * alphaScale * (0.12 + 0.95 * Math.pow(fr, 1.25) + 0.45 * Math.pow(bk, 0.5)));
         buf.addVertex(mat, (float) px, (float) py, (float) pz).setColor(r, g, b, Math.min(1.0f, a));
     }
 

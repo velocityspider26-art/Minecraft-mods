@@ -9,7 +9,8 @@
     "z": 0.0,
     "xRot": 15,
     "yRot": 45,
-    "zRot": 5
+    "zRot": 5,
+    "spinPeriod": 216000
   },
   "properties": {
     "r0": 255,
