@@ -79,8 +79,16 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
         }
 
         // Angular size -> billboard half-extent on the sky sphere (capped so a close
-        // planet fills the view without the tangent blowing up).
-        double angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.15);
+        // planet fills the view without the tangent blowing up). The home planet is sized from an
+        // effective radius so it reads as a real world just above the atmosphere, not a distant dot.
+        boolean isCurrentBody = vantagePoint instanceof VantagePoint.OnCelestial oc2 && oc2.celestial() == toRender;
+        double angularRadius;
+        if (isCurrentBody && vantagePoint instanceof VantagePoint.OnCelestial oc3) {
+            double reff = 4000.0;
+            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc3.altitude()))), 1.25);
+        } else {
+            angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.15);
+        }
         float half = (float) Math.max(0.5, Math.tan(angularRadius) * SKY_RADIUS);
 
         Vector3d up = Math.abs(dir.y) > 0.99 ? new Vector3d(1, 0, 0) : new Vector3d(0, 1, 0);

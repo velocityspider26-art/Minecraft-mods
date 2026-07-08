@@ -46,6 +46,12 @@ import java.util.Optional;
 public class PlanetRenderer implements CelestialRenderer {
 
     private static final double SKY_RADIUS = 90.0;
+    /**
+     * Apparent radius (blocks) used to size the home planet from orbit. Decoupled from the celestial's
+     * gameplay radius so Earth looks like a real world filling the view as you leave the atmosphere
+     * (~exit height) and shrinks naturally on the way out to the Moon and deep space.
+     */
+    private static final double HOME_PLANET_EFFECTIVE_RADIUS = 4000.0;
     private static final Map<ResourceLocation, Optional<ResourceLocation>> TEXTURE_CACHE = new HashMap<>();
 
     private final SimpleBillboardCelestialRenderer fallback;
@@ -84,7 +90,16 @@ public class PlanetRenderer implements CelestialRenderer {
         Quaterniond viewRot = new Quaterniond(vantagePoint.getRotation()).conjugate();
         dir.rotate(viewRot);
 
-        double angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.2);
+        // The planet you're leaving is rendered from an "effective" radius so it reads as a real world
+        // filling the view just above the atmosphere and shrinking believably as you climb toward the
+        // Moon and deep space — the celestial's own 48-block radius would make it a distant dot.
+        double angularRadius;
+        if (isCurrentBody && vantagePoint instanceof VantagePoint.OnCelestial oc) {
+            double reff = HOME_PLANET_EFFECTIVE_RADIUS;
+            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc.altitude()))), 1.3);
+        } else {
+            angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.2);
+        }
         float half = (float) Math.max(0.75, Math.tan(angularRadius) * SKY_RADIUS);
         Vector3d center = new Vector3d(dir).mul(SKY_RADIUS);
 
@@ -154,7 +169,7 @@ public class PlanetRenderer implements CelestialRenderer {
         // Fade the home planet in as the camera climbs above the terrain: nothing until you clear the
         // build height, fully solid once you're unmistakably in space looking back down at it.
         double camY = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y;
-        return (float) Math.max(0.0, Math.min(1.0, (camY - 400.0) / 1200.0));
+        return (float) Math.max(0.0, Math.min(1.0, (camY - 320.0) / 680.0));
     }
 
     /** Emits one textured cube face (4 verts) with net UVs; per-vertex normal = rotated local corner. */

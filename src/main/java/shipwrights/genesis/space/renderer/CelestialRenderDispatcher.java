@@ -25,6 +25,9 @@ import java.util.List;
 @EventBusSubscriber(Dist.CLIENT)
 public class CelestialRenderDispatcher {
 
+    /** Altitude (blocks) above the surface at which the home planet starts appearing as a globe below you. */
+    public static final double HOME_PLANET_FADE_START = 320.0;
+
     private static Boolean oculusLoaded = null;
 
     private static boolean isOculusLoaded() {
@@ -63,8 +66,13 @@ public class CelestialRenderDispatcher {
             MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
 
             for (Celestial celestial : celestials) {
-                if (shouldSkipCurrentPlanet && vantagePoint instanceof VantagePoint.OnCelestial oc && oc.celestial() == celestial) {
-                    continue;
+                if (vantagePoint instanceof VantagePoint.OnCelestial oc && oc.celestial() == celestial) {
+                    // The planet you're standing on is the ground, not a body in the sky — only draw it
+                    // as a globe once you've climbed clear of the surface, so it never domes over the
+                    // world at ground level (both the shader and billboard paths honour this).
+                    if (shouldSkipCurrentPlanet || oc.altitude() < HOME_PLANET_FADE_START) {
+                        continue;
+                    }
                 }
 
                 CelestialType type = celestial.type();
