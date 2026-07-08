@@ -84,8 +84,8 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
         boolean isCurrentBody = vantagePoint instanceof VantagePoint.OnCelestial oc2 && oc2.celestial() == toRender;
         double angularRadius;
         if (isCurrentBody && vantagePoint instanceof VantagePoint.OnCelestial oc3) {
-            double reff = 4000.0;
-            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc3.altitude()))), 1.25);
+            double reff = 3500.0;
+            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc3.altitude()))), 0.5);
         } else {
             angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.15);
         }

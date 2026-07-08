@@ -25,8 +25,12 @@ import java.util.List;
 @EventBusSubscriber(Dist.CLIENT)
 public class CelestialRenderDispatcher {
 
-    /** Altitude (blocks) above the surface at which the home planet starts appearing as a globe below you. */
-    public static final double HOME_PLANET_FADE_START = 320.0;
+    /**
+     * Altitude (blocks) at which the home planet starts appearing as a globe below you — i.e. where
+     * "space" begins. Kept near the atmosphere-exit height so you have to actually climb ~2k blocks to
+     * see the planet from orbit, instead of it ballooning around you a couple hundred blocks up.
+     */
+    public static final double HOME_PLANET_FADE_START = 1800.0;
 
     private static Boolean oculusLoaded = null;
 

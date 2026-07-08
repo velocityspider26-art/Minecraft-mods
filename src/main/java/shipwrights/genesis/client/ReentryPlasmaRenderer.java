@@ -47,9 +47,9 @@ import java.util.UUID;
 @EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
 public final class ReentryPlasmaRenderer {
 
-    private static final double MIN_BURN_SPEED = 15.0;   // blocks/s where heating begins
-    private static final double MAX_BURN_SPEED = 65.0;   // blocks/s of maximum plasma
-    private static final double HEAT_LERP = 0.10;        // smoothing toward target heat
+    private static final double MIN_BURN_SPEED = 45.0;   // blocks/s where heating begins (hypersonic only)
+    private static final double MAX_BURN_SPEED = 140.0;  // blocks/s of maximum plasma
+    private static final double HEAT_LERP = 0.12;        // smoothing toward target heat
 
     private static final class Track {
         Vector3d lastPos;
@@ -90,9 +90,20 @@ public final class ReentryPlasmaRenderer {
             track.lastPos = pos;
 
             double speed = track.velocity.length();
-            double airDensity = atmosphereDensity * Mth.clamp(
-                    1.0 - (pos.y - entryHeight) / (double) (exitHeight - entryHeight), 0.0, 1.0);
-            double target = Mth.clamp((speed - MIN_BURN_SPEED) / (MAX_BURN_SPEED - MIN_BURN_SPEED), 0.0, 1.0) * airDensity;
+            // Re-entry heating only lives in the upper-atmosphere band: nothing down at ground level
+            // (dense but slow — no plasma, and it must never light up while driving around), full through
+            // the entry→exit band, tapering to nothing in the vacuum above. This is what keeps it from
+            // triggering on the ground.
+            double band;
+            if (pos.y < entryHeight) {
+                band = 0.0;
+            } else if (pos.y <= exitHeight) {
+                band = 1.0;
+            } else {
+                band = Mth.clamp(1.0 - (pos.y - exitHeight) / 1000.0, 0.0, 1.0); // thin exosphere, then vacuum
+            }
+            double target = Mth.clamp((speed - MIN_BURN_SPEED) / (MAX_BURN_SPEED - MIN_BURN_SPEED), 0.0, 1.0)
+                    * band * atmosphereDensity;
             track.heat += (target - track.heat) * HEAT_LERP;
         }
 
@@ -142,71 +153,79 @@ public final class ReentryPlasmaRenderer {
         double hz = (bounds.maxZ() - bounds.minZ()) * 0.5;
 
         Vector3d dir = new Vector3d(velocity).div(speed);
-        double alongExtent = hx * Math.abs(dir.x) + hy * Math.abs(dir.y) + hz * Math.abs(dir.z);
-        double faceR = Math.max(0.6, (hx + hy + hz - alongExtent) * 0.5) * (0.9 + 0.5 * heat);
-
-        // Basis across the leading face.
-        Vector3d up = Math.abs(dir.y) > 0.99 ? new Vector3d(1, 0, 0) : new Vector3d(0, 1, 0);
-        Vector3d right = new Vector3d(dir).cross(up).normalize();
-        Vector3d across = new Vector3d(right).cross(dir).normalize();
-
-        // Envelope runs from a rounded cap just ahead of the hull back into a tapered wake.
-        double standoff = 0.4 + 0.7 * heat;
-        Vector3d tip = new Vector3d(dir).mul(alongExtent + standoff).add(center);
-        double capLen = 2.0 * alongExtent + faceR + (3.0 + 8.0 * heat); // wake grows with heat
 
         poseStack.pushPose();
-        poseStack.translate(tip.x - cam.x, tip.y - cam.y, tip.z - cam.z);
+        poseStack.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
         Matrix4f mat = poseStack.last().pose();
 
-        // Two additive passes: a broad soft halo and a tighter bright core.
-        drawEnvelope(mat, dir, right, across, faceR * 1.35, capLen * 1.15, heat, 0.35f);
-        drawEnvelope(mat, dir, right, across, faceR, capLen, heat, 0.9f);
+        // The sheath is an ellipsoid matching the construct's own proportions, so it wraps the actual
+        // hull (a long ship gets a long sheath, a flat one a flat sheath) rather than a fixed teardrop.
+        // Three additive passes — a broad outer halo, the main plasma layer and a searing thin core —
+        // stack up into a bright, hot sheath; brightness is concentrated on the windward side with a
+        // tail streaming off the back.
+        drawSheath(mat, dir, hx, hy, hz, heat, 1.9 + 3.2 * heat, 0.28f, 5.0 + 9.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.9 + 1.6 * heat, 0.75f, 3.5 + 7.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.35 + 0.7 * heat, 1.0f, 2.0 + 4.0 * heat);
 
         poseStack.popPose();
     }
 
-    private static void drawEnvelope(Matrix4f mat, Vector3d dir, Vector3d right, Vector3d across,
-                                     double faceR, double capLen, double heat, float alphaScale) {
-        final int rings = 12, seg = 18;
-        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+    /**
+     * Emits one additive ellipsoidal plasma layer conforming to (hx,hy,hz) + {@code margin}, oriented so
+     * the bright plasma piles up on the windward side (into {@code dir}) and streams into a wake of
+     * length {@code wakeLen} behind. {@code alphaScale} sets the layer's punch.
+     */
+    private static void drawSheath(Matrix4f mat, Vector3d dir, double hx, double hy, double hz,
+                                   double heat, double margin, float alphaScale, double wakeLen) {
+        final int rings = 16, seg = 24;
+        double ax = hx + margin, ay = hy + margin, az = hz + margin;
+        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
         for (int i = 0; i < rings; i++) {
-            double t0 = i / (double) rings;
-            double t1 = (i + 1) / (double) rings;
-            for (int s = 0; s <= seg; s++) {
-                double a = s / (double) seg * Math.PI * 2.0;
-                ringVertex(buf, mat, dir, right, across, faceR, capLen, t1, a, heat, alphaScale);
-                ringVertex(buf, mat, dir, right, across, faceR, capLen, t0, a, heat, alphaScale);
+            for (int s = 0; s < seg; s++) {
+                sheathVertex(buf, mat, dir, ax, ay, az, i, s, rings, seg, heat, alphaScale, wakeLen);
+                sheathVertex(buf, mat, dir, ax, ay, az, i + 1, s, rings, seg, heat, alphaScale, wakeLen);
+                sheathVertex(buf, mat, dir, ax, ay, az, i + 1, s + 1, rings, seg, heat, alphaScale, wakeLen);
+                sheathVertex(buf, mat, dir, ax, ay, az, i, s, rings, seg, heat, alphaScale, wakeLen);
+                sheathVertex(buf, mat, dir, ax, ay, az, i + 1, s + 1, rings, seg, heat, alphaScale, wakeLen);
+                sheathVertex(buf, mat, dir, ax, ay, az, i, s + 1, rings, seg, heat, alphaScale, wakeLen);
             }
         }
         MeshData mesh = buf.build();
         if (mesh != null) BufferUploader.drawWithShader(mesh);
     }
 
-    private static void ringVertex(BufferBuilder buf, Matrix4f mat, Vector3d dir, Vector3d right, Vector3d across,
-                                   double faceR, double capLen, double t, double angle, double heat, float alphaScale) {
-        // Teardrop profile: rounded bright front (t=0) swelling to faceR then tapering into the wake (t=1).
-        double radius = faceR * Math.pow(Math.sin(Math.PI * Math.min(1.0, t * 0.92 + 0.08)), 0.7);
-        double back = capLen * t;
-        double cos = Math.cos(angle) * radius, sin = Math.sin(angle) * radius;
-        double px = -dir.x * back + right.x * cos + across.x * sin;
-        double py = -dir.y * back + right.y * cos + across.y * sin;
-        double pz = -dir.z * back + right.z * cos + across.z * sin;
+    private static void sheathVertex(BufferBuilder buf, Matrix4f mat, Vector3d dir,
+                                     double ax, double ay, double az, int i, int s, int rings, int seg,
+                                     double heat, float alphaScale, double wakeLen) {
+        double phi = Math.PI * i / rings;          // 0..π latitude
+        double theta = 2.0 * Math.PI * s / seg;    // longitude
+        double ux = Math.sin(phi) * Math.cos(theta);
+        double uy = Math.cos(phi);
+        double uz = Math.sin(phi) * Math.sin(theta);
 
-        // Colour: white-gold stagnation front -> orange -> deep red down the wake.
-        float r, g, b;
-        if (t < 0.35) {
-            float k = (float) (t / 0.35);
-            r = 1.0f; g = lerp(0.95f, 0.55f, k); b = lerp(0.80f, 0.18f, k);
-        } else {
-            float k = (float) ((t - 0.35) / 0.65);
-            r = lerp(1.0f, 0.80f, k); g = lerp(0.55f, 0.12f, k); b = lerp(0.18f, 0.03f, k);
-        }
-        // Brighten toward white at peak heat; fade alpha along the wake.
-        float white = (float) (0.25 * heat);
+        double px = ux * ax, py = uy * ay, pz = uz * az;
+        // Outward normal of the ellipsoid surface -> how much this point faces into the airflow.
+        double nx = ux, ny = uy, nz = uz;
+        double nlen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        double windward = (nx * dir.x + ny * dir.y + nz * dir.z) / Math.max(1.0e-6, nlen); // -1..1
+        double front = Math.max(0.0, windward);
+        double back = Math.max(0.0, -windward);
+
+        // Leeward side stretches downstream into a tapering plasma wake.
+        double stretch = wakeLen * back * back;
+        px -= dir.x * stretch; py -= dir.y * stretch; pz -= dir.z * stretch;
+
+        // Colour: white-gold where it slams the air, through orange, to deep red on the flanks/wake.
+        float c = (float) Math.pow(front, 0.7);
+        float r = 1.0f;
+        float g = lerp(0.22f, 0.97f, c);
+        float b = lerp(0.04f, 0.80f, (float) Math.pow(front, 1.5));
+        float white = (float) (0.35 * heat * front);
         r += (1f - r) * white; g += (1f - g) * white; b += (1f - b) * white;
-        float alpha = (float) (heat * alphaScale * Math.pow(1.0 - t, 1.3));
-        buf.addVertex(mat, (float) px, (float) py, (float) pz).setColor(r, g, b, alpha);
+
+        // Bright windward cap, plus a dimmer glow all around and down the wake so the whole hull reads hot.
+        float a = (float) (heat * alphaScale * (0.14 + 0.95 * Math.pow(front, 1.25) + 0.30 * Math.pow(back, 0.6)));
+        buf.addVertex(mat, (float) px, (float) py, (float) pz).setColor(r, g, b, Math.min(1.0f, a));
     }
 
     private static float lerp(float a, float b, float t) {

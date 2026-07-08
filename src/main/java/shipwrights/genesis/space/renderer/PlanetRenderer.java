@@ -48,10 +48,18 @@ public class PlanetRenderer implements CelestialRenderer {
     private static final double SKY_RADIUS = 90.0;
     /**
      * Apparent radius (blocks) used to size the home planet from orbit. Decoupled from the celestial's
-     * gameplay radius so Earth looks like a real world filling the view as you leave the atmosphere
-     * (~exit height) and shrinks naturally on the way out to the Moon and deep space.
+     * gameplay radius so Earth looks like a real world as you reach space (~exit height) and shrinks
+     * naturally on the way out to the Moon and deep space.
      */
-    private static final double HOME_PLANET_EFFECTIVE_RADIUS = 4000.0;
+    private static final double HOME_PLANET_EFFECTIVE_RADIUS = 3500.0;
+    /**
+     * Hard cap on the home planet's apparent angular radius. The celestial cube is drawn on a sky
+     * sphere of radius {@link #SKY_RADIUS}; if its half-extent approaches that radius the cube's
+     * corners reach the camera and it "swallows" the view. Keeping the angle here guarantees the whole
+     * cube stays in front of you (half·√3 &lt; SKY_RADIUS), so the planet reads as a big disc below —
+     * never a box you're standing inside.
+     */
+    private static final double HOME_PLANET_MAX_ANGULAR = 0.5; // rad (~29°)
     private static final Map<ResourceLocation, Optional<ResourceLocation>> TEXTURE_CACHE = new HashMap<>();
 
     private final SimpleBillboardCelestialRenderer fallback;
@@ -96,7 +104,7 @@ public class PlanetRenderer implements CelestialRenderer {
         double angularRadius;
         if (isCurrentBody && vantagePoint instanceof VantagePoint.OnCelestial oc) {
             double reff = HOME_PLANET_EFFECTIVE_RADIUS;
-            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc.altitude()))), 1.3);
+            angularRadius = Math.min(Math.asin(reff / (reff + Math.max(1.0, oc.altitude()))), HOME_PLANET_MAX_ANGULAR);
         } else {
             angularRadius = Math.min(Math.atan2(bodyRadius, dist), 1.2);
         }
@@ -169,7 +177,7 @@ public class PlanetRenderer implements CelestialRenderer {
         // Fade the home planet in as the camera climbs above the terrain: nothing until you clear the
         // build height, fully solid once you're unmistakably in space looking back down at it.
         double camY = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y;
-        return (float) Math.max(0.0, Math.min(1.0, (camY - 320.0) / 680.0));
+        return (float) Math.max(0.0, Math.min(1.0, (camY - 1800.0) / 1000.0));
     }
 
     /** Emits one textured cube face (4 verts) with net UVs; per-vertex normal = rotated local corner. */
