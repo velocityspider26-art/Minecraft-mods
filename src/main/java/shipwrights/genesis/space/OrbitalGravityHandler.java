@@ -61,8 +61,11 @@ public final class OrbitalGravityHandler {
     @SubscribeEvent
     public void onLevelTick(LevelTickEvent.Post event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
-        // Only the home planet's own (flat) space needs the fake radial field; the scaled space
-        // dimensions already live in real celestial coordinates.
+        // Disabled: the flat-overworld orbit hack is superseded by real 3D flight in the great_unknown
+        // space dimension (you cross the Kármán line into it). Real radial gravity for the galaxy is
+        // handled by GalaxyGravityHandler; the space dimensions themselves are a Newtonian vacuum via
+        // Sable dimension-physics config. This class is kept only for planetCenter() / future tuning.
+        if (true) return;
         if (GenesisMod.isSpaceDimension(level) || GenesisMod.isSubSpaceDimension(level)) return;
         if (GenesisMod.getCelestialForLevel(level) == null) return;
         if (!gameTest && level.players().isEmpty()) return;

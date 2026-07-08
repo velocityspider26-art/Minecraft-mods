@@ -31,19 +31,14 @@ import java.util.List;
 import static shipwrights.genesis.teleportation.integration.Util.getSortedConstructs;
 
 /**
- * Planet-side half of the travel loop.
+ * Planet-side half of the travel loop: crossing the Kármán line takes you into real 3D space.
  *
- * <p><b>Leaving a planet is seamless.</b> Climbing out of the atmosphere is <em>not</em> a dimension
- * change any more — the player and their craft stay in the overworld the whole way up. As they climb,
- * the sky/fog fade to black and the celestial renderer lifts the planet away below them (see
- * {@link VantagePoint#getObserverPosition()}), so Earth&nbsp;→&nbsp;lower atmosphere&nbsp;→&nbsp;upper
- * atmosphere&nbsp;→&nbsp;orbit&nbsp;→&nbsp;past the Moon happens with no portal, no loading screen and no
- * teleport at all.</p>
- *
- * <p>The <b>only</b> boundary this class enforces is <b>deep space</b>: once you have climbed clear past
- * the Moon — {@link GenesisCommonConfig#getDeepSpaceRadius()} blocks up, i.e. ~20,000 beyond the Moon's
- * ~10,000-block distance — the void hands off to the {@code subspace} deep-space dimension. Craft state
- * (structure, velocity, rotation, passengers, momentum) is carried through that single hop.</p>
+ * <p>Climb past {@link GenesisCommonConfig#getAtmosphereExitHeight()} (the Kármán line) and you slip —
+ * seamlessly, behind a frame-captured transition, with your momentum intact — into the
+ * {@code great_unknown} space dimension: a true 3D void where the Sun, Earth and Moon sit at real
+ * positions. There you actually fly <em>toward</em> the Moon and watch it grow, instead of climbing a
+ * flat Y axis that never reaches it. The space-side {@link SpaceToPlanetTeleporter} then handles
+ * arriving at a body (dropping you onto it) and the deep-space boundary out past the Moon.</p>
  */
 public class PlanetToSpaceTeleporter {
 	/** Persistent-data tag holding the game time a player arrived in space (re-entry grace). */
@@ -69,17 +64,16 @@ public class PlanetToSpaceTeleporter {
 		if (GenesisMod.isSpaceDimension(level) || GenesisMod.isSubSpaceDimension(level)) return;
 		if (GenesisMod.getCelestialForLevel(level) == null) return;
 
-		ServerLevel deepSpace = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.WORMHOLE_DIM));
-		if (deepSpace == null) return;
+		ServerLevel spaceLevel = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, GenesisMod.SPACE_DIM));
+		if (spaceLevel == null) return;
 
-		int deepSpaceHeight = GenesisCommonConfig.getDeepSpaceRadius();   // ~30,000 = 20,000 past the Moon
-		int exitHeight = GenesisCommonConfig.getAtmosphereExitHeight();   // top of the breathable atmosphere
+		int karman = GenesisCommonConfig.getAtmosphereExitHeight();   // the Kármán line
 
-		// ---- constructs (Sable physics objects): only deep space moves them off this world ----
+		// ---- constructs (Sable physics objects) cross the Kármán line into 3D space ----
 		for (AeronauticsConstruct construct : getSortedConstructs(level)) {
 			if (construct.isRemoved()) continue;
-			if (construct.positionInWorld().y() > deepSpaceHeight) {
-				sendConstructToDeepSpace(level, deepSpace, construct);
+			if (construct.positionInWorld().y() > karman) {
+				sendConstructToSpace(level, spaceLevel, construct);
 			}
 		}
 
@@ -88,25 +82,20 @@ public class PlanetToSpaceTeleporter {
 			if (player.isPassenger() || player.isRemoved()) continue;
 
 			double y = player.getY();
-			if (y > deepSpaceHeight) {
-				sendPlayerToDeepSpace(player, deepSpace);
-			} else if (y > exitHeight && level.getGameTime() % 40 == 0) {
-				// Ambient orbital read-out; the trip itself is seamless so this is the only cue.
-				long altPastMoon = (long) (y - MOON_DISTANCE);
-				String msg = altPastMoon > 0
-						? "Past the Moon — deep space in " + (deepSpaceHeight - (int) y) + " blocks"
-						: "In orbit — Moon ahead at " + (MOON_DISTANCE - (int) y) + " blocks";
-				player.displayClientMessage(Component.literal(msg).withStyle(ChatFormatting.DARK_AQUA), true);
+			if (y > karman) {
+				sendToSpace(player);
+			} else if (y > karman * 0.6 && level.getGameTime() % 40 == 0) {
+				player.displayClientMessage(Component.literal(
+								"Approaching the Kármán line… " + (int) y + " / " + karman)
+						.withStyle(ChatFormatting.DARK_AQUA), true);
 			}
 		}
 	}
 
-	/** Distance (blocks) the Moon model sits from the surface — the reference point for "past the Moon". */
-	private static final double MOON_DISTANCE = 10000.0;
-
 	/**
-	 * Teleports a player (and passengers) straight into the Great Unknown. No longer part of the normal
-	 * ascent — retained for the {@code /genesis space} debug command only.
+	 * Teleports a player (and passengers) into the Great Unknown, above the celestial they launched from,
+	 * carrying their momentum so the climb continues seamlessly into 3D space. Also the {@code /genesis
+	 * space} debug command.
 	 */
 	public static boolean sendToSpace(ServerPlayer player) {
 		ServerLevel level = player.serverLevel();
@@ -120,6 +109,7 @@ public class PlanetToSpaceTeleporter {
 		Quaterniond rotation;
 		Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
 		if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
+			// Arrive just above the atmosphere, clear of the body, looking out into space.
 			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
 			rotation = vantagePoint.getCelestialRotation()
 					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
@@ -128,34 +118,32 @@ public class PlanetToSpaceTeleporter {
 			rotation = new Quaterniond();
 		}
 
+		Vec3 carried = player.getDeltaMovement();
 		EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
+		player.setDeltaMovement(carried); // keep momentum through the Kármán line
 		player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, spaceLevel.getGameTime());
 		player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
-		player.displayClientMessage(Component.literal("Entering the Great Unknown").withStyle(ChatFormatting.AQUA), true);
+		player.displayClientMessage(Component.literal("Crossing into space").withStyle(ChatFormatting.AQUA), true);
+		player.playNotifySound(SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.2f, 1.6f);
 		return true;
 	}
 
-	/** Deep-space handoff for a free-flying player: preserves momentum, passengers and camera. */
-	private static void sendPlayerToDeepSpace(ServerPlayer player, ServerLevel deepSpace) {
-		if (GenesisMod.isSubSpaceDimension(player.serverLevel())) return;
-		Vec3 carried = player.getDeltaMovement();
-		Vector3d landing = new Vector3d(player.getX() / 16.0, 256.0, player.getZ() / 16.0);
-		GenesisMod.LOGGER.info("Player {} crossed past the Moon into deep space at y={}",
-				player.getGameProfile().getName(), (int) player.getY());
-		EntityTeleporter.teleportEntityAndPassengers(player, deepSpace, new Vec3(landing.x, landing.y, landing.z), new Quaterniond());
-		player.setDeltaMovement(carried);
-		player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, deepSpace.getGameTime());
-		player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
-		player.displayClientMessage(Component.literal("Crossing into deep space").withStyle(ChatFormatting.LIGHT_PURPLE), true);
-		player.playNotifySound(SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.25f, 1.5f);
-	}
-
-	/** Deep-space handoff for a Sable construct: structure/velocity/rotation/passengers carried by the teleporter. */
-	private static void sendConstructToDeepSpace(ServerLevel level, ServerLevel deepSpace, AeronauticsConstruct construct) {
-		var box = construct.worldBounds();
-		Vector3d landing = new Vector3d((box.minX() + box.maxX()) / 32.0, 256.0, (box.minZ() + box.maxZ()) / 32.0);
-		GenesisMod.LOGGER.info("Construct {} crossed past the Moon into deep space", construct.id());
-		DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.PLANET_TO_SPACE, level, deepSpace, landing, new Quaterniond());
+	/** Sends a construct across the Kármán line into 3D space, above the body, keeping its state. */
+	private static void sendConstructToSpace(ServerLevel level, ServerLevel spaceLevel, AeronauticsConstruct construct) {
+		long ticks = GenesisMod.getTicks(level);
+		Vector3dc pos = construct.positionInWorld();
+		Vector3d target;
+		Quaterniond rotation;
+		if (VantagePoint.get(level, new Vector3d(pos), ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
+			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
+			rotation = vantagePoint.getCelestialRotation()
+					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
+		} else {
+			target = new Vector3d(pos.x() / 16.0, 320.0, pos.z() / 16.0);
+			rotation = new Quaterniond();
+		}
+		GenesisMod.LOGGER.info("Construct {} crossed the Kármán line into space", construct.id());
+		DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.PLANET_TO_SPACE, level, spaceLevel, target, rotation);
 	}
 
 	private static Vector3d computeSpaceTarget(VantagePoint.OnCelestial vantagePoint) {
