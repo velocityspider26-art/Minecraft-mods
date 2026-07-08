@@ -55,10 +55,10 @@ public class TestShipHelper {
         return AeronauticsContraptionLookup.getConstructById(level, subLevel.getUniqueId());
     }
 
-    /** Moves a construct above the atmosphere-exit height so PlanetToSpaceTeleporter picks it up. */
-    public static void moveConstructAboveAtmosphere(ServerLevel level, AeronauticsConstruct construct) {
+    /** Moves a construct clear past the Moon (deep-space height) so PlanetToSpaceTeleporter hands it to subspace. */
+    public static void moveConstructPastMoon(ServerLevel level, AeronauticsConstruct construct) {
         Vector3dc pos = construct.positionInWorld();
-        double targetY = GenesisCommonConfig.getAtmosphereExitHeight() + 20.0;
+        double targetY = GenesisCommonConfig.getDeepSpaceRadius() + 20.0;
         AeronauticsTeleportHelper.teleportWithinLevel(construct,
                 new Vector3d(pos.x(), targetY, pos.z()), new Quaterniond(), new Vector3d(), new Vector3d());
     }

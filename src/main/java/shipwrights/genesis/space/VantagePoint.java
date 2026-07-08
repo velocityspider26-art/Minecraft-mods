@@ -16,6 +16,14 @@ public interface VantagePoint {
     Vector3dc getPosition();
     Quaterniondc getRotation();
 
+    /// Where the observer actually is for rendering, accounting for how high they've climbed above
+    /// the planet's surface. On a planet this rises off the surface along the local "up" as altitude
+    /// increases, so the whole celestial field (the planet below, the Moon ahead) shifts and grows as
+    /// you fly up — seamless Earth-to-space with no dimension change. Defaults to {@link #getPosition()}.
+    default Vector3dc getObserverPosition() {
+        return getPosition();
+    }
+
     /// if null, the observer has no access to space. Example: the observer is in The Nether
     static @Nullable VantagePoint get(Level level, Vector3dc posInLevel, long ticks, float partialTick) {
         if (GenesisMod.isSpaceDimension(level)) {
@@ -28,7 +36,11 @@ public interface VantagePoint {
                 Quaterniond rotation = new Quaterniond()
                         .rotateTo(new Vector3d(0, 1, 0), new Vector3d(0, 0, -1));
 
-                return new VantagePoint.OnCelestial(celestial, rotation, ticks, partialTick, registry);
+                // How far above the surface the observer has climbed (blocks). Drives the seamless
+                // Earth-to-space ascent: the planet falls away below and the Moon draws nearer.
+                double altitude = Math.max(0.0, posInLevel.y());
+
+                return new VantagePoint.OnCelestial(celestial, rotation, ticks, partialTick, registry, altitude);
             } else {
                 return null;
             }
@@ -56,13 +68,26 @@ public interface VantagePoint {
             Quaterniondc cameraRotationFromNorthPole,
             long ticks,
             float partialTick,
-            Registry<Celestial> registry
+            Registry<Celestial> registry,
+            /// how far (blocks) the observer has climbed above the planet surface
+            double altitude
     ) implements VantagePoint {
 
 
         @Override
         public Vector3dc getPosition() {
             return celestial.getPosition(ticks, partialTick, registry);
+        }
+
+        /// The observer rises off the surface along local "up" as they climb, so the planet shrinks
+        /// below them and nearer bodies (the Moon) grow as they approach.
+        @Override
+        public Vector3dc getObserverPosition() {
+            Vector3dc center = getPosition();
+            double radius = celestial.getActualSize() * 0.5;
+            Vector3d up = new Vector3d(0, 1, 0);
+            getCelestialRotation().transform(up);
+            return up.mul(radius + altitude).add(center);
         }
 
         @Override

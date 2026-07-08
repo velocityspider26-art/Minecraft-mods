@@ -73,7 +73,8 @@ public class PlanetRenderer implements CelestialRenderer {
         float partialTick = GenesisMod.getPartialTick(level, event);
 
         Vector3dc bodyPos = toRender.getPosition(ticks, partialTick, registry);
-        Vector3dc vantagePos = vantagePoint.getPosition();
+        Vector3dc vantagePos = vantagePoint.getObserverPosition();
+        boolean isCurrentBody = vantagePoint instanceof VantagePoint.OnCelestial oc && oc.celestial() == toRender;
         Vector3d dir = new Vector3d(bodyPos).sub(vantagePos);
         double dist = dir.length();
         double bodyRadius = toRender.getActualSize() * 0.5;
@@ -119,7 +120,11 @@ public class PlanetRenderer implements CelestialRenderer {
         RenderSystem.disableCull();
 
         float fr = FogRendererAccessor.getFogRed(), fg = FogRendererAccessor.getFogGreen(), fb = FogRendererAccessor.getFogBlue();
-        float alpha = vantagePoint instanceof VantagePoint.OnCelestial ? planetAlpha(level) : 1f;
+        // The planet you're standing on only materialises below you once you've climbed clear of the
+        // terrain (otherwise its cube would swallow the world at ground level). Other bodies (the Moon)
+        // are always fully drawn so they're visible from the surface.
+        float alpha = isCurrentBody ? planetAlpha(level) : 1f;
+        if (alpha <= 0.001f) return;
 
         BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
         float t = 1f / 3f, tt = 2f / 3f;
@@ -146,9 +151,10 @@ public class PlanetRenderer implements CelestialRenderer {
     }
 
     private static float planetAlpha(ClientLevel level) {
-        // When standing on the planet, fade the body in as the camera climbs (matches sky fade).
+        // Fade the home planet in as the camera climbs above the terrain: nothing until you clear the
+        // build height, fully solid once you're unmistakably in space looking back down at it.
         double camY = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y;
-        return (float) Math.max(0.0, Math.min(1.0, (camY - 320.0) / 512.0));
+        return (float) Math.max(0.0, Math.min(1.0, (camY - 400.0) / 1200.0));
     }
 
     /** Emits one textured cube face (4 verts) with net UVs; per-vertex normal = rotated local corner. */

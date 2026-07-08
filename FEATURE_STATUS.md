@@ -28,7 +28,9 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 | Biome modifiers (ore/miasma placement) | ✅ | `neoforge:add_features` |
 | Celestial datapack registry + transform providers | ✅ | `MapCodec` dispatch; static/orbiting providers |
 | Frozen-time system (time offset) | ✅ | `SavedData` (1.21 Factory) + payload sync |
-| Dimension travel (full loop) | ✅ | Earth↔space↔Moon↔deep-space loop, all hops behind the transition screen (no loading screen). Moon at 10,000 blocks (verified =10000 in-game), Moon-approach→`genesis:moon` and deep-space(>30,000)→`genesis:subspace` both verified live; player/craft momentum + rotation + passengers preserved. Distances in `genesis-common.toml`. |
+| Seamless Earth→space ascent | ✅ | Leaving Earth is **no longer a dimension teleport** — the player and craft stay in the overworld the whole climb. Sky/fog fade to black and the celestial renderer lifts the planet away below (altitude-aware `VantagePoint.getObserverPosition()`), so surface → atmosphere → orbit → past the Moon is continuous, with no portal/loading screen. The Sun and Moon render in the overworld sky; Earth materialises below you as you climb clear of the terrain. |
+| Deep-space transition | ✅ | The **only** travel dimension change: once you climb clear past the Moon (deep-space height, ~20,000 blocks beyond the Moon's ~10,000) you cross into `genesis:subspace`, carrying momentum/rotation/passengers. Height in `genesis-common.toml` (`deepSpaceRadius`, default 30,000). It cannot fire near Earth — it is purely a past-the-Moon altitude gate. Server-side dimension load verified (`Done`, no errors); the frame-captured transition is wrapped so a GL failure degrades to the vanilla screen instead of crashing. |
+| `/genesis space` + `great_unknown`/`moon` dimensions | ✅ | The scaled space dimension and its space↔planet loop remain for the `/genesis space` / `/genesis land` debug commands, but are no longer entered automatically by flying up. |
 | Recipes (crafting, smelting, blasting) | ✅ | Migrated to 1.21 format (`result.id`, string ingredients); removed-mod items substituted |
 | Loot tables / tags / advancements | ✅ | Folders migrated (`loot_table`, `recipe`, `tags/block`…) |
 | Networking (warp/sound/time packets) | ✅ | NeoForge `CustomPacketPayload` system |
@@ -59,7 +61,7 @@ Legend: ✅ ported & working · 🟡 ported with reduced fidelity (documented) �
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Re-entry / atmosphere-exit heating | ✅ (code-verified) | `AtmosphereBurnEffects`: plasma builds on the leading face of **Sable physics objects only** (constructs from `AeronauticsContraptionLookup`), scaling with speed (15–65 blocks/s) and air density, fading to nothing at the atmosphere exit height; flame→blue-white plasma→sparks as heat rises, smoke trail, swelling roar. Players/mobs/items are never affected. Needs a built CA vehicle for live tuning. |
+| Re-entry / atmosphere-exit heating | ✅ (code-verified) | `AtmosphereBurnEffects`: a **coloured-plasma bow-shock cap** wraps the leading face of **Sable physics objects only** (constructs from `AeronauticsContraptionLookup`) — a bright dome of `DUST_COLOR_TRANSITION` particles, white-gold at the stagnation point bleeding through orange to deep-red at the shoulders, curving back around the hull with a white-hot core and a plasma wake streaming behind (the KSP-style look in the reference image, not scattered vanilla flames). Heat ramps smoothly with speed (15–65 blocks/s) and air density and fades out smoothly; players/mobs/items are never touched. Needs a built CA vehicle for live colour/scale tuning. |
 
 ## Client rendering
 

@@ -22,6 +22,7 @@ public class TransitionFrame {
     public static void captureFrame() {
         Minecraft mc = Minecraft.getInstance();
         RenderTarget main = mc.getMainRenderTarget();
+        if (main == null || main.width <= 0 || main.height <= 0) return;
 
         if (capturedTarget == null ||
                 capturedTarget.width != main.width ||

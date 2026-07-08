@@ -51,7 +51,7 @@ public class CelestialRenderDispatcher {
 
         VantagePoint vantagePoint = VantagePoint.get(level, new Vector3d(cameraPos.x, cameraPos.y, cameraPos.z), ticks, partialTick);
 
-        Vector3dc cameraForRenderOrder = vantagePoint instanceof VantagePoint.OnCelestial ? vantagePoint.getPosition() : AeronauticsTransformHelper.toJoml(cameraPos);
+        Vector3dc cameraForRenderOrder = vantagePoint instanceof VantagePoint.OnCelestial ? vantagePoint.getObserverPosition() : AeronauticsTransformHelper.toJoml(cameraPos);
 
         if (vantagePoint != null) {
             final Registry<Celestial> reg = registry;

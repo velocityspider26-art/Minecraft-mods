@@ -58,7 +58,7 @@ public class StarRenderer implements CelestialRenderer {
         var registry = GenesisMod.getCelestialRegistry(level);
 
         Vector3dc bodyPos = toRender.getPosition(ticks, partialTick, registry);
-        Vector3dc vantagePos = vantagePoint.getPosition();
+        Vector3dc vantagePos = vantagePoint.getObserverPosition();
         Vector3d dir = new Vector3d(bodyPos).sub(vantagePos);
         double dist = dir.length();
         if (dist < 1.0e-6) return;

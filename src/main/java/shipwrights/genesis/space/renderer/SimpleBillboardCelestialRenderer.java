@@ -64,7 +64,7 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
         Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
 
         Vector3dc bodyPos = toRender.getPosition(ticks, partialTick, registry);
-        Vector3dc vantagePos = vantagePoint.getPosition();
+        Vector3dc vantagePos = vantagePoint.getObserverPosition();
 
         Vector3d dir = new Vector3d(bodyPos).sub(vantagePos);
         double dist = dir.length();

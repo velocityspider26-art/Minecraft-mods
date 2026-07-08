@@ -34,6 +34,9 @@ public class TeleportGameTests {
     private static final ResourceKey<Level> SPACE_DIM_KEY =
             ResourceKey.create(Registries.DIMENSION, GenesisMod.SPACE_DIM);
 
+    private static final ResourceKey<Level> DEEP_SPACE_DIM_KEY =
+            ResourceKey.create(Registries.DIMENSION, GenesisMod.WORMHOLE_DIM);
+
     private static final BlockPos SHIP_ASSEMBLY_REL_POS = new BlockPos(2, 0, 2);
 
     /** Smoke test: the GameTest framework can discover tests in the {@code genesis} namespace. */
@@ -42,13 +45,16 @@ public class TeleportGameTests {
         helper.succeed();
     }
 
-    /** A construct above the atmosphere-exit height in a planet dimension is moved to space. */
+    /**
+     * Leaving Earth is seamless — no teleport — but a construct that climbs clear <em>past the Moon</em>
+     * (deep-space height) is handed to the {@code subspace} deep-space dimension.
+     */
     @GameTest(timeoutTicks = 100)
-    public static void atmosphereExit(GameTestHelper helper) {
+    public static void deepSpaceCrossing(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        ServerLevel spaceLevel = level.getServer().getLevel(SPACE_DIM_KEY);
-        if (spaceLevel == null) {
-            helper.fail("Space dimension '" + GenesisMod.SPACE_DIM + "' not loaded");
+        ServerLevel deepSpace = level.getServer().getLevel(DEEP_SPACE_DIM_KEY);
+        if (deepSpace == null) {
+            helper.fail("Deep-space dimension '" + GenesisMod.WORMHOLE_DIM + "' not loaded");
             return;
         }
 
@@ -58,11 +64,11 @@ public class TeleportGameTests {
             return;
         }
         UUID id = construct.id();
-        TestShipHelper.moveConstructAboveAtmosphere(level, construct);
+        TestShipHelper.moveConstructPastMoon(level, construct);
 
         helper.succeedWhen(() -> {
-            if (AeronauticsContraptionLookup.getConstructById(spaceLevel, id) == null) {
-                throw new GameTestAssertException("Construct not in space dimension yet");
+            if (AeronauticsContraptionLookup.getConstructById(deepSpace, id) == null) {
+                throw new GameTestAssertException("Construct not in deep space yet");
             }
         });
     }
@@ -102,13 +108,13 @@ public class TeleportGameTests {
         });
     }
 
-    /** An entity riding a construct travels with it to space. */
+    /** An entity riding a construct travels with it across the deep-space boundary. */
     @GameTest(timeoutTicks = 200)
     public static void entityTeleportsWithShip(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        ServerLevel spaceLevel = level.getServer().getLevel(SPACE_DIM_KEY);
+        ServerLevel spaceLevel = level.getServer().getLevel(DEEP_SPACE_DIM_KEY);
         if (spaceLevel == null) {
-            helper.fail("Space dimension not loaded");
+            helper.fail("Deep-space dimension not loaded");
             return;
         }
 
@@ -128,11 +134,11 @@ public class TeleportGameTests {
         level.addFreshEntity(pig);
         UUID pigId = pig.getUUID();
 
-        TestShipHelper.moveConstructAboveAtmosphere(level, construct);
+        TestShipHelper.moveConstructPastMoon(level, construct);
 
         helper.succeedWhen(() -> {
             if (spaceLevel.getEntity(pigId) == null) {
-                throw new GameTestAssertException("Pig has not travelled to space with the construct yet");
+                throw new GameTestAssertException("Pig has not travelled to deep space with the construct yet");
             }
         });
     }

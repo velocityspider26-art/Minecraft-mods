@@ -48,9 +48,17 @@ public abstract class MinecraftMixin {
 
             if (TransitionState.CURRENT == TransitionState.SPACE_TRAVEL || TransitionState.CURRENT == TransitionState.WORMHOLE_TRAVEL) {
                 genesis$settingTransition = true;
-                TransitionFrame.captureFrame();
-                instance.setScreen(new TransitionScreen());
-                genesis$settingTransition = false;
+                try {
+                    // A seamless transition must never take the game down: if the frame grab or the
+                    // screen swap fails on some driver, fall back to the vanilla loading screen.
+                    TransitionFrame.captureFrame();
+                    instance.setScreen(new TransitionScreen());
+                } catch (Throwable t) {
+                    GenesisMod.LOGGER.error("Genesis seamless transition failed; using the default screen", t);
+                    TransitionState.CURRENT = TransitionState.NONE;
+                } finally {
+                    genesis$settingTransition = false;
+                }
             }
         }
     }
