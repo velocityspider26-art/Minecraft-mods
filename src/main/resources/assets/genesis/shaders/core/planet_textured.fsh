@@ -22,10 +22,12 @@ void main() {
 
     ndotl = 1. - 1. / (ndotl * ndotl * 5. + 1.);
 
-    float ambient = 0.1;
+    // Lift the ambient floor so the night side reads as a dim world rather than near-black, and give the
+    // whole disc a little more punch so Earth looks bright from orbit.
+    float ambient = 0.38;
     float lighting = clamp(ambient + ndotl, 0.0, 1.0);
 
-    vec3 litTexColor = texColor.rgb * lighting;
+    vec3 litTexColor = texColor.rgb * lighting * 1.25;
 
     litTexColor += SkyColor * clamp(1 - lighting, 0, 1);
 

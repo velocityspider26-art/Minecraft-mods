@@ -173,6 +173,32 @@ public class SimpleBillboardCelestialRenderer implements CelestialRenderer {
     }
 
     /**
+     * Camera-facing additive corona glow around a star — used by the shader {@code StarRenderer} so the
+     * Sun has a bright, soft halo (a wide faint corona, a tighter bright glow) instead of just the bare
+     * shader cube.
+     */
+    public void drawStarGlow(Matrix4f pose, Vector3d center, float half, float r, float g, float b) {
+        Vector3d dir = new Vector3d(center);
+        if (dir.lengthSquared() < 1.0e-9) return;
+        dir.normalize();
+        Vector3d up = Math.abs(dir.y) > 0.99 ? new Vector3d(1, 0, 0) : new Vector3d(0, 1, 0);
+        Vector3d right = new Vector3d(dir).cross(up).normalize();
+        Vector3d realUp = new Vector3d(right).cross(dir).normalize();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        // Wide soft corona.
+        drawRadialFan(pose, center, right, realUp, half * 0.9f, half * 4.0f,
+                r, g, b, 0.42f, r, g, b, 0.0f);
+        // Tight bright glow hugging the disc.
+        drawRadialFan(pose, center, right, realUp, half * 0.8f, half * 1.8f,
+                1.0f, 0.95f, 0.8f, 0.8f, r, g, b, 0.0f);
+        RenderSystem.defaultBlendFunc();
+    }
+
+    /**
      * Camera-facing additive atmosphere rim around a body — used by the shader planet renderer to
      * give the cube planet the same blue limb the billboard planet has.
      */

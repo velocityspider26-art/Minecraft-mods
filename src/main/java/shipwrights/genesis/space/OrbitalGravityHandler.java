@@ -38,8 +38,8 @@ public final class OrbitalGravityHandler {
     private static final double PLANET_RADIUS = 6000.0;
     /** Surface gravity magnitude of the orbital field (blocks/s²) — gentle so orbits are controllable. */
     private static final double SURFACE_GRAVITY = 0.5;
-    /** Straight-down acceleration (blocks/s²) the base game applies, which we cancel in space. */
-    private static final double AMBIENT_GRAVITY = 9.81;
+    /** Fallback for Sable's straight-down gravity (blocks/s²) if its physics config can't be read. */
+    private static final double AMBIENT_GRAVITY_FALLBACK = 11.0;
     /** Band (blocks) over which radial gravity fades in above the start height. */
     private static final double BLEND_BAND = 600.0;
 
@@ -82,13 +82,26 @@ public final class OrbitalGravityHandler {
             // Blend factor: 0 at the start height, 1 once fully in space.
             double blend = Math.min(1.0, (pos.y() - start) / BLEND_BAND);
 
-            // Radial gravity toward the centre, replacing the ambient downward pull (both faded by blend).
+            // Radial gravity toward the centre, replacing the flat downward pull (both faded by blend).
             double gMag = GM / (r * r);
             Vector3d accel = new Vector3d(rVec).div(r).mul(-gMag * blend);   // toward centre
-            accel.y += AMBIENT_GRAVITY * blend;                             // cancel the flat downward pull
+            // Cancel Sable's *actual* ambient gravity (read from its dimension physics; the previous
+            // hard-coded 9.81 under-cancelled the real -11 and left craft slowly falling out of orbit).
+            Vector3d ambient = ambientGravity(level, pos);
+            accel.sub(ambient.mul(blend));
 
             Vector3d deltaV = accel.mul(DT);
             AeronauticsForceHandler.addVelocity(construct, deltaV, new Vector3d());
+        }
+    }
+
+    /** Sable's own gravity vector at a point (blocks/s²), with a safe fallback if its API isn't reachable. */
+    private static Vector3d ambientGravity(ServerLevel level, Vector3dc pos) {
+        try {
+            return new Vector3d(dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData
+                    .getGravity(level, new Vector3d(pos)));
+        } catch (Throwable t) {
+            return new Vector3d(0.0, -AMBIENT_GRAVITY_FALLBACK, 0.0);
         }
     }
 

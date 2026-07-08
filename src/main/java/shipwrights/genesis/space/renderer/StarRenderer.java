@@ -103,6 +103,11 @@ public class StarRenderer implements CelestialRenderer {
 
         Matrix4f pose = new Matrix4f(event.getModelViewMatrix());
 
+        // Soft additive corona behind the star so it glows rather than reading as a bare cube.
+        float glowR = 1f, glowG = 0.85f, glowB = 0.4f;
+        if (sp != null) { glowR = sp.r1() / 255f; glowG = sp.g1() / 255f; glowB = sp.b1() / 255f; }
+        fallback.drawStarGlow(pose, center, half, glowR, glowG, glowB);
+
         RenderSystem.setShader(() -> shader);
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);

@@ -163,9 +163,9 @@ public final class ReentryPlasmaRenderer {
         // Three additive passes — a broad outer halo, the main plasma layer and a searing thin core —
         // stack up into a bright, hot sheath; brightness is concentrated on the windward side with a
         // tail streaming off the back.
-        drawSheath(mat, dir, hx, hy, hz, heat, 1.9 + 3.2 * heat, 0.28f, 5.0 + 9.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.9 + 1.6 * heat, 0.75f, 3.5 + 7.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.35 + 0.7 * heat, 1.0f, 2.0 + 4.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.8 + 1.6 * heat, 0.30f, 4.5 + 9.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.4 + 0.8 * heat, 0.80f, 3.0 + 6.0 * heat);
+        drawSheath(mat, dir, hx, hy, hz, heat, 0.15 + 0.4 * heat, 1.0f, 1.8 + 3.5 * heat);
 
         poseStack.popPose();
     }
@@ -203,11 +203,20 @@ public final class ReentryPlasmaRenderer {
         double uy = Math.cos(phi);
         double uz = Math.sin(phi) * Math.sin(theta);
 
-        double px = ux * ax, py = uy * ay, pz = uz * az;
-        // Outward normal of the ellipsoid surface -> how much this point faces into the airflow.
-        double nx = ux, ny = uy, nz = uz;
-        double nlen = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        double windward = (nx * dir.x + ny * dir.y + nz * dir.z) / Math.max(1.0e-6, nlen); // -1..1
+        // Push the sphere direction toward the unit *cube* so the sheath is a rounded box that hugs the
+        // actual hull shape — a single block gets a rounded-cube sheath, a long ship a rounded slab —
+        // instead of a generic ellipsoid. ROUND=0 is a hard box, 1 a sphere.
+        final double ROUND = 0.30;
+        double m = Math.max(Math.abs(ux), Math.max(Math.abs(uy), Math.abs(uz)));
+        double bx = ux / m, by = uy / m, bz = uz / m;           // on the unit cube face
+        double sx = bx + (ux - bx) * ROUND;                     // rounded-box direction
+        double sy = by + (uy - by) * ROUND;
+        double sz = bz + (uz - bz) * ROUND;
+
+        double px = sx * ax, py = sy * ay, pz = sz * az;
+        // Outward normal (rounded-box direction) -> how much this point faces into the airflow.
+        double nlen = Math.sqrt(sx * sx + sy * sy + sz * sz);
+        double windward = (sx * dir.x + sy * dir.y + sz * dir.z) / Math.max(1.0e-6, nlen); // -1..1
         double front = Math.max(0.0, windward);
         double back = Math.max(0.0, -windward);
 
