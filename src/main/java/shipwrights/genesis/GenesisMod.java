@@ -101,6 +101,7 @@ public final class GenesisMod {
         NeoForge.EVENT_BUS.register(new PlanetToSpaceTeleporter(isGameTest));
         NeoForge.EVENT_BUS.register(new SpaceToPlanetTeleporter(isGameTest));
         NeoForge.EVENT_BUS.register(new shipwrights.genesis.space.OrbitalGravityHandler(isGameTest));
+        NeoForge.EVENT_BUS.register(new shipwrights.genesis.space.GalaxyGravityHandler(isGameTest));
         NeoForge.EVENT_BUS.addListener(shipwrights.genesis.command.GenesisCommands::onRegisterCommands);
         NeoForge.EVENT_BUS.register(new shipwrights.genesis.content.fx.AtmosphereBurnEffects());
         NeoForge.EVENT_BUS.register(TimeTracker.class);
