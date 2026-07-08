@@ -230,9 +230,11 @@ public final class ReentryPlasmaRenderer {
         float fr = (float) front;
         float bk = (float) back;
         float r = 1.0f;
-        float g = lerp(0.40f, 0.93f, (float) Math.pow(fr, 0.7));   // magenta-pink flanks -> gold cap
-        float b = lerp(0.92f, 0.62f, (float) Math.pow(fr, 1.3));   // violet/magenta flanks -> warm cap
-        float white = (float) Math.min(1.0, heat * (0.55 * fr + 0.32 * bk));
+        float g = lerp(0.45f, 0.93f, (float) Math.pow(fr, 0.7));   // magenta-pink flanks -> gold cap
+        float b = lerp(0.90f, 0.62f, (float) Math.pow(fr, 1.3));   // violet/magenta flanks -> warm cap
+        // White-hot at the stagnation cap, and a bright white-pink core streaming down the wake (the
+        // trails read white-pink, not pure magenta, in the reference).
+        float white = (float) Math.min(1.0, heat * (0.60 * fr + 0.55 * bk));
         r += (1f - r) * white; g += (1f - g) * white; b += (1f - b) * white;
 
         // Bright windward cap, plus streaking plasma down the wake so the craft is engulfed and trailing.
