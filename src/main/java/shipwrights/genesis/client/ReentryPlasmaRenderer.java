@@ -20,8 +20,12 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
+import org.joml.Vector3f;
+
+import java.util.List;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.compat.aeronautics.AeronauticsConstruct;
 import shipwrights.genesis.compat.aeronautics.AeronauticsContraptionLookup;
@@ -60,7 +64,23 @@ public final class ReentryPlasmaRenderer {
 
     private static final Map<UUID, Track> TRACKS = new HashMap<>();
 
+    /** Cached voxel silhouette (exposed faces) per construct, so we don't re-scan blocks every frame. */
+    private static final Map<UUID, List<float[]>> SHAPES = new HashMap<>();
+    private static final Map<UUID, Long> SHAPE_TIME = new HashMap<>();
+    private static final int MAX_FACES = 700;
+
     private ReentryPlasmaRenderer() {}
+
+    private static List<float[]> facesFor(AeronauticsConstruct construct, ClientLevel level) {
+        long now = level.getGameTime();
+        Long t = SHAPE_TIME.get(construct.id());
+        List<float[]> cached = SHAPES.get(construct.id());
+        if (cached != null && t != null && now - t < 40) return cached; // refresh every 2s
+        List<float[]> faces = construct.exposedFaces(MAX_FACES);
+        SHAPES.put(construct.id(), faces);
+        SHAPE_TIME.put(construct.id(), now);
+        return faces;
+    }
 
     /** Derive each construct's speed from its motion and update its (smoothly ramping) heat. */
     @SubscribeEvent
@@ -115,6 +135,8 @@ public final class ReentryPlasmaRenderer {
         }
 
         TRACKS.entrySet().removeIf(e -> e.getValue().missingTicks > 40);
+        SHAPES.keySet().removeIf(id -> !TRACKS.containsKey(id));
+        SHAPE_TIME.keySet().removeIf(id -> !TRACKS.containsKey(id));
     }
 
     @SubscribeEvent
@@ -140,7 +162,7 @@ public final class ReentryPlasmaRenderer {
                 if (track == null || track.heat < 0.04) continue;
                 double speed = track.velocity.length();
                 if (speed < 1.0e-3) continue;
-                drawShell(pose, cam, construct, track.velocity, speed, track.heat);
+                drawShell(pose, cam, construct, level, track.velocity, speed, track.heat);
             }
         } catch (Throwable ignored) {
             // A single bad frame must not crash the game.
@@ -153,7 +175,7 @@ public final class ReentryPlasmaRenderer {
     }
 
     private static void drawShell(PoseStack poseStack, Vec3 cam, AeronauticsConstruct construct,
-                                  Vector3d velocity, double speed, double heat) {
+                                  ClientLevel level, Vector3d velocity, double speed, double heat) {
         var bounds = construct.worldBounds();
         Vector3d center = new Vector3d(
                 (bounds.minX() + bounds.maxX()) * 0.5,
@@ -169,16 +191,86 @@ public final class ReentryPlasmaRenderer {
         poseStack.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
         Matrix4f mat = poseStack.last().pose();
 
-        // The sheath is an ellipsoid matching the construct's own proportions, so it wraps the actual
-        // hull (a long ship gets a long sheath, a flat one a flat sheath) rather than a fixed teardrop.
-        // Three additive passes — a broad outer halo, the main plasma layer and a searing thin core —
-        // stack up into a bright, hot sheath; brightness is concentrated on the windward side with a
-        // tail streaming off the back.
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.8 + 1.6 * heat, 0.30f, 9.0 + 20.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.4 + 0.8 * heat, 0.80f, 6.0 + 13.0 * heat);
-        drawSheath(mat, dir, hx, hy, hz, heat, 0.15 + 0.4 * heat, 1.0f, 3.0 + 7.0 * heat);
+        List<float[]> faces = facesFor(construct, level);
+        if (faces != null && !faces.isEmpty()) {
+            // Plasma glued to the construct's ACTUAL voxel silhouette: a glowing skin on every block
+            // face that meets the airflow, streaming into the wake — so it takes the real shape of the
+            // craft (a wing burns along its wing, a cube along its cube), not a generic hull.
+            var r = construct.rotation();
+            Quaternionf rot = new Quaternionf((float) r.x(), (float) r.y(), (float) r.z(), (float) r.w());
+            drawVoxelPlasma(mat, faces, rot, dir, heat);
+        } else {
+            // Fallback (shape not readable): the proportional rounded-box sheath.
+            drawSheath(mat, dir, hx, hy, hz, heat, 0.8 + 1.6 * heat, 0.30f, 9.0 + 20.0 * heat);
+            drawSheath(mat, dir, hx, hy, hz, heat, 0.4 + 0.8 * heat, 0.80f, 6.0 + 13.0 * heat);
+            drawSheath(mat, dir, hx, hy, hz, heat, 0.15 + 0.4 * heat, 1.0f, 3.0 + 7.0 * heat);
+        }
 
         poseStack.popPose();
+    }
+
+    /** Draws additive plasma on the windward faces of the construct's real voxel shape, plus wake streaks. */
+    private static void drawVoxelPlasma(Matrix4f mat, List<float[]> faces, Quaternionf rot, Vector3d dir, double heat) {
+        float dx = (float) dir.x, dy = (float) dir.y, dz = (float) dir.z;
+        float standoff = (float) (0.15 + 0.5 * heat);
+        float wakeLen = (float) (4.0 + 12.0 * heat);
+        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        Vector3f o = new Vector3f(), n = new Vector3f(), t1 = new Vector3f(), t2 = new Vector3f();
+        for (float[] f : faces) {
+            rot.transform(f[0], f[1], f[2], o);
+            rot.transform(f[3], f[4], f[5], n);
+            float wind = n.x * dx + n.y * dy + n.z * dz;   // -1..1, how much the face meets the airflow
+            if (wind <= 0.05f) continue;                   // only leading faces glow
+
+            Vector3f up = Math.abs(n.y) > 0.9f ? new Vector3f(1, 0, 0) : new Vector3f(0, 1, 0);
+            n.cross(up, t1); t1.normalize();
+            n.cross(t1, t2); t2.normalize();
+
+            float cx = o.x + n.x * standoff, cy = o.y + n.y * standoff, cz = o.z + n.z * standoff;
+
+            float wl = Math.min(1f, wind);
+            // white-gold where it slams the air, pink-magenta on the shallower faces
+            float r = 1f, g = lerp(0.45f, 0.95f, wl), b = lerp(0.85f, 0.62f, wl);
+            float white = (float) Math.min(1.0, heat * 0.55 * wl);
+            r += (1f - r) * white; g += (1f - g) * white; b += (1f - b) * white;
+            float a = (float) Math.min(1.0, heat * (0.25 + 0.85 * wl));
+
+            float s = 0.75f; // overlap neighbouring faces so the skin reads smooth
+            quad(buf, mat, cx, cy, cz, t1, t2, s, r, g, b, a);
+
+            if (wind > 0.35f) {   // strong leading faces trail a streak
+                streak(buf, mat, cx, cy, cz, dx, dy, dz, t1, wakeLen * wind, heat, wl);
+            }
+        }
+        MeshData mesh = buf.build();
+        if (mesh != null) BufferUploader.drawWithShader(mesh);
+    }
+
+    private static void quad(BufferBuilder buf, Matrix4f mat, float cx, float cy, float cz,
+                             Vector3f t1, Vector3f t2, float s, float r, float g, float b, float a) {
+        v(buf, mat, cx - t1.x * s - t2.x * s, cy - t1.y * s - t2.y * s, cz - t1.z * s - t2.z * s, r, g, b, a);
+        v(buf, mat, cx + t1.x * s - t2.x * s, cy + t1.y * s - t2.y * s, cz + t1.z * s - t2.z * s, r, g, b, a);
+        v(buf, mat, cx + t1.x * s + t2.x * s, cy + t1.y * s + t2.y * s, cz + t1.z * s + t2.z * s, r, g, b, a);
+        v(buf, mat, cx - t1.x * s + t2.x * s, cy - t1.y * s + t2.y * s, cz - t1.z * s + t2.z * s, r, g, b, a);
+    }
+
+    /** A tapering plasma streak trailing a leading face down the wake, cooling white-gold → magenta → out. */
+    private static void streak(BufferBuilder buf, Matrix4f mat, float cx, float cy, float cz,
+                               float dx, float dy, float dz, Vector3f t1, float len, double heat, float wl) {
+        float w = 0.6f;
+        float ex = cx - dx * len, ey = cy - dy * len, ez = cz - dz * len;
+        float r0 = 1f, g0 = lerp(0.55f, 0.95f, wl), b0 = lerp(0.85f, 0.7f, wl);
+        float aNear = (float) Math.min(1.0, heat * 0.7 * wl);
+        // near (bright white-pink) -> far (transparent magenta)
+        v(buf, mat, cx - t1.x * w, cy - t1.y * w, cz - t1.z * w, r0, g0, b0, aNear);
+        v(buf, mat, cx + t1.x * w, cy + t1.y * w, cz + t1.z * w, r0, g0, b0, aNear);
+        v(buf, mat, ex + t1.x * w * 0.3f, ey + t1.y * w * 0.3f, ez + t1.z * w * 0.3f, 1f, 0.4f, 0.9f, 0f);
+        v(buf, mat, ex - t1.x * w * 0.3f, ey - t1.y * w * 0.3f, ez - t1.z * w * 0.3f, 1f, 0.4f, 0.9f, 0f);
+    }
+
+    private static void v(BufferBuilder buf, Matrix4f mat, float x, float y, float z, float r, float g, float b, float a) {
+        buf.addVertex(mat, x, y, z).setColor(r, g, b, Math.min(1f, a));
     }
 
     /**

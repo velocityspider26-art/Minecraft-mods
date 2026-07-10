@@ -108,6 +108,57 @@ public final class AeronauticsConstruct {
         return subLevel.getPlot().getBoundingBox();
     }
 
+    /**
+     * The construct's exposed surface faces — one per air-facing side of every non-air block — as
+     * {@code [ox,oy,oz, nx,ny,nz]}: the face-centre offset (in blocks) from the local bounds centre and
+     * its outward unit normal. This is the actual voxel silhouette the re-entry plasma hugs. Client-safe
+     * (the plot's chunks are present for rendering); capped and fully guarded (empty list on any failure).
+     */
+    public java.util.List<float[]> exposedFaces(int cap) {
+        java.util.List<float[]> out = new java.util.ArrayList<>();
+        try {
+            dev.ryanhcode.sable.sublevel.plot.LevelPlot plot = subLevel.getPlot();
+            if (plot == null) return out;
+            BoundingBox3ic b = plot.getBoundingBox();
+            float cx = (b.minX() + b.maxX()) / 2f, cy = (b.minY() + b.maxY()) / 2f, cz = (b.minZ() + b.maxZ()) / 2f;
+            net.minecraft.world.level.Level lvl = subLevel.getLevel();
+            int minY = lvl.getMinBuildHeight(), maxY = lvl.getMaxBuildHeight();
+
+            java.util.HashSet<Long> occ = new java.util.HashSet<>();
+            java.util.List<int[]> cells = new java.util.ArrayList<>();
+            for (dev.ryanhcode.sable.sublevel.plot.PlotChunkHolder holder : plot.getLoadedChunks()) {
+                net.minecraft.world.level.chunk.LevelChunk chunk = holder.getChunk();
+                if (chunk == null) continue;
+                int minX = chunk.getPos().getMinBlockX(), minZ = chunk.getPos().getMinBlockZ();
+                for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = minY; y < maxY; y++) {
+                    net.minecraft.core.BlockPos p = new net.minecraft.core.BlockPos(minX + x, y, minZ + z);
+                    if (chunk.getBlockState(p).isAir()) continue;
+                    occ.add(key(p.getX(), p.getY(), p.getZ()));
+                    cells.add(new int[]{p.getX(), p.getY(), p.getZ()});
+                    if (cells.size() >= 8192) break;
+                }
+            }
+            int[][] dirs = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+            for (int[] c : cells) {
+                for (int[] d : dirs) {
+                    if (occ.contains(key(c[0]+d[0], c[1]+d[1], c[2]+d[2]))) continue; // interior face
+                    out.add(new float[]{
+                            c[0] + 0.5f + d[0] * 0.5f - cx,
+                            c[1] + 0.5f + d[1] * 0.5f - cy,
+                            c[2] + 0.5f + d[2] * 0.5f - cz,
+                            d[0], d[1], d[2]});
+                    if (out.size() >= cap) return out;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
+    private static long key(int x, int y, int z) {
+        return (((long) x & 0x1FFFFF) << 42) | (((long) y & 0x1FFFFF) << 21) | ((long) z & 0x1FFFFF);
+    }
+
     /** Total mass of the construct in kg, or {@code 0} if the mass tracker is not built yet. */
     public double mass() {
         if (subLevel instanceof ServerSubLevel server && server.getMassTracker() != null) {
