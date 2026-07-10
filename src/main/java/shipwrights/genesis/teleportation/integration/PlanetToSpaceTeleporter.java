@@ -54,7 +54,11 @@ public class PlanetToSpaceTeleporter {
 	public void onLevelTick(LevelTickEvent.Post event) {
 		if (event.getLevel() instanceof ServerLevel serverLevel) {
 			if (gameTest || !serverLevel.getPlayers(u -> true, 1).isEmpty()) {
-				tick(serverLevel);
+				try {
+					tick(serverLevel);
+				} catch (Throwable t) {
+					GenesisMod.LOGGER.error("Kármán-line crossing tick failed", t);
+				}
 			}
 		}
 	}
@@ -105,21 +109,11 @@ public class PlanetToSpaceTeleporter {
 		if (spaceLevel == null) return false;
 
 		long ticks = GenesisMod.getTicks(level);
-		Vector3d target;
-		Quaterniond rotation;
 		Vector3d pos = new Vector3d(player.getX(), player.getY(), player.getZ());
-		if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-			// Arrive just above the atmosphere, clear of the body, looking out into space.
-			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
-			rotation = vantagePoint.getCelestialRotation()
-					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
-		} else {
-			target = new Vector3d(player.getX() / 16.0, 320.0, player.getZ() / 16.0);
-			rotation = new Quaterniond();
-		}
+		Vector3d target = spaceArrival(level, pos, ticks);
 
 		Vec3 carried = player.getDeltaMovement();
-		EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), rotation);
+		EntityTeleporter.teleportEntityAndPassengers(player, spaceLevel, new Vec3(target.x, target.y, target.z), new Quaterniond());
 		player.setDeltaMovement(carried); // keep momentum through the Kármán line
 		player.getPersistentData().putLong(SPACE_ARRIVAL_TAG, spaceLevel.getGameTime());
 		player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 20 * 60, 0, false, false, true));
@@ -132,25 +126,22 @@ public class PlanetToSpaceTeleporter {
 	private static void sendConstructToSpace(ServerLevel level, ServerLevel spaceLevel, AeronauticsConstruct construct) {
 		long ticks = GenesisMod.getTicks(level);
 		Vector3dc pos = construct.positionInWorld();
-		Vector3d target;
-		Quaterniond rotation;
-		if (VantagePoint.get(level, new Vector3d(pos), ticks, 0f) instanceof VantagePoint.OnCelestial vantagePoint) {
-			target = computeSpaceTarget(vantagePoint).add(0, 60, 0);
-			rotation = vantagePoint.getCelestialRotation()
-					.mul(vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()), new Quaterniond());
-		} else {
-			target = new Vector3d(pos.x() / 16.0, 320.0, pos.z() / 16.0);
-			rotation = new Quaterniond();
-		}
+		Vector3d target = spaceArrival(level, new Vector3d(pos), ticks);
 		GenesisMod.LOGGER.info("Construct {} crossed the Kármán line into space", construct.id());
-		DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.PLANET_TO_SPACE, level, spaceLevel, target, rotation);
+		DimensionTravelTeleporter.teleportConstruct(construct, TravelDirection.PLANET_TO_SPACE, level, spaceLevel, target, new Quaterniond());
 	}
 
-	private static Vector3d computeSpaceTarget(VantagePoint.OnCelestial vantagePoint) {
-		Vector3d targetPos = new Vector3d(0, vantagePoint.celestial().getActualSize() + 20, 0);
-		vantagePoint.cameraRotationFromNorthPole().conjugate(new Quaterniond()).transform(targetPos);
-		vantagePoint.getCelestialRotation().transform(targetPos);
-		targetPos.add(vantagePoint.getPosition());
-		return targetPos;
+	/**
+	 * Where to arrive in the Great Unknown: straight up in world +Y above the body you launched from, so
+	 * the planet is squarely <em>below</em> you (not off to the side) and the Sun/Moon read as bodies out
+	 * across space. Falls back to a scaled position if the level has no celestial mapping.
+	 */
+	private static Vector3d spaceArrival(ServerLevel level, Vector3d pos, long ticks) {
+		if (VantagePoint.get(level, pos, ticks, 0f) instanceof VantagePoint.OnCelestial vp) {
+			Vector3dc body = vp.getPosition();
+			double clearance = vp.celestial().getActualSize() + 100.0; // just above the atmosphere
+			return new Vector3d(body.x(), body.y() + clearance, body.z());
+		}
+		return new Vector3d(pos.x / 16.0, 320.0, pos.z / 16.0);
 	}
 }

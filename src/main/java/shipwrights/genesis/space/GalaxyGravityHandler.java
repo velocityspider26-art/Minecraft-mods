@@ -44,15 +44,19 @@ public final class GalaxyGravityHandler {
         if (!GenesisMod.isSpaceDimension(level)) return;   // only the galaxy (great_unknown)
         if (!gameTest && level.players().isEmpty()) return;
 
-        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
-        long ticks = GenesisMod.getTicks(level);
+        try {
+            Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+            long ticks = GenesisMod.getTicks(level);
 
-        for (AeronauticsConstruct construct : AeronauticsContraptionLookup.getSortedConstructs(level)) {
-            if (construct.isRemoved()) continue;
-            Vector3dc p = construct.positionInWorld();
-            Vector3d accel = gravityAt(registry, ticks, new Vector3d(p.x(), p.y(), p.z()));
-            if (accel.lengthSquared() < 1.0e-12) continue;
-            AeronauticsForceHandler.addVelocity(construct, accel.mul(DT), new Vector3d());
+            for (AeronauticsConstruct construct : AeronauticsContraptionLookup.getSortedConstructs(level)) {
+                if (construct.isRemoved()) continue;
+                Vector3dc p = construct.positionInWorld();
+                Vector3d accel = gravityAt(registry, ticks, new Vector3d(p.x(), p.y(), p.z()));
+                if (accel.lengthSquared() < 1.0e-12) continue;
+                AeronauticsForceHandler.addVelocity(construct, accel.mul(DT), new Vector3d());
+            }
+        } catch (Throwable t) {
+            if (level.getGameTime() % 100 == 0) GenesisMod.LOGGER.error("Galaxy gravity tick failed", t);
         }
     }
 

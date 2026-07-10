@@ -1,14 +1,8 @@
 package shipwrights.genesis.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.client.renderer.GameRenderer;
 import org.jetbrains.annotations.NotNull;
 
 public class TransitionScreen extends Screen {
@@ -28,31 +22,11 @@ public class TransitionScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        if (TransitionFrame.capturedTarget == null || minecraft == null) return;
-
-        int w = this.width;
-        int h = this.height;
-
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderTexture(0, TransitionFrame.capturedTarget.getColorTextureId());
-
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-
-        // Framebuffer textures are flipped vertically.
-        buffer.addVertex(0, h, 0).setUv(0, 0);
-        buffer.addVertex(w, h, 0).setUv(1, 0);
-        buffer.addVertex(w, 0, 0).setUv(1, 1);
-        buffer.addVertex(0, 0, 0).setUv(0, 1);
-
-        com.mojang.blaze3d.vertex.BufferUploader.drawWithShader(buffer.build());
-
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
+        // A plain deep-space fill while the destination loads. We deliberately do NOT grab the previous
+        // frame with glBlitFramebuffer any more — that raw blit off the (often multisampled) main
+        // framebuffer hard-crashed some GPUs when crossing into space. A solid fill is safe everywhere
+        // and reads as a brief blink into space rather than a vanilla loading screen.
+        guiGraphics.fill(0, 0, this.width, this.height, 0xFF01010A);
     }
 
     @Override

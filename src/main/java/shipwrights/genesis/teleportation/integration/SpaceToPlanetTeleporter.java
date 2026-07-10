@@ -99,7 +99,7 @@ public class SpaceToPlanetTeleporter {
         for (ServerPlayer player : List.copyOf(level.players())) {
             if (player.isPassenger() || player.isRemoved()) continue;
             long arrival = player.getPersistentData().getLong(PlanetToSpaceTeleporter.SPACE_ARRIVAL_TAG);
-            if (level.getGameTime() - arrival < 200) continue; // grace period after arriving in space
+            if (level.getGameTime() - arrival < 600) continue; // grace after arriving so you aren't yanked back
 
             Vector3d p = new Vector3d(player.getX(), player.getY(), player.getZ());
 

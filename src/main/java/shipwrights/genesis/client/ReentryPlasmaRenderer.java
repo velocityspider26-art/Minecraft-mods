@@ -66,7 +66,14 @@ public final class ReentryPlasmaRenderer {
     @SubscribeEvent
     public static void onClientTick(LevelTickEvent.Post event) {
         if (!(event.getLevel() instanceof ClientLevel level)) return;
+        try {
+            tickHeat(level);
+        } catch (Throwable ignored) {
+            // Never let re-entry bookkeeping crash the client (e.g. registries mid-dimension-change).
+        }
+    }
 
+    private static void tickHeat(ClientLevel level) {
         double atmosphereDensity = 0.0;
         Celestial body = GenesisMod.getCelestialForLevel(level);
         if (body != null && body.properties() instanceof PlanetProperties pp && pp.atmosphere() != null) {
@@ -127,12 +134,16 @@ public final class ReentryPlasmaRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
 
-        for (AeronauticsConstruct construct : AeronauticsContraptionLookup.getSortedConstructs(level)) {
-            Track track = TRACKS.get(construct.id());
-            if (track == null || track.heat < 0.04) continue;
-            double speed = track.velocity.length();
-            if (speed < 1.0e-3) continue;
-            drawShell(pose, cam, construct, track.velocity, speed, track.heat);
+        try {
+            for (AeronauticsConstruct construct : AeronauticsContraptionLookup.getSortedConstructs(level)) {
+                Track track = TRACKS.get(construct.id());
+                if (track == null || track.heat < 0.04) continue;
+                double speed = track.velocity.length();
+                if (speed < 1.0e-3) continue;
+                drawShell(pose, cam, construct, track.velocity, speed, track.heat);
+            }
+        } catch (Throwable ignored) {
+            // A single bad frame must not crash the game.
         }
 
         RenderSystem.depthMask(true);

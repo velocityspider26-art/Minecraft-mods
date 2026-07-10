@@ -50,6 +50,14 @@ public class CelestialRenderDispatcher {
             return;
         }
 
+        try {
+            renderCelestials(event, minecraft, level);
+        } catch (Throwable t) {
+            if (level.getGameTime() % 100 == 0) GenesisMod.LOGGER.error("Celestial rendering failed", t);
+        }
+    }
+
+    private static void renderCelestials(RenderLevelStageEvent event, Minecraft minecraft, Level level) {
         Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
 
         long ticks = GenesisMod.getTicks(level);

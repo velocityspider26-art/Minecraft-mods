@@ -49,12 +49,13 @@ public abstract class MinecraftMixin {
             if (TransitionState.CURRENT == TransitionState.SPACE_TRAVEL || TransitionState.CURRENT == TransitionState.WORMHOLE_TRAVEL) {
                 genesis$settingTransition = true;
                 try {
-                    // A seamless transition must never take the game down: if the frame grab or the
-                    // screen swap fails on some driver, fall back to the vanilla loading screen.
-                    TransitionFrame.captureFrame();
+                    // Swap the vanilla loading screen for our own clean transition screen. We deliberately
+                    // do NOT grab the previous frame with glBlitFramebuffer any more — that raw blit off
+                    // the (often multisampled) main framebuffer hard-crashed some drivers when crossing
+                    // into space. A simple dark space screen is safe on every GPU and still hides the load.
                     instance.setScreen(new TransitionScreen());
                 } catch (Throwable t) {
-                    GenesisMod.LOGGER.error("Genesis seamless transition failed; using the default screen", t);
+                    GenesisMod.LOGGER.error("Genesis space transition failed; using the default screen", t);
                     TransitionState.CURRENT = TransitionState.NONE;
                 } finally {
                     genesis$settingTransition = false;
