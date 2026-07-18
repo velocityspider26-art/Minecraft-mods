@@ -12,8 +12,8 @@ public class PeelerPodFireSoundProcedure {
       if (!world.isClientSide()) {
          if (world instanceof Level level) {
             RandomSource rand = level.getRandom();
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:peelerpodfar", 80.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:peelerpod", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 80.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:peelerpodfar", 80.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 10.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:peelerpod", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
          }
       }
    }

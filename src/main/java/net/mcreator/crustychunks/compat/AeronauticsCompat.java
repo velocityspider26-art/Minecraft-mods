@@ -63,6 +63,18 @@ public final class AeronauticsCompat {
 		}
 	}
 
+	/** Rotates a direction/velocity vector from construct plot space into world space. Returns the input when not applicable. */
+	public static Vec3 localDirToWorld(Level level, Vec3 localPos, Vec3 localDir) {
+		if (!isPhysicsLoaded())
+			return localDir;
+		try {
+			return SableAdapter.localDirToWorld(level, localPos, localDir);
+		} catch (Throwable t) {
+			warnOnce(t);
+			return localDir;
+		}
+	}
+
 	/** Converts a world-space position to plot space of the construct at that position. Returns the input when not applicable. */
 	public static Vec3 worldToLocal(Level level, Vec3 pos) {
 		if (!isPhysicsLoaded())

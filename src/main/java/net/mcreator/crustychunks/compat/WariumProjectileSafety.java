@@ -76,6 +76,13 @@ public final class WariumProjectileSafety {
 						arrow.setDeltaMovement(arrow.getDeltaMovement().add(inherited));
 				}
 			}
+			// Launched from a block on a Create Aeronautics / Sable construct: the block event
+			// ran in the construct's plot space, so re-map the projectile into world space,
+			// rotate its launch vector by the craft's orientation and inherit craft velocity.
+			// This is what makes hardpoints, ordinance, bomb bays and countermeasure
+			// dispensers work from flying ships without VS Warium.
+			if (arrow.tickCount == 0 && translateConstructLaunch(arrow))
+				return;
 			sanitize(arrow);
 		} catch (Throwable t) {
 			WariumSafety.report("WariumProjectileSafety.onJoin", t);
@@ -112,6 +119,43 @@ public final class WariumProjectileSafety {
 				event.getEntity().discard();
 			} catch (Throwable ignored) {
 			}
+		}
+	}
+
+	/**
+	 * If the projectile spawned inside Sable physics space (a block on a construct
+	 * fired it), move it to the matching world-space position, rotate its velocity
+	 * by the construct's orientation and add the construct's velocity. Returns true
+	 * when a translation happened (the projectile was re-positioned and sanitized).
+	 */
+	private static boolean translateConstructLaunch(AbstractArrow arrow) {
+		try {
+			if (!WariumConfig.TRANSLATE_CONSTRUCT_LAUNCHES.get() || !AeronauticsCompat.isPhysicsLoaded())
+				return false;
+			Level level = (Level) arrow.level();
+			Vec3 localPos = arrow.position();
+			if (!AeronauticsCompat.isPhysicsSpace(level, localPos.x, localPos.y, localPos.z))
+				return false;
+			Vec3 worldPos = AeronauticsCompat.localToWorld(level, localPos);
+			if (worldPos.equals(localPos))
+				return false;
+			Vec3 worldDir = AeronauticsCompat.localDirToWorld(level, localPos, arrow.getDeltaMovement());
+			Vec3 craftVel = AeronauticsCompat.getConstructVelocityAt(level, worldPos);
+			Vec3 velocity = worldDir.add(craftVel);
+			arrow.moveTo(worldPos.x, worldPos.y, worldPos.z, arrow.getYRot(), arrow.getXRot());
+			arrow.setDeltaMovement(velocity);
+			if (velocity.lengthSqr() > 1.0E-6) {
+				double horiz = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+				arrow.setYRot((float) (Math.atan2(-velocity.x, velocity.z) * (180.0 / Math.PI)));
+				arrow.setXRot((float) (-Math.atan2(velocity.y, horiz) * (180.0 / Math.PI)));
+				arrow.yRotO = arrow.getYRot();
+				arrow.xRotO = arrow.getXRot();
+			}
+			sanitize(arrow);
+			return true;
+		} catch (Throwable t) {
+			WariumSafety.report("WariumProjectileSafety.translateConstructLaunch", t);
+			return false;
 		}
 	}
 

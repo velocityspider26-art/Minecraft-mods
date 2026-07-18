@@ -90,6 +90,24 @@ final class SableAdapter {
 		return out.isFinite() ? new Vec3(out.x, out.y, out.z) : pos;
 	}
 
+	/** Rotates a direction/velocity vector from sub-level local space into world space. */
+	static Vec3 localDirToWorld(Level level, Vec3 localPos, Vec3 localDir) {
+		SubLevelContainer container = container(level);
+		if (container == null || !finite(localPos) || !finite(localDir)
+				|| !container.inBounds(new Vector3d(localPos.x, localPos.y, localPos.z)))
+			return localDir;
+		var plot = container.getPlot(new ChunkPos(BlockPos.containing(localPos.x, localPos.y, localPos.z)));
+		SubLevel sub = plot != null ? plot.getSubLevel() : null;
+		if (!valid(sub))
+			return localDir;
+		Vector3d a = sub.logicalPose().transformPosition(new Vector3d(localPos.x, localPos.y, localPos.z));
+		Vector3d b = sub.logicalPose().transformPosition(
+				new Vector3d(localPos.x + localDir.x, localPos.y + localDir.y, localPos.z + localDir.z));
+		if (!a.isFinite() || !b.isFinite())
+			return localDir;
+		return new Vec3(b.x - a.x, b.y - a.y, b.z - a.z);
+	}
+
 	static Vec3 worldToLocal(Level level, Vec3 pos) {
 		SubLevel sub = constructAt(level, pos);
 		if (!valid(sub))

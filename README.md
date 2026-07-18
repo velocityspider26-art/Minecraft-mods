@@ -117,6 +117,37 @@ NeoForge/Aeronautics. Until an aircraft integration exists, this port adds a pla
 - **Redstone pulse** fires the selected munition in the block's facing direction. Radar and
   heat seekers still acquire targets through the radar/laser designation systems.
 
+## Performance, sound delay & Create Aeronautics launches (round 5)
+
+**Performance / delay fixes:**
+
+- Nuke detonations no longer spawn a `java.util.Timer` thread per blast; delayed audio now
+  runs on the client tick queue.
+- The speed-of-sound travel delay for distant gunfire/explosions can be disabled with
+  `sounds.soundTravelDelay = false` if delayed audio is unwanted.
+- Gunfire sound cues and explosion VFX packets are now sent only to players of the same
+  dimension within audible/visible range instead of being broadcast to the whole server
+  (rapid autocannon fire used to spam every connected client).
+- The client nuke sequence (mushroom growth normally runs 410×power ticks ≈ 17+ minutes)
+  is capped by `nukeEffectsQuality`: LOW ≈ 2 min + half-rate particle ticks, MEDIUM ≈ 5 min,
+  HIGH/CINEMATIC full length. The sky-glare renderer also stops rebuilding vertex buffers
+  once the flash has faded instead of drawing invisible quads every frame.
+- The server-side expanding nuclear ground-shock wave (dozens of block-breaking explosions
+  every other tick) is scalable/disable-able via `nukeEffects.nukeGroundWaveScale` and its
+  explosions now respect the configured radius cap + apply physics impulses.
+
+**Create Aeronautics (Sable) launch translation:**
+
+Everything that fires a projectile from a block — missile hardpoints, the ordinance stack,
+bomb releases, countermeasure dispensers (chaff/flares), block guns/turrets and the
+Munition Launcher — now works from a Create Aeronautics craft. When a projectile spawns
+inside Sable physics space, the port re-maps it to the craft's true world position, rotates
+its launch vector by the craft's orientation, and adds the craft's velocity, so munitions
+release cleanly from moving ships exactly like they did with VS Warium. Toggle:
+`aeronautics.translateConstructLaunches`. (Hand-fired guns already inherited shooter
+velocity from round 2; radar/laser guidance is unchanged and still tracks targets riding
+constructs.)
+
 ## Known issues / notes
 
 - The original mod's custom `crusty_chunks:assembly` recipes are parsed by the mod

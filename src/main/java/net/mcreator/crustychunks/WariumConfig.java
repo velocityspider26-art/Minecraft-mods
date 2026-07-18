@@ -51,6 +51,11 @@ public final class WariumConfig {
 	public static final ModConfigSpec.DoubleValue MISSILE_MAX_TURN_RATE;
 	public static final ModConfigSpec.BooleanValue MISSILE_LAUNCH_UNGUIDED_WITHOUT_LOCK;
 
+	// --- sounds / performance ---
+	public static final ModConfigSpec.BooleanValue SOUND_TRAVEL_DELAY;
+	public static final ModConfigSpec.DoubleValue NUKE_GROUND_WAVE_SCALE;
+	public static final ModConfigSpec.BooleanValue TRANSLATE_CONSTRUCT_LAUNCHES;
+
 	// --- nuke effects ---
 	public static final ModConfigSpec.EnumValue<EffectQuality> NUKE_EFFECTS_QUALITY;
 	public static final ModConfigSpec.BooleanValue NUKE_SCREEN_SHAKE;
@@ -89,6 +94,8 @@ public final class WariumConfig {
 				.define("affectPhysicsConstructs", true);
 		CONSTRUCT_IMPULSE_SCALE = b.comment("Scale factor for forces applied to physics constructs by explosions and recoil.")
 				.defineInRange("constructImpulseScale", 1.0D, 0.0D, 100.0D);
+		TRANSLATE_CONSTRUCT_LAUNCHES = b.comment("Re-map projectiles launched from blocks on Create Aeronautics/Sable constructs into world space and inherit the craft's velocity.")
+				.define("translateConstructLaunches", true);
 		b.pop();
 
 		b.push("radar");
@@ -118,7 +125,14 @@ public final class WariumConfig {
 				.define("missileLaunchUnguidedWithoutLock", true);
 		b.pop();
 
+		b.push("sounds");
+		SOUND_TRAVEL_DELAY = b.comment("Simulate speed-of-sound travel delay for distant gunfire/explosions. Disable if delayed audio feels laggy.")
+				.define("soundTravelDelay", true);
+		b.pop();
+
 		b.push("nukeEffects");
+		NUKE_GROUND_WAVE_SCALE = b.comment("Scales the server-side expanding nuclear ground-shock explosion wave (0 disables it). Lower this if nukes lag the server.")
+				.defineInRange("nukeGroundWaveScale", 1.0D, 0.0D, 1.0D);
 		NUKE_EFFECTS_QUALITY = b.comment("Visual quality of nuke effects: LOW, MEDIUM, HIGH, CINEMATIC.").defineEnum("nukeEffectsQuality", EffectQuality.HIGH);
 		NUKE_SCREEN_SHAKE = b.define("enableNukeScreenShake", true);
 		NUKE_MUSHROOM_CLOUD = b.define("enableNukeMushroomCloud", true);

@@ -94,3 +94,13 @@ Environment: NeoForge 21.1.234 dev environment (ModDevGradle), Java 21, headless
       only headless-container errors (narrator/OpenAL) present
 - [ ] Interactive: musket fire/reload animation feel, canister shell spread, launcher
       munition flight paths at scale, nuke visuals on a real GPU
+
+## Round 5 — performance + Aeronautics launch translation
+
+- [x] Compile + full build green
+- [x] No Timer threads spawned by nuke audio (tick queue only)
+- [x] Sound/explosion packets dimension-scoped and range-culled
+- [x] Ground-wave scale config honored (0 disables)
+- [ ] Interactive: launch hardpoint/ordinance/countermeasures from a moving Aeronautics
+      craft with Sable installed (projectiles should release at craft position with craft
+      velocity added)

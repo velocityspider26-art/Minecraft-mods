@@ -26,16 +26,30 @@ public class ClientSoundUtils {
          Minecraft mc = Minecraft.getInstance();
          if (mc.player != null) {
             double dist = Math.sqrt(mc.player.distanceToSqr(x, y, z));
-            int delay = (int)(dist / 17.15);
-            Vec3 pos = new Vec3(x, y, z);
-            if (delay <= 0) {
-               play(pos, soundPath, volume, pitch);
-            } else {
-               synchronized (DELAYED_SOUNDS) {
-                  DELAYED_SOUNDS.add(new ClientSoundUtils.DelayedSound(delay, pos, soundPath, volume, pitch));
-               }
-            }
+            int delay = travelDelayEnabled() ? (int)(dist / 17.15) : 0;
+            playSoundDelayedTicks(delay, x, y, z, soundPath, volume, pitch);
          }
+      }
+   }
+
+   /** Queue a sound on the client tick queue (no extra threads). delayTicks <= 0 plays immediately. */
+   public static void playSoundDelayedTicks(int delayTicks, double x, double y, double z, String soundPath, float volume, float pitch) {
+      Vec3 pos = new Vec3(x, y, z);
+      if (delayTicks <= 0) {
+         play(pos, soundPath, volume, pitch);
+      } else {
+         synchronized (DELAYED_SOUNDS) {
+            DELAYED_SOUNDS.add(new ClientSoundUtils.DelayedSound(delayTicks, pos, soundPath, volume, pitch));
+         }
+      }
+   }
+
+   /** Config: speed-of-sound simulation can be disabled if delayed audio is unwanted. */
+   public static boolean travelDelayEnabled() {
+      try {
+         return net.mcreator.crustychunks.WariumConfig.SOUND_TRAVEL_DELAY.get();
+      } catch (Throwable t) {
+         return true;
       }
    }
 

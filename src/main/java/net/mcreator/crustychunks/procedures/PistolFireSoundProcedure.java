@@ -14,9 +14,9 @@ public class PistolFireSoundProcedure {
       if (!world.isClientSide()) {
          if (world instanceof Level level) {
             RandomSource rand = level.getRandom();
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:distantgunfire", 80.0F, (float)Mth.nextDouble(rand, 1.1, 1.2)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:smallshot", 10.0F, (float)Mth.nextDouble(rand, 0.95, 1.05)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:smallshot", 5.0F, (float)Mth.nextDouble(rand, 0.95, 1.05)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 80.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:distantgunfire", 80.0F, (float)Mth.nextDouble(rand, 1.1, 1.2)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 10.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:smallshot", 10.0F, (float)Mth.nextDouble(rand, 0.95, 1.05)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 5.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:smallshot", 5.0F, (float)Mth.nextDouble(rand, 0.95, 1.05)));
          }
       }
    

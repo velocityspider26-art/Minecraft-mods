@@ -10,7 +10,7 @@ public class NuclearExplosionExampleProcedure {
       final double power = rawPower * net.mcreator.crustychunks.compat.WariumNukeEffects.blastRadiusMultiplier();
       WariumNuclearExplosionShapesProcedure.execute(world, x, y, z, power);
       if (!world.isClientSide()) {
-         CrustyChunksMod.sendToAll(new ClientExplosionPacket(x, y, z, power, WariumExplosionClientProcedure.BlastType.NUCLEAR));
+         CrustyChunksMod.sendToNear(world, x, y, z, 4096.0, new ClientExplosionPacket(x, y, z, power, WariumExplosionClientProcedure.BlastType.NUCLEAR));
          net.mcreator.crustychunks.compat.WariumNukeEffects.onServerExplosion(world, x, y, z, power, true);
       }
 

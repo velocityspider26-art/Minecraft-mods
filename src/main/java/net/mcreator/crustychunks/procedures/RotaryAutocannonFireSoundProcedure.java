@@ -12,9 +12,9 @@ public class RotaryAutocannonFireSoundProcedure {
       if (!world.isClientSide()) {
          if (world instanceof Level level) {
             RandomSource rand = level.getRandom();
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:rotaryfar", 80.0F, (float)Mth.nextDouble(rand, 0.85, 0.95)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:rotarynear", 20.0F, (float)Mth.nextDouble(rand, 0.9, 0.92)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:rotarynear", 10.0F, (float)Mth.nextDouble(rand, 0.9, 0.92)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 80.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:rotaryfar", 80.0F, (float)Mth.nextDouble(rand, 0.85, 0.95)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 20.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:rotarynear", 20.0F, (float)Mth.nextDouble(rand, 0.9, 0.92)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 10.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:rotarynear", 10.0F, (float)Mth.nextDouble(rand, 0.9, 0.92)));
          }
       }
    }

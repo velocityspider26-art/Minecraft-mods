@@ -12,9 +12,9 @@ public class ArtilleryCannonFireSoundProcedure {
       if (!world.isClientSide()) {
          if (world instanceof Level level) {
             RandomSource rand = level.getRandom();
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:farblast", 120.0F, (float)Mth.nextDouble(rand, 0.9, 0.95)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:cannonfar", 60.0F, (float)Mth.nextDouble(rand, 0.9, 0.95)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:cannonclose", 15.0F, (float)Mth.nextDouble(rand, 0.85, 0.9)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 120.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:farblast", 120.0F, (float)Mth.nextDouble(rand, 0.9, 0.95)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 60.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:cannonfar", 60.0F, (float)Mth.nextDouble(rand, 0.9, 0.95)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 15.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:cannonclose", 15.0F, (float)Mth.nextDouble(rand, 0.85, 0.9)));
          }
       }
    }

@@ -203,6 +203,12 @@ public class FireBallRenderProcedure {
       synchronized (WariumExplosionClientProcedure.ACTIVE_NUKES) {
          for (WariumExplosionClientProcedure.NuclearBlast nuke : WariumExplosionClientProcedure.ACTIVE_NUKES) {
             double T = nuke.time;
+            // Glare (450 - T/2) and sky flash (255 - T) are both fully faded by T=900:
+            // skip the buffer build/upload entirely instead of drawing invisible quads
+            // every frame for the rest of the nuke's multi-minute lifetime.
+            if (T >= 910.0) {
+               continue;
+            }
             float yaw = (float)(Math.atan2(cam.x - nuke.x, cam.z - nuke.z) * (180.0 / Math.PI) * -1.0 + 180.0);
             float pitch = (float)(
                Math.atan2(cam.y - nuke.y, Math.sqrt(Math.pow(cam.x - nuke.x, 2.0) + Math.pow(cam.z - nuke.z, 2.0)))

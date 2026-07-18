@@ -4,8 +4,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.function.Supplier;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.client.Minecraft;
@@ -31,20 +29,15 @@ public class WariumExplosionClientProcedure {
       if (type == WariumExplosionClientProcedure.BlastType.NUCLEAR) {
          final Minecraft mc = Minecraft.getInstance();
          double dist = mc.gameRenderer.getMainCamera().getPosition().distanceTo(new Vec3(x, y, z));
-         long delayMs = (long)(dist / 40.0 * 1000.0);
-         if (delayMs <= 0L) {
-            ClientSoundUtils.playSoundAtDistance(x, y, z, "crusty_chunks:explosioncolossalfar", 400.0F, 0.95F);
-            ClientSoundUtils.playSoundAtDistance(x, y, z, "crusty_chunks:explosioncolossal", 80.0F, 0.95F);
+         // Tick-queue scheduling instead of a java.util.Timer per detonation: the old
+         // approach leaked one timer thread per nuke and raced the render thread.
+         int delayTicks = ClientSoundUtils.travelDelayEnabled() ? (int)(dist / 40.0 * 20.0) : 0;
+         if (delayTicks <= 0) {
+            ClientSoundUtils.playSoundDelayedTicks(0, x, y, z, "crusty_chunks:explosioncolossalfar", 400.0F, 0.95F);
+            ClientSoundUtils.playSoundDelayedTicks(0, x, y, z, "crusty_chunks:explosioncolossal", 80.0F, 0.95F);
          } else {
-            new Timer().schedule(new TimerTask() {
-               @Override
-               public void run() {
-                  mc.execute(() -> {
-                     ClientSoundUtils.playSoundAtDistance(x, y, z, "crusty_chunks:explosioncolossalfar", 400.0F, 1.15F);
-                     ClientSoundUtils.playSoundAtDistance(x, y, z, "crusty_chunks:explosioncolossal", 60.0F, 1.15F);
-                  });
-               }
-            }, delayMs);
+            ClientSoundUtils.playSoundDelayedTicks(delayTicks, x, y, z, "crusty_chunks:explosioncolossalfar", 400.0F, 1.15F);
+            ClientSoundUtils.playSoundDelayedTicks(delayTicks, x, y, z, "crusty_chunks:explosioncolossal", 60.0F, 1.15F);
          }
 
          synchronized (ACTIVE_NUKES) {
@@ -93,17 +86,27 @@ public class WariumExplosionClientProcedure {
 
    @SubscribeEvent
    public static void onClientTick(ClientTickEvent.Post e) {
-      if (true) {
-         synchronized (ACTIVE_NUKES) {
-            Iterator<WariumExplosionClientProcedure.NuclearBlast> it = ACTIVE_NUKES.iterator();
+      double quality = net.mcreator.crustychunks.compat.WariumNukeEffects.clientQualityMultiplier();
+      // Quality-scaled lifetime cap: the full sequence runs 410*power ticks (17+ minutes
+      // for a 50-power nuke). LOW/MEDIUM machines get a much shorter tail.
+      synchronized (ACTIVE_NUKES) {
+         Iterator<WariumExplosionClientProcedure.NuclearBlast> it = ACTIVE_NUKES.iterator();
 
-            while (it.hasNext()) {
-               WariumExplosionClientProcedure.NuclearBlast nuke = it.next();
+         while (it.hasNext()) {
+            WariumExplosionClientProcedure.NuclearBlast nuke = it.next();
+            // LOW quality: run the particle pass every other tick (time still advances).
+            if (quality > 0.4 || ((long) nuke.time & 1L) == 0L) {
                NuclearEffectProcedure.execute(nuke.world, nuke.x, nuke.y, nuke.z, nuke.power, nuke.time);
-               nuke.time++;
-               if (nuke.time > 410.0 * nuke.power) {
-                  it.remove();
-               }
+            }
+            nuke.time++;
+            double cap = 410.0 * nuke.power;
+            if (quality <= 0.4) {
+               cap = Math.min(cap, 2400.0);
+            } else if (quality <= 0.8) {
+               cap = Math.min(cap, 6000.0);
+            }
+            if (nuke.time > cap) {
+               it.remove();
             }
          }
       }

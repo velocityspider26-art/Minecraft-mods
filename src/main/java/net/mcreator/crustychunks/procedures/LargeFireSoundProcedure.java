@@ -14,10 +14,10 @@ public class LargeFireSoundProcedure {
       if (!world.isClientSide()) {
          if (world instanceof Level level) {
             RandomSource rand = level.getRandom();
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:distantshotmedium", 80.0F, (float)Mth.nextDouble(rand, 0.8, 0.9)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:midrangeshot", 20.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:largeshot", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
-            CrustyChunksMod.sendToAll(new WariumSoundEvent(x, y, z, "crusty_chunks:largeshot", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 80.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:distantshotmedium", 80.0F, (float)Mth.nextDouble(rand, 0.8, 0.9)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 20.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:midrangeshot", 20.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 10.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:largeshot", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
+            CrustyChunksMod.sendToNear(world, x, y, z, Math.max(192.0, 10.0 * 20.0), new WariumSoundEvent(x, y, z, "crusty_chunks:largeshot", 10.0F, (float)Mth.nextDouble(rand, 0.9, 1.1)));
          }
       }
    

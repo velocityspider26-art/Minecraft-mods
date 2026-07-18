@@ -77,6 +77,21 @@ public class CrustyChunksMod {
          net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(message);
    }
 
+   /**
+    * Broadcast a payload only to players of the source dimension within range.
+    * Cuts packet spam from rapid gunfire/explosions and stops cross-dimension
+    * sound/VFX leaking to players at matching coordinates in other dimensions.
+    */
+   public static void sendToNear(net.minecraft.world.level.LevelAccessor world, double x, double y, double z, double range, CustomPacketPayload message) {
+      if (!(world instanceof net.minecraft.server.level.ServerLevel level))
+         return;
+      double rangeSqr = range * range;
+      for (net.minecraft.server.level.ServerPlayer player : level.players()) {
+         if (player.distanceToSqr(x, y, z) <= rangeSqr)
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, message);
+      }
+   }
+
    @SuppressWarnings({"rawtypes", "unchecked"})
    private void registerNetworking(final RegisterPayloadHandlersEvent event) {
       final PayloadRegistrar registrar = event.registrar(MODID);
