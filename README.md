@@ -82,6 +82,41 @@ The first build downloads NeoForge and Minecraft artifacts; later builds are fas
   construct, NaN raycast, missing owner) logs once and no-ops rather than crashing
   the world. This is the core stability fix for guns and moving physics objects.
 
+## Warium 1.3.0 update + munition launcher (round 4)
+
+This port now includes the full **Warium 1.3.0** content update (published 2026-07-05):
+
+- **New weapons/items**: Musket (GeckoLib animated, with reload/misfire), musket balls,
+  canister shells + canister projectile, iron tube.
+- **New blocks**: Medium Bomb, Mining Charge, Light Turbine Engine, Immunity Sand /
+  Immunity Red Sand.
+- **Reworked explosion system**: the old per-size explosion procedures were replaced by the
+  author with a server damage pass (`WariumExplosionServerProcedure`) plus a clientbound
+  `ClientExplosionPacket` that renders staged fireball / shock-ring / smoke particles and,
+  for nukes, a multi-minute mushroom + sky-glare sequence (`NuclearEffectProcedure`,
+  `FireBallRenderProcedure`). Distance-delayed sound (speed of sound simulation) ships in
+  `WariumSoundEvent` / `ClientSoundUtils`.
+- **Port integration**: every explosion still runs through the port's safety rails —
+  radius caps, Create Aeronautics/Sable construct impulses, config-gated screen shake, and
+  quality-scaled client particle budgets (`nukeEffects` section in
+  `config/crusty_chunks-common.toml`).
+- **Removed by 1.3.0**: Redstone TNT, the old nuclear/fusion blast entities and the
+  Tiny→Giant explosion procedure family.
+
+### Munition Launcher (placeholder for VS Warium)
+
+The original mod's large air-dropped ordinance (large / super-large / nuclear / fusion
+bombs, torpedoes, bunker & block busters, IR and large radar missiles) was only usable from
+aircraft built with the closed-source **VS Warium** add-on, which does not exist for
+NeoForge/Aeronautics. Until an aircraft integration exists, this port adds a placeholder
+**Munition Launcher** block so that content stays usable:
+
+- Craft: 8× steel plate around an iron tube + redstone block core (see recipe).
+- **Right-click** cycles the selected munition (sneak-click cycles backwards; the action
+  bar shows the selection).
+- **Redstone pulse** fires the selected munition in the block's facing direction. Radar and
+  heat seekers still acquire targets through the radar/laser designation systems.
+
 ## Known issues / notes
 
 - The original mod's custom `crusty_chunks:assembly` recipes are parsed by the mod

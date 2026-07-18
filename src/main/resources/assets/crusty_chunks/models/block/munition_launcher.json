@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "crusty_chunks:block/smokelauncher",
+    "bottom": "crusty_chunks:block/pressedsteelblock",
+    "side": "crusty_chunks:block/autoloaderside"
+  }
+}

@@ -302,6 +302,7 @@ import net.mcreator.crustychunks.block.MineralGrinderBlock;
 import net.mcreator.crustychunks.block.MiniGunBarrelBlock;
 import net.mcreator.crustychunks.block.MinigunBlock;
 import net.mcreator.crustychunks.block.MiningChargeBlock;
+import net.mcreator.crustychunks.block.MunitionLauncherBlock;
 import net.mcreator.crustychunks.block.MortarBlock;
 import net.mcreator.crustychunks.block.NickelBlockBlock;
 import net.mcreator.crustychunks.block.NickelOreBlock;
@@ -1101,4 +1102,5 @@ public class CrustyChunksModBlocks {
    public static final DeferredHolder<Block, Block> MEDIUM_BOMB = REGISTRY.register("medium_bomb", () -> new MediumBombBlock());
    public static final DeferredHolder<Block, Block> LIGHT_TURBINE_ENGINE = REGISTRY.register("light_turbine_engine", () -> new LightTurbineEngineBlock());
    public static final DeferredHolder<Block, Block> MINING_CHARGE = REGISTRY.register("mining_charge", () -> new MiningChargeBlock());
+   public static final DeferredHolder<Block, Block> MUNITION_LAUNCHER = REGISTRY.register("munition_launcher", () -> new MunitionLauncherBlock());
 }

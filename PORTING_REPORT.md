@@ -224,3 +224,39 @@ staged sequence, craters blocks, and saves clean; restart on that world loads in
 ~2.9s with zero errors; no per-nuke tick lag. Still requires an interactive
 client with the full Sable+Create+Aeronautics stack to visually confirm
 cinematic quality, HUD feel, and firing from a real moving aircraft.
+
+## Round 4: Warium 1.3.0 content update + munition launcher
+
+Upstream released Warium 1.3.0 (2026-07-05) while this port tracked 1.2.8. The update was
+merged incrementally instead of re-porting from scratch:
+
+- Decompiled + SRG→Mojang remapped 1.3.0 and computed change sets against the pristine
+  1.2.8 baseline: **60 added / 35 removed / 252 changed** classes.
+- **Changed classes** went through a git `merge-file` 3-way merge (base = 1.2.8 decomp,
+  theirs = 1.3.0 decomp, mine = ported tree), preserving every porting fix. 110 merged
+  clean; 372 conflict hunks were resolved by tiered rules (spurious-conflict detection,
+  "my port of base" ⇒ "port of theirs", literal-swap, registry-entry set merges for init
+  classes, capability→attachment and NBT→data-component conversion of taken hunks), the
+  last 47 by hand.
+- **Added classes** were ported with the same scripted transform batteries used for the
+  base port, plus template-analog generation for the GeckoLib musket (item/model/renderer,
+  arm-pose enum extension) and the two new block entities.
+- **Removed classes** were deleted with registry reconciliation against the 1.3.0 init
+  classes (verified: zero missing / zero stale registrations).
+- The Forge `SimpleChannel` packets added in 1.3.0 (`ClientExplosionPacket`,
+  `WariumSoundEvent`) were rewritten as NeoForge `CustomPacketPayload` records with
+  dedicated-server-safe client dispatch.
+- Assets/data: 270 added/changed files migrated through the 1.21.1 pipeline (folder
+  renames, recipe/advancement schema, `c:` tags, `neoforge:` model loaders); removed
+  content pruned; missing-reference tags made optional (`space_dimensions`) or renamed
+  (`#c:sand` → `#c:sands`).
+- The port's round-3 systems were re-wired onto the new explosion architecture:
+  `WariumNukeEffects` is now an integration facade (screen shake broadcast, Aeronautics
+  impulses, blast radius multiplier, client particle quality budgets) feeding
+  `ExplosionExampleProcedure` / `NuclearExplosionExampleProcedure`, and the three raw
+  `level.explode` calls inside `WariumExplosionServerProcedure` route through the capped
+  `WariumExplosions` wrapper.
+- New content: **Munition Launcher** placeholder block (this port, not upstream) exposing
+  the aircraft-only munitions (large/super-large/nuclear/fusion bombs, torpedoes,
+  bunker/block busters, IR + large radar missiles) via right-click selection + redstone
+  launch, replacing the VS Warium aircraft dependency.

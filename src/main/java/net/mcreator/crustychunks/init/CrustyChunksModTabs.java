@@ -532,6 +532,7 @@ public class CrustyChunksModTabs {
                tabData.accept(((Block)CrustyChunksModBlocks.ROCKET_POD_CHAMBER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.LARGE_ROCKET_POD_CHAMBER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.LARGE_ROCKET_POD.get()).asItem());
+               tabData.accept(((Block)CrustyChunksModBlocks.MUNITION_LAUNCHER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.MANUAL_AIMER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.AIMER_NODE.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.NODE_TRIGGER.get()).asItem());

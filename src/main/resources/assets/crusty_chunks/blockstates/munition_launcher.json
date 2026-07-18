@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crusty_chunks:block/munition_launcher",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "crusty_chunks:block/munition_launcher",
+      "x": 90,
+      "y": 180
+    },
+    "facing=east": {
+      "model": "crusty_chunks:block/munition_launcher",
+      "x": 90,
+      "y": 90
+    },
+    "facing=west": {
+      "model": "crusty_chunks:block/munition_launcher",
+      "x": 90,
+      "y": 270
+    },
+    "facing=up": {
+      "model": "crusty_chunks:block/munition_launcher"
+    },
+    "facing=down": {
+      "model": "crusty_chunks:block/munition_launcher",
+      "x": 180
+    }
+  }
+}

@@ -74,3 +74,23 @@ Environment: NeoForge 21.1.234 dev environment (ModDevGradle), Java 21, headless
 - The Aeronautics integration (velocity inheritance, construct forces, aircraft radar targeting) is implemented and null-safe but was verified only without Sable installed here; behavior with live constructs needs interactive testing.
 - Cinematic nuke visuals and screen shake cannot be visually graded in a headless container.
 - Assembly/Create recipe "parse error" log lines remain (unchanged original behavior; harmless).
+
+## Round 4 — 1.3.0 update merge (RCON-driven dedicated server + Xvfb client)
+
+- [x] `gradlew build` green after full 1.3.0 merge (jar + sources jar produced)
+- [x] Dedicated server boots clean; only known-benign recipe warnings remain
+      (`crusty_chunks:assembly` datapack serializer, `create:*` recipes without Create)
+- [x] All 1.3.0 registries reconciled against upstream (items/blocks/sounds/entities/
+      block entities/particles: zero missing, zero stale)
+- [x] New blocks place: medium bomb, mining charge, light turbine engine, immunity sand,
+      munition launcher
+- [x] New entities summon: medium_bomb_projectile, ir_missile, glare_effect
+- [x] Munition Launcher fires on redstone pulse (large bomb spawned + flew)
+- [x] Nuclear bomb projectile detonates: new staged explosion ran, no exceptions, no
+      WariumSafety reports
+- [x] Save/reload cycle: world reloads cleanly, all new blocks persist, no corrupted
+      projectiles
+- [x] Client boots under Xvfb to title screen; musket + 10 new particle definitions load;
+      only headless-container errors (narrator/OpenAL) present
+- [ ] Interactive: musket fire/reload animation feel, canister shell spread, launcher
+      munition flight paths at scale, nuke visuals on a real GPU

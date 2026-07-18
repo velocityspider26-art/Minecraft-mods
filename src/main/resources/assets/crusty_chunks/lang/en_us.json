@@ -1255,5 +1255,6 @@
   "item.crusty_chunks.medium_stealth_bullet.description_1": "\u00a78Goes In: LMG, Automatic Rifle, Burst Rifle Lever Rifle.",
   "item.crusty_chunks.small_he_projectile": "Small HE Projectile",
   "item.crusty_chunks.medium_stealth_bullet.description_0": "\u00a786x45mm Rifle Cartridge.",
-  "block.crusty_chunks.medium_bomb": "Medium Bomb"
+  "block.crusty_chunks.medium_bomb": "Medium Bomb",
+  "block.crusty_chunks.munition_launcher": "Munition Launcher"
 }

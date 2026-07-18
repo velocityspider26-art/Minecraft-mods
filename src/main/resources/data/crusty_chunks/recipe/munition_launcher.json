@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "sts",
+    "srs",
+    "sss"
+  ],
+  "key": {
+    "s": {
+      "item": "crusty_chunks:steelplate"
+    },
+    "t": {
+      "item": "crusty_chunks:iron_tube"
+    },
+    "r": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "result": {
+    "id": "crusty_chunks:munition_launcher",
+    "count": 1
+  }
+}

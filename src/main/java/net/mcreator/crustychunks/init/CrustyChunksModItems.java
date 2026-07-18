@@ -1185,7 +1185,12 @@ public class CrustyChunksModItems {
    public static final DeferredHolder<Item, Item> MUSKET = REGISTRY.register("musket", () -> new MusketItem());
    public static final DeferredHolder<Item, Item> IRON_TUBE = REGISTRY.register("iron_tube", () -> new IronTubeItem());
    public static final DeferredHolder<Item, Item> MINING_CHARGE = block(CrustyChunksModBlocks.MINING_CHARGE);
+   public static final DeferredHolder<Item, Item> MUNITION_LAUNCHER = block(CrustyChunksModBlocks.MUNITION_LAUNCHER);
 
+   public static final DeferredHolder<Item, Item> STEEL_PLATING = block(CrustyChunksModBlocks.STEEL_PLATING);
+   public static final DeferredHolder<Item, Item> STEEL_PLATING_SLAB = block(CrustyChunksModBlocks.STEEL_PLATING_SLAB);
+   public static final DeferredHolder<Item, Item> BATTLE_CANNON_BREECH = block(CrustyChunksModBlocks.BATTLE_CANNON_BREECH);
+   public static final DeferredHolder<Item, Item> BLAST_FURNACE = block(CrustyChunksModBlocks.BLAST_FURNACE);
    private static DeferredHolder<Item, Item> block(DeferredHolder<Block, Block> block) {
       return REGISTRY.register(block.getId().getPath(), () -> new BlockItem((Block)block.get(), new Properties()));
    }
