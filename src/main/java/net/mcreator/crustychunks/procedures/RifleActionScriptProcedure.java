@@ -13,6 +13,7 @@ import net.mcreator.crustychunks.item.LMGAnimatedItem;
 import net.mcreator.crustychunks.item.LeverRifleItem;
 import net.mcreator.crustychunks.item.MachineCarbineItem;
 import net.mcreator.crustychunks.item.SemiAutomaticRifleAnimatedItem;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -28,6 +29,14 @@ public class RifleActionScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
       try {
       if (entity != null) {
+         boolean _setval = false;
+         {
+            CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
+
+            _vars.AimDownSights = _setval;
+            _vars.syncPlayerVariables(entity);
+                  }
+         
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof SemiAutomaticRifleAnimatedItem) {
                CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "bolt"));

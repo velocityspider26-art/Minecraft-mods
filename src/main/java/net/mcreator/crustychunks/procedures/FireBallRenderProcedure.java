@@ -13,15 +13,9 @@ import com.mojang.blaze3d.vertex.VertexBuffer.Usage;
 import com.mojang.blaze3d.vertex.VertexFormat.Mode;
 import com.mojang.math.Axis;
 import javax.annotation.Nullable;
-import net.mcreator.crustychunks.entity.FusionEffectProjectileEntity;
-import net.mcreator.crustychunks.entity.NuclearSecondaryEffectEntity;
-import net.mcreator.crustychunks.entity.SpaceFusionThermalRadEntityEntity;
-import net.mcreator.crustychunks.entity.SpaceThermalRadEntityEntity;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -108,20 +102,12 @@ public class FireBallRenderProcedure {
       }
    }
 
-   private static void offset(double x, double y, double z) {
-      offset = new Vec3(x, y, z);
-   }
-
    private static void release() {
       targetStage = 0;
    }
 
    private static VertexBuffer shape() {
       return vertexBuffer;
-   }
-
-   private static void system(boolean worldCoordinate) {
-      FireBallRenderProcedure.worldCoordinate = worldCoordinate;
    }
 
    private static boolean target(int targetStage) {
@@ -196,354 +182,135 @@ public class FireBallRenderProcedure {
 
    private static void renderShapes(RenderLevelStageEvent event) {
       Minecraft minecraft = Minecraft.getInstance();
-      ClientLevel level = minecraft.level;
-      Entity entity = minecraft.gameRenderer.getMainCamera().getEntity();
-      if (level != null && entity != null) {
-         poseStack = event.getPoseStack();
-         projectionMatrix = event.getProjectionMatrix();
-         Vec3 pos = entity.getPosition(event.getPartialTick().getGameTimeDeltaPartialTick(true));
-         RenderSystem.enableBlend();
-         RenderSystem.defaultBlendFunc();
-         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-         execute(event, level);
-         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-         RenderSystem.defaultBlendFunc();
-         RenderSystem.disableBlend();
-         RenderSystem.enableDepthTest();
-      }
+      if (minecraft.level == null)
+         return;
+      poseStack = event.getPoseStack();
+      projectionMatrix = event.getProjectionMatrix();
+      RenderSystem.enableBlend();
+      RenderSystem.defaultBlendFunc();
+      execute(null, minecraft.level);
+      RenderSystem.disableBlend();
    }
 
    public static void execute(LevelAccessor world) {
-      try {
       execute(null, world);
-   
-      } catch (Throwable _wtSafe) {
-         net.mcreator.crustychunks.compat.WariumSafety.report("FireBallRenderProcedure.execute", _wtSafe);
-      }
    }
 
-   private static void execute(@Nullable Event event, LevelAccessor world) {
+   public static void execute(@Nullable Event event, LevelAccessor world) {
       try {
-      double scale = 0.0;
-      double pitch = 0.0;
-      double Yaw = 0.0;
-      if (world instanceof ClientLevel) {
-         for (Entity entityiterator : ((ClientLevel)world).entitiesForRendering()) {
-            Yaw = Math.atan2(
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x() - entityiterator.getX(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z() - entityiterator.getZ()
-                  )
-                  * (180.0 / Math.PI)
-                  * -1.0
-               + 180.0;
-            pitch = Math.atan2(
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y() - entityiterator.getY(),
-                     Math.sqrt(
-                        Math.pow(Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x() - entityiterator.getX(), 2.0)
-                           + Math.pow(Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z() - entityiterator.getZ(), 2.0)
-                     )
-                  )
-                  * (180.0 / Math.PI)
-                  * 1.0
-               - 90.0;
-            if (entityiterator instanceof NuclearSecondaryEffectEntity) {
-               scale = Math.max(250.0 - entityiterator.getPersistentData().getDouble("T") / 2.0, 0.0);
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
-                  add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
-                  add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
-                  add(-0.5, 0.0, -0.5, 1.0F, 1.0F, -1);
-                  add(-0.5, 0.0, 0.5, 1.0F, 0.0F, -1);
-                  end();
-               }
-
-               if (target(2)) {
-                  RenderSystem.depthMask(false);
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA);
-                  RenderSystem.setShaderTexture(0, ResourceLocation.parse("crusty_chunks:textures/yellowglare.png"));
-                  renderShape(
-                     shape(),
-                     entityiterator.getX(),
-                     entityiterator.getY() + entityiterator.getPersistentData().getDouble("T") / 10.0,
-                     entityiterator.getZ(),
-                     (float)Yaw,
-                     (float)pitch,
-                     0.0F,
-                     (float)scale,
-                     (float)scale,
-                     (float)scale,
-                     -1
-                  );
-                  release();
-               }
-
-               clear();
+      Minecraft mc = Minecraft.getInstance();
+      Vec3 cam = mc.gameRenderer.getMainCamera().getPosition();
+      synchronized (WariumExplosionClientProcedure.ACTIVE_NUKES) {
+         for (WariumExplosionClientProcedure.NuclearBlast nuke : WariumExplosionClientProcedure.ACTIVE_NUKES) {
+            double T = nuke.time;
+            float yaw = (float)(Math.atan2(cam.x - nuke.x, cam.z - nuke.z) * (180.0 / Math.PI) * -1.0 + 180.0);
+            float pitch = (float)(
+               Math.atan2(cam.y - nuke.y, Math.sqrt(Math.pow(cam.x - nuke.x, 2.0) + Math.pow(cam.z - nuke.z, 2.0)))
+                     * (180.0 / Math.PI)
+                     * 1.0
+                  - 90.0
+            );
+            double scale = Math.max(255.0 - T, 0.0);
+            double glareScale = nuke.power >= 60.0 ? Math.max(450.0 - T / 2.0, 0.0) : Math.max(250.0 - T / 2.0, 0.0);
+            String tex = nuke.power >= 60.0 ? "purpleglare" : "yellowglare";
+            if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
+               add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
+               add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
+               add(-0.5, 0.0, -0.5, 1.0F, 1.0F, -1);
+               add(-0.5, 0.0, 0.5, 1.0F, 0.0F, -1);
+               end();
             }
 
-            if (entityiterator instanceof FusionEffectProjectileEntity) {
-               scale = Math.max(450.0 - entityiterator.getPersistentData().getDouble("T") / 2.0, 0.0);
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
-                  add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
-                  add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
-                  add(-0.5, 0.0, -0.5, 1.0F, 1.0F, -1);
-                  add(-0.5, 0.0, 0.5, 1.0F, 0.0F, -1);
-                  end();
-               }
-
-               if (target(2)) {
-                  RenderSystem.depthMask(false);
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA);
-                  RenderSystem.setShaderTexture(0, ResourceLocation.parse("crusty_chunks:textures/purpleglare.png"));
-                  renderShape(
-                     shape(),
-                     entityiterator.getX(),
-                     entityiterator.getY() + entityiterator.getPersistentData().getDouble("T") / 10.0,
-                     entityiterator.getZ(),
-                     (float)Yaw,
-                     (float)pitch,
-                     0.0F,
-                     (float)scale,
-                     (float)scale,
-                     (float)scale,
-                     -1
-                  );
-                  release();
-               }
-
-               clear();
+            if (target(2)) {
+               RenderSystem.setShaderTexture(0, ResourceLocation.parse("crusty_chunks:textures/" + tex + ".png"));
+               renderShape(shape(), nuke.x, nuke.y + T / 10.0, nuke.z, yaw, pitch, 0.0F, (float)glareScale, (float)glareScale, (float)glareScale, -1);
+               release();
             }
 
-            if (entityiterator instanceof SpaceFusionThermalRadEntityEntity || entityiterator instanceof SpaceThermalRadEntityEntity) {
-               scale = Math.max(500.0 - entityiterator.getPersistentData().getDouble("T") * 2.0, 0.0);
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
-                  add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
-                  add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
-                  add(-0.5, 0.0, -0.5, 1.0F, 1.0F, -1);
-                  add(-0.5, 0.0, 0.5, 1.0F, 0.0F, -1);
-                  end();
-               }
-
-               if (target(2)) {
-                  RenderSystem.depthMask(false);
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE_MINUS_SRC_ALPHA, SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA);
-                  RenderSystem.setShaderTexture(0, ResourceLocation.parse("crusty_chunks:textures/blueglare.png"));
-                  renderShape(
-                     shape(),
-                     entityiterator.getX(),
-                     entityiterator.getY(),
-                     entityiterator.getZ(),
-                     (float)Yaw,
-                     (float)pitch,
-                     0.0F,
-                     (float)scale,
-                     (float)scale,
-                     (float)scale,
-                     -1
-                  );
-                  release();
-               }
-
-               clear();
-               scale = Math.max(255.0 - entityiterator.getPersistentData().getDouble("T") * 1.0, 0.0);
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  end();
-               }
-
-               if (target(1)) {
-                  RenderSystem.disableDepthTest();
-                  RenderSystem.depthMask(false);
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
-                  renderShape(
-                     shape(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z(),
-                     0.0F,
-                     0.0F,
-                     0.0F,
-                     -2.0F,
-                     -1.0F,
-                     -1.0F,
-                     (int)Math.max(Math.min(200.0, scale), 0.0) << 24 | (int)Math.min(255.0, scale) << 16 | (int)Math.min(255.0, scale) << 8 | 0xFF
-                  );
-                  release();
-               }
-
-               clear();
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  end();
-               }
-
-               if (target(2)) {
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
-                  renderShape(
-                     shape(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z(),
-                     0.0F,
-                     0.0F,
-                     0.0F,
-                     -1.0F,
-                     -1.0F,
-                     -1.0F,
-                     (int)Math.max(scale / 3.0, 0.0) << 24 | (int)scale << 16 | (int)scale << 8 | 0xFF
-                  );
-                  release();
-               }
-
-               clear();
+            clear();
+            if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
+               add(0.5, -0.5, -0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(0.5, -0.5, -0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(0.5, -0.5, -0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               end();
             }
 
-            if (entityiterator instanceof NuclearSecondaryEffectEntity || entityiterator instanceof FusionEffectProjectileEntity) {
-               scale = Math.max(255.0 - entityiterator.getPersistentData().getDouble("T") * 1.0, 0.0);
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  end();
-               }
-
-               if (target(1)) {
-                  RenderSystem.disableDepthTest();
-                  RenderSystem.depthMask(false);
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
-                  renderShape(
-                     shape(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z(),
-                     0.0F,
-                     0.0F,
-                     0.0F,
-                     -2.0F,
-                     -1.0F,
-                     -1.0F,
-                     (int)Math.max(Math.min(200.0, scale), 0.0) << 24 | 0xFF0000 | (int)Math.min(255.0, scale) << 8 | (int)Math.min(255.0, scale)
-                  );
-                  release();
-               }
-
-               clear();
-               if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, 0.5, 0.5, -1);
-                  add(0.5, -0.5, 0.5, -1);
-                  add(0.5, -0.5, -0.5, -1);
-                  add(0.5, 0.5, -0.5, -1);
-                  add(-0.5, 0.5, -0.5, -1);
-                  add(-0.5, -0.5, -0.5, -1);
-                  add(-0.5, -0.5, 0.5, -1);
-                  add(-0.5, 0.5, 0.5, -1);
-                  end();
-               }
-
-               if (target(2)) {
-                  RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
-                  renderShape(
-                     shape(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().x(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().y(),
-                     Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().z(),
-                     0.0F,
-                     0.0F,
-                     0.0F,
-                     -1.0F,
-                     -1.0F,
-                     -1.0F,
-                     (int)Math.max(scale / 2.0, 0.0) << 24 | 0xFF0000 | (int)scale << 8 | (int)scale
-                  );
-                  release();
-               }
-
-               clear();
+            if (target(1)) {
+               RenderSystem.disableDepthTest();
+               RenderSystem.depthMask(false);
+               RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
+               int skyCol = (int)Math.max(Math.min(200.0, scale), 0.0) << 24 | (int)Math.min(255.0, scale) << 16 | (int)Math.min(255.0, scale) << 8 | 0xFF;
+               renderShape(shape(), cam.x, cam.y, cam.z, 0.0F, 0.0F, 0.0F, -2.0F, -1.0F, -1.0F, skyCol);
+               RenderSystem.enableDepthTest();
+               RenderSystem.depthMask(true);
+               RenderSystem.defaultBlendFunc();
+               release();
             }
+
+            clear();
+            if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, false)) {
+               add(0.5, -0.5, -0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(0.5, -0.5, -0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, 0.5, 0.5, -1);
+               add(0.5, -0.5, 0.5, -1);
+               add(0.5, -0.5, -0.5, -1);
+               add(0.5, 0.5, -0.5, -1);
+               add(-0.5, 0.5, -0.5, -1);
+               add(-0.5, -0.5, -0.5, -1);
+               add(-0.5, -0.5, 0.5, -1);
+               add(-0.5, 0.5, 0.5, -1);
+               end();
+            }
+
+            if (target(2)) {
+               RenderSystem.blendFuncSeparate(SourceFactor.SRC_ALPHA, DestFactor.ONE, SourceFactor.ONE, DestFactor.ZERO);
+               int worldCol = nuke.power >= 60.0
+                  ? (int)Math.max(scale / 3.0, 0.0) << 24 | 0xFF0000 | (int)scale << 8 | (int)scale
+                  : (int)Math.max(scale / 3.0, 0.0) << 24 | 0xFF0000 | (int)scale << 8 | (int)scale;
+               renderShape(shape(), cam.x, cam.y, cam.z, 0.0F, 0.0F, 0.0F, -1.0F, -1.0F, -1.0F, worldCol);
+               RenderSystem.defaultBlendFunc();
+               release();
+            }
+
+            clear();
          }
       }
-   
+
       } catch (Throwable _wtSafe) {
          net.mcreator.crustychunks.compat.WariumSafety.report("FireBallRenderProcedure.execute", _wtSafe);
       }

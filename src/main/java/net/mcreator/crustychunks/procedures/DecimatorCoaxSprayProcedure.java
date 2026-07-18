@@ -7,12 +7,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.entity.MediumAIBulletEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -51,7 +45,6 @@ public class DecimatorCoaxSprayProcedure {
                      entityToSpawn.setOwner(shooter);
                      entityToSpawn.setBaseDamage((double)damage);
                      entityToSpawn.setSilent(true);
-                     entityToSpawn.setCritArrow(true);
                      return entityToSpawn;
                   }
                })
@@ -66,101 +59,7 @@ public class DecimatorCoaxSprayProcedure {
          }
 
          entity.getPersistentData().putDouble("T", 3.0);
-         if (world instanceof Level _level) {
-            if (!_level.isClientSide()) {
-               _level.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantgunfire")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-               );
-            } else {
-               _level.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantgunfire")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelx) {
-            if (!_levelx.isClientSide()) {
-               _levelx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:midrangeshot")),
-                  SoundSource.NEUTRAL,
-                  20.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-               );
-            } else {
-               _levelx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:midrangeshot")),
-                  SoundSource.NEUTRAL,
-                  20.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelxx) {
-            if (!_levelxx.isClientSide()) {
-               _levelxx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumshot")),
-                  SoundSource.NEUTRAL,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.7, 0.9)
-               );
-            } else {
-               _levelxx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumshot")),
-                  SoundSource.NEUTRAL,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.7, 0.9),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelxxx) {
-            if (!_levelxxx.isClientSide()) {
-               _levelxxx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumcasing")),
-                  SoundSource.NEUTRAL,
-                  3.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2)
-               );
-            } else {
-               _levelxxx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumcasing")),
-                  SoundSource.NEUTRAL,
-                  3.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2),
-                  false
-               );
-            }
-         }
+         ExtraLargeFireSoundProcedure.execute(world, x, y, z);
       }
    
       } catch (Throwable _wtSafe) {

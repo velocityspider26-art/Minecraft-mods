@@ -76,7 +76,7 @@ public class ParticleProjectileEntity extends AbstractArrow implements ItemSuppl
 
    public void tick() {
       super.tick();
-      FragmentDespawnMechanicProcedure.execute(this);
+      FragmentDespawnMechanicProcedure.execute(this.level(), this);
       if (this.inGround) {
          this.discard();
       }

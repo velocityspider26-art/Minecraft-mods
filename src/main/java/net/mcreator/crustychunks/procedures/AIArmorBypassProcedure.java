@@ -58,9 +58,9 @@ public class AIArmorBypassProcedure {
                         null,
                         BlockPos.containing(x, y, z),
                         (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                        SoundSource.NEUTRAL,
-                        3.0F,
-                        1.0F
+                        SoundSource.MASTER,
+                        1.0F,
+                        (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                      );
                   } else {
                      _level.playLocalSound(
@@ -68,9 +68,9 @@ public class AIArmorBypassProcedure {
                         y,
                         z,
                         (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                        SoundSource.NEUTRAL,
-                        3.0F,
+                        SoundSource.MASTER,
                         1.0F,
+                        (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
                         false
                      );
                   }

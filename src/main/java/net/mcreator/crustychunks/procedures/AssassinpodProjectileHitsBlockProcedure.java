@@ -52,7 +52,7 @@ public class AssassinpodProjectileHitsBlockProcedure {
                }
             }
          );
-         MicroExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.0);
       }
    
       } catch (Throwable _wtSafe) {

@@ -270,25 +270,71 @@ public class StrikeSpearFlightProcedure {
          }
 
          if (immediatesourceentity.isUnderWater()) {
-            LargeHEATHitProcedure.execute(world, x, y, z, immediatesourceentity);
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
-            }
+            Trigger = true;
          }
 
-         Vec3 _center = new Vec3(x, y, z);
+         Vec3 _center = new Vec3(
+            x - immediatesourceentity.getDeltaMovement().x() * 0.5,
+            y - immediatesourceentity.getDeltaMovement().y() * 0.5,
+            z - immediatesourceentity.getDeltaMovement().z() * 0.5
+         );
 
-         for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(1.0), e -> true)
+         for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(1.25), e -> true)
             .stream()
             .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_center)))
             .toList()) {
-            if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))) {
+            if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiterator != immediatesourceentity) {
                if (!entityiterator.level().isClientSide()) {
                   entityiterator.discard();
                }
 
                Trigger = true;
             }
+         }
+
+         Vec3 _centerx = new Vec3(x, y, z);
+
+         for (Entity entityiteratorx : world.getEntitiesOfClass(Entity.class, new AABB(_centerx, _centerx).inflate(1.25), e -> true)
+            .stream()
+            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_centerx)))
+            .toList()) {
+            if (entityiteratorx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiteratorx != immediatesourceentity) {
+               if (!entityiteratorx.level().isClientSide()) {
+                  entityiteratorx.discard();
+               }
+
+               Trigger = true;
+            }
+         }
+
+         Vec3 _centerxx = new Vec3(
+            x + immediatesourceentity.getDeltaMovement().x() * 0.5,
+            y + immediatesourceentity.getDeltaMovement().y() * 0.5,
+            z + immediatesourceentity.getDeltaMovement().z() * 0.5
+         );
+
+         for (Entity entityiteratorxx : world.getEntitiesOfClass(Entity.class, new AABB(_centerxx, _centerxx).inflate(1.25), e -> true)
+            .stream()
+            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_centerxx)))
+            .toList()) {
+            if (entityiteratorxx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiteratorxx != immediatesourceentity) {
+               if (!entityiteratorxx.level().isClientSide()) {
+                  entityiteratorxx.discard();
+               }
+
+               Trigger = true;
+            }
+         }
+
+         if (Trigger) {
+            if (!immediatesourceentity.level().isClientSide()) {
+               immediatesourceentity.discard();
+            }
+
+            CrustyChunksMod.queueServerWork(1, () -> LargeRocketHitProcedure.execute(world, immediatesourceentity));
          }
 
          if (Trigger) {

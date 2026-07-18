@@ -27,7 +27,6 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -37,22 +36,10 @@ public class HugeBulletHitProcedure {
       try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
+         BlockState impactblock = Blocks.AIR.defaultBlockState();
          DamagesProcedure.execute(world, x, y, z);
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
-            for (int index0 = 0; index0 < 10; index0++) {
-               world.addParticle(
-                  (SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(),
-                  immediatesourceentity.getX(),
-                  immediatesourceentity.getY() + 1.0,
-                  immediatesourceentity.getZ(),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
-               );
-            }
-         }
-
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
+         impactblock = world.getBlockState(BlockPos.containing(x, y, z));
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _level) {
                if (!_level.isClientSide()) {
@@ -60,7 +47,7 @@ public class HugeBulletHitProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F
                   );
@@ -70,7 +57,7 @@ public class HugeBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F,
                      false
@@ -119,7 +106,7 @@ public class HugeBulletHitProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:breakable_metal")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:breakable_metal")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _levelx) {
                if (!_levelx.isClientSide()) {
@@ -127,7 +114,7 @@ public class HugeBulletHitProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F
                   );
@@ -137,7 +124,7 @@ public class HugeBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F,
                      false
@@ -146,7 +133,7 @@ public class HugeBulletHitProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
                && world instanceof ServerLevel projectileLevel) {
@@ -189,7 +176,7 @@ public class HugeBulletHitProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _levelxx) {
                if (!_levelxx.isClientSide()) {
@@ -197,7 +184,7 @@ public class HugeBulletHitProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F
                   );
@@ -207,7 +194,7 @@ public class HugeBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.0F,
                      1.0F,
                      false
@@ -260,14 +247,14 @@ public class HugeBulletHitProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:resistant")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:resistant")))) {
             if (world instanceof Level _levelxxx) {
                if (!_levelxxx.isClientSide()) {
                   _levelxxx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      0.5F,
                      (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4))
                   );
@@ -277,7 +264,7 @@ public class HugeBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      0.5F,
                      (float)(1.0 + Mth.nextDouble(RandomSource.create(), -0.2, 0.4)),
                      false
@@ -290,7 +277,7 @@ public class HugeBulletHitProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:crushable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:crushable")))) {
             if (world instanceof Level _levelxxxx) {
                if (!_levelxxxx.isClientSide()) {
                   _levelxxxx.playSound(
@@ -334,60 +321,20 @@ public class HugeBulletHitProcedure {
             }
 
             world.setBlock(_bp, _bs, 3);
-
-            for (int index1 = 0; index1 < 10; index1++) {
-               world.addParticle(
-                  (SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(),
-                  immediatesourceentity.getX(),
-                  immediatesourceentity.getY() + 1.0,
-                  immediatesourceentity.getZ(),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
-               );
-            }
          }
 
          if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == Blocks.GRASS_BLOCK) {
             world.setBlock(BlockPos.containing(x, y, z), Blocks.DIRT.defaultBlockState(), 3);
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands")))) {
-            for (int index2 = 0; index2 < 10; index2++) {
-               world.addParticle(
-                  (SimpleParticleType)CrustyChunksModParticleTypes.SAND.get(),
-                  immediatesourceentity.getX(),
-                  immediatesourceentity.getY() + 1.0,
-                  immediatesourceentity.getZ(),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
-               );
-            }
-         }
-
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dusts")))) {
-            for (int index3 = 0; index3 < 10; index3++) {
-               world.addParticle(
-                  (SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(),
-                  immediatesourceentity.getX(),
-                  immediatesourceentity.getY() + 1.0,
-                  immediatesourceentity.getZ(),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2),
-                  Mth.nextDouble(RandomSource.create(), -0.2, 0.2)
-               );
-            }
-         }
-
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:metals")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:metals")))) {
             if (world instanceof Level _levelxxxxx) {
                if (!_levelxxxxx.isClientSide()) {
                   _levelxxxxx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      2.0F,
                      1.5F
                   );
@@ -397,7 +344,7 @@ public class HugeBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      2.0F,
                      1.5F,
                      false
@@ -406,11 +353,10 @@ public class HugeBulletHitProcedure {
             }
 
             if (world instanceof ServerLevel _levelxxxxxx) {
-               _levelxxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SPARKS.get(), x + 0.5, y + 1.0, z + 0.5, 35, 0.3, 0.3, 3.0, 1.0);
+               _levelxxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SPARKS.get(), x + 0.5, y + 1.0, z + 0.5, 25, 0.3, 0.3, 3.0, 1.0);
             }
          }
 
-         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y, z))));
          if (world instanceof Level _levelxxxxxx) {
             if (!_levelxxxxxx.isClientSide()) {
                _levelxxxxxx.playSound(
@@ -440,7 +386,7 @@ public class HugeBulletHitProcedure {
                _levelxxxxxxx.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:small_expllosion_distant")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                   SoundSource.NEUTRAL,
                   15.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4)
@@ -450,7 +396,7 @@ public class HugeBulletHitProcedure {
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:small_expllosion_distant")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                   SoundSource.NEUTRAL,
                   15.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4),
@@ -461,14 +407,10 @@ public class HugeBulletHitProcedure {
 
          if (world.getBlockState(BlockPos.containing(x, y, z)).getDestroySpeed(world, BlockPos.containing(x, y, z)) <= 5.0F
             && world.getBlockState(BlockPos.containing(x, y, z)).getDestroySpeed(world, BlockPos.containing(x, y, z)) >= 0.0F
-            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))
-            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands")))
-            && !world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:concrete")))) {
+            && !impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:concrete")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
          }
 
-         HeavyCrackProcedureProcedure.execute(world, x, y, z);
-         ArmorDegradeProcedure.execute(world, x, y, z);
          CrustyChunksMod.queueServerWork(
             1,
             () -> {
@@ -511,7 +453,7 @@ public class HugeBulletHitProcedure {
                   projectileLevel.addFreshEntity(_entityToSpawn);
                }
 
-               for (int index4 = 0; index4 < Mth.nextInt(RandomSource.create(), 4, 6); index4++) {
+               for (int index0 = 0; index0 < Mth.nextInt(RandomSource.create(), 4, 6); index0++) {
                   if (world instanceof ServerLevel projectileLevel) {
                      Projectile _entityToSpawn = (new Object() {
                            public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
@@ -557,6 +499,8 @@ public class HugeBulletHitProcedure {
                }
             }
          );
+         HVParticleProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+         ArmorDegradeProcedure.execute(world, x, y, z);
       }
    
       } catch (Throwable _wtSafe) {

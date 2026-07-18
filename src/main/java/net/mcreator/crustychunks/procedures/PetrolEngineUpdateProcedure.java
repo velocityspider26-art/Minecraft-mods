@@ -6,11 +6,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.mcreator.crustychunks.init.CrustyChunksModBlocks;
 import net.mcreator.crustychunks.init.CrustyChunksModFluids;
-import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -116,10 +113,10 @@ public class PetrolEngineUpdateProcedure {
                }
             }).getBlockTanks(world, BlockPos.containing(x, y, z)))
             .isFluidEqual(new FluidStack((Fluid)CrustyChunksModFluids.PETROLIUM.get(), 1))) {
-         label120: {
+         label114: {
             if (world instanceof Level _level12 && _level12.hasNeighborSignal(BlockPos.containing(x, y, z))) {
                power = maxpower;
-               break label120;
+               break label114;
             }
 
             if ((new Object() {
@@ -298,16 +295,6 @@ public class PetrolEngineUpdateProcedure {
             _levelx.sendBlockUpdated(_bpxxxxxx, _bsxxxxxx, _bsxxxxxx, 3);
          }
       }
-
-      if ((new Object() {
-         public double getValue(LevelAccessor world, BlockPos pos, String tag) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
-         }
-      }).getValue(world, BlockPos.containing(x, y, z), "Damage") >= 2.0 && world instanceof ServerLevel _levelx) {
-         _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(), x + 0.5, y + 1.1, z + 0.5, 1, 0.0, 1.0, 0.0, 0.1);
-      }
-   
       } catch (Throwable _wtSafe) {
          net.mcreator.crustychunks.compat.WariumSafety.report("PetrolEngineUpdateProcedure.execute", _wtSafe);
       }

@@ -29,7 +29,7 @@ import net.neoforged.api.distmarker.OnlyIn;
    _interface = ItemSupplier.class
 )
 public class MediumBombProjectileEntity extends AbstractArrow implements ItemSupplier {
-   public static final ItemStack PROJECTILE_ITEM = new ItemStack((ItemLike)CrustyChunksModBlocks.REDSTONE_TNT.get());
+   public static final ItemStack PROJECTILE_ITEM = new ItemStack((ItemLike)CrustyChunksModBlocks.MEDIUM_BOMB.get());
 
    public MediumBombProjectileEntity(EntityType<? extends MediumBombProjectileEntity> type, Level world) {
       super(type, world);

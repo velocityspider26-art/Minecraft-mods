@@ -28,6 +28,10 @@
     "crusty_chunks:powder_charge",
     "crusty_chunks:explosive_barrel",
     "crusty_chunks:smoke_shell",
-    "crusty_chunks:solid_rocket_fuel_pack"
+    "crusty_chunks:solid_rocket_fuel_pack",
+    "crusty_chunks:implosion_module",
+    "crusty_chunks:implosion_lens",
+    "crusty_chunks:canister_shell",
+    "crusty_chunks:mining_charge"
   ]
 }

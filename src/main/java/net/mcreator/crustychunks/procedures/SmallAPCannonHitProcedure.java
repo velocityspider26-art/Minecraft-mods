@@ -156,7 +156,7 @@ public class SmallAPCannonHitProcedure {
                      _levelx.playSound(
                         null,
                         BlockPos.containing(x, y, z),
-                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                         SoundSource.BLOCKS,
                         20.0F,
                         (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.3)
@@ -166,7 +166,7 @@ public class SmallAPCannonHitProcedure {
                         x,
                         y,
                         z,
-                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                         SoundSource.BLOCKS,
                         20.0F,
                         (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.3),

@@ -1,0 +1,31 @@
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "crusty_chunks:displaysettings/musket.item",
+    "textures": {
+      "0": "crusty_chunks:item/musket"
+    }
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/musketitem"
+      },
+      "gui_light": "front"
+    },
+    "ground": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/musketitem"
+      }
+    },
+    "fixed": {
+      "parent": "item/generated",
+      "textures": {
+        "layer0": "crusty_chunks:item/musketitem"
+      }
+    }
+  }
+}

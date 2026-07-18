@@ -2,18 +2,16 @@ package net.mcreator.crustychunks.item.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import java.util.HashSet;
 import java.util.Set;
 import net.mcreator.crustychunks.item.RevolverAnimatedItem;
 import net.mcreator.crustychunks.item.model.RevolverAnimatedItemModel;
-import net.mcreator.crustychunks.utils.AnimUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -91,42 +89,32 @@ public class RevolverAnimatedItemRenderer extends GeoItemRenderer<RevolverAnimat
       int packedLightIn,
       int packedOverlayIn,
       int colour) {
-      Minecraft mc = Minecraft.getInstance();
       String name = bone.getName();
-      boolean renderingArms = false;
-      if (!name.equals("Left") && !name.equals("Right")) {
-         bone.setHidden(this.hiddenBones.contains(name));
-      } else {
+      boolean isArmBone = name.equals("Left") || name.equals("Right");
+      if (isArmBone) {
          bone.setHidden(true);
-         renderingArms = true;
       }
 
-      if (this.transformType.firstPerson() && renderingArms) {
+      if (this.transformType != null && this.transformType.firstPerson() && isArmBone) {
+         Minecraft mc = Minecraft.getInstance();
          AbstractClientPlayer player = mc.player;
-         float armsAlpha = player.isInvisible() ? 0.15F : 1.0F;
-         PlayerRenderer playerRenderer = (PlayerRenderer)mc.getEntityRenderDispatcher().getRenderer(player);
-         PlayerModel<AbstractClientPlayer> model = (PlayerModel<AbstractClientPlayer>)playerRenderer.getModel();
+         PlayerRenderer renderer = (PlayerRenderer)mc.getEntityRenderDispatcher().getRenderer(player);
          stack.pushPose();
          RenderUtil.translateMatrixToBone(stack, bone);
          RenderUtil.translateToPivotPoint(stack, bone);
          RenderUtil.rotateMatrixAroundBone(stack, bone);
          RenderUtil.scaleMatrixForBone(stack, bone);
          RenderUtil.translateAwayFromPivotPoint(stack, bone);
-         ResourceLocation loc = player.getSkin().texture();
-         VertexConsumer armBuilder = this.currentBuffer.getBuffer(RenderType.entitySolid(loc));
-         VertexConsumer sleeveBuilder = this.currentBuffer.getBuffer(RenderType.entityTranslucent(loc));
+         stack.translate(0.0F, 0.0F, 0.0F);
+         stack.mulPose(Axis.YP.rotationDegrees(180.0F));
          if (name.equals("Left")) {
-            stack.translate(-0.0625F, 0.125F, 0.0F);
-            AnimUtils.renderPartOverBone(model.leftArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, armsAlpha);
-            AnimUtils.renderPartOverBone(model.leftSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, armsAlpha);
-         } else if (name.equals("Right")) {
-            stack.translate(0.0625F, 0.125F, 0.0F);
-            AnimUtils.renderPartOverBone(model.rightArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, armsAlpha);
-            AnimUtils.renderPartOverBone(model.rightSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, armsAlpha);
+            renderer.renderLeftHand(stack, buffer, packedLightIn, player);
+         } else {
+            renderer.renderRightHand(stack, buffer, packedLightIn, player);
          }
 
-         this.currentBuffer.getBuffer(RenderType.entityTranslucent(this.getTextureLocation(this.animatable)));
          stack.popPose();
+         buffer.getBuffer(RenderType.entityTranslucent(this.getTextureLocation(animatable)));
       }
 
       super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, colour);

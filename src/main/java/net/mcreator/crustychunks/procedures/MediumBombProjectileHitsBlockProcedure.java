@@ -7,7 +7,7 @@ public class MediumBombProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         MediumExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 6.0);
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }

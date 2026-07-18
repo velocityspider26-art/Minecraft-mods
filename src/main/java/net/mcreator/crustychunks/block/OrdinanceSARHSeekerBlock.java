@@ -1,7 +1,7 @@
 package net.mcreator.crustychunks.block;
 
 import java.util.List;
-import net.mcreator.crustychunks.procedures.MediumFraglessProcedure;
+import net.mcreator.crustychunks.procedures.MediumBombDetonationProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -252,6 +252,6 @@ public class OrdinanceSARHSeekerBlock extends Block {
 
    public void wasExploded(Level world, BlockPos pos, Explosion e) {
       super.wasExploded(world, pos, e);
-      MediumFraglessProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
+      MediumBombDetonationProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
    }
 }

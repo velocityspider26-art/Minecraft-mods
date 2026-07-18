@@ -13,7 +13,7 @@ public class HunterDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
       try {
       if (entity != null) {
-         SmallExplosionProcedure.execute(world, x, y, z);
+         ExplosionExampleProcedure.execute(world, x, y, z, 4.0);
          GasolineExplosionProcedure.execute(world, x, y, z);
          if (!entity.level().isClientSide()) {
             entity.discard();

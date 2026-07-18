@@ -6,6 +6,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.mcreator.crustychunks.init.CrustyChunksModItems;
+import net.mcreator.crustychunks.procedures.FragmentDespawnMechanicProcedure;
 import net.mcreator.crustychunks.procedures.HEATProjectileHitsBlockProcedure;
 import net.mcreator.crustychunks.procedures.HEATProjectileHitsLivingEntityProcedure;
 import net.minecraft.resources.ResourceLocation;
@@ -75,6 +76,7 @@ public class HEATEntity extends AbstractArrow implements ItemSupplier {
 
    public void tick() {
       super.tick();
+      FragmentDespawnMechanicProcedure.execute(this.level(), this);
       if (this.inGround) {
          this.discard();
       }

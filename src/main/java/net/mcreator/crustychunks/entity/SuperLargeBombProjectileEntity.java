@@ -59,23 +59,17 @@ public class SuperLargeBombProjectileEntity extends AbstractArrow implements Ite
 
    public void onHitEntity(EntityHitResult entityHitResult) {
       super.onHitEntity(entityHitResult);
-      SuperLargeBombProjectileHitsBlockProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      SuperLargeBombProjectileHitsBlockProcedure.execute(this.level(), this);
    }
 
    public void onHitBlock(BlockHitResult blockHitResult) {
       super.onHitBlock(blockHitResult);
-      SuperLargeBombProjectileHitsBlockProcedure.execute(
-         this.level(),
-         (double)blockHitResult.getBlockPos().getX(),
-         (double)blockHitResult.getBlockPos().getY(),
-         (double)blockHitResult.getBlockPos().getZ(),
-         this
-      );
+      SuperLargeBombProjectileHitsBlockProcedure.execute(this.level(), this);
    }
 
    public void tick() {
       super.tick();
-      SuperLargeBombTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      SuperLargeBombTickProcedure.execute(this.level(), this);
    }
 
    public static SuperLargeBombProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

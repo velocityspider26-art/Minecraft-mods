@@ -1,24 +1,20 @@
 package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import java.util.Comparator;
 import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class IncindiaryRocketFlightProcedure {
@@ -111,29 +107,7 @@ public class IncindiaryRocketFlightProcedure {
             immediatesourceentity.setDeltaMovement(motion);
          }
 
-         if (immediatesourceentity.isUnderWater()) {
-            IncindiaryRocketHitProcedure.execute(world, immediatesourceentity);
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
-            }
-         }
-
-         Vec3 _center = new Vec3(x, y, z);
-
-         for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(1.25), e -> true)
-            .stream()
-            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_center)))
-            .toList()) {
-            if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))) {
-               if (!entityiterator.level().isClientSide()) {
-                  entityiterator.discard();
-               }
-
-               Trigger = true;
-            }
-         }
-
-         if (Trigger) {
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }

@@ -43,7 +43,7 @@ public class IncindiaryExplosionProcedure {
             _level.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:huge_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlargefar")),
                SoundSource.MASTER,
                40.0F,
                (float)Mth.nextDouble(RandomSource.create(), -0.9, 1.1)
@@ -53,7 +53,7 @@ public class IncindiaryExplosionProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:huge_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlargefar")),
                SoundSource.MASTER,
                40.0F,
                (float)Mth.nextDouble(RandomSource.create(), -0.9, 1.1),
@@ -67,7 +67,7 @@ public class IncindiaryExplosionProcedure {
             _levelx.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlarge")),
                SoundSource.MASTER,
                6.0F,
                (float)(0.5 + Mth.nextDouble(RandomSource.create(), -0.1, 0.1))
@@ -77,7 +77,7 @@ public class IncindiaryExplosionProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlarge")),
                SoundSource.MASTER,
                6.0F,
                (float)(0.5 + Mth.nextDouble(RandomSource.create(), -0.1, 0.1)),

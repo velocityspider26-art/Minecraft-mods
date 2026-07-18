@@ -6,7 +6,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
-import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.entity.SmallBulletHPEntity;
 import net.mcreator.crustychunks.entity.SmallBulletStealthEntity;
 import net.mcreator.crustychunks.entity.SmallbulletfireProjectileEntity;
@@ -176,82 +175,7 @@ public class EradicationFireScriptProcedure {
                   }
 
                   SmallCasingDropProcedure.execute(world, x, y, z);
-                  CrustyChunksMod.queueServerWork(
-                     1,
-                     () -> {
-                        if (world instanceof Level _level) {
-                           if (!_level.isClientSide()) {
-                              _level.playSound(
-                                 null,
-                                 BlockPos.containing(x, y, z),
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
-                                 SoundSource.NEUTRAL,
-                                 40.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.7)
-                              );
-                           } else {
-                              _level.playLocalSound(
-                                 x,
-                                 y,
-                                 z,
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
-                                 SoundSource.NEUTRAL,
-                                 40.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.7),
-                                 false
-                              );
-                           }
-                        }
-
-                        if (world instanceof Level _levelx) {
-                           if (!_levelx.isClientSide()) {
-                              _levelx.playSound(
-                                 null,
-                                 BlockPos.containing(x, y, z),
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
-                                 SoundSource.BLOCKS,
-                                 7.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.7)
-                              );
-                           } else {
-                              _levelx.playLocalSound(
-                                 x,
-                                 y,
-                                 z,
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
-                                 SoundSource.BLOCKS,
-                                 7.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.7),
-                                 false
-                              );
-                           }
-                        }
-
-                        if (world instanceof Level _levelxx) {
-                           if (!_levelxx.isClientSide()) {
-                              _levelxx.playSound(
-                                 null,
-                                 BlockPos.containing(x, y, z),
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshot")),
-                                 SoundSource.NEUTRAL,
-                                 60.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
-                              );
-                           } else {
-                              _levelxx.playLocalSound(
-                                 x,
-                                 y,
-                                 z,
-                                 (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshot")),
-                                 SoundSource.NEUTRAL,
-                                 60.0F,
-                                 (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
-                                 false
-                              );
-                           }
-                        }
-                     }
-                  );
+                  MiniGunFireSoundProcedure.execute(world, x, y, z);
                   entity.setYRot((float)((double)entity.getYRot() + Mth.nextDouble(RandomSource.create(), -0.8, 0.8)));
                   entity.setXRot((float)((double)entity.getXRot() - Mth.nextDouble(RandomSource.create(), 0.6, 0.8)));
                   entity.setYBodyRot(entity.getYRot());

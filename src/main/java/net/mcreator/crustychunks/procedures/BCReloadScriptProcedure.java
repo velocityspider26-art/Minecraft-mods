@@ -341,6 +341,59 @@ public class BCReloadScriptProcedure {
                   }
                }
             }
+
+            if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.CANISTER_SHELL.get()) {
+               (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY).setCount(0);
+               if (!world.isClientSide()) {
+                  BlockPos _bpxxxxxxxxxxxx = BlockPos.containing(x, y, z);
+                  BlockEntity _blockEntityxxxxxxxxxxxx = world.getBlockEntity(_bpxxxxxxxxxxxx);
+                  BlockState _bsxxxxxxxxxxxx = world.getBlockState(_bpxxxxxxxxxxxx);
+                  if (_blockEntityxxxxxxxxxxxx != null) {
+                     _blockEntityxxxxxxxxxxxx.getPersistentData().putBoolean("Loaded", true);
+                  }
+
+                  if (world instanceof Level _levelxxxxxx) {
+                     _levelxxxxxx.sendBlockUpdated(_bpxxxxxxxxxxxx, _bsxxxxxxxxxxxx, _bsxxxxxxxxxxxx, 3);
+                  }
+               }
+
+               if (!world.isClientSide()) {
+                  BlockPos _bpxxxxxxxxxxxxx = BlockPos.containing(x, y, z);
+                  BlockEntity _blockEntityxxxxxxxxxxxxx = world.getBlockEntity(_bpxxxxxxxxxxxxx);
+                  BlockState _bsxxxxxxxxxxxxx = world.getBlockState(_bpxxxxxxxxxxxxx);
+                  if (_blockEntityxxxxxxxxxxxxx != null) {
+                     _blockEntityxxxxxxxxxxxxx.getPersistentData().putBoolean("CANISTER", true);
+                  }
+
+                  if (world instanceof Level _levelxxxxxx) {
+                     _levelxxxxxx.sendBlockUpdated(_bpxxxxxxxxxxxxx, _bsxxxxxxxxxxxxx, _bsxxxxxxxxxxxxx, 3);
+                  }
+               }
+
+               if (world instanceof Level _levelxxxxxx) {
+                  if (!_levelxxxxxx.isClientSide()) {
+                     _levelxxxxxx.playSound(
+                        null,
+                        BlockPos.containing(x, y, z),
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.iron_door.open")),
+                        SoundSource.NEUTRAL,
+                        1.0F,
+                        0.5F
+                     );
+                  } else {
+                     _levelxxxxxx.playLocalSound(
+                        x,
+                        y,
+                        z,
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.iron_door.open")),
+                        SoundSource.NEUTRAL,
+                        1.0F,
+                        0.5F,
+                        false
+                     );
+                  }
+               }
+            }
          }
       }
    

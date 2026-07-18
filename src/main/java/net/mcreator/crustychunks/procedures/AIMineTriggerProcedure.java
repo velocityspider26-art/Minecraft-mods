@@ -19,7 +19,7 @@ public class AIMineTriggerProcedure {
           {
             CrustyChunksMod.queueServerWork(7, () -> {
                if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.AI_MINE.get()) {
-                  TinyExplosionProcedure.execute(world, x + 0.5, y + 0.25, z + 0.5);
+                  ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.25, z + 0.5, 2.0);
                   world.destroyBlock(BlockPos.containing(x, y, z), false);
                }
             });

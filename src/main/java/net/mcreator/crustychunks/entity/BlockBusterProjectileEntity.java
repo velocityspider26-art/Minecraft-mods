@@ -59,23 +59,17 @@ public class BlockBusterProjectileEntity extends AbstractArrow implements ItemSu
 
    public void onHitEntity(EntityHitResult entityHitResult) {
       super.onHitEntity(entityHitResult);
-      BlockBusterHitProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      BlockBusterHitProcedure.execute(this.level(), this);
    }
 
    public void onHitBlock(BlockHitResult blockHitResult) {
       super.onHitBlock(blockHitResult);
-      BlockBusterHitProcedure.execute(
-         this.level(),
-         (double)blockHitResult.getBlockPos().getX(),
-         (double)blockHitResult.getBlockPos().getY(),
-         (double)blockHitResult.getBlockPos().getZ(),
-         this
-      );
+      BlockBusterHitProcedure.execute(this.level(), this);
    }
 
    public void tick() {
       super.tick();
-      BlockBusterTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      BlockBusterTickProcedure.execute(this.level(), this);
    }
 
    public static BlockBusterProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

@@ -26,9 +26,9 @@ public class NuclearShockParticleParticle extends TextureSheetParticle {
       this.lifetime = Math.max(1, 60 + (this.random.nextInt(22) - 11));
       this.gravity = 0.0F;
       this.hasPhysics = false;
-      this.xd = vx * 0.7;
-      this.yd = vy * 0.7;
-      this.zd = vz * 0.7;
+      this.xd = vx * 2.0;
+      this.yd = vy * 2.0;
+      this.zd = vz * 2.0;
       this.setSpriteFromAge(spriteSet);
    }
 

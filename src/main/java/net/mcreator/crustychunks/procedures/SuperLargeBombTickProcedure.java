@@ -4,11 +4,12 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.LevelAccessor;
 
 public class SuperLargeBombTickProcedure {
-   public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+   public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         if (immediatesourceentity.isUnderWater()) {
-            SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+         boolean Trigger = false;
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
+            SuperLargeBombProjectileHitsBlockProcedure.execute(world, immediatesourceentity);
          }
       }
    

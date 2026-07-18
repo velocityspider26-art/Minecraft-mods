@@ -61,7 +61,9 @@ public class SmallShellHitProcedure {
                   }
                }
 
-               MicroExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 1.5
+               );
                if (!immediatesourceentity.level().isClientSide()) {
                   immediatesourceentity.discard();
                }

@@ -8,12 +8,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.entity.CIWSEntity;
 import net.mcreator.crustychunks.entity.HugeAIBulletEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.AbstractArrow;
@@ -70,78 +64,7 @@ public class CIWSGunProcedure {
             projectileLevel.addFreshEntity(_entityToSpawn);
          }
 
-         if (world instanceof Level _level) {
-            if (!_level.isClientSide()) {
-               _level.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
-                  SoundSource.BLOCKS,
-                  60.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4)
-               );
-            } else {
-               _level.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:brtttfar")),
-                  SoundSource.BLOCKS,
-                  60.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.2, 1.4),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelx) {
-            if (!_levelx.isClientSide()) {
-               _levelx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
-                  SoundSource.BLOCKS,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
-               );
-            } else {
-               _levelx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:rac")),
-                  SoundSource.BLOCKS,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelxx) {
-            if (!_levelxx.isClientSide()) {
-               _levelxx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                  SoundSource.BLOCKS,
-                  8.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6)
-               );
-            } else {
-               _levelxx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                  SoundSource.BLOCKS,
-                  8.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6),
-                  false
-               );
-            }
-         }
-
+         RotaryAutocannonFireSoundProcedure.execute(world, x, y, z);
          if (entity instanceof CIWSEntity) {
             ((CIWSEntity)entity).setAnimation("Fire");
          }

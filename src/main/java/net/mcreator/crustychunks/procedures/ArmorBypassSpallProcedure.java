@@ -9,12 +9,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 
@@ -32,9 +36,9 @@ public class ArmorBypassSpallProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
-                     1.0F
+                     SoundSource.MASTER,
+                     1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
                   _level.playLocalSound(
@@ -42,23 +46,66 @@ public class ArmorBypassSpallProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
+                     SoundSource.MASTER,
                      1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
                      false
                   );
                }
             }
 
-            if (1 == Mth.nextInt(RandomSource.create(), 1, 4)) {
+            if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY)
+               .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:bulletarmor")))) {
                entity.hurt(
                   new DamageSource(
                      world.registryAccess()
                         .registryOrThrow(Registries.DAMAGE_TYPE)
                         .getHolderOrThrow(ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.parse("crusty_chunks:spall_damage")))
                   ),
-                  0.25F
+                  2.0F
                );
+               ItemStack _ist = entity instanceof LivingEntity _entGetArmorx ? _entGetArmorx.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY;
+               if (world instanceof ServerLevel _srvlvl) _ist.hurtAndBreak(4, _srvlvl, null, _itmcns -> {});
+            } else {
+               entity.hurt(
+                  new DamageSource(
+                     world.registryAccess()
+                        .registryOrThrow(Registries.DAMAGE_TYPE)
+                        .getHolderOrThrow(ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.parse("crusty_chunks:spall_damage")))
+                  ),
+                  3.0F
+               );
+            }
+
+            if (immediatesourceentity.getY()
+                  - immediatesourceentity.getLookAngle().y
+                     * Math.sqrt(
+                        Math.pow(entity.getX() - immediatesourceentity.getX(), 2.0)
+                           + Math.pow(entity.getZ() - immediatesourceentity.getZ(), 2.0)
+                     )
+               > entity.getY() + 1.55) {
+               if (!(entity instanceof LivingEntity _entGetArmorx ? _entGetArmorx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY)
+                  .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:bulletarmor")))) {
+                  entity.hurt(
+                     new DamageSource(
+                        world.registryAccess()
+                           .registryOrThrow(Registries.DAMAGE_TYPE)
+                           .getHolderOrThrow(ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.parse("crusty_chunks:spall_damage")))
+                     ),
+                     4.0F
+                  );
+               } else {
+                  entity.hurt(
+                     new DamageSource(
+                        world.registryAccess()
+                           .registryOrThrow(Registries.DAMAGE_TYPE)
+                           .getHolderOrThrow(ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.parse("crusty_chunks:spall_damage")))
+                     ),
+                     3.0F
+                  );
+                  ItemStack _ist = entity instanceof LivingEntity _entGetArmorx ? _entGetArmorx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY;
+                  if (world instanceof ServerLevel _srvlvl) _ist.hurtAndBreak(7, _srvlvl, null, _itmcns -> {});
+               }
             }
          } else {
             if (Mth.nextInt(RandomSource.create(), 1, 2) == 1) {

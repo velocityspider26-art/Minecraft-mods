@@ -6,11 +6,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.mcreator.crustychunks.init.CrustyChunksModBlocks;
 import net.mcreator.crustychunks.init.CrustyChunksModFluids;
-import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -116,10 +113,10 @@ public class EngineUpdateProcedure {
                }
             }).getBlockTanks(world, BlockPos.containing(x, y, z)))
             .isFluidEqual(new FluidStack((Fluid)CrustyChunksModFluids.DIESEL.get(), 1))) {
-         label120: {
+         label123: {
             if (world instanceof Level _level12 && _level12.hasNeighborSignal(BlockPos.containing(x, y, z))) {
                power = maxpower;
-               break label120;
+               break label123;
             }
 
             if ((new Object() {
@@ -213,24 +210,48 @@ public class EngineUpdateProcedure {
                return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
             }
          }).getValue(world, BlockPos.containing(x, y, z), "Stage")) {
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
+            if (35.0 < power) {
+               if (world instanceof Level _level) {
+                  if (!_level.isClientSide()) {
+                     _level.playSound(
+                        null,
+                        BlockPos.containing(x, y, z),
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselenginerev")),
+                        SoundSource.BLOCKS,
+                        (float)Math.max(1.0, power / 20.0),
+                        (float)(0.3 + power / maxpower + Mth.nextDouble(RandomSource.create(), -0.05, 0.05))
+                     );
+                  } else {
+                     _level.playLocalSound(
+                        x,
+                        y,
+                        z,
+                        (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselenginerev")),
+                        SoundSource.BLOCKS,
+                        (float)Math.max(1.0, power / 20.0),
+                        (float)(0.3 + power / maxpower + Mth.nextDouble(RandomSource.create(), -0.05, 0.05)),
+                        false
+                     );
+                  }
+               }
+            } else if (world instanceof Level _levelx) {
+               if (!_levelx.isClientSide()) {
+                  _levelx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.BLOCKS,
-                     (float)(power / 10.0),
+                     (float)Math.max(1.0, power / 20.0),
                      (float)(0.8 + power / maxpower + Mth.nextDouble(RandomSource.create(), -0.05, 0.05))
                   );
                } else {
-                  _level.playLocalSound(
+                  _levelx.playLocalSound(
                      x,
                      y,
                      z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.BLOCKS,
-                     (float)(power / 10.0),
+                     (float)Math.max(1.0, power / 20.0),
                      (float)(0.8 + power / maxpower + Mth.nextDouble(RandomSource.create(), -0.05, 0.05)),
                      false
                   );
@@ -245,8 +266,8 @@ public class EngineUpdateProcedure {
                   _blockEntityxxx.getPersistentData().putDouble("Stage", 0.0);
                }
 
-               if (world instanceof Level _levelx) {
-                  _levelx.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
+               if (world instanceof Level _levelxx) {
+                  _levelxx.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
                }
             }
          }
@@ -259,8 +280,8 @@ public class EngineUpdateProcedure {
                _blockEntityxxxx.getPersistentData().putDouble("KineticPower", power);
             }
 
-            if (world instanceof Level _levelx) {
-               _levelx.sendBlockUpdated(_bpxxxx, _bsxxxx, _bsxxxx, 3);
+            if (world instanceof Level _levelxx) {
+               _levelxx.sendBlockUpdated(_bpxxxx, _bsxxxx, _bsxxxx, 3);
             }
          }
       } else if (!world.isClientSide()) {
@@ -271,8 +292,8 @@ public class EngineUpdateProcedure {
             _blockEntityxxxxx.getPersistentData().putDouble("KineticPower", 0.0);
          }
 
-         if (world instanceof Level _levelx) {
-            _levelx.sendBlockUpdated(_bpxxxxx, _bsxxxxx, _bsxxxxx, 3);
+         if (world instanceof Level _levelxx) {
+            _levelxx.sendBlockUpdated(_bpxxxxx, _bsxxxxx, _bsxxxxx, 3);
          }
       }
 
@@ -294,18 +315,9 @@ public class EngineUpdateProcedure {
             }).getValue(world, BlockPos.containing(x, y, z), "FuelQue") - 1.0);
          }
 
-         if (world instanceof Level _levelx) {
-            _levelx.sendBlockUpdated(_bpxxxxxx, _bsxxxxxx, _bsxxxxxx, 3);
+         if (world instanceof Level _levelxx) {
+            _levelxx.sendBlockUpdated(_bpxxxxxx, _bsxxxxxx, _bsxxxxxx, 3);
          }
-      }
-
-      if ((new Object() {
-         public double getValue(LevelAccessor world, BlockPos pos, String tag) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
-         }
-      }).getValue(world, BlockPos.containing(x, y, z), "Damage") >= 2.0 && world instanceof ServerLevel _levelx) {
-         _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SMOKE.get(), x + 0.5, y + 1.1, z + 0.5, 1, 0.0, 1.0, 0.0, 0.1);
       }
    
       } catch (Throwable _wtSafe) {

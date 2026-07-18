@@ -7,7 +7,7 @@ public class ImpactGrenadeHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         TinyExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.0);
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }

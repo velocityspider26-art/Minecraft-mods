@@ -4,15 +4,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.LevelAccessor;
 
 public class SuperLargeBombProjectileHitsBlockProcedure {
-   public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+   public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         HugeExplosionProcedure.execute(
-            world,
-            x + immediatesourceentity.getLookAngle().x * 2.0,
-            y + immediatesourceentity.getLookAngle().y * 2.0,
-            z - immediatesourceentity.getLookAngle().z * 2.0
-         );
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 15.0);
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }

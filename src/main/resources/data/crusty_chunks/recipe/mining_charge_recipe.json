@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "bab",
+    "aba"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:volatile_dust"
+    },
+    "b": {
+      "tag": "minecraft:sand"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:mining_charge"
+  }
+}

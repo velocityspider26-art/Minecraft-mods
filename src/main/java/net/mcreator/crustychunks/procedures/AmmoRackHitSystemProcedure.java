@@ -3,12 +3,9 @@ package net.mcreator.crustychunks.procedures;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.mcreator.crustychunks.utils.WariumCaps;
 import java.util.concurrent.atomic.AtomicReference;
-import net.mcreator.crustychunks.CrustyChunksMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
@@ -141,26 +138,7 @@ public class AmmoRackHitSystemProcedure {
       }
 
       if (explosive) {
-         if (ItemCount >= 100.0) {
-            GiantExplosionProcedure.execute(world, x, y, z);
-         } else if (ItemCount >= 50.0) {
-            HugeExplosionProcedure.execute(world, x, y, z);
-         } else if (ItemCount >= 25.0) {
-            LargeExplosionProcedure.execute(world, x, y, z);
-         } else if (ItemCount >= 10.0) {
-            MediumExplosionProcedure.execute(world, x, y, z);
-         } else {
-            for (int index1 = 0; index1 < (int)ItemCount; index1++) {
-               explosivetimer += 4.0;
-               CrustyChunksMod.queueServerWork((int)explosivetimer, () -> {
-                  if (1 == Mth.nextInt(RandomSource.create(), 1, 5)) {
-                     SmallExplosionProcedure.execute(world, x, y, z);
-                  } else {
-                     SmallFraglessProcedure.execute(world, x, y, z);
-                  }
-               });
-            }
-         }
+         ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, Math.min(40.0, Math.ceil(ItemCount) / (Math.ceil(ItemCount) / 20.0)));
       }
    
       } catch (Throwable _wtSafe) {

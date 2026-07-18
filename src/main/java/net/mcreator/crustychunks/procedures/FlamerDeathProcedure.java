@@ -14,7 +14,7 @@ public class FlamerDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
       try {
       if (entity != null) {
-         MediumExplosionProcedure.execute(world, x, y, z);
+         ExplosionExampleProcedure.execute(world, x, y, z, 6.0);
          if (!entity.level().isClientSide()) {
             entity.discard();
          }

@@ -244,6 +244,7 @@ public class CrustyChunksModTabs {
                tabData.accept(((Block)CrustyChunksModBlocks.MEDIUM_PETROL_ENGINE.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.SMALL_DIESEL_ENGINE.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.MEDIUM_DIESEL_ENGINE.get()).asItem());
+               tabData.accept(((Block)CrustyChunksModBlocks.LIGHT_TURBINE_ENGINE.get()).asItem());
                tabData.accept((ItemLike)CrustyChunksModItems.THERMOMETER.get());
                tabData.accept((ItemLike)CrustyChunksModItems.GAS_CANISTER.get());
                tabData.accept(((Block)CrustyChunksModBlocks.ITEM_INCINERATOR.get()).asItem());
@@ -258,6 +259,7 @@ public class CrustyChunksModTabs {
             .icon(() -> new ItemStack((ItemLike)CrustyChunksModItems.ADVANCED_COMPONENT.get()))
             .displayItems((parameters, tabData) -> {
                tabData.accept((ItemLike)CrustyChunksModItems.WOOD_COMPONENT.get());
+               tabData.accept((ItemLike)CrustyChunksModItems.IRON_TUBE.get());
                tabData.accept((ItemLike)CrustyChunksModItems.STEELPLATE.get());
                tabData.accept((ItemLike)CrustyChunksModItems.ALUMINUM_PLATE.get());
                tabData.accept((ItemLike)CrustyChunksModItems.BRASS_PLATE.get());
@@ -351,6 +353,7 @@ public class CrustyChunksModTabs {
                tabData.accept((ItemLike)CrustyChunksModItems.HEAT_PROJECTILE.get());
                tabData.accept((ItemLike)CrustyChunksModItems.APFSDS_PROJECTILE.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SMOKE_PROJECTILE.get());
+               tabData.accept((ItemLike)CrustyChunksModItems.CANISTER_PROJECTILE.get());
             })
             .withTabsBefore(new ResourceLocation[]{WARIUM_LOGISTICS.getId()})
             .build()
@@ -410,6 +413,7 @@ public class CrustyChunksModTabs {
             .title(Component.translatable("item_group.crusty_chunks.warium_ammunition"))
             .icon(() -> new ItemStack((ItemLike)CrustyChunksModItems.ARTILLERY_SHELL.get()))
             .displayItems((parameters, tabData) -> {
+               tabData.accept((ItemLike)CrustyChunksModItems.MUSKET_BALL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SMALLBULLET.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SMALL_HOLLOW_POINT_BULLET.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SMALL_STEALTH_BULLET.get());
@@ -435,6 +439,7 @@ public class CrustyChunksModTabs {
                tabData.accept((ItemLike)CrustyChunksModItems.AP_SHELL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.FLAK_SHELL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SMOKE_SHELL.get());
+               tabData.accept((ItemLike)CrustyChunksModItems.CANISTER_SHELL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.ARTILLERY_SHELL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.GAS_ARTILLERY_SHELL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.FIRE_ARTILLERY_SHELL.get());
@@ -500,6 +505,7 @@ public class CrustyChunksModTabs {
                tabData.accept(((Block)CrustyChunksModBlocks.AUTOLOADER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.ARTILLERY_CHARGE_LOADER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.ARTILLERY_AUTOLOADER.get()).asItem());
+               tabData.accept((ItemLike)CrustyChunksModItems.MUSKET.get());
                tabData.accept((ItemLike)CrustyChunksModItems.AUTO_PISTOL.get());
                tabData.accept((ItemLike)CrustyChunksModItems.SEMI_AUTOMATIC_PISTOL_ANIMATED.get());
                tabData.accept((ItemLike)CrustyChunksModItems.STEALTH_PISTOL.get());
@@ -559,15 +565,16 @@ public class CrustyChunksModTabs {
       "crusty_explosives",
       () -> CreativeModeTab.builder()
             .title(Component.translatable("item_group.crusty_chunks.crusty_explosives"))
-            .icon(() -> new ItemStack((ItemLike)CrustyChunksModBlocks.REDSTONE_TNT.get()))
+            .icon(() -> new ItemStack((ItemLike)CrustyChunksModBlocks.MEDIUM_BOMB.get()))
             .displayItems((parameters, tabData) -> {
                tabData.accept(((Block)CrustyChunksModBlocks.EMPTY_MISSILE_HARDPOINT.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.SMOKE_BOMB.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.EXPLOSIVE_BARREL.get()).asItem());
+               tabData.accept(((Block)CrustyChunksModBlocks.MINING_CHARGE.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.GAS_BOMB.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.SMALL_BOMB.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.CLUSTER_OF_BOMBS.get()).asItem());
-               tabData.accept(((Block)CrustyChunksModBlocks.REDSTONE_TNT.get()).asItem());
+               tabData.accept(((Block)CrustyChunksModBlocks.MEDIUM_BOMB.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.ORDINANCE_CORE.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.ORDINANCE_THRUSTER.get()).asItem());
                tabData.accept(((Block)CrustyChunksModBlocks.TORPEDO_THRUSTER.get()).asItem());

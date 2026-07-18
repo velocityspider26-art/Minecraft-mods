@@ -8,7 +8,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.entity.HVParticleProjectileEntity;
 import net.mcreator.crustychunks.entity.HugeFragmentEntity;
-import net.mcreator.crustychunks.init.CrustyChunksModBlocks;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
@@ -27,37 +26,16 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class LargeSolidHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
-         CrustyChunksMod.queueServerWork(3, () -> MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5));
+         CrustyChunksMod.queueServerWork(3, () -> ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, 2.0));
          CrustyChunksMod.queueServerWork(
             1,
             () -> {
-               if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.BATTLE_CANNON_BREECH.get() && (new Object() {
-                  public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
-                     BlockEntity blockEntity = world.getBlockEntity(pos);
-                     return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
-                  }
-               }).getValue(world, BlockPos.containing(x, y, z), "Loaded")) {
-                  SmallExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
-                  world.destroyBlock(BlockPos.containing(x, y, z), false);
-               }
-
-               if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.ARTILLERYBREECH.get() && (new Object() {
-                  public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
-                     BlockEntity blockEntity = world.getBlockEntity(pos);
-                     return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
-                  }
-               }).getValue(world, BlockPos.containing(x, y, z), "Loaded")) {
-                  MediumExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
-                  world.destroyBlock(BlockPos.containing(x, y, z), false);
-               }
-
                DamagesProcedure.execute(world, x, y, z);
                if (world instanceof ServerLevel _level) {
                   _level.sendParticles(ParticleTypes.FLASH, x + 0.5, y + 0.5, z + 0.5, 5, 0.5, 0.5, 0.5, 0.05);
@@ -76,7 +54,7 @@ public class LargeSolidHitProcedure {
                         _level.playSound(
                            null,
                            BlockPos.containing(x, y, z),
-                           (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                           (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                            SoundSource.NEUTRAL,
                            20.0F,
                            0.8F
@@ -86,7 +64,7 @@ public class LargeSolidHitProcedure {
                            x,
                            y,
                            z,
-                           (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                           (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                            SoundSource.NEUTRAL,
                            20.0F,
                            0.8F,

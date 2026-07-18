@@ -19,6 +19,7 @@ import net.mcreator.crustychunks.item.HandDrillItem;
 import net.mcreator.crustychunks.item.LMGAnimatedItem;
 import net.mcreator.crustychunks.item.LeverRifleItem;
 import net.mcreator.crustychunks.item.MachineCarbineItem;
+import net.mcreator.crustychunks.item.MusketItem;
 import net.mcreator.crustychunks.item.PumpActionShotgunAnimatedItem;
 import net.mcreator.crustychunks.item.RevolverAnimatedItem;
 import net.mcreator.crustychunks.item.SMGAnimatedItem;
@@ -537,6 +538,26 @@ public class ItemAnimationFactory {
                CustomData.update(DataComponents.CUSTOM_DATA, event.getEntity().getOffhandItem(), _tagupd -> _tagupd.putString("geckoAnim", ""));
                if (event.getEntity().level().isClientSide()) {
                   ((GrenadeLauncherItem)event.getEntity().getOffhandItem().getItem()).animationprocedure = animation;
+               }
+            }
+         }
+
+         if (mainhandItem.getItem() instanceof MusketItem animatablexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) {
+            animation = mainhandItem.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString("geckoAnim");
+            if (!animation.isEmpty()) {
+               CustomData.update(DataComponents.CUSTOM_DATA, event.getEntity().getMainHandItem(), _tagupd -> _tagupd.putString("geckoAnim", ""));
+               if (event.getEntity().level().isClientSide()) {
+                  ((MusketItem)event.getEntity().getMainHandItem().getItem()).animationprocedure = animation;
+               }
+            }
+         }
+
+         if (offhandItem.getItem() instanceof MusketItem animatablexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) {
+            animation = offhandItem.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString("geckoAnim");
+            if (!animation.isEmpty()) {
+               CustomData.update(DataComponents.CUSTOM_DATA, event.getEntity().getOffhandItem(), _tagupd -> _tagupd.putString("geckoAnim", ""));
+               if (event.getEntity().level().isClientSide()) {
+                  ((MusketItem)event.getEntity().getOffhandItem().getItem()).animationprocedure = animation;
                }
             }
          }

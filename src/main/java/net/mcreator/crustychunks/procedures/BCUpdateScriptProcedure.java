@@ -20,6 +20,8 @@ public class BCUpdateScriptProcedure {
       double Xvector = 0.0;
       double Zvector = 0.0;
       double Pitch = 0.0;
+      double barrelsearch = 0.0;
+      Direction blockdirection = Direction.NORTH;
       if ((new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -43,7 +45,6 @@ public class BCUpdateScriptProcedure {
          }
       }
 
-      Barrels = 0.0;
       if (world.getBlockState(BlockPos.containing(x + (double)((new Object() {
          public Direction getDirection(BlockState _bs) {
             if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
@@ -83,46 +84,19 @@ public class BCUpdateScriptProcedure {
       }).getDirection(blockstate).getStepZ() * 1) + 0.5)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:bcbarrel")))) {
          Barrels = 1.0;
 
-         for (int index0 = 0; index0 < 10; index0++) {
-            if (world.getBlockState(BlockPos.containing(x + (double)((new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepX() * 1) + 0.5, y + (double)((new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepY() * 1) + 0.5, z + (double)((new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepZ() * 1) + 0.5)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:bcbarrel")))) {
-               Barrels++;
-            }
+         for (int index0 = 0;
+            index0 < 10
+               && world.getBlockState(
+                     BlockPos.containing(
+                        x + (double)blockdirection.getStepX() * (1.0 + Barrels) + 0.5,
+                        y + (double)blockdirection.getStepY() * (1.0 + Barrels) + 0.5,
+                        z + (double)blockdirection.getStepZ() * (1.0 + Barrels) + 0.5
+                     )
+                  )
+                  .is(BlockTags.create(ResourceLocation.parse("crusty_chunks:bcbarrel")));
+            index0++
+         ) {
+            Barrels++;
          }
       }
 

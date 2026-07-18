@@ -1,0 +1,8 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "crusty_chunks:block/blastredsand",
+    "particle": "crusty_chunks:block/blastredsand"
+  },
+  "render_type": "solid"
+}

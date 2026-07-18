@@ -2,7 +2,6 @@ package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import java.util.Map.Entry;
-import net.mcreator.crustychunks.entity.DecimatorEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModBlocks;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
@@ -111,10 +110,6 @@ public class DecimatorHurtProcedure {
                      false
                   );
                }
-            }
-
-            if (entity instanceof DecimatorEntity) {
-               ((DecimatorEntity)entity).setAnimation("Anger");
             }
 
             if (world instanceof ServerLevel _levelx) {

@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
+    "crusty_chunks:medium_bomb",
     "crusty_chunks:advanced_alloy_block",
     "crusty_chunks:plutonium_block",
     "crusty_chunks:uranium_depleted_block",
@@ -53,7 +54,6 @@
     "crusty_chunks:steel_block",
     "crusty_chunks:brass_block",
     "crusty_chunks:zinc_block",
-    "crusty_chunks:zinc_ore",
-    "crusty_chunks:redstone_tnt"
+    "crusty_chunks:zinc_ore"
   ]
 }

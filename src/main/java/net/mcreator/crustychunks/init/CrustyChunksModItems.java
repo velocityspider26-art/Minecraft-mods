@@ -54,6 +54,8 @@ import net.mcreator.crustychunks.item.BulletResistantHelmet4Item;
 import net.mcreator.crustychunks.item.BulletResistantHelmetItem;
 import net.mcreator.crustychunks.item.BurstRifleItem;
 import net.mcreator.crustychunks.item.CableItem;
+import net.mcreator.crustychunks.item.CanisterProjectileItem;
+import net.mcreator.crustychunks.item.CanisterShellItem;
 import net.mcreator.crustychunks.item.CastComponentItem;
 import net.mcreator.crustychunks.item.ChaffChargeItem;
 import net.mcreator.crustychunks.item.ChiselItem;
@@ -136,6 +138,7 @@ import net.mcreator.crustychunks.item.IncendiaryBottleItem;
 import net.mcreator.crustychunks.item.IncendiaryGrenadeItem;
 import net.mcreator.crustychunks.item.InvisibleitemItem;
 import net.mcreator.crustychunks.item.IronDustItem;
+import net.mcreator.crustychunks.item.IronTubeItem;
 import net.mcreator.crustychunks.item.IrongearItem;
 import net.mcreator.crustychunks.item.KeroseneItem;
 import net.mcreator.crustychunks.item.LMGAnimatedItem;
@@ -181,6 +184,7 @@ import net.mcreator.crustychunks.item.MediumUnboredBarrelItem;
 import net.mcreator.crustychunks.item.MediumUnboredCannonBarrelItem;
 import net.mcreator.crustychunks.item.MortarShellItem;
 import net.mcreator.crustychunks.item.MusketBallItem;
+import net.mcreator.crustychunks.item.MusketItem;
 import net.mcreator.crustychunks.item.NVDHelmetItem;
 import net.mcreator.crustychunks.item.NeutronReflectorItem;
 import net.mcreator.crustychunks.item.NickelDustItem;
@@ -323,7 +327,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 )
 public class CrustyChunksModItems {
    public static final DeferredRegister<Item> REGISTRY = DeferredRegister.create(BuiltInRegistries.ITEM, "crusty_chunks");
-   public static final DeferredHolder<Item, Item> REDSTONE_TNT = block(CrustyChunksModBlocks.REDSTONE_TNT);
    public static final DeferredHolder<Item, Item> EXPLOSIVE_BARREL = block(CrustyChunksModBlocks.EXPLOSIVE_BARREL);
    public static final DeferredHolder<Item, Item> BURNTGRASS = block(CrustyChunksModBlocks.BURNTGRASS);
    public static final DeferredHolder<Item, Item> HARDDIRT = block(CrustyChunksModBlocks.HARDDIRT);
@@ -369,8 +372,6 @@ public class CrustyChunksModItems {
    public static final DeferredHolder<Item, Item> NICKEL_ORE = block(CrustyChunksModBlocks.NICKEL_ORE);
    public static final DeferredHolder<Item, Item> NICKEL_BLOCK = block(CrustyChunksModBlocks.NICKEL_BLOCK);
    public static final DeferredHolder<Item, Item> TAR = block(CrustyChunksModBlocks.TAR);
-   public static final DeferredHolder<Item, Item> STEEL_PLATING = block(CrustyChunksModBlocks.STEEL_PLATING);
-   public static final DeferredHolder<Item, Item> STEEL_PLATING_SLAB = block(CrustyChunksModBlocks.STEEL_PLATING_SLAB);
    public static final DeferredHolder<Item, Item> STEEL_PLATING_STAIRS = block(CrustyChunksModBlocks.STEEL_PLATING_STAIRS);
    public static final DeferredHolder<Item, Item> SMOKE_BOMB = block(CrustyChunksModBlocks.SMOKE_BOMB);
    public static final DeferredHolder<Item, Item> STEEL_TRAPDOOR = block(CrustyChunksModBlocks.STEEL_TRAPDOOR);
@@ -390,7 +391,6 @@ public class CrustyChunksModItems {
    public static final DeferredHolder<Item, Item> ARTILLERYBREECH = block(CrustyChunksModBlocks.ARTILLERYBREECH);
    public static final DeferredHolder<Item, Item> ARTILLERY_BARREL = block(CrustyChunksModBlocks.ARTILLERY_BARREL);
    public static final DeferredHolder<Item, Item> MACHINE_GUN_BOX = REGISTRY.register("machine_gun_box", () -> new MachineGunBoxItem());
-   public static final DeferredHolder<Item, Item> BATTLE_CANNON_BREECH = block(CrustyChunksModBlocks.BATTLE_CANNON_BREECH);
    public static final DeferredHolder<Item, Item> BATTLE_CANNON_BARREL = block(CrustyChunksModBlocks.BATTLE_CANNON_BARREL);
    public static final DeferredHolder<Item, Item> PARTICLE = REGISTRY.register("particle", () -> new ParticleItem());
    public static final DeferredHolder<Item, Item> EMBER_PARTICLE = REGISTRY.register("ember_particle", () -> new EmberParticleItem());
@@ -402,7 +402,6 @@ public class CrustyChunksModItems {
    public static final DeferredHolder<Item, Item> TINYPROJECTILE_ITEM = REGISTRY.register("tinyprojectile_item", () -> new TinyprojectileItemItem());
    public static final DeferredHolder<Item, Item> SHOTGUN_SHELL = REGISTRY.register("shotgun_shell", () -> new ShotgunShellItem());
    public static final DeferredHolder<Item, Item> SHOTGUN_CASING = REGISTRY.register("shotgun_casing", () -> new ShotgunCasingItem());
-   public static final DeferredHolder<Item, Item> BLAST_FURNACE = block(CrustyChunksModBlocks.BLAST_FURNACE);
    public static final DeferredHolder<Item, Item> BLAST_FURNACE_BRICKS = block(CrustyChunksModBlocks.BLAST_FURNACE_BRICKS);
    public static final DeferredHolder<Item, Item> BLAST_FURNACE_BRICK = REGISTRY.register("blast_furnace_brick", () -> new BlastFurnaceBrickItem());
    public static final DeferredHolder<Item, Item> BLAST_FUNNEL = block(CrustyChunksModBlocks.BLAST_FUNNEL);
@@ -1177,6 +1176,15 @@ public class CrustyChunksModItems {
    public static final DeferredHolder<Item, Item> BATTLE_CANNON_MANTLET = block(CrustyChunksModBlocks.BATTLE_CANNON_MANTLET);
    public static final DeferredHolder<Item, Item> WELDER = REGISTRY.register("welder", () -> new WelderItem());
    public static final DeferredHolder<Item, Item> REDIRECTOR_SHAFT = block(CrustyChunksModBlocks.REDIRECTOR_SHAFT);
+   public static final DeferredHolder<Item, Item> IMMUNITY_SAND = block(CrustyChunksModBlocks.IMMUNITY_SAND);
+   public static final DeferredHolder<Item, Item> IMMUNITY_RED_SAND = block(CrustyChunksModBlocks.IMMUNITY_RED_SAND);
+   public static final DeferredHolder<Item, Item> MEDIUM_BOMB = block(CrustyChunksModBlocks.MEDIUM_BOMB);
+   public static final DeferredHolder<Item, Item> LIGHT_TURBINE_ENGINE = block(CrustyChunksModBlocks.LIGHT_TURBINE_ENGINE);
+   public static final DeferredHolder<Item, Item> CANISTER_PROJECTILE = REGISTRY.register("canister_projectile", () -> new CanisterProjectileItem());
+   public static final DeferredHolder<Item, Item> CANISTER_SHELL = REGISTRY.register("canister_shell", () -> new CanisterShellItem());
+   public static final DeferredHolder<Item, Item> MUSKET = REGISTRY.register("musket", () -> new MusketItem());
+   public static final DeferredHolder<Item, Item> IRON_TUBE = REGISTRY.register("iron_tube", () -> new IronTubeItem());
+   public static final DeferredHolder<Item, Item> MINING_CHARGE = block(CrustyChunksModBlocks.MINING_CHARGE);
 
    private static DeferredHolder<Item, Item> block(DeferredHolder<Block, Block> block) {
       return REGISTRY.register(block.getId().getPath(), () -> new BlockItem((Block)block.get(), new Properties()));

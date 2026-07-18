@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    "crusty_chunks:immunity_red_sand",
+    "crusty_chunks:immunity_sand",
     "crusty_chunks:scorch_dirt",
     "crusty_chunks:radioactive_ash_full_block",
     "crusty_chunks:radioactive_ash",

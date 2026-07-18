@@ -404,6 +404,7 @@ public class MGFireScriptProcedure {
             }
 
             LargeFireSoundProcedure.execute(world, x, y, z);
+            GunMechanismSoundProcedure.execute(world, x, y, z);
             if (world instanceof ServerLevel _level) {
                _level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
                   public Direction getDirection(BlockState _bs) {

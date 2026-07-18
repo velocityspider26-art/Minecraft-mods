@@ -62,8 +62,8 @@ public class DecimatorSmokeScreenProcedure {
                _level.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.egg.throw")),
-                  SoundSource.NEUTRAL,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
+                  SoundSource.HOSTILE,
                   5.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
                );
@@ -72,8 +72,8 @@ public class DecimatorSmokeScreenProcedure {
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.egg.throw")),
-                  SoundSource.NEUTRAL,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
+                  SoundSource.HOSTILE,
                   5.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
                   false

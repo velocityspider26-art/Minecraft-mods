@@ -37,14 +37,13 @@ import net.mcreator.crustychunks.entity.FireSpearRocketProjectileEntity;
 import net.mcreator.crustychunks.entity.FlameThrowerEmberEntity;
 import net.mcreator.crustychunks.entity.FlamerEntity;
 import net.mcreator.crustychunks.entity.FlareProjectileEntity;
-import net.mcreator.crustychunks.entity.FusionBlastEntityEntity;
-import net.mcreator.crustychunks.entity.FusionEffectProjectileEntity;
 import net.mcreator.crustychunks.entity.FusionHeatWaveEntity;
 import net.mcreator.crustychunks.entity.GasArtilleryProjectileEntity;
 import net.mcreator.crustychunks.entity.GasBombProjectileEntity;
 import net.mcreator.crustychunks.entity.GenericLargeBulletGreenEntity;
 import net.mcreator.crustychunks.entity.GenericlargeBulletEntity;
 import net.mcreator.crustychunks.entity.GiantShockExplosionBypassEntity;
+import net.mcreator.crustychunks.entity.GlareEffectEntity;
 import net.mcreator.crustychunks.entity.GrenadeProjectileEntity;
 import net.mcreator.crustychunks.entity.HEATEntity;
 import net.mcreator.crustychunks.entity.HVParticleProjectileEntity;
@@ -71,15 +70,12 @@ import net.mcreator.crustychunks.entity.LargeSmokeFireEntity;
 import net.mcreator.crustychunks.entity.LargeSolidProjectileEntity;
 import net.mcreator.crustychunks.entity.LargeStealthBulletEntity;
 import net.mcreator.crustychunks.entity.LargeTorpedoEntity;
-import net.mcreator.crustychunks.entity.MBTracerFireEntity;
 import net.mcreator.crustychunks.entity.MediumAIBulletEntity;
 import net.mcreator.crustychunks.entity.MediumBombProjectileEntity;
 import net.mcreator.crustychunks.entity.MortarProjectileEntity;
 import net.mcreator.crustychunks.entity.MortarerEntity;
 import net.mcreator.crustychunks.entity.MuzzleFlashProducerEntity;
-import net.mcreator.crustychunks.entity.NuclearBlastEntityEntity;
 import net.mcreator.crustychunks.entity.NuclearBombProjectileEntity;
-import net.mcreator.crustychunks.entity.NuclearSecondaryEffectEntity;
 import net.mcreator.crustychunks.entity.NuclearThermalRadEntity;
 import net.mcreator.crustychunks.entity.OrdinanceFusionBombProjectileEntity;
 import net.mcreator.crustychunks.entity.ParticleProjectileEntity;
@@ -92,7 +88,6 @@ import net.mcreator.crustychunks.entity.ReaperEntity;
 import net.mcreator.crustychunks.entity.RiflerEntity;
 import net.mcreator.crustychunks.entity.RiflerPodEntity;
 import net.mcreator.crustychunks.entity.RocketEntity;
-import net.mcreator.crustychunks.entity.SBTracerFireEntity;
 import net.mcreator.crustychunks.entity.ScoutEntity;
 import net.mcreator.crustychunks.entity.SeatEntityEntity;
 import net.mcreator.crustychunks.entity.SeekerSpearMissileProjectileEntity;
@@ -103,7 +98,6 @@ import net.mcreator.crustychunks.entity.SmallBombProjectileEntity;
 import net.mcreator.crustychunks.entity.SmallBulletAltEntity;
 import net.mcreator.crustychunks.entity.SmallBulletHPEntity;
 import net.mcreator.crustychunks.entity.SmallBulletStealthEntity;
-import net.mcreator.crustychunks.entity.SmallClientEffectEntity;
 import net.mcreator.crustychunks.entity.SmallFlakShellProjectileEntity;
 import net.mcreator.crustychunks.entity.SmallMuzzleFlashProducerEntity;
 import net.mcreator.crustychunks.entity.SmallShellFireEntity;
@@ -313,14 +307,6 @@ public class CrustyChunksModEntities {
          .setUpdateInterval(1)
          .sized(0.5F, 0.5F)
    );
-   public static final DeferredHolder<EntityType<?>, EntityType<SmallClientEffectEntity>> SMALL_CLIENT_EFFECT = register(
-      "small_client_effect",
-      Builder.<SmallClientEffectEntity>of(SmallClientEffectEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.0F, 0.0F)
-   );
    public static final DeferredHolder<EntityType<?>, EntityType<MediumBombProjectileEntity>> MEDIUM_BOMB_PROJECTILE = register(
       "medium_bomb_projectile",
       Builder.<MediumBombProjectileEntity>of(MediumBombProjectileEntity::new, MobCategory.MISC)
@@ -409,14 +395,6 @@ public class CrustyChunksModEntities {
          .setUpdateInterval(1)
          .sized(0.5F, 0.5F)
    );
-   public static final DeferredHolder<EntityType<?>, EntityType<NuclearSecondaryEffectEntity>> NUCLEAR_SECONDARY_EFFECT = register(
-      "nuclear_secondary_effect",
-      Builder.<NuclearSecondaryEffectEntity>of(NuclearSecondaryEffectEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.5F, 0.5F)
-   );
    public static final DeferredHolder<EntityType<?>, EntityType<IncendiaryBottleProjectileEntity>> INCENDIARY_BOTTLE_PROJECTILE = register(
       "incendiary_bottle_projectile",
       Builder.<IncendiaryBottleProjectileEntity>of(IncendiaryBottleProjectileEntity::new, MobCategory.MISC)
@@ -472,22 +450,6 @@ public class CrustyChunksModEntities {
          .setTrackingRange(64)
          .setUpdateInterval(1)
          .sized(0.0F, 0.0F)
-   );
-   public static final DeferredHolder<EntityType<?>, EntityType<SBTracerFireEntity>> SB_TRACER_FIRE = register(
-      "sb_tracer_fire",
-      Builder.<SBTracerFireEntity>of(SBTracerFireEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.1F, 0.1F)
-   );
-   public static final DeferredHolder<EntityType<?>, EntityType<MBTracerFireEntity>> MB_TRACER_FIRE = register(
-      "mb_tracer_fire",
-      Builder.<MBTracerFireEntity>of(MBTracerFireEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.1F, 0.1F)
    );
    public static final DeferredHolder<EntityType<?>, EntityType<SmallShellFireEntity>> SMALL_SHELL_FIRE = register(
       "small_shell_fire",
@@ -693,14 +655,6 @@ public class CrustyChunksModEntities {
          .fireImmune()
          .sized(0.5F, 1.7F)
    );
-   public static final DeferredHolder<EntityType<?>, EntityType<NuclearBlastEntityEntity>> NUCLEAR_BLAST_ENTITY = register(
-      "nuclear_blast_entity",
-      Builder.<NuclearBlastEntityEntity>of(NuclearBlastEntityEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.5F, 0.5F)
-   );
    public static final DeferredHolder<EntityType<?>, EntityType<BunkerBusterProjectileEntity>> BUNKER_BUSTER_PROJECTILE = register(
       "bunker_buster_projectile",
       Builder.<BunkerBusterProjectileEntity>of(BunkerBusterProjectileEntity::new, MobCategory.MISC)
@@ -873,22 +827,6 @@ public class CrustyChunksModEntities {
          .setUpdateInterval(3)
          .fireImmune()
          .sized(3.75F, 3.75F)
-   );
-   public static final DeferredHolder<EntityType<?>, EntityType<FusionEffectProjectileEntity>> FUSION_EFFECT_PROJECTILE = register(
-      "fusion_effect_projectile",
-      Builder.<FusionEffectProjectileEntity>of(FusionEffectProjectileEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.5F, 0.5F)
-   );
-   public static final DeferredHolder<EntityType<?>, EntityType<FusionBlastEntityEntity>> FUSION_BLAST_ENTITY = register(
-      "fusion_blast_entity",
-      Builder.<FusionBlastEntityEntity>of(FusionBlastEntityEntity::new, MobCategory.MISC)
-         .setShouldReceiveVelocityUpdates(true)
-         .setTrackingRange(64)
-         .setUpdateInterval(1)
-         .sized(0.5F, 0.5F)
    );
    public static final DeferredHolder<EntityType<?>, EntityType<FusionHeatWaveEntity>> FUSION_HEAT_WAVE = register(
       "fusion_heat_wave",
@@ -1173,6 +1111,14 @@ public class CrustyChunksModEntities {
          .setTrackingRange(64)
          .setUpdateInterval(1)
          .sized(0.1F, 0.1F)
+   );
+   public static final DeferredHolder<EntityType<?>, EntityType<GlareEffectEntity>> GLARE_EFFECT = register(
+      "glare_effect",
+      Builder.<GlareEffectEntity>of(GlareEffectEntity::new, MobCategory.MISC)
+         .setShouldReceiveVelocityUpdates(true)
+         .setTrackingRange(64)
+         .setUpdateInterval(1)
+         .sized(0.0F, 0.0F)
    );
 
    private static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(String registryname, Builder<T> entityTypeBuilder) {

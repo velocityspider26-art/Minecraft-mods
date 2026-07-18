@@ -1,7 +1,6 @@
 {
   "replace": false,
   "values": [
-    "crusty_chunks:redstone_tnt",
     "crusty_chunks:explosive_barrel",
     "crusty_chunks:zinc_block",
     "crusty_chunks:brass_block",

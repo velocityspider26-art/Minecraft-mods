@@ -15,6 +15,7 @@
     "crusty_chunks:artillery_solid_shell",
     "crusty_chunks:gas_artillery_shell",
     "crusty_chunks:fire_artillery_shell",
-    "crusty_chunks:powder_charge"
+    "crusty_chunks:powder_charge",
+    "crusty_chunks:canister_shell"
   ]
 }

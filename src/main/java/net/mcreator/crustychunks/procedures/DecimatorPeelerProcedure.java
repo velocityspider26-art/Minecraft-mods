@@ -6,11 +6,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.entity.RocketEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -66,53 +62,7 @@ public class DecimatorPeelerProcedure {
 
             entity.getPersistentData().putDouble("T", (double)Mth.nextInt(RandomSource.create(), 15, 20));
             entity.getPersistentData().putDouble("Rocket", entity.getPersistentData().getDouble("Rocket") + 1.0);
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpod")),
-                     SoundSource.NEUTRAL,
-                     10.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6)
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpod")),
-                     SoundSource.NEUTRAL,
-                     10.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6),
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpodfar")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6)
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpodfar")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.5, 1.6),
-                     false
-                  );
-               }
-            }
+            PeelerPodFireSoundProcedure.execute(world, x, y, z);
          }
       }
    

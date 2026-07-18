@@ -178,6 +178,24 @@ public class AutoLoaderUpdateProcedure {
             type = "SMOKE";
             success = true;
          }
+
+         if ((new Object() {
+            public ItemStack getItemStack(LevelAccessor world, BlockPos pos, int slotid) {
+               AtomicReference<ItemStack> _retval = new AtomicReference<>(ItemStack.EMPTY);
+               BlockEntity _ent = world.getBlockEntity(pos);
+               if (_ent != null) {
+                  {
+   IItemHandler capability = WariumCaps.itemHandler(_ent, null).orElse(null);
+   if (capability != null) _retval.set(capability.getStackInSlot(slotid).copy());
+}
+               }
+
+               return _retval.get();
+            }
+         }).getItemStack(world, BlockPos.containing(x, y, z), 0).getItem() == CrustyChunksModItems.CANISTER_SHELL.get()) {
+            type = "CANISTER";
+            success = true;
+         }
       }
 
       if (success) {

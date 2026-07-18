@@ -59,23 +59,17 @@ public class LargeBombProjectileEntity extends AbstractArrow implements ItemSupp
 
    public void onHitEntity(EntityHitResult entityHitResult) {
       super.onHitEntity(entityHitResult);
-      LargeBombProjectileProjectileHitsBlockProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      LargeBombProjectileProjectileHitsBlockProcedure.execute(this.level(), this);
    }
 
    public void onHitBlock(BlockHitResult blockHitResult) {
       super.onHitBlock(blockHitResult);
-      LargeBombProjectileProjectileHitsBlockProcedure.execute(
-         this.level(),
-         (double)blockHitResult.getBlockPos().getX(),
-         (double)blockHitResult.getBlockPos().getY(),
-         (double)blockHitResult.getBlockPos().getZ(),
-         this
-      );
+      LargeBombProjectileProjectileHitsBlockProcedure.execute(this.level(), this);
    }
 
    public void tick() {
       super.tick();
-      LargeBombTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      LargeBombTickProcedure.execute(this.level(), this);
    }
 
    public static LargeBombProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

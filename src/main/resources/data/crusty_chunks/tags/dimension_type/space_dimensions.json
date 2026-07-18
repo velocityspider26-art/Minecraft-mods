@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "ad_astra:orbit_earth",
+    "ad_astra:orbit_moon",
+    "ad_astra:orbit_mars",
+    "ad_astra:orbit_mercury",
+    "ad_astra:orbit_venus",
+    "ad_astra:orbit_glacio",
+    "beyond_earth:orbit_earth",
+    "genesis:great_unknown",
+    "cosmic_horizons:solar_system",
+    "cosmic_horizons:alpha_system",
+    "orbit",
+    "solar_system",
+    "great_unknown"
+  ]
+}

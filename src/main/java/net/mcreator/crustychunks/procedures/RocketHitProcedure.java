@@ -23,7 +23,9 @@ public class RocketHitProcedure {
          CrustyChunksMod.queueServerWork(
             1,
             () -> {
-               TinyExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.0
+               );
                if (world instanceof ServerLevel projectileLevel) {
                   Projectile _entityToSpawn = (new Object() {
                      public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {

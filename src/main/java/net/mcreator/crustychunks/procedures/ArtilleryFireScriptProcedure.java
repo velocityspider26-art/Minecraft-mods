@@ -17,10 +17,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Direction.AxisDirection;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -37,6 +34,7 @@ public class ArtilleryFireScriptProcedure {
       try {
       boolean found = false;
       boolean DetectedPlayer = false;
+      Direction blockdirection = Direction.NORTH;
       double sx = 0.0;
       double sy = 0.0;
       double sz = 0.0;
@@ -46,8 +44,11 @@ public class ArtilleryFireScriptProcedure {
       double Pitch = 0.0;
       double Barrels = 0.0;
       double mvmultiplier = 0.0;
-      mvmultiplier = ProjectilelibsProcedure.execute();
-      if (1.0 >= Math.abs((double)(new Object() {
+      double barrelsearch = 0.0;
+      double muzx = 0.0;
+      double muzy = 0.0;
+      double muzz = 0.0;
+      blockdirection = (new Object() {
          public Direction getDirection(BlockState _bs) {
             if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                return (Direction)_bs.getValue(_dp);
@@ -59,24 +60,14 @@ public class ArtilleryFireScriptProcedure {
                return Direction.NORTH;
             }
          }
-      }).getDirection(blockstate).getStepX() - (new Object() {
+      }).getDirection(blockstate);
+      mvmultiplier = ProjectilelibsProcedure.execute();
+      if (1.0 >= Math.abs((double)blockdirection.getStepX() - (new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
          }
-      }).getValue(world, BlockPos.containing(x, y, z), "X")) || 1.0 >= Math.abs((double)(new Object() {
-         public Direction getDirection(BlockState _bs) {
-            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-               return (Direction)_bs.getValue(_dp);
-            } else {
-               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-               }
-
-               return Direction.NORTH;
-            }
-         }
-      }).getDirection(blockstate).getStepZ() - (new Object() {
+      }).getValue(world, BlockPos.containing(x, y, z), "X")) || 1.0 >= Math.abs((double)blockdirection.getStepZ() - (new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
@@ -93,157 +84,57 @@ public class ArtilleryFireScriptProcedure {
                BlockEntity blockEntity = world.getBlockEntity(pos);
                return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
             }
-         }).getValue(world, BlockPos.containing(x, y, z), "X") + (double)(new Object() {
-            public Direction getDirection(BlockState _bs) {
-               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                  return (Direction)_bs.getValue(_dp);
-               } else {
-                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                  }
-
-                  return Direction.NORTH;
-               }
-            }
-         }).getDirection(blockstate).getStepX();
+         }).getValue(world, BlockPos.containing(x, y, z), "X") + (double)blockdirection.getStepX();
          Zvector = (new Object() {
             public double getValue(LevelAccessor world, BlockPos pos, String tag) {
                BlockEntity blockEntity = world.getBlockEntity(pos);
                return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
             }
-         }).getValue(world, BlockPos.containing(x, y, z), "Z") + (double)(new Object() {
-            public Direction getDirection(BlockState _bs) {
-               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                  return (Direction)_bs.getValue(_dp);
-               } else {
-                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                  }
-
-                  return Direction.NORTH;
-               }
-            }
-         }).getDirection(blockstate).getStepZ();
+         }).getValue(world, BlockPos.containing(x, y, z), "Z") + (double)blockdirection.getStepZ();
       }
 
       if (0.0 == Xvector * Zvector) {
-         Xvector = (double)(new Object() {
-            public Direction getDirection(BlockState _bs) {
-               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                  return (Direction)_bs.getValue(_dp);
-               } else {
-                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                  }
-
-                  return Direction.NORTH;
-               }
-            }
-         }).getDirection(blockstate).getStepX();
-         Zvector = (double)(new Object() {
-            public Direction getDirection(BlockState _bs) {
-               if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                  return (Direction)_bs.getValue(_dp);
-               } else {
-                  if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                     return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                  }
-
-                  return Direction.NORTH;
-               }
-            }
-         }).getDirection(blockstate).getStepZ();
+         Xvector = (double)blockdirection.getStepX();
+         Zvector = (double)blockdirection.getStepZ();
       }
 
       if ((new Object() {
-         public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
-         }
-      }).getValue(world, BlockPos.containing(x, y, z), "Charge") && (new Object() {
-         public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
-            BlockEntity blockEntity = world.getBlockEntity(pos);
-            return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
-         }
-      }).getValue(world, BlockPos.containing(x, y, z), "Loaded") && world.getBlockState(BlockPos.containing(x + (double)((new Object() {
-         public Direction getDirection(BlockState _bs) {
-            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-               return (Direction)_bs.getValue(_dp);
-            } else {
-               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-               }
-
-               return Direction.NORTH;
+            public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
+               BlockEntity blockEntity = world.getBlockEntity(pos);
+               return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
             }
-         }
-      }).getDirection(blockstate).getStepX() * 1) + 0.5, y + (double)((new Object() {
-         public Direction getDirection(BlockState _bs) {
-            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-               return (Direction)_bs.getValue(_dp);
-            } else {
-               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-               }
-
-               return Direction.NORTH;
+         }).getValue(world, BlockPos.containing(x, y, z), "Charge")
+         && (new Object() {
+            public boolean getValue(LevelAccessor world, BlockPos pos, String tag) {
+               BlockEntity blockEntity = world.getBlockEntity(pos);
+               return blockEntity != null ? blockEntity.getPersistentData().getBoolean(tag) : false;
             }
-         }
-      }).getDirection(blockstate).getStepY() * 1) + 0.5, z + (double)((new Object() {
-         public Direction getDirection(BlockState _bs) {
-            if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-               return (Direction)_bs.getValue(_dp);
-            } else {
-               if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                  return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-               }
-
-               return Direction.NORTH;
-            }
-         }
-      }).getDirection(blockstate).getStepZ() * 1) + 0.5)).getBlock() == CrustyChunksModBlocks.ARTILLERY_BARREL.get()) {
+         }).getValue(world, BlockPos.containing(x, y, z), "Loaded")
+         && world.getBlockState(
+                  BlockPos.containing(
+                     x + (double)(blockdirection.getStepX() * 1) + 0.5,
+                     y + (double)(blockdirection.getStepY() * 1) + 0.5,
+                     z + (double)(blockdirection.getStepZ() * 1) + 0.5
+                  )
+               )
+               .getBlock()
+            == CrustyChunksModBlocks.ARTILLERY_BARREL.get()) {
          Barrels = 1.0;
 
-         for (int index0 = 0; index0 < 10; index0++) {
-            if (world.getBlockState(BlockPos.containing(x + (double)(new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepX() * (1.0 + Barrels) + 0.5, y + (double)(new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepY() * (1.0 + Barrels) + 0.5, z + (double)(new Object() {
-               public Direction getDirection(BlockState _bs) {
-                  if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                     return (Direction)_bs.getValue(_dp);
-                  } else {
-                     if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                        return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                     }
-
-                     return Direction.NORTH;
-                  }
-               }
-            }).getDirection(blockstate).getStepZ() * (1.0 + Barrels) + 0.5)).getBlock() == CrustyChunksModBlocks.ARTILLERY_BARREL.get()) {
-               Barrels++;
-            }
+         for (int index0 = 0;
+            index0 < 10
+               && world.getBlockState(
+                        BlockPos.containing(
+                           x + (double)blockdirection.getStepX() * (1.0 + Barrels) + 0.5,
+                           y + (double)blockdirection.getStepY() * (1.0 + Barrels) + 0.5,
+                           z + (double)blockdirection.getStepZ() * (1.0 + Barrels) + 0.5
+                        )
+                     )
+                     .getBlock()
+                  == CrustyChunksModBlocks.ARTILLERY_BARREL.get();
+            index0++
+         ) {
+            Barrels++;
          }
 
          if (!world.isClientSide()) {
@@ -265,294 +156,7 @@ public class ArtilleryFireScriptProcedure {
                return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
             }
          }).getValue(world, BlockPos.containing(x, y, z), "cooldown") <= 0.0) {
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:farblast")),
-                     SoundSource.NEUTRAL,
-                     120.0F,
-                     0.9F
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5,
-                     y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5,
-                     z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:farblast")),
-                     SoundSource.NEUTRAL,
-                     120.0F,
-                     0.9F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                     SoundSource.NEUTRAL,
-                     60.0F,
-                     0.9F
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5,
-                     y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5,
-                     z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                     SoundSource.NEUTRAL,
-                     60.0F,
-                     0.9F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
-                     null,
-                     BlockPos.containing(x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonclose")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     0.8F
-                  );
-               } else {
-                  _levelxx.playLocalSound(
-                     x + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5,
-                     y + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5,
-                     z + (double)(new Object() {
-                        public Direction getDirection(BlockState _bs) {
-                           if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                              return (Direction)_bs.getValue(_dp);
-                           } else {
-                              if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                                 return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                              }
-
-                              return Direction.NORTH;
-                           }
-                        }
-                     }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonclose")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     0.8F,
-                     false
-                  );
-               }
-            }
-
+            ArtilleryCannonFireSoundProcedure.execute(world, x, y, z);
             if (world instanceof ServerLevel projectileLevel) {
                Projectile _entityToSpawn = (new Object() {
                      public Projectile getArrow(Level level, float damage, int knockback) {
@@ -680,6 +284,9 @@ public class ArtilleryFireScriptProcedure {
                });
             }
 
+            muzx = x + (double)blockdirection.getStepX() * (1.5 + Barrels) + 0.5;
+            muzy = y + (double)blockdirection.getStepY() * (1.5 + Barrels) + 0.5;
+            muzz = z + (double)blockdirection.getStepZ() * (1.5 + Barrels) + 0.5;
             if (!world.isClientSide()) {
                BlockPos _bpx = BlockPos.containing(x, y, z);
                BlockEntity _blockEntityx = world.getBlockEntity(_bpx);
@@ -688,8 +295,8 @@ public class ArtilleryFireScriptProcedure {
                   _blockEntityx.getPersistentData().putBoolean("Charge", false);
                }
 
-               if (world instanceof Level _levelxxx) {
-                  _levelxxx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
+               if (world instanceof Level _level) {
+                  _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
                }
             }
 
@@ -701,8 +308,8 @@ public class ArtilleryFireScriptProcedure {
                   _blockEntityxx.getPersistentData().putBoolean("Loaded", false);
                }
 
-               if (world instanceof Level _levelxxx) {
-                  _levelxxx.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
+               if (world instanceof Level _level) {
+                  _level.sendBlockUpdated(_bpxx, _bsxx, _bsxx, 3);
                }
             }
 
@@ -734,43 +341,7 @@ public class ArtilleryFireScriptProcedure {
                         }
                      })
                      .getArrow(projectileLevel, 5.0F, 1);
-                  _entityToSpawn.setPos(x + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5);
+                  _entityToSpawn.setPos(muzx, muzy, muzz);
                   _entityToSpawn.shoot(Xvector, Pitch, Zvector, (float)((3.0 + Barrels / 1.25) * mvmultiplier), (float)(14.0 / (Barrels * 1.5)));
                   projectileLevel.addFreshEntity(_entityToSpawn);
                }
@@ -783,8 +354,8 @@ public class ArtilleryFireScriptProcedure {
                      _blockEntityxxx.getPersistentData().putBoolean("HE", false);
                   }
 
-                  if (world instanceof Level _levelxxx) {
-                     _levelxxx.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
+                  if (world instanceof Level _level) {
+                     _level.sendBlockUpdated(_bpxxx, _bsxxx, _bsxxx, 3);
                   }
                }
             } else if ((new Object() {
@@ -820,43 +391,7 @@ public class ArtilleryFireScriptProcedure {
                         }
                      })
                      .getArrow(projectileLevel, 5.0F, 1, (byte)8);
-                  _entityToSpawn.setPos(x + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5);
+                  _entityToSpawn.setPos(muzx, muzy, muzz);
                   _entityToSpawn.shoot(Xvector, Pitch, Zvector, (float)((3.2 + Barrels / 1.25) * mvmultiplier), (float)(10.0 / (Barrels * 1.5)));
                   projectileLevel.addFreshEntity(_entityToSpawn);
                }
@@ -869,8 +404,8 @@ public class ArtilleryFireScriptProcedure {
                      _blockEntityxxxx.getPersistentData().putBoolean("AP", false);
                   }
 
-                  if (world instanceof Level _levelxxx) {
-                     _levelxxx.sendBlockUpdated(_bpxxxx, _bsxxxx, _bsxxxx, 3);
+                  if (world instanceof Level _level) {
+                     _level.sendBlockUpdated(_bpxxxx, _bsxxxx, _bsxxxx, 3);
                   }
                }
             } else if ((new Object() {
@@ -901,43 +436,7 @@ public class ArtilleryFireScriptProcedure {
                         }
                      })
                      .getArrow(projectileLevel, 5.0F, 1);
-                  _entityToSpawn.setPos(x + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5);
+                  _entityToSpawn.setPos(muzx, muzy, muzz);
                   _entityToSpawn.shoot(Xvector, Pitch, Zvector, (float)((3.0 + Barrels / 1.25) * mvmultiplier), (float)(14.0 / (Barrels * 1.5)));
                   projectileLevel.addFreshEntity(_entityToSpawn);
                }
@@ -950,8 +449,8 @@ public class ArtilleryFireScriptProcedure {
                      _blockEntityxxxxx.getPersistentData().putBoolean("GAS", false);
                   }
 
-                  if (world instanceof Level _levelxxx) {
-                     _levelxxx.sendBlockUpdated(_bpxxxxx, _bsxxxxx, _bsxxxxx, 3);
+                  if (world instanceof Level _level) {
+                     _level.sendBlockUpdated(_bpxxxxx, _bsxxxxx, _bsxxxxx, 3);
                   }
                }
             } else if ((new Object() {
@@ -982,43 +481,7 @@ public class ArtilleryFireScriptProcedure {
                         }
                      })
                      .getArrow(projectileLevel, 5.0F, 1);
-                  _entityToSpawn.setPos(x + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepX() * (2.0 + Barrels) + 0.5, y + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepY() * (2.0 + Barrels) + 0.5, z + (double)(new Object() {
-                     public Direction getDirection(BlockState _bs) {
-                        if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
-                           return (Direction)_bs.getValue(_dp);
-                        } else {
-                           if (_bs.getBlock().getStateDefinition().getProperty("axis") instanceof EnumProperty _ep && _ep.getPossibleValues().toArray()[0] instanceof Axis) {
-                              return Direction.fromAxisAndDirection((Axis)_bs.getValue(_ep), AxisDirection.POSITIVE);
-                           }
-
-                           return Direction.NORTH;
-                        }
-                     }
-                  }).getDirection(blockstate).getStepZ() * (2.0 + Barrels) + 0.5);
+                  _entityToSpawn.setPos(muzx, muzy, muzz);
                   _entityToSpawn.shoot(Xvector, Pitch, Zvector, (float)((3.0 + Barrels / 1.25) * mvmultiplier), (float)(14.0 / (Barrels * 1.5)));
                   projectileLevel.addFreshEntity(_entityToSpawn);
                }
@@ -1031,8 +494,8 @@ public class ArtilleryFireScriptProcedure {
                      _blockEntityxxxxxx.getPersistentData().putBoolean("FIRE", false);
                   }
 
-                  if (world instanceof Level _levelxxx) {
-                     _levelxxx.sendBlockUpdated(_bpxxxxxx, _bsxxxxxx, _bsxxxxxx, 3);
+                  if (world instanceof Level _level) {
+                     _level.sendBlockUpdated(_bpxxxxxx, _bsxxxxxx, _bsxxxxxx, 3);
                   }
                }
             }
@@ -1045,8 +508,8 @@ public class ArtilleryFireScriptProcedure {
                   _blockEntityxxxxxxx.getPersistentData().putDouble("cooldown", 50.0);
                }
 
-               if (world instanceof Level _levelxxx) {
-                  _levelxxx.sendBlockUpdated(_bpxxxxxxx, _bsxxxxxxx, _bsxxxxxxx, 3);
+               if (world instanceof Level _level) {
+                  _level.sendBlockUpdated(_bpxxxxxxx, _bsxxxxxxx, _bsxxxxxxx, 3);
                }
             }
          }

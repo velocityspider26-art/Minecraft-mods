@@ -75,7 +75,7 @@ public class BunkerBusterProjectileEntity extends AbstractArrow implements ItemS
 
    public void tick() {
       super.tick();
-      BunkerBusterTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      BunkerBusterTickProcedure.execute(this.level(), this);
    }
 
    public static BunkerBusterProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

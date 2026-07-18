@@ -5,9 +5,9 @@
     "crusty_chunks:shock_clientside_bypass",
     "crusty_chunks:smoke_client_bypass",
     "crusty_chunks:fire_client_effect",
-    "crusty_chunks:small_client_effect",
     "crusty_chunks:splash_effect_client_bypass",
     "crusty_chunks:tiny_client_effect",
-    "crusty_chunks:cannon_muzzle_flash_producer"
+    "crusty_chunks:cannon_muzzle_flash_producer",
+    "crusty_chunks:glare_effect"
   ]
 }

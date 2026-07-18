@@ -71,6 +71,12 @@ public class CrustyChunksMod {
       MESSAGES.put(id, new NetworkMessage<>(reader, handler));
    }
 
+   /** 1.3.0: broadcast a payload to every connected player (client VFX/sound cues). */
+   public static void sendToAll(CustomPacketPayload message) {
+      if (net.neoforged.fml.util.thread.SidedThreadGroups.SERVER == Thread.currentThread().getThreadGroup())
+         net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(message);
+   }
+
    @SuppressWarnings({"rawtypes", "unchecked"})
    private void registerNetworking(final RegisterPayloadHandlersEvent event) {
       final PayloadRegistrar registrar = event.registrar(MODID);

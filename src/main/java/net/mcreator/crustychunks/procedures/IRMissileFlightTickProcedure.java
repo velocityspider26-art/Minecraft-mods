@@ -121,7 +121,7 @@ public class IRMissileFlightTickProcedure {
             immediatesourceentity.setDeltaMovement(motion);
             immediatesourceentity.setNoGravity(true);
          } else {
-            ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+            ArtilleryHitProcedure.execute(world, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }
@@ -240,7 +240,7 @@ public class IRMissileFlightTickProcedure {
 
          if (detonate) {
             CrustyChunksMod.queueServerWork(1, () -> {
-               ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+               ArtilleryHitProcedure.execute(world, immediatesourceentity);
                if (!immediatesourceentity.level().isClientSide()) {
                   immediatesourceentity.discard();
                }
@@ -248,7 +248,7 @@ public class IRMissileFlightTickProcedure {
          }
 
          if (immediatesourceentity.isUnderWater()) {
-            ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+            ArtilleryHitProcedure.execute(world, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }
@@ -274,7 +274,7 @@ public class IRMissileFlightTickProcedure {
                immediatesourceentity.discard();
             }
 
-            CrustyChunksMod.queueServerWork(1, () -> ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity));
+            CrustyChunksMod.queueServerWork(1, () -> ArtilleryHitProcedure.execute(world, immediatesourceentity));
          }
       }
    

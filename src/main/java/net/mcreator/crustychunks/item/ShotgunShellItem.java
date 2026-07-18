@@ -6,6 +6,6 @@ import net.minecraft.world.item.Item.Properties;
 
 public class ShotgunShellItem extends Item {
    public ShotgunShellItem() {
-      super(new Properties().stacksTo(8).rarity(Rarity.COMMON));
+      super(new Properties().stacksTo(32).rarity(Rarity.COMMON));
    }
 }

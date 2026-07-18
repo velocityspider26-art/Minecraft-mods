@@ -34,7 +34,7 @@ public class GenericArmorBypassProcedure {
          double damagemultiplier = 0.0;
          if (immediatesourceentity instanceof HugeBulletFireEntity) {
             penetrationmult = 2.0;
-            damagemultiplier = 3.0;
+            damagemultiplier = 4.0;
          } else if (!(immediatesourceentity instanceof GenericlargeBulletEntity) && !(immediatesourceentity instanceof GenericLargeBulletGreenEntity)) {
             penetrationmult = 0.0;
             damagemultiplier = 1.0;
@@ -50,9 +50,9 @@ public class GenericArmorBypassProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
-                     1.0F
+                     SoundSource.MASTER,
+                     1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
                   _level.playLocalSound(
@@ -60,9 +60,9 @@ public class GenericArmorBypassProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
+                     SoundSource.MASTER,
                      1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
                      false
                   );
                }

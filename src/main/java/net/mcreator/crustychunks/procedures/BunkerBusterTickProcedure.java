@@ -6,11 +6,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.LevelAccessor;
 
 public class BunkerBusterTickProcedure {
-   public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
+   public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
          if (immediatesourceentity.isUnderWater() && 1 == Mth.nextInt(RandomSource.create(), 1, 15)) {
-            SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+            SuperLargeBombProjectileHitsBlockProcedure.execute(world, immediatesourceentity);
          }
       }
    

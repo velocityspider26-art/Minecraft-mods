@@ -27,19 +27,18 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.Level.ExplosionInteraction;
 
 public class SolidArtilleryHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
          double Power = 0.0;
-         CrustyChunksMod.queueServerWork(3, () -> {
-            TinyExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
-            if (world instanceof Level _level && !_level.isClientSide()) {
-               net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5, y + 0.5, z + 0.5, 3.0F, ExplosionInteraction.NONE);
-            }
-         });
+         CrustyChunksMod.queueServerWork(
+            3,
+            () -> ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.25
+               )
+         );
          DamagesProcedure.execute(world, x, y, z);
          Power = immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0;
          if (world instanceof ServerLevel _level) {

@@ -14,12 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Direction.AxisDirection;
 import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -238,56 +233,9 @@ public class RocketPodFireScriptProcedure {
                }
             }
          }).getDirection(blockstate).getStepZ() * -2) + 0.5)).getBlock() == CrustyChunksModBlocks.ROCKET_POD_CHAMBER.get()) {
-         if (world instanceof Level _level) {
-            if (!_level.isClientSide()) {
-               _level.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpod")),
-                  SoundSource.NEUTRAL,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-               );
-            } else {
-               _level.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpod")),
-                  SoundSource.NEUTRAL,
-                  10.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelx) {
-            if (!_levelx.isClientSide()) {
-               _levelx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpodfar")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-               );
-            } else {
-               _levelx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:peelerpodfar")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof ServerLevel _levelxx) {
-            _levelxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.PUFF.get(), x + (double)((new Object() {
+         PeelerPodFireSoundProcedure.execute(world, x, y, z);
+         if (world instanceof ServerLevel _level) {
+            _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.PUFF.get(), x + (double)((new Object() {
                public Direction getDirection(BlockState _bs) {
                   if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                      return (Direction)_bs.getValue(_dp);
@@ -406,8 +354,8 @@ public class RocketPodFireScriptProcedure {
                }).getValue(world, BlockPos.containing(x, y, z), "Ammo") - 1.0);
             }
 
-            if (world instanceof Level _levelxx) {
-               _levelxx.sendBlockUpdated(_bp, _bs, _bs, 3);
+            if (world instanceof Level _level) {
+               _level.sendBlockUpdated(_bp, _bs, _bs, 3);
             }
          }
 
@@ -419,8 +367,8 @@ public class RocketPodFireScriptProcedure {
                _blockEntityx.getPersistentData().putDouble("Cooldown", 5.0);
             }
 
-            if (world instanceof Level _levelxx) {
-               _levelxx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
+            if (world instanceof Level _level) {
+               _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
             }
          }
       }

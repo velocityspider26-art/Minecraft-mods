@@ -6,6 +6,6 @@ import net.minecraft.world.item.Item.Properties;
 
 public class MusketBallItem extends Item {
    public MusketBallItem() {
-      super(new Properties().stacksTo(16).rarity(Rarity.COMMON));
+      super(new Properties().stacksTo(32).rarity(Rarity.COMMON));
    }
 }

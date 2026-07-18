@@ -65,7 +65,7 @@ public class LargeFraglessProcedure {
             _levelx.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:huge_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlargefar")),
                SoundSource.MASTER,
                60.0F,
                (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.3)
@@ -75,7 +75,7 @@ public class LargeFraglessProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:huge_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlargefar")),
                SoundSource.MASTER,
                60.0F,
                (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.3),
@@ -89,7 +89,7 @@ public class LargeFraglessProcedure {
             _levelxx.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlarge")),
                SoundSource.MASTER,
                20.0F,
                (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.2)
@@ -99,7 +99,7 @@ public class LargeFraglessProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionlarge")),
                SoundSource.MASTER,
                20.0F,
                (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.2),

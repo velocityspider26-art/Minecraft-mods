@@ -10,6 +10,7 @@
     "crusty_chunks:drive_shaft",
     "crusty_chunks:jet_gearbox",
     "crusty_chunks:manual_crank",
-    "crusty_chunks:redirector_shaft"
+    "crusty_chunks:redirector_shaft",
+    "crusty_chunks:light_turbine_engine"
   ]
 }

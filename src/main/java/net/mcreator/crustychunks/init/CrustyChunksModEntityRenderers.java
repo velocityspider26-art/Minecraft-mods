@@ -89,7 +89,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SUPER_LARGE_BOMB_PROJECTILE.get(), SuperLargeBombProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.NUCLEAR_BOMB_PROJECTILE.get(), NuclearBombProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.FIRE_BOMB_PROJECTILE.get(), FireBombProjectileRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SMALL_CLIENT_EFFECT.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.MEDIUM_BOMB_PROJECTILE.get(), MediumBombProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SMOKE_CLIENT_BYPASS.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.LARGE_ROCKET.get(), LargeRocketRenderer::new);
@@ -101,7 +100,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.INCINDIARY_ROCKET_PROJECTILE.get(), IncindiaryRocketProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.ARTILLERY_SOLID_PROJECTILE.get(), ArtillerySolidProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.INCENDIARY_GRENADE_PROJECTILE.get(), ThrownItemRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.NUCLEAR_SECONDARY_EFFECT.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.INCENDIARY_BOTTLE_PROJECTILE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.MORTAR_PROJECTILE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SMALL_BULLET_ALT.get(), ThrownItemRenderer::new);
@@ -109,8 +107,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.PHOSPHORUS_PARTICLE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.GENERICLARGE_BULLET.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.FIRE_CLIENT_EFFECT.get(), ThrownItemRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SB_TRACER_FIRE.get(), ThrownItemRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.MB_TRACER_FIRE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SMALL_SHELL_FIRE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.TINY_CLIENT_EFFECT.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.BREECHING_PROJECTILE.get(), ThrownItemRenderer::new);
@@ -136,7 +132,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.LARGE_STEALTH_BULLET.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.BIRDSHOT_PARTICLE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.RIFLER.get(), RiflerRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.NUCLEAR_BLAST_ENTITY.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.BUNKER_BUSTER_PROJECTILE.get(), BunkerBusterProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.GIANT_SHOCK_EXPLOSION_BYPASS.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.BLOCK_BUSTER_PROJECTILE.get(), BlockBusterProjectileRenderer::new);
@@ -158,8 +153,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.AI_STEALTH_BULLET.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.ASSASSINPOD.get(), AssassinpodRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.ERADICATOR.get(), EradicatorRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.FUSION_EFFECT_PROJECTILE.get(), ThrownItemRenderer::new);
-      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.FUSION_BLAST_ENTITY.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.FUSION_HEAT_WAVE.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SCOUT.get(), ScoutRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.RAIDSCOUT.get(), RaidscoutRenderer::new);
@@ -195,5 +188,6 @@ public class CrustyChunksModEntityRenderers {
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.LARGE_TORPEDO.get(), LargeTorpedoRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.CANNON_MUZZLE_FLASH_PRODUCER.get(), ThrownItemRenderer::new);
       event.registerEntityRenderer((EntityType)CrustyChunksModEntities.SMALL_AP_CANNON_FIRE.get(), ThrownItemRenderer::new);
+      event.registerEntityRenderer((EntityType)CrustyChunksModEntities.GLARE_EFFECT.get(), ThrownItemRenderer::new);
    }
 }

@@ -116,7 +116,12 @@ public class AIPodTickProcedure {
                immediatesourceentity.discard();
             }
 
-            CrustyChunksMod.queueServerWork(1, () -> MicroExplosionProcedure.execute(world, x, y, z));
+            CrustyChunksMod.queueServerWork(
+               1,
+               () -> ExplosionExampleProcedure.execute(
+                     world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.0
+                  )
+            );
          }
       }
    

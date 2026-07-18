@@ -56,7 +56,7 @@ public class MuzzleFlashProducerEntity extends AbstractArrow implements ItemSupp
 
    public void tick() {
       super.tick();
-      MuzzleFlashProducerWhileProjectileFlyingTickProcedure.execute(this.level(), this);
+      MuzzleFlashProducerWhileProjectileFlyingTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
       if (this.inGround) {
          this.discard();
       }

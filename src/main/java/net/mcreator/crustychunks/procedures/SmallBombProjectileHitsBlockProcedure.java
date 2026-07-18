@@ -7,7 +7,7 @@ public class SmallBombProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 4.0);
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }

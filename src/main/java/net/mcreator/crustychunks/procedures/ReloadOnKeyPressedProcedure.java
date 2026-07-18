@@ -3,6 +3,7 @@ package net.mcreator.crustychunks.procedures;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
 import net.mcreator.crustychunks.init.CrustyChunksModItems;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
@@ -14,6 +15,17 @@ public class ReloadOnKeyPressedProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
       try {
       if (entity != null) {
+         boolean _setval = false;
+         {
+            CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
+
+            _vars.AimDownSights = _setval;
+            _vars.syncPlayerVariables(entity);
+                  }
+         if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.MUSKET.get()) {
+            MusketReloadProcedure.execute(world, x, y, z, entity);
+         }
+
          if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.SMG_ANIMATED.get()) {
             SMGReloadScriptProcedure.execute(world, x, y, z, entity);
          }

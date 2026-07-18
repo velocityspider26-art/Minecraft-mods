@@ -3,7 +3,7 @@ package net.mcreator.crustychunks.block;
 import io.netty.buffer.Unpooled;
 import java.util.List;
 import net.mcreator.crustychunks.block.entity.OrdinanceInlineFissionWarheadBlockEntity;
-import net.mcreator.crustychunks.procedures.MediumFraglessProcedure;
+import net.mcreator.crustychunks.procedures.MediumBombDetonationProcedure;
 import net.mcreator.crustychunks.world.inventory.FissionWarheadGUIMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -160,7 +160,7 @@ public class OrdinanceInlineFissionWarheadBlock extends Block implements EntityB
 
    public void wasExploded(Level world, BlockPos pos, Explosion e) {
       super.wasExploded(world, pos, e);
-      MediumFraglessProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
+      MediumBombDetonationProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
    }
 
    public InteractionResult useWithoutItem(BlockState blockstate, Level world, final BlockPos pos, Player entity, BlockHitResult hit) {

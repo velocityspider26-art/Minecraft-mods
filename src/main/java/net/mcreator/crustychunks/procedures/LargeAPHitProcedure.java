@@ -240,7 +240,7 @@ public class LargeAPHitProcedure {
                            _levelxx.playSound(
                               null,
                               BlockPos.containing(x, y, z),
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                               SoundSource.NEUTRAL,
                               40.0F,
                               1.3F
@@ -250,7 +250,7 @@ public class LargeAPHitProcedure {
                               x,
                               y,
                               z,
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                               SoundSource.NEUTRAL,
                               40.0F,
                               1.3F,

@@ -57,4 +57,14 @@ public class CrustyChunksModParticleTypes {
    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SMALL_SPLASH_PUFF = REGISTRY.register("small_splash_puff", () -> new SimpleParticleType(true));
    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> RADIOACTIVE_CLOUD = REGISTRY.register("radioactive_cloud", () -> new SimpleParticleType(true));
    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> PHOSPHORUS_TRAIL = REGISTRY.register("phosphorus_trail", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SHOCK_RING = REGISTRY.register("shock_ring", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> LARGE_SMOKE_SIZE_2 = REGISTRY.register("large_smoke_size_2", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> LARGE_SMOKE_SIZE_3 = REGISTRY.register("large_smoke_size_3", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> FIRE_EXPLOSION = REGISTRY.register("fire_explosion", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> FIRE_EXPLOSION_SIZE_2 = REGISTRY.register("fire_explosion_size_2", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> FIRE_EXPLOSION_SIZE_3 = REGISTRY.register("fire_explosion_size_3", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> DARK_SMOKE = REGISTRY.register("dark_smoke", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> LINGERING_CLOUD = REGISTRY.register("lingering_cloud", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> NUCLEAR_SHOCK_RING = REGISTRY.register("nuclear_shock_ring", () -> new SimpleParticleType(true));
+   public static final DeferredHolder<ParticleType<?>, SimpleParticleType> BLACK_POWDER_SMOKE = REGISTRY.register("black_powder_smoke", () -> new SimpleParticleType(true));
 }

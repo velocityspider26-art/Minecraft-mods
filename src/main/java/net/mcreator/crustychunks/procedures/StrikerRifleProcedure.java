@@ -98,62 +98,15 @@ public class StrikerRifleProcedure {
             }
 
             entity.getPersistentData().putDouble("T", (double)Mth.nextInt(RandomSource.create(), 4, 6));
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantgunfire")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.2)
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantgunfire")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 1.1, 1.2),
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallshot")),
-                     SoundSource.NEUTRAL,
-                     7.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallshot")),
-                     SoundSource.NEUTRAL,
-                     7.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
-                     false
-                  );
-               }
-            }
-
+            PistolFireSoundProcedure.execute(world, x, y, z);
             if (entity instanceof StrikerEntity) {
                ((StrikerEntity)entity).setAnimation("Shoot");
             }
 
             entity.getPersistentData().putDouble("Mag", entity.getPersistentData().getDouble("Mag") + 1.0);
-            if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
+            if (world instanceof Level _level) {
+               if (!_level.isClientSide()) {
+                  _level.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallcasing")),
@@ -162,7 +115,7 @@ public class StrikerRifleProcedure {
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2)
                   );
                } else {
-                  _levelxx.playLocalSound(
+                  _level.playLocalSound(
                      x,
                      y,
                      z,
@@ -177,9 +130,9 @@ public class StrikerRifleProcedure {
          } else {
             entity.getPersistentData().putDouble("T", 100.0);
             entity.getPersistentData().putDouble("Mag", 0.0);
-            if (world instanceof Level _levelxxx) {
-               if (!_levelxxx.isClientSide()) {
-                  _levelxxx.playSound(
+            if (world instanceof Level _levelx) {
+               if (!_levelx.isClientSide()) {
+                  _levelx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:boltreload")),
@@ -188,7 +141,7 @@ public class StrikerRifleProcedure {
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
-                  _levelxxx.playLocalSound(
+                  _levelx.playLocalSound(
                      x,
                      y,
                      z,

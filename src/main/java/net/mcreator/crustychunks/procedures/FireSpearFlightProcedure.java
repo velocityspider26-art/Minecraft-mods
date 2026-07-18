@@ -1,23 +1,28 @@
 package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import java.util.Comparator;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class FireSpearFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
+         boolean Trigger = false;
          immediatesourceentity.getPersistentData().putDouble("MaxTime", 70.0);
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
          if (immediatesourceentity.getPersistentData().getDouble("Time") <= 70.0) {
@@ -73,7 +78,67 @@ public class FireSpearFlightProcedure {
          }
 
          if (immediatesourceentity.isUnderWater()) {
-            TankFireProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+            Trigger = true;
+         }
+
+         Vec3 _center = new Vec3(
+            x - immediatesourceentity.getDeltaMovement().x() * 0.5,
+            y - immediatesourceentity.getDeltaMovement().y() * 0.5,
+            z - immediatesourceentity.getDeltaMovement().z() * 0.5
+         );
+
+         for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(1.25), e -> true)
+            .stream()
+            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_center)))
+            .toList()) {
+            if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiterator != immediatesourceentity) {
+               if (!entityiterator.level().isClientSide()) {
+                  entityiterator.discard();
+               }
+
+               Trigger = true;
+            }
+         }
+
+         Vec3 _centerx = new Vec3(x, y, z);
+
+         for (Entity entityiteratorx : world.getEntitiesOfClass(Entity.class, new AABB(_centerx, _centerx).inflate(1.25), e -> true)
+            .stream()
+            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_centerx)))
+            .toList()) {
+            if (entityiteratorx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiteratorx != immediatesourceentity) {
+               if (!entityiteratorx.level().isClientSide()) {
+                  entityiteratorx.discard();
+               }
+
+               Trigger = true;
+            }
+         }
+
+         Vec3 _centerxx = new Vec3(
+            x + immediatesourceentity.getDeltaMovement().x() * 0.5,
+            y + immediatesourceentity.getDeltaMovement().y() * 0.5,
+            z + immediatesourceentity.getDeltaMovement().z() * 0.5
+         );
+
+         for (Entity entityiteratorxx : world.getEntitiesOfClass(Entity.class, new AABB(_centerxx, _centerxx).inflate(1.25), e -> true)
+            .stream()
+            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_centerxx)))
+            .toList()) {
+            if (entityiteratorxx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))
+               && entityiteratorxx != immediatesourceentity) {
+               if (!entityiteratorxx.level().isClientSide()) {
+                  entityiteratorxx.discard();
+               }
+
+               Trigger = true;
+            }
+         }
+
+         if (Trigger) {
+            ArtilleryHitProcedure.execute(world, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }

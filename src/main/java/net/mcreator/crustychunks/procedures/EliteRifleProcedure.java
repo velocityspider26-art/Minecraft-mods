@@ -102,86 +102,15 @@ public class EliteRifleProcedure {
             }
 
             entity.getPersistentData().putDouble("T", (double)Mth.nextInt(RandomSource.create(), 8, 10));
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshotmedium")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:distantshotmedium")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:midrangeshot")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:midrangeshot")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumshot")),
-                     SoundSource.NEUTRAL,
-                     10.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.7, 0.8)
-                  );
-               } else {
-                  _levelxx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumshot")),
-                     SoundSource.NEUTRAL,
-                     10.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.7, 0.8),
-                     false
-                  );
-               }
-            }
-
+            MediumFireSoundProcedure.execute(world, x, y, z);
             if (entity instanceof StrikerEntity) {
                ((StrikerEntity)entity).setAnimation("Shoot");
             }
 
             entity.getPersistentData().putDouble("Mag", entity.getPersistentData().getDouble("Mag") + 1.0);
-            if (world instanceof Level _levelxxx) {
-               if (!_levelxxx.isClientSide()) {
-                  _levelxxx.playSound(
+            if (world instanceof Level _level) {
+               if (!_level.isClientSide()) {
+                  _level.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:mediumcasing")),
@@ -190,7 +119,7 @@ public class EliteRifleProcedure {
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2)
                   );
                } else {
-                  _levelxxx.playLocalSound(
+                  _level.playLocalSound(
                      x,
                      y,
                      z,
@@ -205,9 +134,9 @@ public class EliteRifleProcedure {
          } else {
             entity.getPersistentData().putDouble("T", 100.0);
             entity.getPersistentData().putDouble("Mag", 0.0);
-            if (world instanceof Level _levelxxxx) {
-               if (!_levelxxxx.isClientSide()) {
-                  _levelxxxx.playSound(
+            if (world instanceof Level _levelx) {
+               if (!_levelx.isClientSide()) {
+                  _levelx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:boltreload")),
@@ -216,7 +145,7 @@ public class EliteRifleProcedure {
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
-                  _levelxxxx.playLocalSound(
+                  _levelx.playLocalSound(
                      x,
                      y,
                      z,

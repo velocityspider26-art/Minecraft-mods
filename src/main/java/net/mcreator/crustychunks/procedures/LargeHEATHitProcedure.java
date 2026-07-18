@@ -69,7 +69,9 @@ public class LargeHEATHitProcedure {
          );
          CrustyChunksMod.queueServerWork(
             3,
-            () -> SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ())
+            () -> ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 3.0
+               )
          );
       }
    

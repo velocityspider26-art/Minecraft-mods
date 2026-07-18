@@ -49,7 +49,7 @@ public class IncendiaryBottleThrowProcedure {
                   })
                   .getArrow(projectileLevel, 1.0F, 1);
                _entityToSpawn.setPos(entity.getX(), entity.getEyeY() - 0.1, entity.getZ());
-               _entityToSpawn.shoot(entity.getLookAngle().x, entity.getLookAngle().y, entity.getLookAngle().z, 1.0F, 15.0F);
+               _entityToSpawn.shoot(entity.getLookAngle().x, entity.getLookAngle().y, entity.getLookAngle().z, 1.1F, 6.0F);
                projectileLevel.addFreshEntity(_entityToSpawn);
             }
 

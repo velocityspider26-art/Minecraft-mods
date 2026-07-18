@@ -7,7 +7,8 @@ public class GasBombTickProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         if (immediatesourceentity.isUnderWater()) {
+         boolean Trigger = false;
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
             GasBombHitsBlockProcedure.execute(world, immediatesourceentity);
          }
       }

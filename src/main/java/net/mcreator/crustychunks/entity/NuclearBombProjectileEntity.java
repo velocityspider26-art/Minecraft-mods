@@ -69,7 +69,7 @@ public class NuclearBombProjectileEntity extends AbstractArrow implements ItemSu
 
    public void tick() {
       super.tick();
-      NukeBombTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this.getOwner(), this);
+      NukeBombTickProcedure.execute(this.level(), this.getOwner(), this);
    }
 
    public static NuclearBombProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

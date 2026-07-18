@@ -1,5 +1,6 @@
 package net.mcreator.crustychunks.procedures;
 
+import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
@@ -18,7 +19,7 @@ public class SplashClientEffectTickProcedure {
          double particleAmount = 0.0;
          immediatesourceentity.noPhysics = true;
          if (!immediatesourceentity.getPersistentData().getBoolean("Used")) {
-            for (int index0 = 0; index0 < 35; index0++) {
+            for (int index0 = 0; index0 < 15; index0++) {
                world.addParticle(
                   (SimpleParticleType)CrustyChunksModParticleTypes.SPLASH_PUFF.get(),
                   x + Mth.nextDouble(RandomSource.create(), -0.5, 1.5),
@@ -35,6 +36,12 @@ public class SplashClientEffectTickProcedure {
          } else if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }
+
+         CrustyChunksMod.queueServerWork(2, () -> {
+            if (!immediatesourceentity.level().isClientSide()) {
+               immediatesourceentity.discard();
+            }
+         });
       }
    
       } catch (Throwable _wtSafe) {

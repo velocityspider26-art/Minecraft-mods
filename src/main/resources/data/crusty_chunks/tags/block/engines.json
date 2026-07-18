@@ -7,6 +7,7 @@
     "crusty_chunks:small_diesel_engine",
     "crusty_chunks:flame_thrower",
     "crusty_chunks:medium_diesel_engine",
-    "crusty_chunks:small_petrol_engine"
+    "crusty_chunks:small_petrol_engine",
+    "crusty_chunks:light_turbine_engine"
   ]
 }

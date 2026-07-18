@@ -58,7 +58,7 @@ public class SmokeLauncherFireScriptProcedure {
                _level.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.egg.throw")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
                   SoundSource.NEUTRAL,
                   10.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.6, 0.7)
@@ -68,7 +68,7 @@ public class SmokeLauncherFireScriptProcedure {
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.egg.throw")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
                   SoundSource.NEUTRAL,
                   10.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.6, 0.7),

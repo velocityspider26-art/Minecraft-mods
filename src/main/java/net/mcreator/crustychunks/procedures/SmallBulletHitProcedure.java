@@ -15,19 +15,18 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class SmallBulletHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
       try {
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
-         if (world instanceof ServerLevel _level) {
-            _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x + 0.5, y + 1.0, z + 0.5, 4, 0.0, 2.0, 0.0, 1.0);
-         }
-
-         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(Blocks.DIRT.defaultBlockState()));
+      BlockState impactblock = Blocks.AIR.defaultBlockState();
+      impactblock = world.getBlockState(BlockPos.containing(x, y, z));
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts"))) && world instanceof ServerLevel _level) {
+         _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x + 0.5, y + 1.0, z + 0.5, 4, 0.0, 2.0, 0.0, 1.0);
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          if (world instanceof Level _level) {
             if (!_level.isClientSide()) {
@@ -35,26 +34,25 @@ public class SmallBulletHitProcedure {
                   null,
                   BlockPos.containing(x, y, z),
                   (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.glass.break")),
-                  SoundSource.NEUTRAL,
+                  SoundSource.BLOCKS,
                   3.0F,
                   1.0F
                );
             } else {
                _level.playLocalSound(
-                  x, y, z, (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.glass.break")), SoundSource.NEUTRAL, 3.0F, 1.0F, false
+                  x, y, z, (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.glass.break")), SoundSource.BLOCKS, 3.0F, 1.0F, false
                );
             }
          }
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))
-         && world instanceof Level _levelx) {
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable"))) && world instanceof Level _levelx) {
          if (!_levelx.isClientSide()) {
             _levelx.playSound(
                null,
                BlockPos.containing(x, y, z),
                (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-               SoundSource.NEUTRAL,
+               SoundSource.BLOCKS,
                1.0F,
                1.0F
             );
@@ -64,7 +62,7 @@ public class SmallBulletHitProcedure {
                y,
                z,
                (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
-               SoundSource.NEUTRAL,
+               SoundSource.BLOCKS,
                1.0F,
                1.0F,
                false
@@ -72,7 +70,7 @@ public class SmallBulletHitProcedure {
          }
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:resistant")))) {
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:resistant")))) {
          if (Mth.nextInt(RandomSource.create(), 1, 3) == 3) {
             if (world instanceof Level _levelxx) {
                if (!_levelxx.isClientSide()) {
@@ -80,7 +78,7 @@ public class SmallBulletHitProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.5F,
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2)
                   );
@@ -90,7 +88,7 @@ public class SmallBulletHitProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
-                     SoundSource.NEUTRAL,
+                     SoundSource.BLOCKS,
                      1.5F,
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2),
                      false
@@ -103,7 +101,7 @@ public class SmallBulletHitProcedure {
                   null,
                   BlockPos.containing(x, y, z),
                   (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.firework_rocket.blast")),
-                  SoundSource.NEUTRAL,
+                  SoundSource.BLOCKS,
                   2.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2)
                );
@@ -113,7 +111,7 @@ public class SmallBulletHitProcedure {
                   y,
                   z,
                   (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.firework_rocket.blast")),
-                  SoundSource.NEUTRAL,
+                  SoundSource.BLOCKS,
                   2.0F,
                   (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.2),
                   false
@@ -134,9 +132,9 @@ public class SmallBulletHitProcedure {
                null,
                BlockPos.containing(x, y, z),
                (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-               SoundSource.NEUTRAL,
+               SoundSource.BLOCKS,
                1.5F,
-               (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9)
+               (float)Mth.nextDouble(RandomSource.create(), 0.8, 1.2)
             );
          } else {
             _levelxxxx.playLocalSound(
@@ -144,31 +142,23 @@ public class SmallBulletHitProcedure {
                y,
                z,
                (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-               SoundSource.NEUTRAL,
+               SoundSource.BLOCKS,
                1.5F,
-               (float)Mth.nextDouble(RandomSource.create(), 0.8, 0.9),
+               (float)Mth.nextDouble(RandomSource.create(), 0.8, 1.2),
                false
             );
          }
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands")))) {
-         if (world instanceof ServerLevel _levelxxxxx) {
-            _levelxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SAND.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
-         }
-
-         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(Blocks.SAND.defaultBlockState()));
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:sands"))) && world instanceof ServerLevel _levelxxxxx) {
+         _levelxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.SAND.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dusts")))) {
-         if (world instanceof ServerLevel _levelxxxxx) {
-            _levelxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
-         }
-
-         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(Blocks.GRAVEL.defaultBlockState()));
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dusts"))) && world instanceof ServerLevel _levelxxxxx) {
+         _levelxxxxx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.WHITE_DUST.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
       }
 
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:metals")))) {
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:metals")))) {
          if (world instanceof Level _levelxxxxx) {
             if (!_levelxxxxx.isClientSide()) {
                _levelxxxxx.playSound(
@@ -191,9 +181,8 @@ public class SmallBulletHitProcedure {
          }
       }
 
-      world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y, z))));
-      if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))
-         && world instanceof Level _levelxxxxxx) {
+      world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(impactblock));
+      if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable"))) && world instanceof Level _levelxxxxxx) {
          if (!_levelxxxxxx.isClientSide()) {
             _levelxxxxxx.playSound(
                null,

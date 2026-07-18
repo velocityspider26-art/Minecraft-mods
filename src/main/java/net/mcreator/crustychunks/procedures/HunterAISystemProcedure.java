@@ -2,6 +2,7 @@ package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import java.util.Comparator;
+import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.entity.HunterEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
@@ -38,7 +39,7 @@ public class HunterAISystemProcedure {
          double speed = 0.0;
          double targetrange = 0.0;
          double buddydistance = 0.0;
-         AutoscoutingProcedure.execute(world, x, y, z, entity);
+         CrustyChunksMod.queueServerWork(1, () -> AutoscoutingProcedure.execute(world, x, y, z, entity));
          if ((entity instanceof Mob _mobEntx ? _mobEntx.getTarget() : null) != null && (entity instanceof Mob _mobEnt ? _mobEnt.getTarget() : null).isAlive()) {
             target = entity instanceof Mob _mobEntxx ? _mobEntxx.getTarget() : null;
          }

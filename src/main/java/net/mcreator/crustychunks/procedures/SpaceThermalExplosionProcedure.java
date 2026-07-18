@@ -1,15 +1,16 @@
 package net.mcreator.crustychunks.procedures;
 
 import java.util.Comparator;
-import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
+import net.mcreator.crustychunks.init.CrustyChunksModMobEffects;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -130,18 +131,6 @@ public class SpaceThermalExplosionProcedure {
                         .getBlockPos()
                         .getZ(), 5.0F, ExplosionInteraction.BLOCK);
                }
-
-               if (1 == Mth.nextInt(RandomSource.create(), 1, 3)) {
-                  world.addParticle(
-                     (SimpleParticleType)CrustyChunksModParticleTypes.SPACE_FIREBALL.get(),
-                     x,
-                     y,
-                     z,
-                     immediatesourceentity.getLookAngle().x * Mth.nextDouble(RandomSource.create(), -1.0, 1.0),
-                     immediatesourceentity.getLookAngle().y * Mth.nextDouble(RandomSource.create(), -1.0, 1.0),
-                     immediatesourceentity.getLookAngle().z * Mth.nextDouble(RandomSource.create(), -1.0, 1.0)
-                  );
-               }
             }
 
             Vec3 _center = new Vec3(x, y, z);
@@ -206,6 +195,14 @@ public class SpaceThermalExplosionProcedure {
                            )
                         <= 0.0) {
                      entityiteratorx.igniteForSeconds(40);
+                     if (entityiteratorx instanceof LivingEntity) {
+                        LivingEntity _entity = (LivingEntity)entityiteratorx;
+                        if (!_entity.level().isClientSide()) {
+                           _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 60, 1, false, false));
+                        }
+                     }
+
+                     entityiteratorx.getPersistentData().putDouble("Radiation", entityiteratorx.getPersistentData().getDouble("Radiation") + 150.0);
                   }
                }
             }

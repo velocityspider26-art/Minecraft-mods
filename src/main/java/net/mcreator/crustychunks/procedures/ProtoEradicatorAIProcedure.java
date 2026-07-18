@@ -41,7 +41,7 @@ public class ProtoEradicatorAIProcedure {
          double LeadRange = 0.0;
          double targetrange = 0.0;
          RandomVoicelinesProcedure.execute(world, x, y, z, entity);
-         AutoscoutingProcedure.execute(world, x, y, z, entity);
+         CrustyChunksMod.queueServerWork(1, () -> AutoscoutingProcedure.execute(world, x, y, z, entity));
          if (entity.isAlive()) {
             if (entity.getPersistentData().getDouble("T") > 0.0) {
                entity.getPersistentData().putDouble("T", entity.getPersistentData().getDouble("T") - 1.0);

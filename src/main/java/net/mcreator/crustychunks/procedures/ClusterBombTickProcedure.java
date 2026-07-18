@@ -21,7 +21,7 @@ public class ClusterBombTickProcedure {
          boolean Trigger = false;
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
          if (!(immediatesourceentity.getPersistentData().getDouble("Time") <= 30.0)) {
-            for (int index0 = 0; index0 < 4; index0++) {
+            for (int index0 = 0; index0 < 8; index0++) {
                if (world instanceof ServerLevel projectileLevel) {
                   Projectile _entityToSpawn = (new Object() {
                         public Projectile getArrow(Level level, float damage, int knockback) {
@@ -60,11 +60,8 @@ public class ClusterBombTickProcedure {
             }
          }
 
-         if (immediatesourceentity.isUnderWater()) {
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
             ClusterRocketHitProcedure.execute(world, immediatesourceentity);
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
-            }
          }
       }
    

@@ -16,14 +16,21 @@ public class SteelplateItemIsCraftedsmeltedProcedure {
             _level.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.use")),
-               SoundSource.NEUTRAL,
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.netherite_block.place")),
+               SoundSource.PLAYERS,
                1.0F,
                1.0F
             );
          } else {
             _level.playLocalSound(
-               x, y, z, (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.use")), SoundSource.NEUTRAL, 1.0F, 1.0F, false
+               x,
+               y,
+               z,
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.netherite_block.place")),
+               SoundSource.PLAYERS,
+               1.0F,
+               1.0F,
+               false
             );
          }
       }

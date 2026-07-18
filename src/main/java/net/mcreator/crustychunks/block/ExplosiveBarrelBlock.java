@@ -11,7 +11,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
@@ -76,16 +75,13 @@ public class ExplosiveBarrelBlock extends Block {
    public void neighborChanged(BlockState blockstate, Level world, BlockPos pos, Block neighborBlock, BlockPos fromPos, boolean moving) {
       super.neighborChanged(blockstate, world, pos, neighborBlock, fromPos, moving);
       if (world.getBestNeighborSignal(pos) > 0) {
-         ExplosiveBarrelTriggerProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
+         ExplosiveBarrelTriggerProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ(), blockstate);
       }
    }
 
-   public void wasExploded(Level world, BlockPos pos, Explosion e) {
-      super.wasExploded(world, pos, e);
-      ExplosiveBarrelTriggerProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
-   }
-
    public void onProjectileHit(Level world, BlockState blockstate, BlockHitResult hit, Projectile entity) {
-      ExplosiveBarrelTriggerProcedure.execute(world, (double)hit.getBlockPos().getX(), (double)hit.getBlockPos().getY(), (double)hit.getBlockPos().getZ());
+      ExplosiveBarrelTriggerProcedure.execute(
+         world, (double)hit.getBlockPos().getX(), (double)hit.getBlockPos().getY(), (double)hit.getBlockPos().getZ(), blockstate
+      );
    }
 }

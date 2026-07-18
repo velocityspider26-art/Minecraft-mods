@@ -8,12 +8,17 @@ public class LargeRocketHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         CrustyChunksMod.queueServerWork(1, () -> {
-            LargeExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
+         CrustyChunksMod.queueServerWork(
+            1,
+            () -> {
+               ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 10.0
+               );
+               if (!immediatesourceentity.level().isClientSide()) {
+                  immediatesourceentity.discard();
+               }
             }
-         });
+         );
       }
    
       } catch (Throwable _wtSafe) {

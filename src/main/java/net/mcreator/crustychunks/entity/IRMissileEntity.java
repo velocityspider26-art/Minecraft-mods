@@ -59,18 +59,12 @@ public class IRMissileEntity extends AbstractArrow implements ItemSupplier {
 
    public void onHitEntity(EntityHitResult entityHitResult) {
       super.onHitEntity(entityHitResult);
-      ArtilleryHitProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      ArtilleryHitProcedure.execute(this.level(), this);
    }
 
    public void onHitBlock(BlockHitResult blockHitResult) {
       super.onHitBlock(blockHitResult);
-      ArtilleryHitProcedure.execute(
-         this.level(),
-         (double)blockHitResult.getBlockPos().getX(),
-         (double)blockHitResult.getBlockPos().getY(),
-         (double)blockHitResult.getBlockPos().getZ(),
-         this
-      );
+      ArtilleryHitProcedure.execute(this.level(), this);
    }
 
    public void tick() {

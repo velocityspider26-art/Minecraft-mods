@@ -32,14 +32,6 @@
       }
     ]
   },
-  "shotguncycle": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:shotgunaction",
-        "stream": false
-      }
-    ]
-  },
   "revolver": {
     "sounds": [
       {
@@ -52,22 +44,6 @@
     "sounds": [
       {
         "name": "crusty_chunks:explosionsmall",
-        "stream": false
-      }
-    ]
-  },
-  "explosion": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:explosionlarge",
-        "stream": false
-      }
-    ]
-  },
-  "explosion_distant": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:explosionsmallfar",
         "stream": false
       }
     ]
@@ -116,14 +92,6 @@
     "sounds": [
       {
         "name": "crusty_chunks:shotguncasing",
-        "stream": false
-      }
-    ]
-  },
-  "small_expllosion_distant": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:tinyblast",
         "stream": false
       }
     ]
@@ -180,14 +148,6 @@
     "sounds": [
       {
         "name": "crusty_chunks:flaregun",
-        "stream": false
-      }
-    ]
-  },
-  "fissionblast": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:nuke",
         "stream": false
       }
     ]
@@ -403,14 +363,6 @@
       }
     ]
   },
-  "engine": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:smallengine",
-        "stream": false
-      }
-    ]
-  },
   "motor": {
     "sounds": [
       {
@@ -451,14 +403,6 @@
     "sounds": [
       {
         "name": "crusty_chunks:spacenuke",
-        "stream": false
-      }
-    ]
-  },
-  "medium_small_explosion_distant": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:smallexplosiondistant",
         "stream": false
       }
     ]
@@ -583,22 +527,6 @@
       }
     ]
   },
-  "rac": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:23mmrotarynear",
-        "stream": false
-      }
-    ]
-  },
-  "brtttfar": {
-    "sounds": [
-      {
-        "name": "crusty_chunks:23mmrotaryfar",
-        "stream": false
-      }
-    ]
-  },
   "battlecannon": {
     "sounds": [
       {
@@ -712,7 +640,47 @@
       }
     ]
   },
-  "huge_explosion_distant": {
+  "largeshot": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:8x55mm",
+        "stream": false
+      }
+    ]
+  },
+  "explosionsmall": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionsmall",
+        "stream": false
+      }
+    ]
+  },
+  "explosionlarge": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:explosionlarge",
+        "stream": false
+      }
+    ]
+  },
+  "explosioncolossal": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:colossalexplosion",
+        "stream": false
+      }
+    ]
+  },
+  "explosioncolossalfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:colossalexplosionfar",
+        "stream": false
+      }
+    ]
+  },
+  "explosionlargefar": {
     "sounds": [
       {
         "name": "crusty_chunks:explosionlargefar",
@@ -720,10 +688,82 @@
       }
     ]
   },
-  "largeshot": {
+  "explosionsmallfar": {
     "sounds": [
       {
-        "name": "crusty_chunks:8x55mm",
+        "name": "crusty_chunks:smallexplosiondistant",
+        "stream": false
+      }
+    ]
+  },
+  "geiger": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:geiger2",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:geiger3",
+        "stream": false
+      },
+      {
+        "name": "crusty_chunks:geiger1",
+        "stream": false
+      }
+    ]
+  },
+  "tinyexplosionfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:tinyblast",
+        "stream": false
+      }
+    ]
+  },
+  "rotarynear": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:23mmrotarynear",
+        "stream": false
+      }
+    ]
+  },
+  "rotaryfar": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:23mmrotaryfar",
+        "stream": false
+      }
+    ]
+  },
+  "dieselengineidle": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:dieselengineidle",
+        "stream": false
+      }
+    ]
+  },
+  "dieselenginerev": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:dieselenginerev",
+        "stream": false
+      }
+    ]
+  },
+  "largedieselengine": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:largeengine",
+        "stream": false
+      }
+    ]
+  },
+  "shotguncycle": {
+    "sounds": [
+      {
+        "name": "crusty_chunks:shotguncycle",
         "stream": false
       }
     ]

@@ -62,9 +62,11 @@ import net.mcreator.crustychunks.block.entity.LargeElectricMotorBlockEntity;
 import net.mcreator.crustychunks.block.entity.LargeRocketPodBlockEntity;
 import net.mcreator.crustychunks.block.entity.LightAutocannonBlockEntity;
 import net.mcreator.crustychunks.block.entity.LightMachineGunBlockEntity;
+import net.mcreator.crustychunks.block.entity.LightTurbineEngineBlockEntity;
 import net.mcreator.crustychunks.block.entity.MachineGunBlockEntity;
 import net.mcreator.crustychunks.block.entity.ManualAimerBlockEntity;
 import net.mcreator.crustychunks.block.entity.ManualCrankBlockEntity;
+import net.mcreator.crustychunks.block.entity.MediumBombBlockEntity;
 import net.mcreator.crustychunks.block.entity.MediumDieselEngineBlockEntity;
 import net.mcreator.crustychunks.block.entity.MediumPetrolEngineBlockEntity;
 import net.mcreator.crustychunks.block.entity.MineralGrinderBlockEntity;
@@ -87,7 +89,6 @@ import net.mcreator.crustychunks.block.entity.RACBarrelTileEntity;
 import net.mcreator.crustychunks.block.entity.RadarSpearMissileHardpointBlockEntity;
 import net.mcreator.crustychunks.block.entity.ReactionChamberBlockEntity;
 import net.mcreator.crustychunks.block.entity.RedirectorShaftBlockEntity;
-import net.mcreator.crustychunks.block.entity.RedstoneTNTBlockEntity;
 import net.mcreator.crustychunks.block.entity.RefineryBlockEntity;
 import net.mcreator.crustychunks.block.entity.RefineryTowerBlockEntity;
 import net.mcreator.crustychunks.block.entity.RobotChuteBlockEntity;
@@ -114,9 +115,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 @EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)
 public class CrustyChunksModBlockEntities {
    public static final DeferredRegister<BlockEntityType<?>> REGISTRY = DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, "crusty_chunks");
-   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> REDSTONE_TNT = register(
-      "redstone_tnt", CrustyChunksModBlocks.REDSTONE_TNT, RedstoneTNTBlockEntity::new
-   );
    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> MACHINE_GUN = register("machine_gun", CrustyChunksModBlocks.MACHINE_GUN, MachineGunBlockEntity::new);
    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> ARTILLERYBREECH = register(
       "artillerybreech", CrustyChunksModBlocks.ARTILLERYBREECH, ArtillerybreechBlockEntity::new
@@ -361,6 +359,10 @@ public class CrustyChunksModBlockEntities {
    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> REDIRECTOR_SHAFT = register(
       "redirector_shaft", CrustyChunksModBlocks.REDIRECTOR_SHAFT, RedirectorShaftBlockEntity::new
    );
+   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> MEDIUM_BOMB = register("medium_bomb", CrustyChunksModBlocks.MEDIUM_BOMB, MediumBombBlockEntity::new);
+   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> LIGHT_TURBINE_ENGINE = register(
+      "light_turbine_engine", CrustyChunksModBlocks.LIGHT_TURBINE_ENGINE, LightTurbineEngineBlockEntity::new
+   );
 
    private static DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> register(String registryname, DeferredHolder<Block, Block> block, BlockEntitySupplier<?> supplier) {
       return REGISTRY.register(registryname, () -> Builder.of(supplier, new Block[]{(Block)block.get()}).build(null));
@@ -368,7 +370,6 @@ public class CrustyChunksModBlockEntities {
 
    @SubscribeEvent
    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-      event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, REDSTONE_TNT.get(), (blockEntity, side) -> ((RedstoneTNTBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, MACHINE_GUN.get(), (blockEntity, side) -> ((MachineGunBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ARTILLERYBREECH.get(), (blockEntity, side) -> ((ArtillerybreechBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, BATTLE_CANNON_BREECH.get(), (blockEntity, side) -> ((BattleCannonBreechBlockEntity) blockEntity).getItemHandler());
@@ -382,6 +383,9 @@ public class CrustyChunksModBlockEntities {
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, FISSION_BOMB.get(), (blockEntity, side) -> ((FissionBombBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, MINERAL_GRINDER.get(), (blockEntity, side) -> ((MineralGrinderBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, SMALL_BOMB.get(), (blockEntity, side) -> ((SmallBombBlockEntity) blockEntity).getItemHandler());
+      event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, MEDIUM_BOMB.get(), (blockEntity, side) -> ((MediumBombBlockEntity) blockEntity).getItemHandler());
+      event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, LIGHT_TURBINE_ENGINE.get(), (blockEntity, side) -> ((LightTurbineEngineBlockEntity) blockEntity).getItemHandler());
+      event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, LIGHT_TURBINE_ENGINE.get(), (blockEntity, side) -> ((LightTurbineEngineBlockEntity) blockEntity).getFluidTank());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, CLUSTER_OF_BOMBS.get(), (blockEntity, side) -> ((ClusterOfBombsBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ARTILLERY_AUTOLOADER.get(), (blockEntity, side) -> ((ArtilleryAutoloaderBlockEntity) blockEntity).getItemHandler());
       event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ARTILLERY_CHARGE_LOADER.get(), (blockEntity, side) -> ((ArtilleryChargeLoaderBlockEntity) blockEntity).getItemHandler());

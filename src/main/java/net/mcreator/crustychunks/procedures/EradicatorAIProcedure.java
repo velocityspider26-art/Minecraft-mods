@@ -42,7 +42,7 @@ public class EradicatorAIProcedure {
          double LeadRange = 0.0;
          double targetrange = 0.0;
          RandomVoicelinesProcedure.execute(world, x, y, z, entity);
-         AutoscoutingProcedure.execute(world, x, y, z, entity);
+         CrustyChunksMod.queueServerWork(1, () -> AutoscoutingProcedure.execute(world, x, y, z, entity));
          if (entity.isAlive()) {
             if (entity.getPersistentData().getDouble("T") > 0.0) {
                entity.getPersistentData().putDouble("T", entity.getPersistentData().getDouble("T") - 1.0);
@@ -291,8 +291,8 @@ public class EradicatorAIProcedure {
                            null,
                            BlockPos.containing(x, y, z),
                            (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:megamechstep")),
-                           SoundSource.NEUTRAL,
-                           4.0F,
+                           SoundSource.HOSTILE,
+                           8.0F,
                            (float)Mth.nextDouble(RandomSource.create(), 0.5, 0.6)
                         );
                      } else {
@@ -301,8 +301,8 @@ public class EradicatorAIProcedure {
                            y,
                            z,
                            (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:megamechstep")),
-                           SoundSource.NEUTRAL,
-                           4.0F,
+                           SoundSource.HOSTILE,
+                           8.0F,
                            (float)Mth.nextDouble(RandomSource.create(), 0.5, 0.6),
                            false
                         );

@@ -61,7 +61,7 @@ public class WorkerDeathProcedure {
             _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.HUGE_SPARKS.get(), x, y + 1.0, z, 5, 0.0, 0.0, 0.0, 0.5);
          }
 
-         MicroExplosionProcedure.execute(world, x, y, z);
+         ExplosionExampleProcedure.execute(world, x, y, z, 2.0);
          if (!entity.level().isClientSide()) {
             entity.discard();
          }

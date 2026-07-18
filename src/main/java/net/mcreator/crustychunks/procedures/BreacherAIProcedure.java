@@ -136,7 +136,7 @@ public class BreacherAIProcedure {
                      if ((entity instanceof Mob _mobEntxxxxxxxxx ? _mobEntxxxxxxxxx.getTarget() : null) != null
                         && entity.isAlive()
                         && (entity instanceof Mob _mobEntxxxxxxxx ? _mobEntxxxxxxxx.getTarget() : null).isAlive()) {
-                        MediumExplosionProcedure.execute(world, entity.getX(), entity.getY(), entity.getZ());
+                        ExplosionExampleProcedure.execute(world, x, y, z, 5.0);
                         if (!entity.level().isClientSide()) {
                            entity.discard();
                         }

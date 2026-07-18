@@ -8,6 +8,7 @@ import net.mcreator.crustychunks.item.AutoPistolItem;
 import net.mcreator.crustychunks.item.SMGAnimatedItem;
 import net.mcreator.crustychunks.item.SemiAutomaticPistolAnimatedItem;
 import net.mcreator.crustychunks.item.StealthPistolItem;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -23,6 +24,14 @@ public class PistolActionProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
       try {
       if (entity != null) {
+         boolean _setval = false;
+         {
+            CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
+
+            _vars.AimDownSights = _setval;
+            _vars.syncPlayerVariables(entity);
+                  }
+         
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putBoolean("action", false));
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof SemiAutomaticPistolAnimatedItem) {

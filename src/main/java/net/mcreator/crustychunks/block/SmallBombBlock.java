@@ -3,8 +3,8 @@ package net.mcreator.crustychunks.block;
 import java.util.List;
 import net.mcreator.crustychunks.block.entity.SmallBombBlockEntity;
 import net.mcreator.crustychunks.procedures.OrdinanceCoreTriggerProcedure;
+import net.mcreator.crustychunks.procedures.SmallBombDetonationProcedure;
 import net.mcreator.crustychunks.procedures.SmallBombRedstoneOnProcedure;
-import net.mcreator.crustychunks.procedures.SmallExplosionProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -174,7 +174,7 @@ public class SmallBombBlock extends Block implements EntityBlock {
 
    public void wasExploded(Level world, BlockPos pos, Explosion e) {
       super.wasExploded(world, pos, e);
-      SmallExplosionProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
+      SmallBombDetonationProcedure.execute(world, (double)pos.getX(), (double)pos.getY(), (double)pos.getZ());
    }
 
    public MenuProvider getMenuProvider(BlockState state, Level worldIn, BlockPos pos) {

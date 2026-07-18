@@ -7,6 +7,7 @@ import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.init.CrustyChunksModItems;
 import net.mcreator.crustychunks.item.BoltActionRifleAnimatedItem;
 import net.mcreator.crustychunks.item.ScopedBoltActionRifleAnimatedItem;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -25,6 +26,14 @@ public class BoltActionRifleEntitySwingsItemProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
       try {
       if (entity != null) {
+         boolean _setval = false;
+         {
+            CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
+
+            _vars.AimDownSights = _setval;
+            _vars.syncPlayerVariables(entity);
+                  }
+         
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof BoltActionRifleAnimatedItem) {
                CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "bolt"));

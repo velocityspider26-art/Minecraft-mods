@@ -30,30 +30,6 @@ public class ArmorBypassPelletProcedure {
          double penetrationmult = 0.0;
          double damagemultiplier = 0.0;
          if (!entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bulletproof")))) {
-            if (Mth.nextInt(RandomSource.create(), 1, 7) == 1 && world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     1.0F,
-                     1.0F
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     1.0F,
-                     1.0F,
-                     false
-                  );
-               }
-            }
-
             if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY)
                .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:bulletarmor")))) {
                entity.hurt(
@@ -86,9 +62,9 @@ public class ArmorBypassPelletProcedure {
             }
          } else {
             if (Mth.nextInt(RandomSource.create(), 1, 2) == 1) {
-               if (world instanceof Level _levelx) {
-                  if (!_levelx.isClientSide()) {
-                     _levelx.playSound(
+               if (world instanceof Level _level) {
+                  if (!_level.isClientSide()) {
+                     _level.playSound(
                         null,
                         BlockPos.containing(x, y, z),
                         (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.anvil.place")),
@@ -97,7 +73,7 @@ public class ArmorBypassPelletProcedure {
                         1.0F
                      );
                   } else {
-                     _levelx.playLocalSound(
+                     _level.playLocalSound(
                         x,
                         y,
                         z,
@@ -109,9 +85,9 @@ public class ArmorBypassPelletProcedure {
                      );
                   }
                }
-            } else if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
+            } else if (world instanceof Level _levelx) {
+               if (!_levelx.isClientSide()) {
+                  _levelx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bounce")),
@@ -120,7 +96,7 @@ public class ArmorBypassPelletProcedure {
                      1.0F
                   );
                } else {
-                  _levelxx.playLocalSound(
+                  _levelx.playLocalSound(
                      x,
                      y,
                      z,
@@ -133,8 +109,8 @@ public class ArmorBypassPelletProcedure {
                }
             }
 
-            if (world instanceof ServerLevel _levelxxx) {
-               _levelxxx.sendParticles(ParticleTypes.POOF, x, y, z, 5, 0.0, 0.0, 0.0, 0.01);
+            if (world instanceof ServerLevel _levelxx) {
+               _levelxx.sendParticles(ParticleTypes.POOF, x, y, z, 5, 0.0, 0.0, 0.0, 0.01);
             }
          }
 

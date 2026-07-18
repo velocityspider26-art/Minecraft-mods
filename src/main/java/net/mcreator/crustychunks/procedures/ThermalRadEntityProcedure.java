@@ -2,10 +2,13 @@ package net.mcreator.crustychunks.procedures;
 
 import java.util.Comparator;
 import net.mcreator.crustychunks.CrustyChunksMod;
+import net.mcreator.crustychunks.init.CrustyChunksModMobEffects;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -181,6 +184,14 @@ public class ThermalRadEntityProcedure {
                            )
                         <= 0.0) {
                      entityiterator.igniteForSeconds(40);
+                     if (entityiterator instanceof LivingEntity) {
+                        LivingEntity _entity = (LivingEntity)entityiterator;
+                        if (!_entity.level().isClientSide()) {
+                           _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 60, 1, false, false));
+                        }
+                     }
+
+                     entityiterator.getPersistentData().putDouble("Radiation", entityiterator.getPersistentData().getDouble("Radiation") + 150.0);
                   }
                }
             }

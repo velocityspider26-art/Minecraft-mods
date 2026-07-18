@@ -10,8 +10,6 @@ import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -24,37 +22,12 @@ public class BulletHitProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
-            world.destroyBlock(BlockPos.containing(x, y, z), false);
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.glass.break")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
-                     1.0F
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.glass.break")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
-                     1.0F,
-                     false
-                  );
-               }
-            }
-
-            if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
-               && world instanceof ServerLevel projectileLevel) {
-               Projectile _entityToSpawn = (new Object() {
-                     public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
-                        AbstractArrow entityToSpawn = new BulletfireProjectileEntity((EntityType<? extends BulletfireProjectileEntity>)CrustyChunksModEntities.BULLETFIRE_PROJECTILE.get(), level) {
+         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))
+            && (immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0
+            && world instanceof ServerLevel projectileLevel) {
+            Projectile _entityToSpawn = (new Object() {
+                  public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                     AbstractArrow entityToSpawn = new BulletfireProjectileEntity((EntityType<? extends BulletfireProjectileEntity>)CrustyChunksModEntities.BULLETFIRE_PROJECTILE.get(), level) {
                @Override
                public byte getPierceLevel() {
                   return piercing;
@@ -71,24 +44,23 @@ public class BulletHitProcedure {
                   }
                }
             };
-                        entityToSpawn.setOwner(shooter);
-                        entityToSpawn.setBaseDamage((double)damage);
-                        entityToSpawn.setSilent(true);
-                        entityToSpawn.setCritArrow(true);
-                        return entityToSpawn;
-                     }
-                  })
-                  .getArrow(projectileLevel, immediatesourceentity, 2.0F, 1, (byte)50);
-               _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
-               _entityToSpawn.shoot(
-                  immediatesourceentity.getLookAngle().x * -1.0,
-                  immediatesourceentity.getLookAngle().y * -1.0,
-                  immediatesourceentity.getLookAngle().z,
-                  (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.2),
-                  2.0F
-               );
-               projectileLevel.addFreshEntity(_entityToSpawn);
-            }
+                     entityToSpawn.setOwner(shooter);
+                     entityToSpawn.setBaseDamage((double)damage);
+                     entityToSpawn.setSilent(true);
+                     entityToSpawn.setCritArrow(true);
+                     return entityToSpawn;
+                  }
+               })
+               .getArrow(projectileLevel, immediatesourceentity, 2.0F, 1, (byte)50);
+            _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+            _entityToSpawn.shoot(
+               immediatesourceentity.getDeltaMovement().x(),
+               immediatesourceentity.getDeltaMovement().y(),
+               immediatesourceentity.getDeltaMovement().z(),
+               (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.2),
+               2.0F
+            );
+            projectileLevel.addFreshEntity(_entityToSpawn);
          }
 
          if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {

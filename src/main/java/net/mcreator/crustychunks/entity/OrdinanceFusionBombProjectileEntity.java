@@ -69,7 +69,7 @@ public class OrdinanceFusionBombProjectileEntity extends AbstractArrow implement
 
    public void tick() {
       super.tick();
-      FusionBombTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this.getOwner(), this);
+      FusionBombTickProcedure.execute(this.level(), this.getOwner(), this);
    }
 
    public static OrdinanceFusionBombProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

@@ -24,19 +24,21 @@ public class GeigerCounterHandTickProcedure {
       try {
       if (entity != null) {
          String severitycolor = "";
-         if (0.0 <= entity.getPersistentData().getDouble("Radiation")) {
+         double radiation = 0.0;
+         radiation = entity.getPersistentData().getDouble("Radiation");
+         if (0.0 <= radiation) {
             severitycolor = "§a";
-            if (25.0 <= entity.getPersistentData().getDouble("Radiation")) {
+            if (25.0 <= radiation) {
                severitycolor = "§e";
-               if (50.0 <= entity.getPersistentData().getDouble("Radiation")) {
+               if (50.0 <= radiation) {
                   severitycolor = "§6";
-                  if (100.0 <= entity.getPersistentData().getDouble("Radiation")) {
+                  if (100.0 <= radiation) {
                      severitycolor = "§c";
-                     if (150.0 <= entity.getPersistentData().getDouble("Radiation")) {
+                     if (150.0 <= radiation) {
                         severitycolor = "§4";
-                        if (200.0 <= entity.getPersistentData().getDouble("Radiation")) {
+                        if (200.0 <= radiation) {
                            severitycolor = "§4";
-                           if (250.0 <= entity.getPersistentData().getDouble("Radiation")) {
+                           if (250.0 <= radiation) {
                               severitycolor = "§0";
                            }
                         }
@@ -48,26 +50,26 @@ public class GeigerCounterHandTickProcedure {
 
          if (entity instanceof LivingEntity _livEnt7
             && _livEnt7.hasEffect(CrustyChunksModMobEffects.RADIATION)
-            && Mth.nextDouble(RandomSource.create(), 2.0, 250.0) <= entity.getPersistentData().getDouble("Radiation")
+            && Mth.nextDouble(RandomSource.create(), 2.0, 150.0) <= radiation
             && world instanceof Level _level) {
             if (!_level.isClientSide()) {
                _level.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.lever.click")),
-                  SoundSource.NEUTRAL,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:geiger")),
+                  SoundSource.PLAYERS,
                   2.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
+                  (float)(Mth.nextDouble(RandomSource.create(), 0.9, 1.1) + Math.min(radiation / 100.0, 0.5))
                );
             } else {
                _level.playLocalSound(
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("block.lever.click")),
-                  SoundSource.NEUTRAL,
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:geiger")),
+                  SoundSource.PLAYERS,
                   2.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
+                  (float)(Mth.nextDouble(RandomSource.create(), 0.9, 1.1) + Math.min(radiation / 100.0, 0.5)),
                   false
                );
             }
@@ -79,10 +81,7 @@ public class GeigerCounterHandTickProcedure {
             )
             && entity instanceof Player _player
             && !_player.level().isClientSide()) {
-            _player.displayClientMessage(
-               Component.literal(severitycolor + "Radiation Exposure:" + new DecimalFormat("####").format(entity.getPersistentData().getDouble("Radiation"))),
-               true
-            );
+            _player.displayClientMessage(Component.literal(severitycolor + "Radiation Exposure:" + new DecimalFormat("####").format(radiation)), true);
          }
       }
    

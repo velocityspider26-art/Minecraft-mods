@@ -46,12 +46,12 @@ public class LMGFireScriptProcedure {
          if (entity.isSprinting()) {
             Movementinnacuracy = 10.0;
          } else {
-            Movementinnacuracy = 4.0;
+            Movementinnacuracy = 3.0;
          }
 
          if (entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES)
             .AimDownSights) {
-            Movementinnacuracy = 3.0;
+            Movementinnacuracy = 1.0;
             recoil = Mth.nextDouble(RandomSource.create(), -0.15, 0.18);
          } else {
             recoil = Mth.nextDouble(RandomSource.create(), 1.0, 2.0);

@@ -7,6 +7,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import java.util.Map.Entry;
 import net.mcreator.crustychunks.entity.HVParticleProjectileEntity;
+import net.mcreator.crustychunks.entity.ParticleProjectileEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
@@ -25,7 +26,6 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -34,16 +34,14 @@ public class HVParticleProjectileHitsBlockProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
+         BlockState impactblock = Blocks.AIR.defaultBlockState();
+         impactblock = world.getBlockState(BlockPos.containing(x, y, z));
          DamagesProcedure.execute(world, x, y, z);
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts")))) {
-            if (world instanceof ServerLevel _level) {
-               _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
-            }
-
-            world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(Blocks.DIRT.defaultBlockState()));
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:dirts"))) && world instanceof ServerLevel _level) {
+            _level.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x + 0.5, y + 1.0, z + 0.5, 5, 0.0, 2.0, 0.0, 1.0);
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:shatterable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _level) {
                if (!_level.isClientSide()) {
@@ -110,7 +108,7 @@ public class HVParticleProjectileHitsBlockProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:chippable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _levelx) {
                if (!_levelx.isClientSide()) {
@@ -177,7 +175,7 @@ public class HVParticleProjectileHitsBlockProcedure {
             }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:breakable_metal")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:breakable_metal")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
             if (world instanceof Level _levelxx) {
                if (!_levelxx.isClientSide()) {
@@ -202,13 +200,56 @@ public class HVParticleProjectileHitsBlockProcedure {
                   );
                }
             }
+
+            if ((immediatesourceentity instanceof Projectile _projEnt ? _projEnt.getDeltaMovement().length() : 0.0) > 2.0) {
+               for (int index0 = 0; index0 < Mth.nextInt(RandomSource.create(), 1, 3); index0++) {
+                  if (world instanceof ServerLevel projectileLevel) {
+                     Projectile _entityToSpawn = (new Object() {
+                           public Projectile getArrow(Level level, Entity shooter, float damage, int knockback, byte piercing) {
+                              AbstractArrow entityToSpawn = new ParticleProjectileEntity((EntityType<? extends ParticleProjectileEntity>)CrustyChunksModEntities.PARTICLE_PROJECTILE.get(), level) {
+               @Override
+               public byte getPierceLevel() {
+                  return piercing;
+               }
+
+               @Override
+               protected void doKnockback(LivingEntity livingEntity, DamageSource damageSource) {
+                  if (knockback > 0) {
+                     double _kbres = Math.max(0.0, 1.0 - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                     Vec3 _kbvec = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * _kbres);
+                     if (_kbvec.lengthSqr() > 0.0) {
+                        livingEntity.push(_kbvec.x, 0.1, _kbvec.z);
+                     }
+                  }
+               }
+            };
+                              entityToSpawn.setOwner(shooter);
+                              entityToSpawn.setBaseDamage((double)damage);
+                              entityToSpawn.setSilent(true);
+                              entityToSpawn.setCritArrow(true);
+                              return entityToSpawn;
+                           }
+                        })
+                        .getArrow(projectileLevel, immediatesourceentity, 0.1F, 1, (byte)50);
+                     _entityToSpawn.setPos(immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+                     _entityToSpawn.shoot(
+                        immediatesourceentity.getDeltaMovement().x(),
+                        immediatesourceentity.getDeltaMovement().y(),
+                        immediatesourceentity.getDeltaMovement().z(),
+                        (float)((immediatesourceentity instanceof Projectile _projEntx ? _projEntx.getDeltaMovement().length() : 0.0) - 0.1),
+                        2.0F
+                     );
+                     projectileLevel.addFreshEntity(_entityToSpawn);
+                  }
+               }
+            }
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:splinterable")))) {
             world.destroyBlock(BlockPos.containing(x, y, z), false);
          }
 
-         if (world.getBlockState(BlockPos.containing(x, y, z)).is(BlockTags.create(ResourceLocation.parse("crusty_chunks:crushable")))) {
+         if (impactblock.is(BlockTags.create(ResourceLocation.parse("crusty_chunks:crushable")))) {
             if (world instanceof Level _levelxxx) {
                if (!_levelxxx.isClientSide()) {
                   _levelxxx.playSound(
@@ -252,14 +293,12 @@ public class HVParticleProjectileHitsBlockProcedure {
             }
 
             world.setBlock(_bp, _bs, 3);
-            world.levelEvent(2001, BlockPos.containing(x, y, z), Block.getId(Blocks.COBBLESTONE.defaultBlockState()));
             if (world instanceof ServerLevel _levelxxxx) {
                _levelxxxx.sendParticles(ParticleTypes.POOF, x + 0.5, y + 0.5, z + 0.5, 3, 0.4, 0.4, 0.4, 0.2);
             }
          }
 
          CrackProcedureProcedure.execute(world, x, y, z);
-         world.levelEvent(2001, BlockPos.containing(x, y + 1.0, z), Block.getId(world.getBlockState(BlockPos.containing(x, y, z))));
          SmallBulletHitProcedure.execute(world, x, y, z);
       }
    

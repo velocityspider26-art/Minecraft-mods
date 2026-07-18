@@ -10,7 +10,7 @@ public class GrenadeProjectileWhileProjectileFlyingTickProcedure {
       if (immediatesourceentity != null) {
          immediatesourceentity.getPersistentData().putDouble("t", immediatesourceentity.getPersistentData().getDouble("t") + 1.0);
          if (80.0 < immediatesourceentity.getPersistentData().getDouble("t")) {
-            TinyExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+            ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 2.0);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }

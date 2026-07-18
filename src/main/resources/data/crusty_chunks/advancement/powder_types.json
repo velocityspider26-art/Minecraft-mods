@@ -67,7 +67,12 @@
       "crusty_chunks:blast_funnel_recipe",
       "crusty_chunks:chisel_recipe",
       "crusty_chunks:chiseling",
-      "crusty_chunks:manual_crank_recipe"
+      "crusty_chunks:manual_crank_recipe",
+      "crusty_chunks:iron_dust_smelt",
+      "crusty_chunks:iron_gear_recipe",
+      "crusty_chunks:iron_tube_recipe",
+      "crusty_chunks:musket_ball_recipe",
+      "crusty_chunks:musket_recipe"
     ]
   }
 }

@@ -15,7 +15,6 @@
     "crusty_chunks:fire_artillery_projectile",
     "crusty_chunks:fire_bomb_projectile",
     "crusty_chunks:fire_spear_rocket_projectile",
-    "crusty_chunks:fusion_blast_entity",
     "crusty_chunks:gas_artillery_projectile",
     "crusty_chunks:gas_bomb_projectile",
     "crusty_chunks:generic_large_bullet_green",
@@ -40,7 +39,6 @@
     "crusty_chunks:large_torpedo",
     "crusty_chunks:medium_bomb_projectile",
     "crusty_chunks:mortar_projectile",
-    "crusty_chunks:nuclear_blast_entity",
     "crusty_chunks:nuclear_bomb_projectile",
     "crusty_chunks:ordinance_fusion_bomb_projectile",
     "crusty_chunks:radar_spear_missile_projectile",
@@ -59,6 +57,8 @@
     "crusty_chunks:strike_spear_projectile",
     "crusty_chunks:super_large_bomb_projectile",
     "crusty_chunks:tank_fire_projectile",
-    "crusty_chunks:torpedo"
+    "crusty_chunks:torpedo",
+    "crusty_chunks:nuclear_thermal_rad",
+    "crusty_chunks:fusion_heat_wave"
   ]
 }

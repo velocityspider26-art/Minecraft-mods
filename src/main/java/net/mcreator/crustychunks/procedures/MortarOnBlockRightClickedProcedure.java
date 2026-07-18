@@ -14,10 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Direction.AxisDirection;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -159,56 +156,9 @@ public class MortarOnBlockRightClickedProcedure {
                }
             }).getValue(world, BlockPos.containing(x, y, z), "cooldown")
             && world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MORTAR.get()) {
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     1.5F
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     1.5F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     100.0F,
-                     1.5F
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     100.0F,
-                     1.5F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof ServerLevel _levelxx) {
-               _levelxx.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
+            MortarFireSoundProcedure.execute(world, x, y, z);
+            if (world instanceof ServerLevel _level) {
+               _level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
                   public Direction getDirection(BlockState _bs) {
                      if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                         return (Direction)_bs.getValue(_dp);
@@ -235,8 +185,8 @@ public class MortarOnBlockRightClickedProcedure {
                }).getDirection(blockstate).getStepZ() * 1) + 0.5, 10, 0.0, 0.0, 0.0, 0.01);
             }
 
-            if (world instanceof ServerLevel _levelxx) {
-               _levelxx.sendParticles(ParticleTypes.FLASH, x + (double)((new Object() {
+            if (world instanceof ServerLevel _level) {
+               _level.sendParticles(ParticleTypes.FLASH, x + (double)((new Object() {
                   public Direction getDirection(BlockState _bs) {
                      if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                         return (Direction)_bs.getValue(_dp);
@@ -304,11 +254,11 @@ public class MortarOnBlockRightClickedProcedure {
                BlockEntity _blockEntity = world.getBlockEntity(_bp);
                BlockState _bs = world.getBlockState(_bp);
                if (_blockEntity != null) {
-                  _blockEntity.getPersistentData().putDouble("cooldown", 4.0);
+                  _blockEntity.getPersistentData().putDouble("cooldown", 3.0);
                }
 
-               if (world instanceof Level _levelxx) {
-                  _levelxx.sendBlockUpdated(_bp, _bs, _bs, 3);
+               if (world instanceof Level _level) {
+                  _level.sendBlockUpdated(_bp, _bs, _bs, 3);
                }
             }
          }
@@ -321,56 +271,9 @@ public class MortarOnBlockRightClickedProcedure {
                }
             }).getValue(world, BlockPos.containing(x, y, z), "cooldown")
             && world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MORTAR.get()) {
-            if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     1.5F
-                  );
-               } else {
-                  _levelxx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     1.5F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelxxx) {
-               if (!_levelxxx.isClientSide()) {
-                  _levelxxx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     100.0F,
-                     1.5F
-                  );
-               } else {
-                  _levelxxx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     100.0F,
-                     1.5F,
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof ServerLevel _levelxxxx) {
-               _levelxxxx.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
+            MortarFireSoundProcedure.execute(world, x, y, z);
+            if (world instanceof ServerLevel _level) {
+               _level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, x + (double)((new Object() {
                   public Direction getDirection(BlockState _bs) {
                      if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                         return (Direction)_bs.getValue(_dp);
@@ -397,8 +300,8 @@ public class MortarOnBlockRightClickedProcedure {
                }).getDirection(blockstate).getStepZ() * 1) + 0.5, 10, 0.0, 0.0, 0.0, 0.01);
             }
 
-            if (world instanceof ServerLevel _levelxxxx) {
-               _levelxxxx.sendParticles(ParticleTypes.FLASH, x + (double)((new Object() {
+            if (world instanceof ServerLevel _level) {
+               _level.sendParticles(ParticleTypes.FLASH, x + (double)((new Object() {
                   public Direction getDirection(BlockState _bs) {
                      if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                         return (Direction)_bs.getValue(_dp);
@@ -466,11 +369,11 @@ public class MortarOnBlockRightClickedProcedure {
                BlockEntity _blockEntityx = world.getBlockEntity(_bpx);
                BlockState _bsx = world.getBlockState(_bpx);
                if (_blockEntityx != null) {
-                  _blockEntityx.getPersistentData().putDouble("cooldown", 4.0);
+                  _blockEntityx.getPersistentData().putDouble("cooldown", 3.0);
                }
 
-               if (world instanceof Level _levelxxxx) {
-                  _levelxxxx.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
+               if (world instanceof Level _level) {
+                  _level.sendBlockUpdated(_bpx, _bsx, _bsx, 3);
                }
             }
          }

@@ -1,0 +1,26 @@
+{
+  "display": {
+    "icon": {
+      "id": "crusty_chunks:plutonium_ingot"
+    },
+    "title": {
+      "translate": "advancements.spicy_light.title"
+    },
+    "description": {
+      "translate": "advancements.spicy_light.descr"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "spicy_light_0": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "rewards": {
+    "experience": 16
+  },
+  "parent": "crusty_chunks:uranium"
+}

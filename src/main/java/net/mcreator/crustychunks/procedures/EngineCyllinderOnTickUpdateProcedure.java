@@ -226,7 +226,7 @@ public class EngineCyllinderOnTickUpdateProcedure {
                   _level.playSound(
                      null,
                      BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:largedieselengine")),
                      SoundSource.NEUTRAL,
                      5.0F,
                      (float)(0.3 + power / 50.0 + Mth.nextDouble(RandomSource.create(), -0.05, 0.05))
@@ -236,7 +236,7 @@ public class EngineCyllinderOnTickUpdateProcedure {
                      x,
                      y,
                      z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:largedieselengine")),
                      SoundSource.NEUTRAL,
                      5.0F,
                      (float)(0.3 + power / 50.0 + Mth.nextDouble(RandomSource.create(), -0.05, 0.05)),

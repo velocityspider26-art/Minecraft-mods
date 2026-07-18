@@ -10,6 +10,8 @@
     "crusty_chunks:burst_rifle",
     "crusty_chunks:automatic_rifle",
     "crusty_chunks:pump_action_shotgun_animated",
-    "crusty_chunks:break_action_shotgun_animated"
+    "crusty_chunks:break_action_shotgun_animated",
+    "crusty_chunks:musket",
+    "crusty_chunks:mining_charge"
   ]
 }

@@ -9,7 +9,7 @@ public class TorpedoHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         LargeExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY() + 2.0, immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 11.0);
          if (world instanceof Level _level && !_level.isClientSide()) {
             net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, immediatesourceentity.getX() + immediatesourceentity.getLookAngle().x * 2.0, immediatesourceentity.getY() + 2.5, immediatesourceentity.getZ() - immediatesourceentity.getLookAngle().z * 2.0, 6.0F, ExplosionInteraction.NONE);
          }

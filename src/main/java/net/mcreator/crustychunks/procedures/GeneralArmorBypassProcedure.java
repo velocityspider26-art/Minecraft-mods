@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.entity.APMediumBulletEntity;
 import net.mcreator.crustychunks.entity.BulletfireProjectileEntity;
 import net.mcreator.crustychunks.entity.ExtraLargeBulletFireEntity;
+import net.mcreator.crustychunks.entity.HugeBulletFireEntity;
 import net.mcreator.crustychunks.entity.LargeAPBulletEntity;
 import net.mcreator.crustychunks.entity.LargeBulletFireProjectileEntity;
 import net.mcreator.crustychunks.entity.LargeStealthBulletEntity;
@@ -73,6 +74,9 @@ public class GeneralArmorBypassProcedure {
          } else if (immediatesourceentity instanceof ExtraLargeBulletFireEntity) {
             penetrationmult = 0.0;
             damagemultiplier = 2.25;
+         } else if (immediatesourceentity instanceof HugeBulletFireEntity) {
+            penetrationmult = 2.0;
+            damagemultiplier = 4.0;
          } else {
             penetrationmult = 0.0;
             damagemultiplier = 1.0;
@@ -85,9 +89,9 @@ public class GeneralArmorBypassProcedure {
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
-                     1.0F
+                     SoundSource.MASTER,
+                     1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
                   _level.playLocalSound(
@@ -95,9 +99,9 @@ public class GeneralArmorBypassProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     3.0F,
+                     SoundSource.MASTER,
                      1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
                      false
                   );
                }

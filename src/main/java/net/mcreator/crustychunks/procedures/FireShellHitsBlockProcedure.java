@@ -8,7 +8,7 @@ public class FireShellHitsBlockProcedure {
       try {
       if (immediatesourceentity != null) {
          SmallfirexplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
-         SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+         ExplosionExampleProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 3.0);
          if (!immediatesourceentity.level().isClientSide()) {
             immediatesourceentity.discard();
          }

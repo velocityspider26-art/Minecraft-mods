@@ -1,11 +1,14 @@
 package net.mcreator.crustychunks.block;
 
+import net.mcreator.crustychunks.procedures.AshClientParticlesProcedure;
 import net.mcreator.crustychunks.procedures.Contamination5Procedure;
 import net.mcreator.crustychunks.procedures.Rad5TickProcedure;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.FallingBlock;
@@ -16,6 +19,8 @@ import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class RadioactiveAshBlock extends FallingBlock {
    public RadioactiveAshBlock() {
@@ -57,6 +62,16 @@ public class RadioactiveAshBlock extends FallingBlock {
       int z = pos.getZ();
       Rad5TickProcedure.execute(world, (double)x, (double)y, (double)z);
       world.scheduleTick(pos, this, 80);
+   }
+
+   @OnlyIn(Dist.CLIENT)
+   public void animateTick(BlockState blockstate, Level world, BlockPos pos, RandomSource random) {
+      super.animateTick(blockstate, world, pos, random);
+      Player entity = Minecraft.getInstance().player;
+      int x = pos.getX();
+      int y = pos.getY();
+      int z = pos.getZ();
+      AshClientParticlesProcedure.execute(world, (double)x, (double)y, (double)z);
    }
 
    public void entityInside(BlockState blockstate, Level world, BlockPos pos, Entity entity) {

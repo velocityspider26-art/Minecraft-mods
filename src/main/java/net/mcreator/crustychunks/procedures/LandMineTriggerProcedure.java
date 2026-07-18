@@ -15,7 +15,7 @@ public class LandMineTriggerProcedure {
             CrustyChunksMod.queueServerWork(7, () -> {
                if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.LAND_MINE.get()) {
                   world.destroyBlock(BlockPos.containing(x, y, z), false);
-                  TinyExplosionProcedure.execute(world, x + 0.5, y + 0.25, z + 0.5);
+                  ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.25, z + 0.5, 4.0);
                }
             });
          }

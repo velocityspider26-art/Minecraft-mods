@@ -183,7 +183,7 @@ public class LargeRadarMissileFlightProcedure {
             immediatesourceentity.setDeltaMovement(motion);
             immediatesourceentity.setNoGravity(true);
          } else {
-            ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+            ArtilleryHitProcedure.execute(world, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }
@@ -259,7 +259,7 @@ public class LargeRadarMissileFlightProcedure {
 
          if (detonate) {
             CrustyChunksMod.queueServerWork(1, () -> {
-               ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+               ArtilleryHitProcedure.execute(world, immediatesourceentity);
                if (!immediatesourceentity.level().isClientSide()) {
                   immediatesourceentity.discard();
                }
@@ -267,7 +267,7 @@ public class LargeRadarMissileFlightProcedure {
          }
 
          if (immediatesourceentity.isUnderWater()) {
-            ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity);
+            ArtilleryHitProcedure.execute(world, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }
@@ -293,7 +293,7 @@ public class LargeRadarMissileFlightProcedure {
                immediatesourceentity.discard();
             }
 
-            CrustyChunksMod.queueServerWork(1, () -> ArtilleryHitProcedure.execute(world, x, y, z, immediatesourceentity));
+            CrustyChunksMod.queueServerWork(1, () -> ArtilleryHitProcedure.execute(world, immediatesourceentity));
          }
       }
    

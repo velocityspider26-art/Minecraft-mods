@@ -56,7 +56,7 @@ public class SmallMuzzleFlashProducerEntity extends AbstractArrow implements Ite
 
    public void tick() {
       super.tick();
-      MuzzleFlashProducerWhileProjectileFlyingTickProcedure.execute(this.level(), this);
+      MuzzleFlashProducerWhileProjectileFlyingTickProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
       if (this.inGround) {
          this.discard();
       }

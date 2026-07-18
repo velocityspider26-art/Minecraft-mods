@@ -244,7 +244,7 @@ public class ERAProcedureProcedure {
          }
       }
 
-      MicroExplosionProcedure.execute(world, x + 0.5 + (double)(new Object() {
+      ExplosionExampleProcedure.execute(world, x + 0.5 + (double)(new Object() {
          public Direction getDirection(BlockState _bs) {
             if (_bs.getBlock().getStateDefinition().getProperty("facing") instanceof DirectionProperty _dp) {
                return (Direction)_bs.getValue(_dp);
@@ -280,7 +280,7 @@ public class ERAProcedureProcedure {
                return Direction.NORTH;
             }
          }
-      }).getDirection(world.getBlockState(BlockPos.containing(x, y, z))).getStepZ());
+      }).getDirection(world.getBlockState(BlockPos.containing(x, y, z))).getStepZ(), 1.0);
       if (world instanceof Level _level && !_level.isClientSide()) {
          net.mcreator.crustychunks.compat.WariumExplosions.explode(_level, null, x + 0.5 + (double)(new Object() {
             public Direction getDirection(BlockState _bs) {

@@ -6,6 +6,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.init.CrustyChunksModItems;
 import net.mcreator.crustychunks.item.PumpActionShotgunAnimatedItem;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -24,6 +25,14 @@ public class ShotgunActionScriptProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, ItemStack itemstack) {
       try {
       if (entity != null) {
+         boolean _setval = false;
+         {
+            CrustyChunksModVariables.PlayerVariables _vars = entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES);
+
+            _vars.AimDownSights = _setval;
+            _vars.syncPlayerVariables(entity);
+                  }
+         
          if (itemstack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean("action")) {
             CustomData.update(DataComponents.CUSTOM_DATA, itemstack, _tagupd -> _tagupd.putBoolean("action", false));
             if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof PumpActionShotgunAnimatedItem) {
@@ -31,7 +40,7 @@ public class ShotgunActionScriptProcedure {
             }
 
             if (entity instanceof Player _player) {
-               _player.getCooldowns().addCooldown(itemstack.getItem(), 20);
+               _player.getCooldowns().addCooldown(itemstack.getItem(), 12);
             }
 
             CrustyChunksMod.queueServerWork(

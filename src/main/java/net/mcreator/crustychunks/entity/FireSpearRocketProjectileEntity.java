@@ -6,8 +6,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.mcreator.crustychunks.init.CrustyChunksModItems;
+import net.mcreator.crustychunks.procedures.ArtilleryHitProcedure;
 import net.mcreator.crustychunks.procedures.FireSpearFlightProcedure;
-import net.mcreator.crustychunks.procedures.TankFireProjectileHitsBlockProcedure;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
@@ -59,26 +59,17 @@ public class FireSpearRocketProjectileEntity extends AbstractArrow implements It
 
    public void onHitEntity(EntityHitResult entityHitResult) {
       super.onHitEntity(entityHitResult);
-      TankFireProjectileHitsBlockProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
+      ArtilleryHitProcedure.execute(this.level(), this);
    }
 
    public void onHitBlock(BlockHitResult blockHitResult) {
       super.onHitBlock(blockHitResult);
-      TankFireProjectileHitsBlockProcedure.execute(
-         this.level(),
-         (double)blockHitResult.getBlockPos().getX(),
-         (double)blockHitResult.getBlockPos().getY(),
-         (double)blockHitResult.getBlockPos().getZ(),
-         this
-      );
+      ArtilleryHitProcedure.execute(this.level(), this);
    }
 
    public void tick() {
       super.tick();
       FireSpearFlightProcedure.execute(this.level(), this.getX(), this.getY(), this.getZ(), this);
-      if (this.inGround) {
-         this.discard();
-      }
    }
 
    public static FireSpearRocketProjectileEntity shoot(Level world, LivingEntity entity, RandomSource source) {

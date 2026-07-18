@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aaa",
+    "bcb",
+    "ada"
+  ],
+  "key": {
+    "a": {
+      "item": "crusty_chunks:steel_plating_slab"
+    },
+    "b": {
+      "item": "crusty_chunks:bored_component"
+    },
+    "c": {
+      "item": "crusty_chunks:steel_component"
+    },
+    "d": {
+      "item": "crusty_chunks:electric_motor"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "crusty_chunks:siren"
+  }
+}

@@ -20,13 +20,13 @@ public class FireClientEffectTickProcedure {
          if (!immediatesourceentity.getPersistentData().getBoolean("Used")) {
             for (int index0 = 0; index0 < 35; index0++) {
                world.addParticle(
-                  (SimpleParticleType)CrustyChunksModParticleTypes.FIREBALL.get(),
+                  (SimpleParticleType)CrustyChunksModParticleTypes.FIRE_EXPLOSION.get(),
                   x + Mth.nextDouble(RandomSource.create(), -3.0, 3.0),
                   y + Mth.nextDouble(RandomSource.create(), 0.0, 3.0),
                   z + Mth.nextDouble(RandomSource.create(), -3.0, 3.0),
-                  Mth.nextDouble(RandomSource.create(), -4.0, 4.0),
-                  Mth.nextDouble(RandomSource.create(), -1.0, 2.0),
-                  Mth.nextDouble(RandomSource.create(), -4.0, 4.0)
+                  Mth.nextDouble(RandomSource.create(), -0.15, 0.15),
+                  Mth.nextDouble(RandomSource.create(), -0.15, 0.15),
+                  Mth.nextDouble(RandomSource.create(), -0.15, 0.15)
                );
             }
 
@@ -36,9 +36,9 @@ public class FireClientEffectTickProcedure {
                   x,
                   y,
                   z,
-                  Mth.nextDouble(RandomSource.create(), -3.0, 3.0),
-                  Mth.nextDouble(RandomSource.create(), -0.5, 0.5),
-                  Mth.nextDouble(RandomSource.create(), -3.0, 3.0)
+                  Mth.nextDouble(RandomSource.create(), -0.25, 0.25),
+                  Mth.nextDouble(RandomSource.create(), -0.1, 0.25),
+                  Mth.nextDouble(RandomSource.create(), -0.25, 0.25)
                );
             }
 

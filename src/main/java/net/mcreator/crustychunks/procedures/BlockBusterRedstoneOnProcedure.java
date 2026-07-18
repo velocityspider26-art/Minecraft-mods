@@ -123,7 +123,7 @@ public class BlockBusterRedstoneOnProcedure {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
       } else {
          world.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
-         GiantExplosionProcedure.execute(world, x, y, z);
+         ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, 20.0);
       }
    
       } catch (Throwable _wtSafe) {

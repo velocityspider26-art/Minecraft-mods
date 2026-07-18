@@ -11,6 +11,7 @@ import net.mcreator.crustychunks.item.BurstRifleItem;
 import net.mcreator.crustychunks.item.LMGAnimatedItem;
 import net.mcreator.crustychunks.item.LeverRifleItem;
 import net.mcreator.crustychunks.item.MachineCarbineItem;
+import net.mcreator.crustychunks.item.MusketItem;
 import net.mcreator.crustychunks.item.SemiAutomaticRifleAnimatedItem;
 import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.util.Mth;
@@ -224,7 +225,7 @@ public class RiflehandtickProcedure {
                }
             }
 
-            label619:
+            label690:
             if ((entity instanceof LivingEntity _livEntxxxxx ? _livEntxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem()
                == CrustyChunksModItems.BOLT_ACTION_RIFLE_ANIMATED.get()) {
                label626:
@@ -241,7 +242,7 @@ public class RiflehandtickProcedure {
                    {
                      CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sight"));
                   }
-                  break label619;
+                  break label690;
                }
 
                if ("sight"
@@ -262,7 +263,7 @@ public class RiflehandtickProcedure {
                }
             }
 
-            label605:
+            label676:
             if ((entity instanceof LivingEntity _livEntxxxxx ? _livEntxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem()
                == CrustyChunksModItems.BREECH_RIFLE.get()) {
                label612:
@@ -277,7 +278,7 @@ public class RiflehandtickProcedure {
                   if ((entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof BreechRifleItem) {
                      CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sight"));
                   }
-                  break label605;
+                  break label676;
                }
 
                if ("sight"
@@ -294,7 +295,7 @@ public class RiflehandtickProcedure {
                }
             }
 
-            label591:
+            label662:
             if ((entity instanceof LivingEntity _livEntxxxxx ? _livEntxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem()
                == CrustyChunksModItems.LEVER_RIFLE.get()) {
                label598:
@@ -309,7 +310,7 @@ public class RiflehandtickProcedure {
                   if ((entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof LeverRifleItem) {
                      CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sight"));
                   }
-                  break label591;
+                  break label662;
                }
 
                if ("sight"
@@ -326,7 +327,7 @@ public class RiflehandtickProcedure {
                }
             }
 
-            label577:
+            label648:
             if ((entity instanceof LivingEntity _livEntxxxxx ? _livEntxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem()
                == CrustyChunksModItems.AUTOMATIC_RIFLE.get()) {
                label584:
@@ -341,7 +342,7 @@ public class RiflehandtickProcedure {
                   if ((entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof AutomaticRifleItem) {
                      CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sight"));
                   }
-                  break label577;
+                  break label648;
                }
 
                if ("sight"
@@ -374,6 +375,37 @@ public class RiflehandtickProcedure {
                   && entity instanceof LivingEntity _entity
                   && !_entity.level().isClientSide()) {
                   _entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 4, false, false));
+               }
+            }
+
+            label642:
+            if ((entity instanceof LivingEntity _livEntxxxxx ? _livEntxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() == CrustyChunksModItems.MUSKET.get()) {
+               label639:
+               if (entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES)
+                  .AimDownSights) {
+                  if (entity instanceof Player _plrCldCheck135
+                     && _plrCldCheck135.getCooldowns()
+                        .isOnCooldown((entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem())) {
+                     break label639;
+                  }
+
+                  if ((entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof MusketItem) {
+                     CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sight"));
+                  }
+                  break label642;
+               }
+
+               if ("sight"
+                  .equals(
+                     ((MusketItem)(entity instanceof LivingEntity _livEntxxxxxx ? _livEntxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem()).animationprocedure
+                  )) {
+                  if ((entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof MusketItem) {
+                     CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxxx ? _livEntxxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "empty"));
+                  }
+
+                  if ((entity instanceof LivingEntity _livEntxxxxxxx ? _livEntxxxxxxx.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof MusketItem) {
+                     CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntxxxxxxxx ? _livEntxxxxxxxx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "idle"));
+                  }
                }
             }
          }

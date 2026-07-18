@@ -49,7 +49,7 @@ public class MCFireScriptProcedure {
 
          if (entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES)
             .AimDownSights) {
-            Movementinnacuracy = 0.3;
+            Movementinnacuracy = 0.18;
             recoil = Mth.nextDouble(RandomSource.create(), 0.2, 0.3);
          } else {
             recoil = Mth.nextDouble(RandomSource.create(), 0.4, 0.5);
@@ -110,7 +110,7 @@ public class MCFireScriptProcedure {
                                  entity.getLookAngle().x,
                                  entity.getLookAngle().y,
                                  entity.getLookAngle().z,
-                                 (float)(6.0 * mvmultiplier),
+                                 (float)(7.0 * mvmultiplier),
                                  (float)Movementinnacuracy
                               );
                               projectileLevel.addFreshEntity(_entityToSpawn);
@@ -144,7 +144,7 @@ public class MCFireScriptProcedure {
                                  entity.getLookAngle().x,
                                  entity.getLookAngle().y,
                                  entity.getLookAngle().z,
-                                 (float)(6.0 * mvmultiplier),
+                                 (float)(7.0 * mvmultiplier),
                                  (float)Movementinnacuracy
                               );
                               projectileLevel.addFreshEntity(_entityToSpawn);
@@ -178,7 +178,7 @@ public class MCFireScriptProcedure {
                                  entity.getLookAngle().x,
                                  entity.getLookAngle().y,
                                  entity.getLookAngle().z,
-                                 (float)(6.0 * mvmultiplier),
+                                 (float)(7.0 * mvmultiplier),
                                  (float)Movementinnacuracy
                               );
                               projectileLevel.addFreshEntity(_entityToSpawn);

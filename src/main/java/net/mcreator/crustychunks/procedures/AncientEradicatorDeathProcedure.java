@@ -25,7 +25,7 @@ public class AncientEradicatorDeathProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity entity) {
       try {
       if (entity != null) {
-         MediumExplosionProcedure.execute(world, x, y, z);
+         ExplosionExampleProcedure.execute(world, x, y, z, 6.0);
          if (world instanceof ServerLevel projectileLevel) {
             Projectile _entityToSpawn = (new Object() {
                   public Projectile getArrow(Level level, float damage, int knockback) {

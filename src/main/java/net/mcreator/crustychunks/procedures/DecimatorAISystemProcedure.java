@@ -54,7 +54,7 @@ public class DecimatorAISystemProcedure {
          double leadz = 0.0;
          double targetrange = 0.0;
          RandomVoicelinesProcedure.execute(world, x, y, z, entity);
-         AutoscoutingProcedure.execute(world, x, y, z, entity);
+         CrustyChunksMod.queueServerWork(1, () -> AutoscoutingProcedure.execute(world, x, y, z, entity));
          if (entity.getPersistentData().getDouble("T") > 0.0) {
             entity.getPersistentData().putDouble("T", entity.getPersistentData().getDouble("T") - 1.0);
          }
@@ -409,9 +409,9 @@ public class DecimatorAISystemProcedure {
                   _levelxxx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.NEUTRAL,
-                     (float)(2.0 + rev),
+                     (float)(4.0 + rev),
                      (float)(Mth.nextDouble(RandomSource.create(), 0.5, 0.6) + rev)
                   );
                } else {
@@ -419,9 +419,9 @@ public class DecimatorAISystemProcedure {
                      x,
                      y,
                      z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.NEUTRAL,
-                     (float)(2.0 + rev),
+                     (float)(4.0 + rev),
                      (float)(Mth.nextDouble(RandomSource.create(), 0.5, 0.6) + rev),
                      false
                   );

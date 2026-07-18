@@ -1,6 +1,7 @@
 package net.mcreator.crustychunks.procedures;
 
 import java.util.Comparator;
+import net.mcreator.crustychunks.init.CrustyChunksModMobEffects;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
 import net.minecraft.core.BlockPos;
@@ -10,6 +11,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -206,6 +209,14 @@ public class SpaceFusionThermalRadEntityProcedureProcedure {
                            )
                         <= 0.0) {
                      entityiteratorx.igniteForSeconds(40);
+                     if (entityiteratorx instanceof LivingEntity) {
+                        LivingEntity _entity = (LivingEntity)entityiteratorx;
+                        if (!_entity.level().isClientSide()) {
+                           _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.RADIATION, 60, 1, false, false));
+                        }
+                     }
+
+                     entityiteratorx.getPersistentData().putDouble("Radiation", entityiteratorx.getPersistentData().getDouble("Radiation") + 150.0);
                   }
                }
             }

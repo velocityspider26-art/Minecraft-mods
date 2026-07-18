@@ -24,7 +24,7 @@ public class GroundHugeSmokeParticle extends TextureSheetParticle {
       this.setSize(0.2F, 15.0F);
       this.quadSize *= 120.0F;
       this.lifetime = Math.max(1, 3000 + (this.random.nextInt(1200) - 600));
-      this.gravity = 0.2F;
+      this.gravity = 0.0F;
       this.hasPhysics = true;
       this.xd = vx * 0.1;
       this.yd = vy * 0.1;

@@ -10,10 +10,6 @@ import net.mcreator.crustychunks.entity.CannonMuzzleFlashProducerEntity;
 import net.mcreator.crustychunks.entity.GasArtilleryProjectileEntity;
 import net.mcreator.crustychunks.entity.MortarerEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -116,78 +112,7 @@ public class MortarerCannonProcedure {
             projectileLevelx.addFreshEntity(_entityToSpawn);
          }
 
-         if (world instanceof Level _level) {
-            if (!_level.isClientSide()) {
-               _level.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:farblast")),
-                  SoundSource.NEUTRAL,
-                  60.0F,
-                  0.9F
-               );
-            } else {
-               _level.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:farblast")),
-                  SoundSource.NEUTRAL,
-                  60.0F,
-                  0.9F,
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelx) {
-            if (!_levelx.isClientSide()) {
-               _levelx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                  SoundSource.NEUTRAL,
-                  60.0F,
-                  0.9F
-               );
-            } else {
-               _levelx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                  SoundSource.NEUTRAL,
-                  60.0F,
-                  0.9F,
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelxx) {
-            if (!_levelxx.isClientSide()) {
-               _levelxx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonclose")),
-                  SoundSource.NEUTRAL,
-                  20.0F,
-                  0.8F
-               );
-            } else {
-               _levelxx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonclose")),
-                  SoundSource.NEUTRAL,
-                  20.0F,
-                  0.8F,
-                  false
-               );
-            }
-         }
-
+         ArtilleryCannonFireSoundProcedure.execute(world, x, y, z);
          if (entity instanceof MortarerEntity) {
             ((MortarerEntity)entity).setAnimation("Fire");
          }

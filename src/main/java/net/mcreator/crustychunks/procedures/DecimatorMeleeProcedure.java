@@ -1,7 +1,6 @@
 package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.mcreator.crustychunks.entity.DecimatorEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
@@ -77,11 +76,7 @@ public class DecimatorMeleeProcedure {
             }
          }
 
-         entity.getPersistentData().putDouble("T", 60.0);
-         if (entity instanceof DecimatorEntity) {
-            ((DecimatorEntity)entity).setAnimation("Anger");
-         }
-
+         entity.getPersistentData().putDouble("T", 5.0);
          if (world instanceof ServerLevel _levelx) {
             _levelx.sendParticles((SimpleParticleType)CrustyChunksModParticleTypes.DUST.get(), x, y + 1.5, z, 15, 2.0, 0.0, 2.0, 1.0);
          }

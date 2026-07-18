@@ -8,11 +8,7 @@ import net.mcreator.crustychunks.entity.DecimatorEntity;
 import net.mcreator.crustychunks.entity.MuzzleFlashProducerEntity;
 import net.mcreator.crustychunks.entity.SmallShellFireEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -95,78 +91,7 @@ public class DecimatorCannonFireProcedure {
          }
 
          entity.getPersistentData().putDouble("T", (double)Mth.nextInt(RandomSource.create(), 9, 11));
-         if (world instanceof Level _level) {
-            if (!_level.isClientSide()) {
-               _level.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallfarblast")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.95, 1.05)
-               );
-            } else {
-               _level.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallfarblast")),
-                  SoundSource.NEUTRAL,
-                  80.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.95, 1.05),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelx) {
-            if (!_levelx.isClientSide()) {
-               _levelx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                  SoundSource.NEUTRAL,
-                  25.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.3, 1.4)
-               );
-            } else {
-               _levelx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:cannonfar")),
-                  SoundSource.NEUTRAL,
-                  25.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 1.3, 1.4),
-                  false
-               );
-            }
-         }
-
-         if (world instanceof Level _levelxx) {
-            if (!_levelxx.isClientSide()) {
-               _levelxx.playSound(
-                  null,
-                  BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:heavyautocannonshot")),
-                  SoundSource.NEUTRAL,
-                  15.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-               );
-            } else {
-               _levelxx.playLocalSound(
-                  x,
-                  y,
-                  z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:heavyautocannonshot")),
-                  SoundSource.NEUTRAL,
-                  15.0F,
-                  (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                  false
-               );
-            }
-         }
-
+         HeavyAutocannonFireSoundProcedure.execute(world, x, y, z);
          if (entity instanceof DecimatorEntity) {
             ((DecimatorEntity)entity).setAnimation("Shoot");
          }

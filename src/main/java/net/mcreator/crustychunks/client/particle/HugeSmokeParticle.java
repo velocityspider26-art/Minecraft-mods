@@ -23,7 +23,7 @@ public class HugeSmokeParticle extends TextureSheetParticle {
       this.spriteSet = spriteSet;
       this.setSize(0.0F, 0.0F);
       this.quadSize *= 45.0F;
-      this.lifetime = Math.max(1, 1190 + (this.random.nextInt(200) - 100));
+      this.lifetime = Math.max(1, 3000 + (this.random.nextInt(1200) - 600));
       this.gravity = -0.04F;
       this.hasPhysics = false;
       this.xd = vx * 0.4;

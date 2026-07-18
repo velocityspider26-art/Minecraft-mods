@@ -6,7 +6,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
-import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.entity.ImpactGrenadeProjectileEntity;
 import net.mcreator.crustychunks.entity.SmokeImpactGrenadeEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
@@ -115,82 +114,7 @@ public class GrenadeLauncherFireProcedure {
                   }
                }
 
-               CrustyChunksMod.queueServerWork(
-                  1,
-                  () -> {
-                     if (world instanceof Level _level) {
-                        if (!_level.isClientSide()) {
-                           _level.playSound(
-                              null,
-                              BlockPos.containing(x, y, z),
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
-                              SoundSource.PLAYERS,
-                              40.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.95, 1.5)
-                           );
-                        } else {
-                           _level.playLocalSound(
-                              x,
-                              y,
-                              z,
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
-                              SoundSource.PLAYERS,
-                              40.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.95, 1.5),
-                              false
-                           );
-                        }
-                     }
-
-                     if (world instanceof Level _levelx) {
-                        if (!_levelx.isClientSide()) {
-                           _levelx.playSound(
-                              null,
-                              BlockPos.containing(x, y, z),
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
-                              SoundSource.PLAYERS,
-                              5.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.9, 0.95)
-                           );
-                        } else {
-                           _levelx.playLocalSound(
-                              x,
-                              y,
-                              z,
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:bloop")),
-                              SoundSource.PLAYERS,
-                              5.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.9, 0.95),
-                              false
-                           );
-                        }
-                     }
-
-                     if (world instanceof Level _levelxx) {
-                        if (!_levelxx.isClientSide()) {
-                           _levelxx.playSound(
-                              null,
-                              BlockPos.containing(x, y, z),
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                              SoundSource.PLAYERS,
-                              15.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.85, 0.9)
-                           );
-                        } else {
-                           _levelxx.playLocalSound(
-                              x,
-                              y,
-                              z,
-                              (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                              SoundSource.PLAYERS,
-                              15.0F,
-                              (float)Mth.nextDouble(RandomSource.create(), 0.85, 0.9),
-                              false
-                           );
-                        }
-                     }
-                  }
-               );
+               MortarFireSoundProcedure.execute(world, x, y, z);
 
                for (int index0 = 0; index0 < 25; index0++) {
                   world.addParticle(

@@ -18,6 +18,7 @@ public class SmallRocketFlightProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
+         boolean Trigger = false;
          immediatesourceentity.getPersistentData().putDouble("MaxTime", 60.0);
          immediatesourceentity.getPersistentData().putDouble("Time", immediatesourceentity.getPersistentData().getDouble("Time") + 1.0);
          if (immediatesourceentity.getPersistentData().getDouble("Time") <= 60.0) {
@@ -72,7 +73,7 @@ public class SmallRocketFlightProcedure {
             immediatesourceentity.setDeltaMovement(motion);
          }
 
-         if (immediatesourceentity.isUnderWater()) {
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
             RocketHitProcedure.execute(world, x, y, z, immediatesourceentity);
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();

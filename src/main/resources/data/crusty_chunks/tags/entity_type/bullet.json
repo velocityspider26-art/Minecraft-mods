@@ -26,6 +26,7 @@
     "crusty_chunks:large_solid_projectile",
     "crusty_chunks:extra_large_bullet_fire",
     "crusty_chunks:ai_stealth_bullet",
-    "crusty_chunks:huge_he_bullet_fire"
+    "crusty_chunks:huge_he_bullet_fire",
+    "crusty_chunks:huge_fragment"
   ]
 }

@@ -60,7 +60,7 @@ public class LargeSmokeExplosionProcedure {
             _levelx.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                SoundSource.NEUTRAL,
                40.0F,
                (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
@@ -70,7 +70,7 @@ public class LargeSmokeExplosionProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:tinyexplosionfar")),
                SoundSource.NEUTRAL,
                40.0F,
                (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),

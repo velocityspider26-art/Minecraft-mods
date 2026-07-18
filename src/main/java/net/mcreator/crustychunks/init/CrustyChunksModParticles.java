@@ -1,11 +1,16 @@
 package net.mcreator.crustychunks.init;
 
 import net.mcreator.crustychunks.client.particle.AerialSparksParticle;
+import net.mcreator.crustychunks.client.particle.BlackPowderSmokeParticle;
 import net.mcreator.crustychunks.client.particle.BulletTrailParticle;
 import net.mcreator.crustychunks.client.particle.CampSmokeParticle;
+import net.mcreator.crustychunks.client.particle.DarkSmokeParticle;
 import net.mcreator.crustychunks.client.particle.DeathRayParticle;
 import net.mcreator.crustychunks.client.particle.DustParticle;
 import net.mcreator.crustychunks.client.particle.DustWaveParticle;
+import net.mcreator.crustychunks.client.particle.FireExplosionParticle;
+import net.mcreator.crustychunks.client.particle.FireExplosionSize2Particle;
+import net.mcreator.crustychunks.client.particle.FireExplosionSize3Particle;
 import net.mcreator.crustychunks.client.particle.FireballParticle;
 import net.mcreator.crustychunks.client.particle.FlameParticleParticle;
 import net.mcreator.crustychunks.client.particle.FlareParticle;
@@ -23,8 +28,12 @@ import net.mcreator.crustychunks.client.particle.HugeStaticFireballParticle;
 import net.mcreator.crustychunks.client.particle.JetFlameParticle;
 import net.mcreator.crustychunks.client.particle.LargeBulletTrailParticle;
 import net.mcreator.crustychunks.client.particle.LargeSmokeParticle;
+import net.mcreator.crustychunks.client.particle.LargeSmokeSize2Particle;
+import net.mcreator.crustychunks.client.particle.LargeSmokeSize3Particle;
+import net.mcreator.crustychunks.client.particle.LingeringCloudParticle;
 import net.mcreator.crustychunks.client.particle.MediumTracerParticle;
 import net.mcreator.crustychunks.client.particle.NuclearShockParticleParticle;
+import net.mcreator.crustychunks.client.particle.NuclearShockRingParticle;
 import net.mcreator.crustychunks.client.particle.PhosphorusTrailParticle;
 import net.mcreator.crustychunks.client.particle.PuffParticle;
 import net.mcreator.crustychunks.client.particle.RadioactiveCloudParticle;
@@ -32,6 +41,7 @@ import net.mcreator.crustychunks.client.particle.RisingFlameParticle;
 import net.mcreator.crustychunks.client.particle.RocketFlameParticle;
 import net.mcreator.crustychunks.client.particle.RocketSmokeParticle;
 import net.mcreator.crustychunks.client.particle.SandParticle;
+import net.mcreator.crustychunks.client.particle.ShockRingParticle;
 import net.mcreator.crustychunks.client.particle.ShockWaveParticle;
 import net.mcreator.crustychunks.client.particle.SmallGreenTracerParticle;
 import net.mcreator.crustychunks.client.particle.SmallPuffParticle;
@@ -104,5 +114,15 @@ public class CrustyChunksModParticles {
       event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.SMALL_SPLASH_PUFF.get(), SmallSplashPuffParticle::provider);
       event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.RADIOACTIVE_CLOUD.get(), RadioactiveCloudParticle::provider);
       event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.PHOSPHORUS_TRAIL.get(), PhosphorusTrailParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.SHOCK_RING.get(), ShockRingParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.LARGE_SMOKE_SIZE_2.get(), LargeSmokeSize2Particle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.LARGE_SMOKE_SIZE_3.get(), LargeSmokeSize3Particle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.FIRE_EXPLOSION.get(), FireExplosionParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.FIRE_EXPLOSION_SIZE_2.get(), FireExplosionSize2Particle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.FIRE_EXPLOSION_SIZE_3.get(), FireExplosionSize3Particle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.DARK_SMOKE.get(), DarkSmokeParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.LINGERING_CLOUD.get(), LingeringCloudParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.NUCLEAR_SHOCK_RING.get(), NuclearShockRingParticle::provider);
+      event.registerSpriteSet((ParticleType)CrustyChunksModParticleTypes.BLACK_POWDER_SMOKE.get(), BlackPowderSmokeParticle::provider);
    }
 }

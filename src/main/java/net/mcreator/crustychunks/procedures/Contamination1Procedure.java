@@ -12,8 +12,8 @@ public class Contamination1Procedure {
    public static void execute(Entity entity) {
       try {
       if (entity != null) {
-         if (Mth.nextInt(RandomSource.create(), 1, 80) == 1 && entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
-            _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.CONTAMINATED, 1200, 0, false, true));
+         if (Mth.nextInt(RandomSource.create(), 1, 20) == 1 && entity instanceof LivingEntity _entity && !_entity.level().isClientSide()) {
+            _entity.addEffect(new MobEffectInstance(CrustyChunksModMobEffects.CONTAMINATED, 1200, 0, false, false));
          }
       }
    

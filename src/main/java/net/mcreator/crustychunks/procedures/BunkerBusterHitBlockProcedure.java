@@ -69,8 +69,8 @@ public class BunkerBusterHitBlockProcedure {
                }
             }
 
-            if (!(15.0 > immediatesourceentity.getPersistentData().getDouble("Hits"))) {
-               SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+            if (!(20.0 > immediatesourceentity.getPersistentData().getDouble("Hits"))) {
+               SuperLargeBombProjectileHitsBlockProcedure.execute(world, immediatesourceentity);
             } else {
                if (world instanceof ServerLevel projectileLevel) {
                   Projectile _entityToSpawn = (new Object() {
@@ -171,7 +171,7 @@ public class BunkerBusterHitBlockProcedure {
                }
             }
          } else {
-            SuperLargeBombProjectileHitsBlockProcedure.execute(world, x, y, z, immediatesourceentity);
+            SuperLargeBombProjectileHitsBlockProcedure.execute(world, immediatesourceentity);
          }
       }
    

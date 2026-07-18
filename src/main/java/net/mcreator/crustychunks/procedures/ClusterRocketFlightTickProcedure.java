@@ -4,7 +4,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
-import java.util.Comparator;
 import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.entity.SmallBombProjectileEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
@@ -12,12 +11,10 @@ import net.mcreator.crustychunks.init.CrustyChunksModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -26,7 +23,6 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class ClusterRocketFlightTickProcedure {
@@ -118,7 +114,7 @@ public class ClusterRocketFlightTickProcedure {
             Vec3 motion = immediatesourceentity.getDeltaMovement().scale(1.0 + 0.02 * mvmultiplier);
             immediatesourceentity.setDeltaMovement(motion);
          } else {
-            for (int index1 = 0; index1 < 4; index1++) {
+            for (int index1 = 0; index1 < 8; index1++) {
                if (world instanceof ServerLevel projectileLevel) {
                   Projectile _entityToSpawn = (new Object() {
                         public Projectile getArrow(Level level, float damage, int knockback) {
@@ -157,29 +153,7 @@ public class ClusterRocketFlightTickProcedure {
             }
          }
 
-         if (immediatesourceentity.isUnderWater()) {
-            ClusterRocketHitProcedure.execute(world, immediatesourceentity);
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
-            }
-         }
-
-         Vec3 _center = new Vec3(x, y, z);
-
-         for (Entity entityiterator : world.getEntitiesOfClass(Entity.class, new AABB(_center, _center).inflate(1.25), e -> true)
-            .stream()
-            .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_center)))
-            .toList()) {
-            if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bullet")))) {
-               if (!entityiterator.level().isClientSide()) {
-                  entityiterator.discard();
-               }
-
-               Trigger = true;
-            }
-         }
-
-         if (Trigger) {
+         if (OrdinanceTriggerProcedure.execute(world, immediatesourceentity)) {
             if (!immediatesourceentity.level().isClientSide()) {
                immediatesourceentity.discard();
             }

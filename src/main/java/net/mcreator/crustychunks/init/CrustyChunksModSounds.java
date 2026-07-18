@@ -20,20 +20,11 @@ public class CrustyChunksModSounds {
    public static final DeferredHolder<SoundEvent, SoundEvent> MAGAZINE = REGISTRY.register(
       "magazine", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "magazine"))
    );
-   public static final DeferredHolder<SoundEvent, SoundEvent> SHOTGUNCYCLE = REGISTRY.register(
-      "shotguncycle", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "shotguncycle"))
-   );
    public static final DeferredHolder<SoundEvent, SoundEvent> REVOLVER = REGISTRY.register(
       "revolver", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "revolver"))
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> SMALLEXPLOSION = REGISTRY.register(
       "smallexplosion", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "smallexplosion"))
-   );
-   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSION = REGISTRY.register(
-      "explosion", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosion"))
-   );
-   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSION_DISTANT = REGISTRY.register(
-      "explosion_distant", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosion_distant"))
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> BOUNCE = REGISTRY.register(
       "bounce", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "bounce"))
@@ -52,9 +43,6 @@ public class CrustyChunksModSounds {
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> SHOTGUNCASING = REGISTRY.register(
       "shotguncasing", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "shotguncasing"))
-   );
-   public static final DeferredHolder<SoundEvent, SoundEvent> SMALL_EXPLLOSION_DISTANT = REGISTRY.register(
-      "small_expllosion_distant", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "small_expllosion_distant"))
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> MECHSTEP = REGISTRY.register(
       "mechstep", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "mechstep"))
@@ -76,9 +64,6 @@ public class CrustyChunksModSounds {
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> FLAREGUN = REGISTRY.register(
       "flaregun", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "flaregun"))
-   );
-   public static final DeferredHolder<SoundEvent, SoundEvent> FISSIONBLAST = REGISTRY.register(
-      "fissionblast", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "fissionblast"))
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> RUMBLE = REGISTRY.register(
       "rumble", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "rumble"))
@@ -136,9 +121,6 @@ public class CrustyChunksModSounds {
    public static final DeferredHolder<SoundEvent, SoundEvent> DISTANTSHOTMEDIUM = REGISTRY.register(
       "distantshotmedium", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "distantshotmedium"))
    );
-   public static final DeferredHolder<SoundEvent, SoundEvent> ENGINE = REGISTRY.register(
-      "engine", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "engine"))
-   );
    public static final DeferredHolder<SoundEvent, SoundEvent> MOTOR = REGISTRY.register("motor", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "motor")));
    public static final DeferredHolder<SoundEvent, SoundEvent> LEVERACTION = REGISTRY.register(
       "leveraction", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "leveraction"))
@@ -151,9 +133,6 @@ public class CrustyChunksModSounds {
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> SPACENUKE = REGISTRY.register(
       "spacenuke", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "spacenuke"))
-   );
-   public static final DeferredHolder<SoundEvent, SoundEvent> MEDIUM_SMALL_EXPLOSION_DISTANT = REGISTRY.register(
-      "medium_small_explosion_distant", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "medium_small_explosion_distant"))
    );
    public static final DeferredHolder<SoundEvent, SoundEvent> SMALLFARBLAST = REGISTRY.register(
       "smallfarblast", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "smallfarblast"))
@@ -193,10 +172,6 @@ public class CrustyChunksModSounds {
    public static final DeferredHolder<SoundEvent, SoundEvent> SILENCEDSHOT = REGISTRY.register(
       "silencedshot", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "silencedshot"))
    );
-   public static final DeferredHolder<SoundEvent, SoundEvent> RAC = REGISTRY.register("rac", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "rac")));
-   public static final DeferredHolder<SoundEvent, SoundEvent> BRTTTFAR = REGISTRY.register(
-      "brtttfar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "brtttfar"))
-   );
    public static final DeferredHolder<SoundEvent, SoundEvent> BATTLECANNON = REGISTRY.register(
       "battlecannon", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "battlecannon"))
    );
@@ -233,10 +208,49 @@ public class CrustyChunksModSounds {
    public static final DeferredHolder<SoundEvent, SoundEvent> MIDRANGESHOT = REGISTRY.register(
       "midrangeshot", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "midrangeshot"))
    );
-   public static final DeferredHolder<SoundEvent, SoundEvent> HUGE_EXPLOSION_DISTANT = REGISTRY.register(
-      "huge_explosion_distant", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "huge_explosion_distant"))
-   );
    public static final DeferredHolder<SoundEvent, SoundEvent> LARGESHOT = REGISTRY.register(
       "largeshot", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "largeshot"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONSMALL = REGISTRY.register(
+      "explosionsmall", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosionsmall"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONLARGE = REGISTRY.register(
+      "explosionlarge", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosionlarge"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONCOLOSSAL = REGISTRY.register(
+      "explosioncolossal", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosioncolossal"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONCOLOSSALFAR = REGISTRY.register(
+      "explosioncolossalfar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosioncolossalfar"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONLARGEFAR = REGISTRY.register(
+      "explosionlargefar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosionlargefar"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> EXPLOSIONSMALLFAR = REGISTRY.register(
+      "explosionsmallfar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "explosionsmallfar"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> GEIGER = REGISTRY.register(
+      "geiger", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "geiger"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> TINYEXPLOSIONFAR = REGISTRY.register(
+      "tinyexplosionfar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "tinyexplosionfar"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> ROTARYNEAR = REGISTRY.register(
+      "rotarynear", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "rotarynear"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> ROTARYFAR = REGISTRY.register(
+      "rotaryfar", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "rotaryfar"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> DIESELENGINEIDLE = REGISTRY.register(
+      "dieselengineidle", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "dieselengineidle"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> DIESELENGINEREV = REGISTRY.register(
+      "dieselenginerev", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "dieselenginerev"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> LARGEDIESELENGINE = REGISTRY.register(
+      "largedieselengine", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "largedieselengine"))
+   );
+   public static final DeferredHolder<SoundEvent, SoundEvent> SHOTGUNCYCLE = REGISTRY.register(
+      "shotguncycle", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath("crusty_chunks", "shotguncycle"))
    );
 }

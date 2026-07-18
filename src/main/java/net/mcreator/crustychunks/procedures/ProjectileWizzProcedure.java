@@ -107,7 +107,10 @@ public class ProjectileWizzProcedure {
          .stream()
          .sorted(Comparator.comparingDouble(_entcnd -> _entcnd.distanceToSqr(_center1)))
          .toList()) {
-         if (entityiteratorx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:artillery")))
+         if ((
+               entityiteratorx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:ordinance")))
+                  || entityiteratorx.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:artillery")))
+            )
             && !entityiteratorx.getPersistentData().getBoolean("Passed")) {
             distance = Math.sqrt(
                Math.pow(x - entityiteratorx.getX(), 2.0) + Math.pow(y - entityiteratorx.getY(), 2.0) + Math.pow(z - entityiteratorx.getZ(), 2.0)

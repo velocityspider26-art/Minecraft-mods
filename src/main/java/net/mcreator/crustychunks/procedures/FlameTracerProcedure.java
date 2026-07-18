@@ -31,7 +31,7 @@ public class FlameTracerProcedure {
 
          if (!immediatesourceentity.getPersistentData().getBoolean("despawntimer")) {
             immediatesourceentity.getPersistentData().putBoolean("despawntimer", true);
-            CrustyChunksMod.queueServerWork(40, () -> {
+            CrustyChunksMod.queueServerWork(60, () -> {
                if (!immediatesourceentity.level().isClientSide()) {
                   immediatesourceentity.discard();
                }

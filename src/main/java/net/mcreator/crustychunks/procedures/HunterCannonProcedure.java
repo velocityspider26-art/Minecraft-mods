@@ -6,7 +6,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.mcreator.crustychunks.entity.HugeAIBulletEntity;
-import net.mcreator.crustychunks.entity.StrikerEntity;
+import net.mcreator.crustychunks.entity.HunterEntity;
 import net.mcreator.crustychunks.init.CrustyChunksModEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -60,66 +60,19 @@ public class HunterCannonProcedure {
                projectileLevel.addFreshEntity(_entityToSpawn);
             }
 
+            LightAutocannonFireSoundProcedure.execute(world, x, y, z);
             entity.getPersistentData().putDouble("T", 6.0);
-            if (world instanceof Level _level) {
-               if (!_level.isClientSide()) {
-                  _level.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-                  );
-               } else {
-                  _level.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:autocannonshot")),
-                     SoundSource.NEUTRAL,
-                     20.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                     false
-                  );
-               }
-            }
-
-            if (world instanceof Level _levelx) {
-               if (!_levelx.isClientSide()) {
-                  _levelx.playSound(
-                     null,
-                     BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
-                  );
-               } else {
-                  _levelx.playLocalSound(
-                     x,
-                     y,
-                     z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:medium_small_explosion_distant")),
-                     SoundSource.NEUTRAL,
-                     80.0F,
-                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
-                     false
-                  );
-               }
-            }
-
-            if (entity instanceof StrikerEntity) {
-               ((StrikerEntity)entity).setAnimation("Shoot");
+            if (entity instanceof HunterEntity) {
+               ((HunterEntity)entity).setAnimation("Shoot");
             }
 
             entity.getPersistentData().putDouble("Mag", entity.getPersistentData().getDouble("Mag") + 1.0);
          } else {
             entity.getPersistentData().putDouble("T", 200.0);
             entity.getPersistentData().putDouble("Mag", 0.0);
-            if (world instanceof Level _levelxx) {
-               if (!_levelxx.isClientSide()) {
-                  _levelxx.playSound(
+            if (world instanceof Level _level) {
+               if (!_level.isClientSide()) {
+                  _level.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:boltreload")),
@@ -128,7 +81,7 @@ public class HunterCannonProcedure {
                      (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
-                  _levelxx.playLocalSound(
+                  _level.playLocalSound(
                      x,
                      y,
                      z,

@@ -1,229 +1,238 @@
 {
-  "entries": [
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SMG_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/SMGAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_BURST_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/BurstRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SEMI_AUTOMATIC_PISTOL_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/SemiAutomaticPistolAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_AUTO_PISTOL_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/AutoPistolItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_BATTLE_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/BattleRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_LEVER_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/LeverRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_BOLT_ACTION_RIFLE_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/BoltActionRifleAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_BREAK_ACTION_SHOTGUN_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/BreakActionShotgunAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SINGLE_SHOT_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/SingleShotRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SEMI_AUTOMATIC_RIFLE_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/SemiAutomaticRifleAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_AUTOMATIC_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/AutomaticRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_STEALTH_PISTOL_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/StealthPistolItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SCOPED_BOLT_ACTION_RIFLE_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/ScopedBoltActionRifleAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_ARMOR_PEELER_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/ArmorPeelerAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_PUMP_ACTION_SHOTGUN_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/PumpActionShotgunAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_ERADICATION_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/EradicationItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_HAND_DRILL_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/HandDrillItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_BREECH_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/BreechRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_LMG_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/LMGAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_GRENADE_LAUNCHER_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/GrenadeLauncherItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_SCOPED_BREECH_RIFLE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/ScopedBreechRifleItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_MACHINE_CARBINE_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/MachineCarbineItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_REVOLVER_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/RevolverAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_FLARE_PISTOL_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/FlarePistolItemPose",
-        "field": "ARM_POSE"
-      }
-    },
-    {
-      "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
-      "name": "CRUSTY_CHUNKS_FLAME_THROWER_ANIMATED_ITEM",
-      "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
-      "parameters": {
-        "class": "net/mcreator/crustychunks/client/pose/FlameThrowerAnimatedItemPose",
-        "field": "ARM_POSE"
-      }
-    }
-  ]
+ "entries": [
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SMG_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/SMGAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_BURST_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/BurstRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SEMI_AUTOMATIC_PISTOL_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/SemiAutomaticPistolAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_AUTO_PISTOL_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/AutoPistolItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_BATTLE_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/BattleRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_LEVER_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/LeverRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_BOLT_ACTION_RIFLE_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/BoltActionRifleAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_BREAK_ACTION_SHOTGUN_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/BreakActionShotgunAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SINGLE_SHOT_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/SingleShotRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SEMI_AUTOMATIC_RIFLE_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/SemiAutomaticRifleAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_AUTOMATIC_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/AutomaticRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_STEALTH_PISTOL_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/StealthPistolItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SCOPED_BOLT_ACTION_RIFLE_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/ScopedBoltActionRifleAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_ARMOR_PEELER_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/ArmorPeelerAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_PUMP_ACTION_SHOTGUN_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/PumpActionShotgunAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_ERADICATION_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/EradicationItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_HAND_DRILL_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/HandDrillItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_BREECH_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/BreechRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_LMG_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/LMGAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_GRENADE_LAUNCHER_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/GrenadeLauncherItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_SCOPED_BREECH_RIFLE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/ScopedBreechRifleItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_MACHINE_CARBINE_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/MachineCarbineItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_REVOLVER_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/RevolverAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_FLARE_PISTOL_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/FlarePistolItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_FLAME_THROWER_ANIMATED_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/FlameThrowerAnimatedItemPose",
+    "field": "ARM_POSE"
+   }
+  },
+  {
+   "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
+   "name": "CRUSTY_CHUNKS_MUSKET_ITEM",
+   "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
+   "parameters": {
+    "class": "net/mcreator/crustychunks/client/pose/MusketItemPose",
+    "field": "ARM_POSE"
+   }
+  }
+ ]
 }

@@ -24,7 +24,9 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -235,6 +237,14 @@ public class RenderProjectileFlashProcedure {
       double targetx = 0.0;
       double Yaw = 0.0;
       double pitch = 0.0;
+      double scalemultiplier = 0.0;
+      if (("D:" + (world instanceof Level _lvl ? _lvl.dimension() : (world instanceof WorldGenLevel _wgl ? _wgl.getLevel().dimension() : Level.OVERWORLD)))
+         .contains("great_unknown")) {
+         scalemultiplier = 0.1;
+      } else {
+         scalemultiplier = 1.0;
+      }
+
       if (world instanceof ClientLevel) {
          for (Entity entityiterator : ((ClientLevel)world).entitiesForRendering()) {
             Yaw = Math.atan2(
@@ -259,7 +269,7 @@ public class RenderProjectileFlashProcedure {
                   entityiterator.getPersistentData().putDouble("Type", (double)Mth.nextInt(RandomSource.create(), 1, 4));
                }
 
-               scale = Mth.nextDouble(RandomSource.create(), 3.95, 4.05);
+               scale = Mth.nextDouble(RandomSource.create(), 3.95, 4.05) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
@@ -303,7 +313,7 @@ public class RenderProjectileFlashProcedure {
                   entityiterator.getPersistentData().putDouble("Type", (double)Mth.nextInt(RandomSource.create(), 1, 4));
                }
 
-               scale = Mth.nextDouble(RandomSource.create(), 2.4, 2.6);
+               scale = Mth.nextDouble(RandomSource.create(), 2.4, 2.6) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
@@ -343,7 +353,7 @@ public class RenderProjectileFlashProcedure {
 
                clear();
             } else if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:smallflash")))) {
-               scale = Mth.nextDouble(RandomSource.create(), 15.0, 17.0);
+               scale = Mth.nextDouble(RandomSource.create(), 15.0, 17.0) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
@@ -373,7 +383,7 @@ public class RenderProjectileFlashProcedure {
                }
             } else if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:smallrocketglare")))
                && entityiterator.getPersistentData().getDouble("Time") <= entityiterator.getPersistentData().getDouble("MaxTime")) {
-               scale = Mth.nextDouble(RandomSource.create(), 6.0, 7.0);
+               scale = Mth.nextDouble(RandomSource.create(), 6.0, 7.0) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
@@ -403,7 +413,7 @@ public class RenderProjectileFlashProcedure {
                }
             } else if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:largerocketglare")))
                && entityiterator.getPersistentData().getDouble("Time") <= entityiterator.getPersistentData().getDouble("MaxTime")) {
-               scale = Mth.nextDouble(RandomSource.create(), 10.0, 11.0);
+               scale = Mth.nextDouble(RandomSource.create(), 10.0, 11.0) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);
@@ -432,7 +442,7 @@ public class RenderProjectileFlashProcedure {
                   release();
                }
             } else if (entityiterator.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:flare")))) {
-               scale = Mth.nextDouble(RandomSource.create(), 7.0, 8.0);
+               scale = Mth.nextDouble(RandomSource.create(), 7.0, 8.0) * scalemultiplier;
                if (begin(Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR, false)) {
                   add(0.5, 0.0, 0.5, 0.0F, 0.0F, -1);
                   add(0.5, 0.0, -0.5, 0.0F, 1.0F, -1);

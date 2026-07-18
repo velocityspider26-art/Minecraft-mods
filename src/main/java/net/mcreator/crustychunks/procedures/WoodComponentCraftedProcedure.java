@@ -18,7 +18,7 @@ public class WoodComponentCraftedProcedure {
             _level.playSound(
                null,
                BlockPos.containing(x, y, z),
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("item.axe.strip")),
                SoundSource.NEUTRAL,
                1.0F,
                1.0F
@@ -28,7 +28,7 @@ public class WoodComponentCraftedProcedure {
                x,
                y,
                z,
-               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("entity.zombie.break_wooden_door")),
+               (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("item.axe.strip")),
                SoundSource.NEUTRAL,
                1.0F,
                1.0F,

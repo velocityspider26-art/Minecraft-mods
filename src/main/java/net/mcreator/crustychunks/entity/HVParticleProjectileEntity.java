@@ -76,7 +76,7 @@ public class HVParticleProjectileEntity extends AbstractArrow implements ItemSup
 
    public void tick() {
       super.tick();
-      FragmentDespawnMechanicProcedure.execute(this);
+      FragmentDespawnMechanicProcedure.execute(this.level(), this);
       if (this.inGround) {
          this.discard();
       }

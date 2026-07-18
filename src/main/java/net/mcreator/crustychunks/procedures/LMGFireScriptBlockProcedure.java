@@ -376,6 +376,7 @@ public class LMGFireScriptBlockProcedure {
             }).getDirection(blockstate).getStepZ() * 2.5 + 0.5);
             CasingDropProcedure.execute(world, x, y, z);
             MediumFireSoundProcedure.execute(world, x, y, z);
+            GunMechanismSoundProcedure.execute(world, x, y, z);
             if (!world.isClientSide()) {
                BlockPos _bpxx = BlockPos.containing(x, y, z);
                BlockEntity _blockEntityxx = world.getBlockEntity(_bpxx);

@@ -22,13 +22,13 @@ public class LargeSmokeParticle extends TextureSheetParticle {
       super(world, x, y, z);
       this.spriteSet = spriteSet;
       this.setSize(5.0F, 5.0F);
-      this.quadSize *= 25.0F;
-      this.lifetime = Math.max(1, 140 + (this.random.nextInt(160) - 80));
+      this.quadSize *= 20.0F;
+      this.lifetime = Math.max(1, 200 + (this.random.nextInt(320) - 160));
       this.gravity = -0.01F;
       this.hasPhysics = true;
-      this.xd = vx * 0.2;
-      this.yd = vy * 0.2;
-      this.zd = vz * 0.2;
+      this.xd = vx * 1.0;
+      this.yd = vy * 1.0;
+      this.zd = vz * 1.0;
       this.pickSprite(spriteSet);
    }
 

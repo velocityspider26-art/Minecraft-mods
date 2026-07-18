@@ -5,6 +5,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
 import net.mcreator.crustychunks.CrustyChunksMod;
 import net.mcreator.crustychunks.item.RevolverAnimatedItem;
+import net.mcreator.crustychunks.network.CrustyChunksModVariables;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -51,7 +52,8 @@ public class RevolverActionProcedure {
                   }
                }
             );
-            if (entity.isShiftKeyDown()) {
+            if (entity.getData(CrustyChunksModVariables.PLAYER_VARIABLES)
+               .AimDownSights) {
                if ((entity instanceof LivingEntity _livEnt ? _livEnt.getMainHandItem() : ItemStack.EMPTY).getItem() instanceof RevolverAnimatedItem) {
                   CustomData.update(DataComponents.CUSTOM_DATA, (entity instanceof LivingEntity _livEntx ? _livEntx.getMainHandItem() : ItemStack.EMPTY), _tagupd -> _tagupd.putString("geckoAnim", "sightbolt"));
                }

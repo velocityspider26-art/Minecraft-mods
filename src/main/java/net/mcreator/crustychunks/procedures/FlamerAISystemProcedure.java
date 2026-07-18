@@ -141,9 +141,9 @@ public class FlamerAISystemProcedure {
                   _levelxx.playSound(
                      null,
                      BlockPos.containing(x, y, z),
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.NEUTRAL,
-                     (float)(2.0 + rev),
+                     (float)(4.0 + rev),
                      (float)(Mth.nextDouble(RandomSource.create(), 0.5, 0.6) + rev)
                   );
                } else {
@@ -151,9 +151,9 @@ public class FlamerAISystemProcedure {
                      x,
                      y,
                      z,
-                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:engine")),
+                     (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:dieselengineidle")),
                      SoundSource.NEUTRAL,
-                     (float)(2.0 + rev),
+                     (float)(4.0 + rev),
                      (float)(Mth.nextDouble(RandomSource.create(), 0.5, 0.6) + rev),
                      false
                   );

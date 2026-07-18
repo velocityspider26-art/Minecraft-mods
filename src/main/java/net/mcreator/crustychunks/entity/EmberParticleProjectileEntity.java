@@ -76,7 +76,7 @@ public class EmberParticleProjectileEntity extends AbstractArrow implements Item
 
    public void tick() {
       super.tick();
-      FlameDespawnProcedure.execute(this);
+      FlameDespawnProcedure.execute(this.level(), this);
       if (this.inGround) {
          this.discard();
       }

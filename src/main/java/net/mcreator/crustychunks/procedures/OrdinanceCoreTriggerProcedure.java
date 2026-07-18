@@ -81,7 +81,7 @@ public class OrdinanceCoreTriggerProcedure {
       }).getValue(world, BlockPos.containing(x, y, z), "Trigger")) {
          if (blockstate.getBlock() == CrustyChunksModBlocks.ORDINANCE_CORE.get()) {
             OrdinanceCorePowerProcedure.execute(world, x, y, z, blockstate);
-         } else if (blockstate.getBlock() == CrustyChunksModBlocks.REDSTONE_TNT.get()) {
+         } else if (blockstate.getBlock() == CrustyChunksModBlocks.MEDIUM_BOMB.get()) {
             MediumBombRedstoneOnProcedure.execute(world, x, y, z);
          } else if (blockstate.getBlock() == CrustyChunksModBlocks.CLUSTER_OF_BOMBS.get()) {
             ClusterOfBombsRedstoneOnProcedure.execute(world, x, y, z);

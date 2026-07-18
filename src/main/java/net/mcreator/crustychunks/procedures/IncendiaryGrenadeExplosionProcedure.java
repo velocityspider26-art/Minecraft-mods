@@ -38,7 +38,7 @@ public class IncendiaryGrenadeExplosionProcedure {
                _level.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallexplosion")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionsmall")),
                   SoundSource.NEUTRAL,
                   10.0F,
                   1.0F
@@ -48,7 +48,7 @@ public class IncendiaryGrenadeExplosionProcedure {
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:smallexplosion")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionsmall")),
                   SoundSource.NEUTRAL,
                   10.0F,
                   1.0F,
@@ -62,7 +62,7 @@ public class IncendiaryGrenadeExplosionProcedure {
                _levelx.playSound(
                   null,
                   BlockPos.containing(x, y, z),
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionsmallfar")),
                   SoundSource.NEUTRAL,
                   40.0F,
                   1.0F
@@ -72,7 +72,7 @@ public class IncendiaryGrenadeExplosionProcedure {
                   x,
                   y,
                   z,
-                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosion_distant")),
+                  (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:explosionsmallfar")),
                   SoundSource.NEUTRAL,
                   40.0F,
                   1.0F,

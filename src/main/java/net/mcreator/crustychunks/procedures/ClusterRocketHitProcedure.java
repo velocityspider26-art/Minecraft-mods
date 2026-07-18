@@ -8,15 +8,20 @@ public class ClusterRocketHitProcedure {
    public static void execute(LevelAccessor world, Entity immediatesourceentity) {
       try {
       if (immediatesourceentity != null) {
-         CrustyChunksMod.queueServerWork(1, () -> {
-            for (int index0 = 0; index0 < 4; index0++) {
-               SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
-            }
+         CrustyChunksMod.queueServerWork(
+            1,
+            () -> {
+               for (int index0 = 0; index0 < 4; index0++) {
+                  ExplosionExampleProcedure.execute(
+                     world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 4.0
+                  );
+               }
 
-            if (!immediatesourceentity.level().isClientSide()) {
-               immediatesourceentity.discard();
+               if (!immediatesourceentity.level().isClientSide()) {
+                  immediatesourceentity.discard();
+               }
             }
-         });
+         );
       }
    
       } catch (Throwable _wtSafe) {

@@ -19,6 +19,8 @@ public class GiantShockProcedureProcedure {
          double particleAmount = 0.0;
          immediatesourceentity.noPhysics = true;
          if (!immediatesourceentity.getPersistentData().getBoolean("Used")) {
+            world.addParticle((SimpleParticleType)CrustyChunksModParticleTypes.SHOCK_RING.get(), x, y, z, 0.0, 0.0, 0.0);
+
             for (int index0 = 0; index0 < 45; index0++) {
                world.addParticle(
                   (SimpleParticleType)CrustyChunksModParticleTypes.LARGE_SMOKE.get(),

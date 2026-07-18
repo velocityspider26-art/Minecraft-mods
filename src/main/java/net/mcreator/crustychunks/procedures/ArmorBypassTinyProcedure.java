@@ -1,7 +1,6 @@
 package net.mcreator.crustychunks.procedures;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.mcreator.crustychunks.init.CrustyChunksModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
@@ -10,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -27,15 +27,15 @@ public class ArmorBypassTinyProcedure {
       if (entity != null && immediatesourceentity != null && sourceentity != null) {
          double Health = 0.0;
          if (!entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("crusty_chunks:bulletproof")))) {
-            if (world instanceof Level _level) {
+            if (1 == Mth.nextInt(RandomSource.create(), 1, 3) && world instanceof Level _level) {
                if (!_level.isClientSide()) {
                   _level.playSound(
                      null,
                      BlockPos.containing(x, y, z),
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     2.0F,
-                     1.0F
+                     SoundSource.MASTER,
+                     1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1)
                   );
                } else {
                   _level.playLocalSound(
@@ -43,16 +43,16 @@ public class ArmorBypassTinyProcedure {
                      y,
                      z,
                      (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse("crusty_chunks:wizz")),
-                     SoundSource.NEUTRAL,
-                     2.0F,
+                     SoundSource.MASTER,
                      1.0F,
+                     (float)Mth.nextDouble(RandomSource.create(), 0.9, 1.1),
                      false
                   );
                }
             }
 
-            if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY).getItem()
-               == CrustyChunksModItems.BODY_ARMOR_CHESTPLATE.get()) {
+            if ((entity instanceof LivingEntity _entGetArmor ? _entGetArmor.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY)
+               .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:bulletarmor")))) {
                entity.hurt(
                   new DamageSource(
                      world.registryAccess()
@@ -85,10 +85,8 @@ public class ArmorBypassTinyProcedure {
                            + Math.pow(entity.getZ() - immediatesourceentity.getZ(), 2.0)
                      )
                > entity.getY() + 1.55) {
-               if ((entity instanceof LivingEntity _entGetArmorxx ? _entGetArmorxx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY).getItem()
-                     != CrustyChunksModItems.BULLET_RESISTANT_HELMET_HELMET.get()
-                  && (entity instanceof LivingEntity _entGetArmorx ? _entGetArmorx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY).getItem()
-                     != CrustyChunksModItems.NVD_HELMET_HELMET.get()) {
+               if (!(entity instanceof LivingEntity _entGetArmorx ? _entGetArmorx.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY)
+                  .is(ItemTags.create(ResourceLocation.parse("crusty_chunks:bulletarmor")))) {
                   entity.hurt(
                      new DamageSource(
                         world.registryAccess()

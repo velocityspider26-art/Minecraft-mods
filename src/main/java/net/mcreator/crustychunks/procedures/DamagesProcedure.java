@@ -8,17 +8,21 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class DamagesProcedure {
    public static void execute(LevelAccessor world, double x, double y, double z) {
       try {
-      if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MEDIUM_DIESEL_ENGINE.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.JET_TURBINE.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.MEDIUM_PETROL_ENGINE.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.ENGINE_CYLLINDER.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.SMALL_DIESEL_ENGINE.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.SMALL_PETROL_ENGINE.get()) {
+      BlockState impactblock = Blocks.AIR.defaultBlockState();
+      impactblock = world.getBlockState(BlockPos.containing(x, y, z));
+      if (impactblock.getBlock() == CrustyChunksModBlocks.LIGHT_TURBINE_ENGINE.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.MEDIUM_DIESEL_ENGINE.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.JET_TURBINE.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.MEDIUM_PETROL_ENGINE.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.ENGINE_CYLLINDER.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.SMALL_DIESEL_ENGINE.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.SMALL_PETROL_ENGINE.get()) {
          LightCombustionEngineBlockDestroyedProcedure.execute(world, x, y, z);
          execute(world, x, y + 1.0, z);
          execute(world, x, y - 1.0, z);
@@ -26,11 +30,11 @@ public class DamagesProcedure {
          execute(world, x - 1.0, y, z);
          execute(world, x, y, z + 1.0);
          execute(world, x, y, z - 1.0);
-      } else if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK_INPUT.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK.get()
-         || world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.FUEL_TANK_MODULE.get()) {
+      } else if (impactblock.getBlock() == CrustyChunksModBlocks.FUEL_TANK_INPUT.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.FUEL_TANK.get()
+         || impactblock.getBlock() == CrustyChunksModBlocks.FUEL_TANK_MODULE.get()) {
          FuelTankDamagedProcedure.execute(world, x, y, z);
-      } else if (world.getBlockState(BlockPos.containing(x, y, z)).getBlock() == CrustyChunksModBlocks.AUTOCANNON_DRUM.get() && (new Object() {
+      } else if (impactblock.getBlock() == CrustyChunksModBlocks.AUTOCANNON_DRUM.get() && (new Object() {
          public double getValue(LevelAccessor world, BlockPos pos, String tag) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             return blockEntity != null ? blockEntity.getPersistentData().getDouble(tag) : -1.0;
@@ -38,17 +42,16 @@ public class DamagesProcedure {
       }).getValue(world, BlockPos.containing(x, y, z), "Ammo") > 3.0) {
          world.destroyBlock(BlockPos.containing(x, y, z), false);
          CrustyChunksMod.queueServerWork(20, () -> {
-            MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
             execute(world, x, y + 1.0, z);
             execute(world, x, y - 1.0, z);
             execute(world, x + 1.0, y, z);
             execute(world, x - 1.0, y, z);
             execute(world, x, y, z + 1.0);
             execute(world, x, y, z - 1.0);
-            MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5);
+            ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, 2.0);
          });
-         CrustyChunksMod.queueServerWork(40, () -> MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5));
-         CrustyChunksMod.queueServerWork(50, () -> MicroExplosionProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5));
+         CrustyChunksMod.queueServerWork(40, () -> ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, 2.0));
+         CrustyChunksMod.queueServerWork(50, () -> ExplosionExampleProcedure.execute(world, x + 0.5, y + 0.5, z + 0.5, 2.0));
       }
 
       if (0 < (new Object() {

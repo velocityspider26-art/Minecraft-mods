@@ -59,7 +59,9 @@ public class TankFireProjectileHitsBlockProcedure {
                   }
                }
 
-               SmallExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 3.5
+               );
                if (!immediatesourceentity.level().isClientSide()) {
                   immediatesourceentity.discard();
                }

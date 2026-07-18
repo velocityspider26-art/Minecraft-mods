@@ -1,5 +1,5 @@
 {
-  "parent": "forge:item/bucket_drip",
+  "parent": "neoforge:item/bucket_drip",
   "loader": "neoforge:fluid_container",
   "fluid": "crusty_chunks:compressed_air"
 }

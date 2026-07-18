@@ -24,7 +24,9 @@ public class HugeHEBulletHitProcedure {
          CrustyChunksMod.queueServerWork(
             1,
             () -> {
-               NanoExplosionProcedure.execute(world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ());
+               ExplosionExampleProcedure.execute(
+                  world, immediatesourceentity.getX(), immediatesourceentity.getY(), immediatesourceentity.getZ(), 1.0
+               );
 
                for (int index0 = 0; index0 < 10; index0++) {
                   if (world instanceof ServerLevel projectileLevel) {
