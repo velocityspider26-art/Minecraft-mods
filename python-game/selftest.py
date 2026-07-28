@@ -148,10 +148,11 @@ def test_raycasting(game):
     # dead ahead should measure 19 - 2.5 = 16.5 squares away.
     game.load_level(0)
     game.px, game.py = 3.5, 2.5
+    game._update_camera_position()
     game.angle = math.radians(90)
     game._update_camera_vectors()
     rays = game.cast_rays()
-    distance, _side, char = rays[middle]
+    distance, _side, char, _wall_x = rays[middle]
     check("centre ray measures 16.5 squares", abs(distance - 16.5) < 0.001,
           "got %.4f" % distance)
     check("centre ray hits a stone wall", char == "#", "got %r" % char)
@@ -161,7 +162,7 @@ def test_raycasting(game):
     game.angle = 0.0
     game._update_camera_vectors()
     rays = game.cast_rays()
-    distance, _side, _char = rays[middle]
+    distance, _side, _char, _wall_x = rays[middle]
     check("looking east measures 3.5 squares", abs(distance - 3.5) < 0.001,
           "got %.4f" % distance)
 
@@ -170,6 +171,7 @@ def test_raycasting(game):
     # single column must report the same distance; if the perspective maths is
     # wrong the edges of the screen report further away and the wall bulges.
     game.px, game.py = 3.5, 17.5
+    game._update_camera_position()
     game.angle = math.radians(90)
     game._update_camera_vectors()
     rays = game.cast_rays()
@@ -179,6 +181,34 @@ def test_raycasting(game):
           spread < 0.001, "spread was %.5f" % spread)
     check("that flat wall is 1.5 squares away",
           abs(distances[middle] - 1.5) < 0.001, "got %.4f" % distances[middle])
+
+    # -- the texture coordinate across the wall face --
+    # Walk along a flat wall and the hit position should sweep smoothly from
+    # 0 to 1 and wrap, once per wall square. If this is wrong, seams crawl
+    # about instead of staying painted on the wall.
+    game.px, game.py = 3.5, 17.5
+    game._update_camera_position()
+    game.angle = math.radians(90)
+    game._update_camera_vectors()
+    rays = game.cast_rays()
+    check("every ray reports a wall position in 0..1",
+          all(0.0 <= r[3] < 1.0 for r in rays),
+          "out of range: %s" % [r[3] for r in rays if not 0.0 <= r[3] < 1.0][:3])
+
+    # Standing at x = 3.5 and looking at the wall dead ahead, the centre ray
+    # lands halfway across square 3, so the coordinate should be 0.5.
+    check("the centre ray lands mid-square", abs(rays[middle][3] - 0.5) < 0.01,
+          "got %.4f" % rays[middle][3])
+
+    # Sliding sideways by a quarter of a square should slide the hit by the
+    # same amount, because the wall is flat and square-on.
+    game.px = 3.75
+    game._update_camera_position()
+    rays = game.cast_rays()
+    check("sliding sideways slides the wall position with it",
+          abs(rays[middle][3] - 0.75) < 0.01, "got %.4f" % rays[middle][3])
+    game.px = 3.5
+    game._update_camera_position()
 
     # -- the depth buffer is filled in --
     check("depth buffer has one entry per column",
@@ -303,6 +333,7 @@ def test_game_loop(root, game):
     game.load_level(0)
     exit_col, exit_row = game.exits[0]
     game.px, game.py = exit_col + 0.5, exit_row + 0.5
+    game._update_camera_position()
     game.check_exit()
     check("extraction is sealed while hostiles are alive",
           game.state != trident.STATE_CLEARED)
@@ -320,6 +351,7 @@ def test_game_loop(root, game):
     expected = game.level_score
     exit_col, exit_row = game.exits[0]
     game.px, game.py = exit_col + 0.5, exit_row + 0.5
+    game._update_camera_position()
     game.check_exit()
     shown = game.total_score + game.level_score
     check("clearing a level banks the score exactly once", shown == expected,
@@ -339,6 +371,7 @@ def test_game_loop(root, game):
     game.hp = 10
     medkit = next(p for p in game.pickups if p.kind == "h")
     game.px, game.py = medkit.x, medkit.y
+    game._update_camera_position()
     game.check_pickups()
     check("walking over a medkit heals you", game.hp == 35, "hp is %d" % game.hp)
     check("the medkit is gone afterwards", medkit.taken)
@@ -376,26 +409,138 @@ def test_game_loop(root, game):
     for _ in range(40):
         game._warping = False
         game._on_mouse_move(FakeMove(centre_x, centre_y - 200))
-    check("looking up is clamped", game.pitch <= trident.MAX_PITCH,
+    check("looking up is clamped", game.pitch <= trident.MAX_PITCH_UP,
           "pitch ran to %.1f" % game.pitch)
     for _ in range(80):
         game._warping = False
         game._on_mouse_move(FakeMove(centre_x, centre_y + 200))
-    check("looking down is clamped", game.pitch >= -trident.MAX_PITCH,
+    check("looking down is clamped", game.pitch >= -trident.MAX_PITCH_DOWN,
           "pitch ran to %.1f" % game.pitch)
+
+    # At full upward pitch the carbine slides down with the horizon. The
+    # reticle must still sit clear above it, or you cannot see what you shoot.
+    game.pitch = trident.MAX_PITCH_UP
+    game.bob_offset = 0.0
+    game.recoil = 0.0
+    game.ads = 0.0
+    game.tick()
+    gun_top = min(game.canvas.coords(i)[1] for i in game.gun_items)
+    check("the reticle stays clear of the weapon at full upward pitch",
+          game.horizon < gun_top,
+          "reticle %.0f vs weapon top %.0f" % (game.horizon, gun_top))
+    game.pitch = 0.0
 
     # The whole view has to move together, or the horizon tears away from the
     # floor and you get a bare strip along the bottom of the screen.
-    game.pitch = trident.MAX_PITCH
+    game.pitch = trident.MAX_PITCH_UP
     game.bob_offset = 0.0
     game.tick()
     check("the horizon follows the pitch",
-          abs(game.horizon - (trident.SCREEN_H / 2 + trident.MAX_PITCH)) < 1.0,
+          abs(game.horizon - (trident.SCREEN_H / 2 + trident.MAX_PITCH_UP)) < 1.0,
           "horizon at %.1f" % game.horizon)
     lowest = max(y1 for _item, _y0, y1 in game.bg_items)
     check("the floor still reaches the bottom at full pitch",
           lowest + game.pitch >= trident.SCREEN_H,
           "floor ends at %.1f" % (lowest + game.pitch))
+
+    # -- leaning --
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+    game.px, game.py = 3.5, 5.5      # open corridor, walls to the left/right
+    game.angle = math.radians(90)    # facing down the corridor
+    game.lean = 0.0
+    game._update_camera_vectors()
+    game._update_camera_position()
+    check("no lean means the eye sits on the body",
+          game.cam_x == game.px and game.cam_y == game.py)
+
+    game.lean = 1.0
+    game._update_camera_position()
+    shifted = math.hypot(game.cam_x - game.px, game.cam_y - game.py)
+    check("leaning moves the eye off the body", shifted > 0.1,
+          "moved %.3f" % shifted)
+    check("leaning does not move the body",
+          (game.px, game.py) == (3.5, 5.5))
+    check("the eye never ends up inside a wall",
+          not game.is_wall(game.cam_x, game.cam_y))
+
+    # Leaning right should move the eye to the player's right. Facing south
+    # (+y), right is -x, so the eye should slide towards a smaller x.
+    check("leaning right peeks to the right", game.cam_x < game.px,
+          "cam_x %.3f vs px %.3f" % (game.cam_x, game.px))
+
+    game.lean = -1.0
+    game._update_camera_position()
+    check("leaning left peeks the other way", game.cam_x > game.px)
+
+    # Jammed against a wall, the lean has to give way rather than push your
+    # head through it.
+    game.px, game.py = 1.3, 5.5      # hard up against the west wall
+    game._update_camera_position()
+    # Facing south (+y), the player's right-hand side points at -x, which is
+    # where that wall is. So a full right lean is a lean straight into it.
+    game.lean = 1.0
+    game._update_camera_position()
+    check("leaning into a wall is cut short, not clipped through",
+          not game.is_wall(game.cam_x, game.cam_y)
+          and abs(game.lean_applied) < 1.0,
+          "lean_applied %.2f at (%.2f, %.2f)"
+          % (game.lean_applied, game.cam_x, game.cam_y))
+    game.lean = 0.0
+    game._update_camera_position()
+
+    # -- aiming down the sight --
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+    game.ads = 0.0
+    game._update_camera_vectors()
+    hip_plane = game.plane_len
+    game.ads = 1.0
+    game._update_camera_vectors()
+    check("the sight narrows the field of view", game.plane_len < hip_plane,
+          "hip %.3f -> ads %.3f" % (hip_plane, game.plane_len))
+    check("the zoom matches ADS_FOV_DEGREES",
+          abs(game.plane_len
+              - math.tan(math.radians(trident.ADS_FOV_DEGREES) / 2)) < 1e-9)
+
+    # Holding the right button should bring the sight up, and letting go
+    # should put it back down.
+    game.ads = 0.0
+    game.mouse_captured = True
+    game._on_aim_down(None)
+    check("right mouse starts the sight coming up", game.aiming)
+    for _ in range(30):
+        game.update_player(0.016)
+    check("the sight settles fully up", game.ads > 0.95, "ads %.2f" % game.ads)
+    game._on_aim_up(None)
+    for _ in range(30):
+        game.update_player(0.016)
+    check("letting go lowers it again", game.ads < 0.05, "ads %.2f" % game.ads)
+    game._update_camera_vectors()
+
+    # -- blood --
+    game.load_level(0)
+    game.blood = []
+    target = game.monsters[0]
+    game.damage_monster(target, 1)
+    check("hitting a hostile throws blood", len(game.blood) > 0,
+          "%d specks" % len(game.blood))
+    check("blood starts off the floor",
+          all(speck[2] > 0 for speck in game.blood))
+
+    # It must fall, land, and clear itself up rather than piling up forever.
+    for _ in range(400):
+        game.update_blood(0.016)
+    check("blood settles and is cleared away", not game.blood,
+          "%d specks left" % len(game.blood))
+
+    game.blood = []
+    for _ in range(60):
+        game.spray_blood(3.5, 5.5, 40)
+    check("the particle pool has a hard ceiling",
+          len(game.blood) <= trident.MAX_BLOOD, "%d specks" % len(game.blood))
+    check("the pool never outgrows its canvas items",
+          len(game.blood) <= len(game.blood_items))
 
     # -- releasing the mouse --
     game.mouse_captured = True
@@ -422,6 +567,29 @@ def test_game_loop(root, game):
     game.update_player(0.016)
     check("holding the mouse button spends ammo", game.ammo < ammo_before)
     game.firing = False
+
+    # -- wall banding --
+    check("the band pool fits the busiest wall texture",
+          all(len(b) <= trident.MAX_BANDS for b in trident.WALL_BANDS.values()))
+    check("every wall type has a texture and a seam table",
+          all(c in trident.WALL_BANDS and c in trident.WALL_SEAMS
+              for c in trident.WALL_COLOURS),
+          "missing: %s" % [c for c in trident.WALL_COLOURS
+                           if c not in trident.WALL_BANDS])
+    for char, bands in trident.WALL_BANDS.items():
+        gapless = all(abs(bands[i][1] - bands[i + 1][0]) < 1e-9
+                      for i in range(len(bands) - 1))
+        check("wall %r bands cover the whole height with no gaps" % char,
+              gapless and bands[0][0] == 0.0 and bands[-1][1] == 1.0)
+    check("seam tables have one entry per sample step",
+          all(len(t) == trident.SEAM_STEPS for t in trident.WALL_SEAMS.values()))
+
+    # A band offset must never push the shade past the ends of the table.
+    worst = max(abs(step) for bands in trident.WALL_BANDS.values()
+                for _a, _b, step in bands)
+    worst += max(abs(v) for t in trident.WALL_SEAMS.values() for v in t)
+    check("shade table is deep enough for the texture offsets (%d < %d)"
+          % (worst, trident.SHADE_LEVELS), worst < trident.SHADE_LEVELS)
 
     # -- every level loads --
     for index in range(len(trident.LEVELS)):

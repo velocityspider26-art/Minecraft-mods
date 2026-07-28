@@ -30,9 +30,11 @@ IDLE itself is built on — so if you can open IDLE, you can run this.
 | --- | --- |
 | **Mouse** | aim — click the window to capture it |
 | **Left mouse** or `Space` | fire |
+| **Right mouse** | aim down the sight — zooms in, steadies the rifle |
 | `W` `S` or `↑` `↓` | move forward / backward |
 | `A` `D` | strafe (step sideways without turning) |
-| `←` `→` or `Q` `E` | turn without the mouse |
+| `Q` `E` | lean left / right to peek round a corner |
+| `←` `→` | turn without the mouse |
 | `Shift` | sprint |
 | `M` | mouse aiming on / off |
 | `Tab` | show / hide the tac-map |
@@ -195,7 +197,81 @@ details make it hold together:
   the screen. That way it always covers what you will actually hit, and the
   carbine moves with it.
 
-### 5. Hostiles: billboards and a depth buffer
+### 5. Texturing walls without a texture
+
+Flat-coloured walls are what make a raycaster look cheap. The proper fix is to
+sample a bitmap per screen pixel — and that is exactly what pure Python cannot
+afford. At 320 columns and 400 pixels tall that is over a hundred thousand
+lookups a frame, which is an order of magnitude past the budget.
+
+So the walls are textured a cheaper way, in two halves:
+
+**Across the wall, detail is free.** The raycaster already knows *where on the
+wall face* each ray landed — that is the `wall_x` it returns, running 0 to 1
+across each square. Look that up in a small table of brightness offsets and
+nudge the shade, and you get vertical seams, mortar joints and panel edges for
+the price of one list index. No extra drawing at all.
+
+**Down the wall, detail costs rectangles.** Each column is split into a handful
+of horizontal bands with their own brightness — courses of block, the lip of a
+steel panel, a dark skirt at the bottom. The bands are measured from 0 at the
+top of the wall to 1 at the bottom, so they scale with the stripe and stay
+glued to the wall however far away it is.
+
+That is the whole trick, and the perspective does the rest: because every
+column computes its own bands, a long wall's courses converge towards the
+vanishing point on their own.
+
+Two things keep it affordable. Walls shorter than 30 pixels on screen collapse
+to a single flat stripe, since bands a pixel tall are just noise — and most
+columns in view at any moment are distant ones. And the existing "has this
+changed colour?" cache still applies per band.
+
+### 6. Aiming down the sight
+
+Holding the right mouse button raises the sight, and one number drives all of
+it. `self.ads` slides between 0 and 1 rather than snapping, and everything
+reads off it: the field of view narrows (which *is* the zoom — the camera
+plane's length is the FOV, so shortening it magnifies), the mouse slows down,
+your walk slows down, and the rifle's scatter tightens.
+
+The weapon has to move too, and it cannot rotate — canvas rectangles are
+axis-aligned. Two things stand in for the rotation. The whole sprite slides
+until the middle of the optic sits exactly on the aim point, and at the same
+time it is **squeezed horizontally**, because bringing a rifle in line with
+your eye means you stop seeing it side-on and start looking along it. Once you
+are properly behind the optic the crosshair disappears and a red dot takes
+over, which is what you aim with from then on.
+
+### 7. Leaning
+
+`Q` and `E` tip you out to the side. The important part is that leaning moves
+**where you look from without moving where you stand** — the whole point is to
+peek past a corner without stepping into the open.
+
+That means the eye and the body are no longer the same point. The body stays at
+`px, py`; the eye is `cam_x, cam_y`, offset sideways along the camera plane,
+and it is the eye that the rays and the sprite projection use.
+
+Leaning must not put your head through a wall. Rather than refusing the lean
+outright, the code tries the full distance, and if that spot is solid it keeps
+shortening the reach until it finds one that is not. So leaning into a wall
+just quietly stops part-way instead of clipping through.
+
+### 8. Blood
+
+Specks live in the **world**, not on the screen: each has a map position, a
+height above the floor, and a velocity, and falls under gravity until it lands
+or hits a wall. Screen-space specks would have been cheaper, but they slide
+about when you turn. World-space ones stay where they were thrown, and they
+project through exactly the same maths as a sprite — including the depth
+buffer check, so blood behind a wall stays hidden.
+
+Bodies stay where they fall and a pool spreads underneath them over about a
+second. The particle pool is capped, so a long firefight cannot slowly fill
+memory with old specks.
+
+### 9. Hostiles: billboards and a depth buffer
 
 Hostiles and pickups are **billboards** — flat cut-outs that always turn to
 face you. Each is projected onto the screen by inverting the camera matrix
@@ -214,7 +290,7 @@ The code goes a bit further and walks outwards from the sprite's centre column
 to find how much of it is unobstructed, so a hostile can be *half* hidden
 around a corner rather than popping in and out all at once.
 
-### 6. Making it fast enough in Python
+### 10. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -231,8 +307,9 @@ colour once, at import time, and the render loop just indexes into a list.
 There is also a small cache so a stripe that has not changed colour does not
 get recoloured at all.
 
-Measured by `selftest.py` in this environment: **under 5 ms of work per frame**
-at 320 rays, against a 33 ms budget for 30 fps.
+Measured by `selftest.py` in this environment: **about 13 ms of work per
+frame** at 320 rays with the wall texturing on, against a 33 ms budget for
+30 fps.
 
 ---
 
@@ -256,10 +333,12 @@ The interesting methods, in the order a frame happens:
 tick()                 once every ~33 ms, driven by root.after()
 ├── update_player()    read the keys, move, slide along walls, pick things up
 ├── update_monsters()  wake up, close in or hold position, attack
+├── update_blood()     move the specks, drop the ones that have landed
 ├── cast_rays()        ← the raycaster, fills the depth buffer
 ├── draw_walls()       320 stripes
 ├── draw_sprites()     billboards, sorted far-to-near
-├── draw_weapon()      the carbine, its bob, recoil and muzzle flash
+├── draw_blood()       specks in flight, and pools under the bodies
+├── draw_weapon()      the carbine: bob, recoil, lean, sight and muzzle flash
 ├── draw_hud()         health, rounds, hostiles, score
 └── draw_minimap()
 ```
@@ -293,8 +372,13 @@ plus confirm that nothing has ended up walled off where you cannot reach it.
 Everything worth changing is at the top of the file in **Section 1**.
 
 - **Mouse too fast or too slow?** `MOUSE_SENSITIVITY`. Set `MOUSE_INVERT_Y`
-  to `True` if you prefer inverted look, and `MAX_PITCH` controls how far up
-  and down you can look.
+  to `True` if you prefer inverted look. `MAX_PITCH_UP` and `MAX_PITCH_DOWN`
+  control how far you can look up and down.
+- **Sight not to your taste?** `ADS_FOV_DEGREES` sets the zoom,
+  `ADS_SENSITIVITY` how much the mouse slows while zoomed.
+- **Lean too far or too little?** `LEAN_DISTANCE`.
+- **Too much blood?** `BLOOD_ON_HIT`, `BLOOD_ON_DEATH`, or `MAX_BLOOD` for
+  the overall cap. Set them all to 0 to turn it off.
 - **Game runs slowly?** Lower `NUM_COLUMNS` from `320` to `160` or `128`. This
   is by far the biggest lever — the picture gets chunkier, nothing else
   changes. There is a live frame-rate readout in the corner of the status bar.
@@ -325,7 +409,13 @@ These are deliberate — fixing them properly is what a real engine does.
   calculation per *pixel* rather than per column.
 - **Looking up and down is faked** by shearing the picture, as described
   above — the world itself is still perfectly flat, so rounds always travel
-  level and there are no stairs, lifts or balconies.
+  level and there are no stairs, lifts or balconies. It is also why the
+  vertical range is limited: a modern shooter lets you look almost straight
+  up, but a shear that steep distorts badly, and it slides the weapon clean
+  off the bottom of the screen. Real free-look needs a different renderer.
+- **Walls are textured by banding, not by sampling a bitmap** (section 5).
+  Close up you can see the bands are flat blocks of colour rather than real
+  pixels.
 - **No sound.** The standard library has `winsound`, but only on Windows.
 - **Mouse capture leans on tkinter's pointer warping,** which is solid on
   Windows and Linux but can be fussy on some setups. If aiming ever feels

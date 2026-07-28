@@ -16,9 +16,11 @@ at school) with no downloads and no `pip`.
     --------
     MOUSE ................. aim  (click the window to capture it)
     LEFT MOUSE or Space ... fire
+    RIGHT MOUSE ........... aim down the sight - zooms in and steadies you
     W / S or Up / Down .... move forward / backward
     A / D ................. strafe (step sideways)
-    Left / Right or Q / E . turn without the mouse
+    Q / E ................. lean left / right round a corner
+    Left / Right .......... turn without the mouse
     Shift ................. sprint
     M ..................... turn mouse aiming on / off
     Tab ................... toggle the tac-map
@@ -91,8 +93,41 @@ MAG_SIZE = 30           # rounds in one magazine, used by the HUD readout
 # Mouse aiming
 MOUSE_SENSITIVITY = 0.0032   # radians of turn per pixel of mouse movement
 MOUSE_INVERT_Y = False
-MAX_PITCH = 70          # how far up/down you can look, in pixels of screen shift
-PITCH_SENSITIVITY = 0.55     # vertical look is deliberately less twitchy
+PITCH_SENSITIVITY = 1.0      # vertical responds exactly like horizontal
+# How far up and down you can look, measured in pixels of screen shift. The
+# view is 400px tall and covers about 44 degrees, so 150px is around 16.
+#
+# The two limits differ on purpose. Shearing the picture upwards slides the
+# carbine down with the horizon, and past about 100px there is none of it
+# left on screen. Looking down has no such problem - it brings MORE of the
+# weapon into view - so it gets the longer leash. In practice looking down is
+# the more useful direction anyway: bodies, dropped magazines and the
+# extraction pad are all on the floor.
+MAX_PITCH_UP = 100
+MAX_PITCH_DOWN = 150
+MAX_PITCH = MAX_PITCH_DOWN      # the larger of the two, for sizing the sky
+
+# Aiming down the sight (hold the right mouse button)
+ADS_FOV_DEGREES = 38.0  # narrower view = magnified
+ADS_SPEED = 9.0         # how fast the sight comes up, in "per second"
+ADS_SENSITIVITY = 0.55  # the mouse slows down while you are zoomed in
+ADS_MOVE_SCALE = 0.48   # so does your walk
+ADS_SPREAD_SCALE = 0.18 # and the rifle tightens right up
+ADS_SQUEEZE_X = 0.34    # how far the weapon narrows as it lines up with you
+ADS_SQUEEZE_Y = 0.72    # and how much it shortens
+
+# Leaning around corners (Q and E)
+LEAN_DISTANCE = 0.42    # how far out you peek, in grid squares
+LEAN_SPEED = 7.0        # how fast you lean, in "per second"
+LEAN_GUN_SHIFT = 26     # pixels the carbine slides across as you lean
+
+# Blood
+BLOOD_ON_HIT = 9        # specks thrown up by one round
+BLOOD_ON_DEATH = 22
+BLOOD_GRAVITY = 5.2
+BLOOD_LIFETIME = 0.75
+MAX_BLOOD = 90          # size of the particle pool
+POOL_GROW_TIME = 1.2    # seconds for a pool under a body to spread out
 
 # M4 carbine: fully automatic, one accurate round at a time.
 SHOT_COOLDOWN = 0.105   # seconds between rounds - about 570 rounds per minute
@@ -104,7 +139,7 @@ SHOT_RANGE = 22.0
 # Fog / lighting. Walls fade towards black as they get further away.
 FOG_NEAR = 1.0
 FOG_FAR = 17.0
-SHADE_LEVELS = 24       # how many brightness steps we pre-compute
+SHADE_LEVELS = 32       # how many brightness steps we pre-compute
 
 
 # ===========================================================================
@@ -160,6 +195,103 @@ WALL_SHADES_DARK = {c: make_shade_table(dim(rgb, 0.66)) for c, rgb in WALL_COLOU
 
 CEILING_RGB = (34, 38, 50)      # night sky / dark ceiling
 FLOOR_RGB = (62, 62, 60)        # poured concrete
+
+
+# ---------------------------------------------------------------------------
+#  WALL TEXTURE
+#
+#  Sampling a real bitmap texture per pixel is out of reach in pure Python -
+#  it is roughly a hundred thousand extra operations a frame. So walls are
+#  textured a cheaper way, in two halves:
+#
+#  ACROSS the wall, detail is FREE. The raycaster already tells us where on
+#  the wall face the ray landed, so we just look that position up in a table
+#  of brightness offsets and nudge the shade. That buys vertical seams,
+#  mortar joints and panel edges for the cost of one list lookup.
+#
+#  DOWN the wall, detail costs rectangles. Each column is split into a few
+#  horizontal bands with their own brightness, giving courses of brick, the
+#  lip of a steel panel, a strip of rust. Bands are measured 0 (top of the
+#  wall) to 1 (bottom), so they stay glued to the wall at any distance.
+#
+#  The numbers are brightness *steps*, added to the shade index - positive is
+#  lighter, negative is darker.
+# ---------------------------------------------------------------------------
+
+#                  v0    v1   step
+WALL_BANDS = {
+    "#": (  # concrete: shuttering seams a third of the way down
+        (0.00, 0.04,  3), (0.04, 0.34,  0), (0.34, 0.38, -4),
+        (0.38, 0.70,  1), (0.70, 0.74, -4), (0.74, 0.96,  0),
+        (0.96, 1.00, -5),
+    ),
+    "O": (  # painted breeze block: chunky courses
+        (0.00, 0.05,  2), (0.05, 0.30,  0), (0.30, 0.35, -5),
+        (0.35, 0.60,  1), (0.60, 0.65, -5), (0.65, 0.95,  0),
+        (0.95, 1.00, -5),
+    ),
+    "S": (  # steel bulkhead: bright top lip, ribbed middle, dark skirt
+        (0.00, 0.07,  4), (0.07, 0.12, -3), (0.12, 0.44,  1),
+        (0.44, 0.50, -4), (0.50, 0.82,  1), (0.82, 0.88, -3),
+        (0.88, 1.00, -5),
+    ),
+    "R": (  # rusted plate: blotchy, darker towards the bottom
+        (0.00, 0.06,  2), (0.06, 0.28, -1), (0.28, 0.33, -4),
+        (0.33, 0.58,  1), (0.58, 0.66, -3), (0.66, 0.92, -1),
+        (0.92, 1.00, -5),
+    ),
+    "Y": (  # hazard panel: bold stripes
+        (0.00, 0.06,  3), (0.06, 0.26, -6), (0.26, 0.46,  2),
+        (0.46, 0.66, -6), (0.66, 0.86,  2), (0.86, 0.94, -6),
+        (0.94, 1.00, -4),
+    ),
+}
+
+MAX_BANDS = max(len(bands) for bands in WALL_BANDS.values())
+
+# Anything shorter than this on screen is too far away for the banding to
+# read as anything but noise, so distant walls collapse to a single stripe.
+# That also keeps the cost down, because most columns in view are distant.
+BAND_MIN_HEIGHT = 30
+FLAT_BAND = ((0.0, 1.0, 0),)
+
+SEAM_STEPS = 32         # how finely we sample across the wall face
+
+# Where the middle of the optic sits on the carbine sprite, measured from the
+# weapon's own anchor point. Aiming down the sight slides the whole weapon
+# until this lands exactly on the aim point, which is what lines the sight up.
+OPTIC_CENTRE_X = 10
+OPTIC_CENTRE_Y = -107
+
+
+def make_seam_table(joints, depth=-5, width=0.035):
+    """
+    Brightness offsets across one wall square.
+
+    `joints` are positions from 0 to 1 where a groove runs down the wall.
+    Everything else is left alone. Sampled into a small lookup table so the
+    render loop only does an integer index.
+    """
+    table = []
+    for step in range(SEAM_STEPS):
+        position = step / SEAM_STEPS
+        offset = 0
+        for joint in joints:
+            gap = abs(position - joint)
+            gap = min(gap, 1.0 - gap)       # the wall wraps around
+            if gap < width:
+                offset = depth
+        table.append(offset)
+    return tuple(table)
+
+
+WALL_SEAMS = {
+    "#": make_seam_table((0.0, 0.5), depth=-3),
+    "O": make_seam_table((0.0, 0.25, 0.5, 0.75), depth=-5),
+    "S": make_seam_table((0.0,), depth=-4, width=0.05),
+    "R": make_seam_table((0.0, 0.5), depth=-2),
+    "Y": make_seam_table((0.0,), depth=-3),
+}
 SKY_BANDS = 8           # the ceiling/floor gradient is drawn as N flat bands
 
 
@@ -306,6 +438,10 @@ for _table in (MONSTERS, PICKUPS, {"X": EXIT_SPRITE}):
 
 MAX_SPRITE_SLOTS = 14   # most hostiles/pickups we will ever draw at once
 
+# Blood: bright and wet in flight, dark and tacky once it has pooled.
+BLOOD_SHADES = make_shade_table((178, 22, 24), dimmest=0.22)
+BLOOD_POOL_SHADES = make_shade_table((96, 12, 14), dimmest=0.20)
+
 
 # ===========================================================================
 #  SECTION 4 - THE LEVELS
@@ -448,6 +584,7 @@ class Game:
         self.half_h = SCREEN_H * 0.5
         self.column_w = SCREEN_W / NUM_COLUMNS
         self.plane_len = math.tan(math.radians(FOV_DEGREES) * 0.5)
+        self.ads = 0.0          # set before the first camera update
 
         # The depth buffer: how far away the wall is in each screen column.
         # Sprites use it to work out whether they are hidden behind a wall.
@@ -458,6 +595,10 @@ class Game:
         self.mouse_enabled = True
         self.mouse_captured = False
         self.firing = False
+        self.aiming = False         # right mouse button held
+        self.ads = 0.0              # 0 = hip fire, 1 = fully sighted in
+        self.lean = 0.0             # -1 hard left, +1 hard right
+        self.lean_applied = 0.0     # how much of it the walls allowed
         self._warping = False
         self.pitch = 0.0
         self.show_minimap = True
@@ -484,7 +625,7 @@ class Game:
         self.state = STATE_TITLE
         self.load_level(0)
         self._set_overlay("TRIDENT",
-                          "MOUSE aim    WASD move    CLICK fire",
+                          "MOUSE aim   CLICK fire   RIGHT-CLICK sight   QE lean",
                           "click the window to begin")
 
         self.last_time = time.perf_counter()
@@ -522,17 +663,27 @@ class Game:
             self.bg_items.append((item, y0, y1))
 
     def _build_wall_columns(self):
-        """One thin rectangle per ray. These become the walls."""
+        """
+        The wall stripes.
+
+        Each ray owns a small stack of rectangles rather than a single one, so
+        a column can be painted as several horizontal bands - see the WALL
+        TEXTURE notes up in Section 2. They are all made once here and only
+        ever moved afterwards.
+        """
         self.column_items = []
-        self.column_fill = []       # remembers each column's current colour
+        self.column_fill = []       # each band's current colour
+        self.column_used = []       # how many bands the column drew last frame
         for i in range(NUM_COLUMNS):
             x0 = i * self.column_w
             # +1 pixel of overlap so there are no hairline gaps between stripes
             x1 = x0 + self.column_w + 1
-            item = self.canvas.create_rectangle(x0, 0, x1, 0,
-                                                fill="#000000", outline="")
-            self.column_items.append(item)
-            self.column_fill.append("#000000")
+            self.column_items.append([
+                self.canvas.create_rectangle(x0, 0, x1, 0,
+                                             fill="#000000", outline="")
+                for _ in range(MAX_BANDS)])
+            self.column_fill.append(["#000000"] * MAX_BANDS)
+            self.column_used.append(0)
 
     def _build_sprite_pool(self):
         """
@@ -574,6 +725,17 @@ class Game:
                 slot.append(item)
             self.monster_slots.append(slot)
 
+        # Blood: a pool of small rectangles, plus the flat pools that spread
+        # out under a body. Pools are created first so they stay on the floor,
+        # underneath everything else.
+        self.pool_items = [self.canvas.create_oval(-40, -40, -30, -30,
+                                                   fill="#000000", outline="")
+                           for _ in range(MAX_SPRITE_SLOTS)]
+        self.blood_items = [self.canvas.create_rectangle(-40, -40, -30, -30,
+                                                         fill="#000000",
+                                                         outline="")
+                            for _ in range(MAX_BLOOD)]
+
         # Which shapes are currently sitting on screen. Anything not in here is
         # already parked out of sight, so we never waste a call re-hiding it.
         self._on_screen = set()
@@ -607,6 +769,10 @@ class Game:
         self.gun_items = [self.canvas.create_rectangle(0, 0, 0, 0,
                                                        fill=colour, outline="")
                           for *_, colour in self.gun_parts]
+
+        # The red dot inside the optic, shown only while sighted in.
+        self.dot_item = self.canvas.create_oval(0, 0, 0, 0, fill="#ff3b30",
+                                                outline="")
 
         # An eight-pointed star that pops for a moment when you fire.
         self.flash_item = self.canvas.create_polygon(0, 0, 0, 0, 0, 0,
@@ -747,6 +913,8 @@ class Game:
         self.root.bind("<KeyRelease>", self._on_key_release)
         self.canvas.bind("<Button-1>", self._on_mouse_down)
         self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
+        self.canvas.bind("<Button-3>", self._on_aim_down)
+        self.canvas.bind("<ButtonRelease-3>", self._on_aim_up)
         self.canvas.bind("<Motion>", self._on_mouse_move)
         # If the window loses focus (you alt-tabbed, or a dialog opened) let
         # the mouse go, otherwise the pointer stays trapped in a dead window.
@@ -798,6 +966,13 @@ class Game:
     def _on_mouse_up(self, _event):
         self.firing = False
 
+    def _on_aim_down(self, _event):
+        if self.mouse_captured:
+            self.aiming = True
+
+    def _on_aim_up(self, _event):
+        self.aiming = False
+
     def _on_mouse_move(self, event):
         if self._warping:
             self._warping = False       # this is our own teleport echoing back
@@ -810,15 +985,16 @@ class Game:
         if move_x == 0 and move_y == 0:
             return
 
-        self.angle = (self.angle + move_x * MOUSE_SENSITIVITY) % (2 * math.pi)
+        sensitivity = MOUSE_SENSITIVITY * (1.0 + (ADS_SENSITIVITY - 1.0) * self.ads)
+        self.angle = (self.angle + move_x * sensitivity) % (2 * math.pi)
         self._update_camera_vectors()
 
         # Looking up and down is a cheat: a grid raycaster has no idea what
         # "up" means, so we just slide the whole horizon line instead. It is
         # the same trick Doom used, and it holds up fine over a small range.
-        step = move_y * MOUSE_SENSITIVITY * PITCH_SENSITIVITY * SCREEN_H
+        step = move_y * sensitivity * PITCH_SENSITIVITY * SCREEN_H
         self.pitch -= -step if MOUSE_INVERT_Y else step
-        self.pitch = max(-MAX_PITCH, min(MAX_PITCH, self.pitch))
+        self.pitch = max(-MAX_PITCH_DOWN, min(MAX_PITCH_UP, self.pitch))
 
         self._centre_pointer()
 
@@ -964,6 +1140,13 @@ class Game:
         self.message_timer = 0.0
         self.exit_pulse = 0.0
         self.pitch = 0.0
+        self.lean = 0.0
+        self.lean_applied = 0.0
+        self.ads = 0.0
+        self.aiming = False
+        self.blood = []
+        self.cam_x = self.px
+        self.cam_y = self.py
 
         self._update_camera_vectors()
         self._draw_minimap_walls()
@@ -982,8 +1165,46 @@ class Game:
         """
         self.dir_x = math.cos(self.angle)
         self.dir_y = math.sin(self.angle)
+        # The camera plane's length IS the field of view, so zooming in when
+        # you raise the sight is just a matter of shortening it.
+        fov = FOV_DEGREES + (ADS_FOV_DEGREES - FOV_DEGREES) * self.ads
+        self.plane_len = math.tan(math.radians(fov) * 0.5)
         self.plane_x = -self.dir_y * self.plane_len
         self.plane_y = self.dir_x * self.plane_len
+
+    def _update_camera_position(self):
+        """
+        Work out where the eye is, which is not always where the feet are.
+
+        Leaning slides the viewpoint sideways along the camera plane while the
+        body stays put, which is what lets you peek past a corner without
+        stepping into the open. If the lean would put your head inside a wall
+        we shorten it until it does not - so leaning into a wall just stops.
+        """
+        if self.lean == 0.0:
+            self.cam_x = self.px
+            self.cam_y = self.py
+            self.lean_applied = 0.0
+            return
+
+        # The camera plane already points along the player's right-hand side.
+        side_x = -self.dir_y
+        side_y = self.dir_x
+
+        reach = self.lean * LEAN_DISTANCE
+        while abs(reach) > 0.01:
+            test_x = self.px + side_x * reach
+            test_y = self.py + side_y * reach
+            if self.can_stand(test_x, test_y, PLAYER_RADIUS * 0.6):
+                self.cam_x = test_x
+                self.cam_y = test_y
+                self.lean_applied = reach / LEAN_DISTANCE
+                return
+            reach *= 0.6            # blocked - try leaning out less far
+
+        self.cam_x = self.px
+        self.cam_y = self.py
+        self.lean_applied = 0.0
 
     # -- world queries -----------------------------------------------------
 
@@ -1028,8 +1249,8 @@ class Game:
         units as the depth buffer, so the two can be compared directly.
         A depth of zero or less means the point is behind the player.
         """
-        rel_x = world_x - self.px
-        rel_y = world_y - self.py
+        rel_x = world_x - self.cam_x
+        rel_y = world_y - self.cam_y
         determinant = self.plane_x * self.dir_y - self.dir_x * self.plane_y
         if abs(determinant) < 1e-9:
             return 0.0, -1.0
@@ -1060,7 +1281,7 @@ class Game:
         grid = self.grid
         map_w = self.map_w
         map_h = self.map_h
-        px, py = self.px, self.py
+        px, py = self.cam_x, self.cam_y
         dir_x, dir_y = self.dir_x, self.dir_y
         plane_x, plane_y = self.plane_x, self.plane_y
         zbuffer = self.zbuffer
@@ -1136,8 +1357,19 @@ class Game:
             # walls outwards into a fisheye lens.
             if distance < 0.0001:
                 distance = 0.0001
+
+            # Where along the face of that wall square did we hit? Follow the
+            # ray out to the wall and keep the fractional part. This is the
+            # texture's horizontal coordinate, and it is what lets a wall show
+            # vertical seams that stay put as you walk past.
+            if side == 0:
+                wall_x = py + distance * ray_y
+            else:
+                wall_x = px + distance * ray_x
+            wall_x -= int(wall_x)
+
             zbuffer[column] = distance
-            results.append((distance, side, hit_char))
+            results.append((distance, side, hit_char, wall_x))
 
         return results
 
@@ -1157,17 +1389,39 @@ class Game:
             strafe -= 1.0
 
         turn = 0.0
-        if self._held("right", "e"):
+        if self._held("right"):
             turn += 1.0
-        if self._held("left", "q"):
+        if self._held("left"):
             turn -= 1.0
 
         if turn:
             self.angle = (self.angle + turn * TURN_SPEED * dt) % (2 * math.pi)
-            self._update_camera_vectors()
 
-        running = self._held("shift_l", "shift_r")
+        # --- aiming down the sight ---
+        # `ads` slides towards 0 or 1 rather than snapping, so the sight comes
+        # up smoothly. Everything else about aiming reads off that one number.
+        target = 1.0 if self.aiming else 0.0
+        self.ads += (target - self.ads) * min(1.0, ADS_SPEED * dt)
+        if abs(self.ads - target) < 0.002:
+            self.ads = target
+
+        # --- leaning ---
+        # Q and E tip you out to the side to peek round a corner. It moves
+        # where you look from without moving where you stand.
+        lean_target = 0.0
+        if self._held("e"):
+            lean_target += 1.0
+        if self._held("q"):
+            lean_target -= 1.0
+        self.lean += (lean_target - self.lean) * min(1.0, LEAN_SPEED * dt)
+        if abs(self.lean) < 0.002:
+            self.lean = 0.0
+
+        self._update_camera_vectors()
+
+        running = self._held("shift_l", "shift_r") and self.ads < 0.5
         speed = RUN_SPEED if running else WALK_SPEED
+        speed *= 1.0 + (ADS_MOVE_SCALE - 1.0) * self.ads
         move_x = (self.dir_x * forward + (-self.dir_y) * strafe * STRAFE_SCALE) * speed * dt
         move_y = (self.dir_y * forward + (self.dir_x) * strafe * STRAFE_SCALE) * speed * dt
 
@@ -1177,6 +1431,8 @@ class Game:
             self.px += move_x
         if move_y and self.can_stand(self.px, self.py + move_y, PLAYER_RADIUS):
             self.py += move_y
+
+        self._update_camera_position()
 
         # Head bob while walking
         if forward or strafe:
@@ -1210,8 +1466,9 @@ class Game:
         self.recoil = 16.0
 
         # A shotgun sprays pellets, so fire several rays with a little scatter.
+        spread_scale = 1.0 + (ADS_SPREAD_SCALE - 1.0) * self.ads
         for _ in range(SHOT_PELLETS):
-            spread = random.uniform(-SHOT_SPREAD, SHOT_SPREAD)
+            spread = random.uniform(-SHOT_SPREAD, SHOT_SPREAD) * spread_scale
             victim = self._pellet_target(spread)
             if victim is not None:
                 self.damage_monster(victim, SHOT_DAMAGE)
@@ -1226,8 +1483,8 @@ class Game:
             if not monster.alive:
                 continue
 
-            dx = monster.x - self.px
-            dy = monster.y - self.py
+            dx = monster.x - self.cam_x
+            dy = monster.y - self.cam_y
             distance = math.hypot(dx, dy)
             if distance > best_depth or distance < 0.0001:
                 continue
@@ -1251,13 +1508,39 @@ class Game:
 
         return best
 
+    def spray_blood(self, x, y, count, force=1.0):
+        """
+        Throw a handful of specks off a hit.
+
+        Each speck lives in the world, not on the screen - it has a position,
+        a height above the floor and a velocity, and falls under gravity. That
+        costs a little more than screen-space specks but it means the spray
+        stays where it was thrown when you turn away and look back.
+        """
+        spare = MAX_BLOOD - len(self.blood)
+        if spare <= 0:
+            return
+        for _ in range(min(count, spare)):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(0.5, 2.4) * force
+            self.blood.append([
+                x, y,                                   # where on the map
+                random.uniform(0.42, 0.72),             # height off the floor
+                math.cos(angle) * speed,                # velocity
+                math.sin(angle) * speed,
+                random.uniform(1.2, 3.4) * force,       # upward kick
+                random.uniform(0.55, 1.0) * BLOOD_LIFETIME,
+            ])
+
     def damage_monster(self, monster, amount):
         monster.hp -= amount
         monster.hurt_flash = 0.09
         monster.awake = True
+        self.spray_blood(monster.x, monster.y, BLOOD_ON_HIT)
         if monster.hp <= 0 and monster.alive:
             monster.alive = False
             monster.death_timer = 0.0
+            self.spray_blood(monster.x, monster.y, BLOOD_ON_DEATH, force=1.35)
             self.kills += 1
             self.level_score += monster.info["score"]
             self.say("%s down." % monster.info["name"], 1.4)
@@ -1330,6 +1613,24 @@ class Game:
                 monster.x += step_x
             if self.can_stand(monster.x, monster.y + step_y, radius):
                 monster.y += step_y
+
+    def update_blood(self, dt):
+        """Move every speck, and drop the ones that have landed or dried up."""
+        alive = []
+        for speck in self.blood:
+            speck[6] -= dt
+            if speck[6] <= 0:
+                continue
+            speck[5] -= BLOOD_GRAVITY * dt      # gravity pulls the kick down
+            speck[0] += speck[3] * dt
+            speck[1] += speck[4] * dt
+            speck[2] += speck[5] * dt
+            if speck[2] <= 0.02:                # hit the floor
+                continue
+            if self.is_wall(speck[0], speck[1]):
+                continue                        # splattered on a wall
+            alive.append(speck)
+        self.blood = alive
 
     def hurt_player(self, amount):
         self.hp -= amount
@@ -1411,31 +1712,69 @@ class Game:
         items = self.column_items
         fills = self.column_fill
 
+        used = self.column_used
+
         for i in range(NUM_COLUMNS):
-            distance, side, char = rays[i]
+            distance, side, char, wall_x = rays[i]
+            slot = items[i]
 
             if distance >= MAX_DEPTH:
                 # Nothing hit: collapse the stripe so only sky/floor shows
-                canvas.coords(items[i], 0, 0, 0, 0)
+                for band in range(used[i]):
+                    canvas.coords(slot[band], 0, 0, 0, 0)
+                used[i] = 0
                 continue
 
             height = SCREEN_H / distance
             top = horizon - height * 0.5
-            bottom = horizon + height * 0.5
-            if top < 0:
-                top = 0
-            if bottom > SCREEN_H:
-                bottom = SCREEN_H
-
             x0 = i * column_w
-            canvas.coords(items[i], x0, top, x0 + column_w + 1, bottom)
+            x1 = x0 + column_w + 1
 
-            shades = WALL_SHADES_BRIGHT if side == 0 else WALL_SHADES_DARK
-            colour = shades[char][shade_index(distance)]
-            # Only bother tkinter if the colour actually changed.
-            if colour != fills[i]:
-                canvas.itemconfigure(items[i], fill=colour)
-                fills[i] = colour
+            shades = (WALL_SHADES_BRIGHT if side == 0 else WALL_SHADES_DARK)[char]
+            # Distance fog, plus the free across-the-wall detail: a groove in
+            # the wall face simply reads as a few steps darker.
+            base = shade_index(distance) + WALL_SEAMS[char][int(wall_x * SEAM_STEPS)]
+
+            # Close walls get the full banding. Distant ones would be drawing
+            # bands a pixel or two tall, so they collapse to one flat stripe -
+            # which is also what keeps the frame cost down, since most of the
+            # columns on screen at any moment are far away.
+            bands = WALL_BANDS[char] if height >= BAND_MIN_HEIGHT else FLAT_BAND
+
+            drawn = 0
+            column_fills = fills[i]
+            for band_top, band_bottom, step in bands:
+                y0 = top + height * band_top
+                if y0 >= SCREEN_H:
+                    continue
+                y1 = top + height * band_bottom
+                if y1 <= 0:
+                    continue
+                if y0 < 0:
+                    y0 = 0
+                if y1 > SCREEN_H:
+                    y1 = SCREEN_H
+                if y1 <= y0:
+                    continue
+
+                level = base + step
+                if level < 0:
+                    level = 0
+                elif level >= SHADE_LEVELS:
+                    level = SHADE_LEVELS - 1
+
+                item = slot[drawn]
+                canvas.coords(item, x0, y0, x1, y1)
+                colour = shades[level]
+                # Only bother tkinter if the colour actually changed.
+                if colour != column_fills[drawn]:
+                    canvas.itemconfigure(item, fill=colour)
+                    column_fills[drawn] = colour
+                drawn += 1
+
+            for band in range(drawn, used[i]):
+                canvas.coords(slot[band], 0, 0, 0, 0)
+            used[i] = drawn
 
     def draw_sprites(self):
         """
@@ -1469,8 +1808,6 @@ class Game:
 
         visible_monsters = []
         for monster in self.monsters:
-            if not monster.alive and monster.death_timer > 2.5:
-                continue        # corpse has faded away
             screen_x, depth = self.project(monster.x, monster.y)
             if depth <= 0.25 or depth >= FOG_FAR + 4:
                 continue
@@ -1579,20 +1916,132 @@ class Game:
                                  fill="#ffffff" if flash else shades[colour_key][level])
             used.add(item)
 
+    def draw_blood(self):
+        """
+        Draw the specks in flight and the pools spreading under the bodies.
+
+        Both are projected exactly like a sprite is, and both are checked
+        against the depth buffer so blood behind a wall stays hidden.
+        """
+        canvas = self.canvas
+        horizon = self.horizon
+        column_w = self.column_w
+        zbuffer = self.zbuffer
+
+        # --- pools under the bodies ---
+        slot = 0
+        for monster in self.monsters:
+            if monster.alive or slot >= len(self.pool_items):
+                continue
+            screen_x, depth = self.project(monster.x, monster.y)
+            if depth <= 0.25 or depth >= FOG_FAR + 4:
+                continue
+            column = int(screen_x / column_w)
+            if not (0 <= column < NUM_COLUMNS) or zbuffer[column] < depth:
+                continue
+
+            full_height = SCREEN_H / depth
+            spread = min(1.0, monster.death_timer / POOL_GROW_TIME)
+            width = full_height * 0.62 * spread
+            if width < 1.5:
+                continue
+            floor_y = horizon + full_height * 0.5
+            item = self.pool_items[slot]
+            canvas.coords(item, screen_x - width * 0.5, floor_y - width * 0.16,
+                          screen_x + width * 0.5, floor_y + width * 0.16)
+            canvas.itemconfigure(item, state="normal",
+                                 fill=BLOOD_POOL_SHADES[shade_index(depth)])
+            slot += 1
+
+        while slot < len(self.pool_items):
+            canvas.itemconfigure(self.pool_items[slot], state="hidden")
+            slot += 1
+
+        # --- specks in flight ---
+        slot = 0
+        for speck_x, speck_y, height, _vx, _vy, _vz, life in self.blood:
+            if slot >= MAX_BLOOD:
+                break
+            screen_x, depth = self.project(speck_x, speck_y)
+            if depth <= 0.2 or depth >= FOG_FAR + 4:
+                continue
+            column = int(screen_x / column_w)
+            if not (0 <= column < NUM_COLUMNS) or zbuffer[column] < depth:
+                continue
+
+            full_height = SCREEN_H / depth
+            # Same anchoring as a sprite: find the floor at this depth, then
+            # climb by however high off the ground the speck is.
+            screen_y = horizon + full_height * (0.5 - height)
+            size = max(1.0, full_height * 0.022)
+            if screen_y < -size or screen_y > SCREEN_H + size:
+                continue
+
+            item = self.blood_items[slot]
+            canvas.coords(item, screen_x - size, screen_y - size,
+                          screen_x + size, screen_y + size)
+            # Specks darken as they dry, so a spray fades rather than blinking.
+            fade = max(0.0, min(1.0, life / BLOOD_LIFETIME))
+            canvas.itemconfigure(
+                item, state="normal",
+                fill=BLOOD_SHADES[int(fade * (SHADE_LEVELS - 1))])
+            slot += 1
+
+        while slot < len(self.blood_items):
+            canvas.itemconfigure(self.blood_items[slot], state="hidden")
+            slot += 1
+
     def draw_weapon(self):
         canvas = self.canvas
-        centre = SCREEN_W * 0.5 + self.bob_offset * 2.2
-        # The carbine tracks the pitch alongside the horizon, so the reticle
-        # stays a fixed distance above the muzzle however you are looking.
-        base = SCREEN_H + self.bob_offset + self.recoil + self.pitch
-
-        for item, (x0, y0, x1, y1, _colour) in zip(self.gun_items, self.gun_parts):
-            canvas.coords(item, centre + x0, base + y0, centre + x1, base + y1)
-
+        ads = self.ads
         aim_x = SCREEN_W * 0.5
         aim_y = self.horizon
-        for item, (x0, y0, x1, y1) in zip(self.cross_items, self.cross_parts):
-            canvas.coords(item, aim_x + x0, aim_y + y0, aim_x + x1, aim_y + y1)
+
+        # Hip fire: the carbine sits low, sways with your stride and slides
+        # across as you lean. It tracks the pitch alongside the horizon, so
+        # the reticle keeps a fixed distance above the muzzle.
+        hip_x = aim_x + self.bob_offset * 2.2 + self.lean_applied * LEAN_GUN_SHIFT
+        hip_y = SCREEN_H + self.bob_offset + self.recoil + self.pitch
+
+        # Bringing the weapon in line with your eye foreshortens it: you stop
+        # seeing it side-on and start looking along it, so it narrows a lot and
+        # shortens a little. Squeezing the sprite is a cheap stand-in for a
+        # view we cannot actually rotate.
+        squeeze_x = 1.0 + (ADS_SQUEEZE_X - 1.0) * ads
+        squeeze_y = 1.0 + (ADS_SQUEEZE_Y - 1.0) * ads
+
+        # Sighted in: the weapon comes up and across until the optic sits
+        # exactly on the aim point, and the bob and the lean shift damp away.
+        # The optic moves with the squeeze, so line up against the squeezed
+        # position or the sight ends up off to one side.
+        sight_x = (aim_x - OPTIC_CENTRE_X * squeeze_x
+                   + self.lean_applied * LEAN_GUN_SHIFT * 0.3)
+        sight_y = aim_y - OPTIC_CENTRE_Y * squeeze_y + self.recoil * 0.5
+
+        centre = hip_x + (sight_x - hip_x) * ads
+        base = hip_y + (sight_y - hip_y) * ads
+
+        for item, (x0, y0, x1, y1, _colour) in zip(self.gun_items, self.gun_parts):
+            canvas.coords(item,
+                          centre + x0 * squeeze_x, base + y0 * squeeze_y,
+                          centre + x1 * squeeze_x, base + y1 * squeeze_y)
+
+        # The red dot itself. It only appears once you are properly behind the
+        # optic, and it is what you actually aim with from then on.
+        if ads > 0.55:
+            canvas.coords(self.dot_item, aim_x - 2.5, aim_y - 2.5,
+                          aim_x + 2.5, aim_y + 2.5)
+        else:
+            canvas.coords(self.dot_item, 0, 0, 0, 0)
+
+        # The crosshair fades out as the optic takes over - once you are looking
+        # down the sight, the optic itself is the reticle.
+        if ads > 0.55:
+            for item in self.cross_items:
+                canvas.coords(item, 0, 0, 0, 0)
+        else:
+            for item, (x0, y0, x1, y1) in zip(self.cross_items, self.cross_parts):
+                canvas.coords(item, aim_x + x0, aim_y + y0, aim_x + x1, aim_y + y1)
 
         if self.flash_timer > 0:
             muzzle_x = centre - 3
@@ -1758,6 +2207,7 @@ class Game:
         if self.state == STATE_PLAYING:
             self.update_player(dt)
             self.update_monsters(dt)
+            self.update_blood(dt)
 
         # Timers keep running even when the game is paused on a menu, so an
         # effect that was mid-flight when you died does not freeze on screen.
@@ -1776,6 +2226,7 @@ class Game:
         self.draw_background()
         self.draw_walls(rays)
         self.draw_sprites()
+        self.draw_blood()
         self.draw_weapon()
         self.draw_hud()
         self.draw_minimap()
