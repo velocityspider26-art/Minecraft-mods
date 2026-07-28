@@ -1,31 +1,38 @@
 """
-PyDOOM - a Doom-style first person shooter written in pure Python.
+TRIDENT - a modern special-forces shooter written in pure Python.
 
-No external libraries are needed. Everything comes from the Python standard
-library, so this runs on any normal Python install (including IDLE at school).
+You play a Navy SEAL operator clearing a facility room by room. It is a
+first person shooter with mouse aiming, built with nothing but the Python
+standard library, so it runs on any normal Python install (including IDLE
+at school) with no downloads and no `pip`.
 
     HOW TO RUN IN IDLE
     ------------------
     1. Open this file in IDLE  (File -> Open...)
     2. Press F5  (or Run -> Run Module)
-    3. A game window appears. Click it once so it has keyboard focus.
+    3. Click inside the game window to take control of the mouse.
 
     CONTROLS
     --------
-    W / S or Up / Down .... walk forward / backward
+    MOUSE ................. aim  (click the window to capture it)
+    LEFT MOUSE or Space ... fire
+    W / S or Up / Down .... move forward / backward
     A / D ................. strafe (step sideways)
-    Left / Right or Q / E . turn
-    Shift ................. run
-    Space or Ctrl ......... fire the shotgun
-    Tab ................... toggle the minimap
-    R ..................... restart the level
-    N ..................... next level (after you clear one)
-    Esc ................... quit
+    Left / Right or Q / E . turn without the mouse
+    Shift ................. sprint
+    M ..................... turn mouse aiming on / off
+    Tab ................... toggle the tac-map
+    R ..................... restart the mission
+    N ..................... next mission (after you clear one)
+    Esc ................... release the mouse, or quit if it is already free
 
-    THE GOAL
-    --------
-    Kill every monster on the level, then walk onto the flashing yellow
-    exit pad. Pick up medikits and shell boxes along the way.
+    THE MISSION
+    -----------
+    Neutralise every hostile in the compound, then reach the green
+    extraction beacon. Grab medkits and rifle magazines on the way.
+
+    The hostiles are a fictional armed group - masked figures in plain
+    tactical gear. There is deliberately nothing identifying about them.
 
 HOW THE 3D EFFECT WORKS (the short version)
 -------------------------------------------
@@ -77,15 +84,22 @@ TURN_SPEED = 2.6        # radians per second
 
 PLAYER_RADIUS = 0.22    # stops you clipping into wall corners
 PLAYER_MAX_HP = 100
-START_AMMO = 30
-MAX_AMMO = 60
+START_AMMO = 90         # rounds for the carbine
+MAX_AMMO = 180
+MAG_SIZE = 30           # rounds in one magazine, used by the HUD readout
 
-# Shotgun
-SHOT_COOLDOWN = 0.52    # seconds between shots
-SHOT_PELLETS = 7        # a shotgun fires a spray, not a single bullet
-SHOT_SPREAD = 0.075     # radians of random scatter per pellet
-SHOT_DAMAGE = 9         # damage per pellet, so a point-blank hit is brutal
-SHOT_RANGE = 15.0
+# Mouse aiming
+MOUSE_SENSITIVITY = 0.0032   # radians of turn per pixel of mouse movement
+MOUSE_INVERT_Y = False
+MAX_PITCH = 70          # how far up/down you can look, in pixels of screen shift
+PITCH_SENSITIVITY = 0.55     # vertical look is deliberately less twitchy
+
+# M4 carbine: fully automatic, one accurate round at a time.
+SHOT_COOLDOWN = 0.105   # seconds between rounds - about 570 rounds per minute
+SHOT_PELLETS = 1        # a rifle fires one bullet, not a spread
+SHOT_SPREAD = 0.012     # radians of scatter, so long shots need real aim
+SHOT_DAMAGE = 24
+SHOT_RANGE = 22.0
 
 # Fog / lighting. Walls fade towards black as they get further away.
 FOG_NEAR = 1.0
@@ -131,11 +145,11 @@ def shade_index(distance):
 
 # Every character that counts as a solid wall, and the colour it is painted.
 WALL_COLOURS = {
-    "#": (150, 148, 156),   # grey stone
-    "B": (152,  74,  52),   # red brick
-    "M": ( 90, 122, 130),   # blue-grey metal
-    "G": (126,  38,  46),   # dark "gore" wall
-    "T": (176, 150,  56),   # yellow hazard panel
+    "#": (146, 146, 150),   # bare concrete
+    "O": ( 96, 104,  70),   # olive drab painted wall
+    "S": (108, 124, 136),   # steel bulkhead
+    "R": (124,  74,  50),   # rusted plate
+    "Y": (176, 152,  54),   # yellow hazard panel
 }
 
 # Two shade tables per wall type. Walls we hit on a north/south face are drawn
@@ -144,8 +158,8 @@ WALL_COLOURS = {
 WALL_SHADES_BRIGHT = {c: make_shade_table(rgb) for c, rgb in WALL_COLOURS.items()}
 WALL_SHADES_DARK = {c: make_shade_table(dim(rgb, 0.66)) for c, rgb in WALL_COLOURS.items()}
 
-CEILING_RGB = (40, 42, 62)
-FLOOR_RGB = (68, 52, 36)
+CEILING_RGB = (34, 38, 50)      # night sky / dark ceiling
+FLOOR_RGB = (62, 62, 60)        # poured concrete
 SKY_BANDS = 8           # the ceiling/floor gradient is drawn as N flat bands
 
 
@@ -160,69 +174,75 @@ SKY_BANDS = 8           # the ceiling/floor gradient is drawn as N flat bands
 #  the things listed after them. Legs and arms first, eyes last.
 # ===========================================================================
 
+# A hostile: a masked figure in plain tactical gear. Deliberately generic -
+# a balaclava, a chest rig and a weapon, and nothing that identifies it as
+# belonging to any real country, group or people.
+#
 #            shape    x0    y0    x1    y1   colour key
-HUMANOID = (
+HOSTILE = (
     ("rect", 0.30, 0.66, 0.45, 1.00, "limb"),   # left leg
     ("rect", 0.55, 0.66, 0.70, 1.00, "limb"),   # right leg
-    ("rect", 0.05, 0.29, 0.24, 0.65, "limb"),   # left arm
-    ("rect", 0.76, 0.29, 0.95, 0.65, "limb"),   # right arm
-    ("rect", 0.22, 0.23, 0.78, 0.70, "body"),   # torso
-    ("oval", 0.29, 0.00, 0.71, 0.29, "head"),   # head
-    ("oval", 0.37, 0.09, 0.46, 0.19, "eye"),    # left eye
-    ("oval", 0.54, 0.09, 0.63, 0.19, "eye"),    # right eye
+    ("rect", 0.05, 0.30, 0.24, 0.66, "limb"),   # left arm
+    ("rect", 0.76, 0.30, 0.95, 0.66, "limb"),   # right arm
+    ("rect", 0.21, 0.23, 0.79, 0.70, "body"),   # torso
+    ("oval", 0.30, 0.00, 0.70, 0.28, "head"),   # balaclava
+    ("rect", 0.31, 0.10, 0.69, 0.17, "visor"),  # goggles
+    ("rect", 0.29, 0.31, 0.71, 0.52, "rig"),    # chest rig / plate carrier
+    ("rect", 0.02, 0.44, 0.44, 0.51, "gun"),    # weapon held across the body
 )
-
-# The guard is the same body plus a rifle sticking out to one side.
-GUARD_BODY = HUMANOID + (("rect", 0.78, 0.38, 1.12, 0.47, "gun"),)
 
 # Every sprite slot on screen owns this fixed run of shapes, so the shapes at
 # each index must match between sprite types. (Canvas items cannot change from
 # a rectangle into an oval once created, so we lock the layout in here.)
-SPRITE_SHAPES = ("rect", "rect", "rect", "rect", "rect", "oval", "oval", "oval", "rect")
+SPRITE_SHAPES = ("rect", "rect", "rect", "rect", "rect", "oval", "rect", "rect", "rect")
 
 MONSTERS = {
-    "e": {
-        "name": "Imp",
-        "max_hp": 30,
-        "speed": 2.25,
+    "t": {
+        # Rushes you with a submachine gun. Dangerous up close, poor at range.
+        "name": "Tango",
+        "max_hp": 46,
+        "speed": 2.3,
         "radius": 0.30,
         "sight": 10.0,
         "score": 100,
-        "parts": HUMANOID,
+        "parts": HOSTILE,
         "width_ratio": 0.60,        # how wide the sprite is vs. how tall
-        "height_scale": 0.86,       # 0.86 of a full wall's height
-        "attack_cooldown": 1.0,
+        "height_scale": 0.88,       # 0.88 of a full wall's height
+        "attack_cooldown": 0.9,
         "melee_damage": 7,
-        "melee_range": 1.25,
-        "ranged": False,
-        "keep_distance": 0.0,       # imps charge you down
+        "melee_range": 1.3,
+        "ranged": True,
+        "ranged_damage": 4,
+        "ranged_range": 5.5,        # only accurate at short range
+        "keep_distance": 0.0,       # closes the distance on you
         "colours": {
-            "body": (152,  48,  40), "limb": (112,  34,  28),
-            "head": (178,  70,  54), "eye":  (255, 232,  90),
-            "gun":  ( 70,  70,  78),
+            "body": ( 52,  54,  58), "limb": ( 40,  42,  46),
+            "head": ( 30,  30,  34), "visor": (214, 138,  46),
+            "rig":  ( 96,  90,  70), "gun":  ( 34,  34,  38),
         },
     },
-    "s": {
-        "name": "Guard",
-        "max_hp": 45,
+    "m": {
+        # Holds position at range and puts accurate fire on you.
+        "name": "Marksman",
+        "max_hp": 62,
         "speed": 1.55,
         "radius": 0.32,
-        "sight": 12.0,
+        "sight": 13.0,
         "score": 150,
-        "parts": GUARD_BODY,
+        "parts": HOSTILE,
         "width_ratio": 0.62,
-        "height_scale": 0.90,
+        "height_scale": 0.92,
         "attack_cooldown": 1.6,
         "melee_damage": 6,
         "melee_range": 1.1,
         "ranged": True,
-        "ranged_damage": 6,
-        "ranged_range": 12.5,
-        "keep_distance": 5.5,       # guards hang back and shoot
+        "ranged_damage": 7,
+        "ranged_range": 14.0,
+        "keep_distance": 6.0,       # backs off to keep you at rifle range
         "colours": {
-            "body": ( 78, 108,  56), "limb": ( 58,  82,  42),
-            "head": (186, 152, 116), "eye":  (255, 120,  90),
-            "gun":  ( 46,  46,  52),
+            "body": ( 62,  66,  48), "limb": ( 46,  50,  36),
+            "head": ( 34,  36,  30), "visor": (198,  74,  54),
+            "rig":  (104,  98,  74), "gun":  ( 30,  30,  34),
         },
     },
 }
@@ -233,16 +253,17 @@ MEDIKIT = (
     ("rect", 0.14, 0.41, 0.86, 0.59, "mark"),
 )
 
-SHELLBOX = (
-    ("rect", 0.00, 0.22, 1.00, 1.00, "box"),
-    ("rect", 0.12, 0.00, 0.40, 0.40, "mark"),
-    ("rect", 0.58, 0.00, 0.86, 0.40, "mark"),
+# A rifle magazine standing on its base.
+AMMO_MAG = (
+    ("rect", 0.28, 0.00, 0.72, 0.30, "mark"),
+    ("rect", 0.22, 0.26, 0.78, 1.00, "box"),
+    ("rect", 0.34, 0.40, 0.48, 0.90, "mark"),
 )
 
 PICKUP_SHAPES = ("rect", "rect", "rect")
 
-# The exit: a low pad with a column of light standing on it, so you can spot
-# it from across the room instead of having to hunt for it on the minimap.
+# The extraction point: a marker panel with a green chemlight standing on it,
+# so you can spot it from across the compound instead of hunting the tac-map.
 EXIT_PAD = (
     ("rect", 0.00, 0.62, 1.00, 1.00, "pad"),
     ("rect", 0.14, 0.34, 0.86, 0.68, "glow"),
@@ -252,22 +273,22 @@ EXIT_PAD = (
 EXIT_SPRITE = {
     "name": "exit", "parts": EXIT_PAD,
     "width_ratio": 1.35, "height_scale": 0.62,
-    "colours": {"pad": (150, 120, 30), "glow": (235, 200, 60),
-                "beam": (255, 246, 190)},
+    "colours": {"pad": (28, 108, 52), "glow": (64, 214, 96),
+                "beam": (198, 255, 206)},
 }
 
 MAX_EXIT_SLOTS = 4
 
 PICKUPS = {
     "h": {
-        "name": "medikit", "parts": MEDIKIT, "heal": 25, "ammo": 0,
+        "name": "medkit", "parts": MEDIKIT, "heal": 25, "ammo": 0,
         "width_ratio": 1.0, "height_scale": 0.30,
-        "colours": {"box": (222, 226, 230), "mark": (206, 44, 44)},
+        "colours": {"box": (216, 220, 222), "mark": (198, 44, 44)},
     },
     "a": {
-        "name": "shells", "parts": SHELLBOX, "heal": 0, "ammo": 12,
-        "width_ratio": 1.15, "height_scale": 0.24,
-        "colours": {"box": (150, 108, 40), "mark": (208, 176, 66)},
+        "name": "magazine", "parts": AMMO_MAG, "heal": 0, "ammo": MAG_SIZE,
+        "width_ratio": 0.55, "height_scale": 0.30,
+        "colours": {"box": (58, 62, 54), "mark": (128, 132, 118)},
     },
 }
 
@@ -277,12 +298,13 @@ for _table in (MONSTERS, PICKUPS, {"X": EXIT_SPRITE}):
     for _key, _info in _table.items():
         SPRITE_SHADES[_key] = {name: make_shade_table(rgb, dimmest=0.16)
                                for name, rgb in _info["colours"].items()}
-        # Eyes glow, so they ignore the fog and stay bright at any distance.
-        if "eye" in _info["colours"]:
-            SPRITE_SHADES[_key]["eye"] = (make_shade_table(_info["colours"]["eye"],
-                                                           dimmest=0.85))
+        # Goggle lenses catch the light, so they ignore the fog and stay
+        # readable at any distance - it is what makes a hostile easy to spot.
+        if "visor" in _info["colours"]:
+            SPRITE_SHADES[_key]["visor"] = make_shade_table(
+                _info["colours"]["visor"], dimmest=0.80)
 
-MAX_SPRITE_SLOTS = 14   # most monsters/pickups we will ever draw at once
+MAX_SPRITE_SLOTS = 14   # most hostiles/pickups we will ever draw at once
 
 
 # ===========================================================================
@@ -291,14 +313,14 @@ MAX_SPRITE_SLOTS = 14   # most monsters/pickups we will ever draw at once
 #  Each level is just a list of equal-length strings. One character = one
 #  square of the world, one square = one "metre".
 #
-#      #  B  M  G  T ... solid wall (different colours)
+#      #  O  S  R  Y ... solid wall (concrete, olive, steel, rust, hazard)
 #      .  ............. empty floor
-#      P  ............. where the player starts
-#      e  ............. an Imp
-#      s  ............. a Guard
-#      h  ............. a medikit
-#      a  ............. a box of shells
-#      X  ............. the exit pad
+#      P  ............. where the operator starts
+#      t  ............. a Tango       (rushes you)
+#      m  ............. a Marksman    (holds back and shoots)
+#      h  ............. a medkit
+#      a  ............. a rifle magazine
+#      X  ............. the extraction point
 #
 #  Want to design your own level? Copy one of these, redraw it with a text
 #  editor, and add it to the LEVELS list. Keep every row the same length and
@@ -307,54 +329,54 @@ MAX_SPRITE_SLOTS = 14   # most monsters/pickups we will ever draw at once
 
 LEVELS = [
     {
-        "name": "STORAGE BAY",
+        "name": "DOCKSIDE WAREHOUSE",
         "start_angle": 90,          # degrees; 90 means facing "down" the map
         "grid": [
             "########################",
             "#......#.........#.....#",
-            "#..P...#....h....#..e..#",
+            "#..P...#....h....#..t..#",
             "#......#.........#.....#",
-            "#......#..BBBBB..#.....#",
-            "#......#..B...B..#..a..#",
-            "#.........B.a.B........#",
-            "#......#..B...B..#.....#",
-            "#..a...#..BB.BB..#.....#",
+            "#......#..OOOOO..#.....#",
+            "#......#..O...O..#..a..#",
+            "#.........O.a.O........#",
+            "#......#..O...O..#.....#",
+            "#..a...#..OO.OO..#.....#",
             "#......#.........#.....#",
             "#......###########.....#",
             "#......#.........#.....#",
-            "#..e...#..MMMMM..#..h..#",
-            "#......#..M...M..#.....#",
-            "#.........M.h.M........#",
-            "#......#..M...M..#.....#",
-            "#..h...#..MM.MM..#..e..#",
+            "#..t...#..SSSSS..#..h..#",
+            "#......#..S...S..#.....#",
+            "#.........S.h.S........#",
+            "#......#..S...S..#.....#",
+            "#..h...#..SS.SS..#..t..#",
             "#......#.........#.....#",
-            "#..s...#....X....#..s..#",
+            "#..m...#....X....#..m..#",
             "########################",
         ],
     },
     {
-        "name": "THE FURNACE",
+        "name": "REFINERY CORE",
         "start_angle": 90,
         "grid": [
             "########################",
             "#....##..........##....#",
-            "#.P..##....GG....##..a.#",
-            "#....##....GG....##....#",
-            "#..........ss..........#",
-            "#..MM..............MM..#",
-            "#..MM.....e..e.....MM..#",
+            "#.P..##....RR....##..a.#",
+            "#....##....RR....##....#",
+            "#..........mm..........#",
+            "#..SS..............SS..#",
+            "#..SS.....t..t.....SS..#",
             "#......................#",
-            "##.##....BBBBBB....##.##",
-            "#........B....B........#",
-            "#...h....B.XX.B....h...#",
-            "#........B....B........#",
-            "##.##....BB..BB....##.##",
+            "##.##....OOOOOO....##.##",
+            "#........O....O........#",
+            "#...h....O.XX.O....h...#",
+            "#........O....O........#",
+            "##.##....OO..OO....##.##",
             "#......................#",
-            "#..MM.....e..e.....MM..#",
-            "#..MM..............MM..#",
-            "#..........ss..........#",
-            "#....##....GG....##....#",
-            "#.a..##....GG....##..a.#",
+            "#..SS.....t..t.....SS..#",
+            "#..SS..............SS..#",
+            "#..........mm..........#",
+            "#....##....RR....##....#",
+            "#.a..##....RR....##..a.#",
             "########################",
         ],
     },
@@ -415,7 +437,7 @@ class Game:
 
     def __init__(self, root):
         self.root = root
-        root.title("PyDOOM")
+        root.title("TRIDENT")
         root.resizable(False, False)
 
         self.canvas = tk.Canvas(root, width=SCREEN_W, height=SCREEN_H + HUD_H,
@@ -433,10 +455,16 @@ class Game:
 
         self.keys = set()
         self._pending_release = {}
+        self.mouse_enabled = True
+        self.mouse_captured = False
+        self.firing = False
+        self._warping = False
+        self.pitch = 0.0
         self.show_minimap = True
         self.frame_times = []
         self.fps = 0.0
         self.running = True
+        self.horizon = self.half_h
 
         # Build every canvas item once, up front. During the game we only
         # ever MOVE and RECOLOUR them - creating and deleting thousands of
@@ -455,9 +483,9 @@ class Game:
         self.total_score = 0
         self.state = STATE_TITLE
         self.load_level(0)
-        self._set_overlay("PyDOOM",
-                          "W A S D  move     ARROWS turn     SPACE shoot",
-                          "press any key to begin")
+        self._set_overlay("TRIDENT",
+                          "MOUSE aim    WASD move    CLICK fire",
+                          "click the window to begin")
 
         self.last_time = time.perf_counter()
         self.tick()
@@ -474,15 +502,20 @@ class Game:
             fraction = i / (SKY_BANDS - 1)
             bright = 0.20 + 0.80 * (fraction ** 1.25)
 
+            # The outermost band is stretched well past the edge of the screen.
+            # The whole horizon slides up and down when you look around, and
+            # without the overhang that would drag a bare gap into view.
+            overhang = MAX_PITCH + 16
+
             y1 = self.half_h - i * band_h
-            y0 = y1 - band_h
+            y0 = y1 - band_h - (overhang if i == SKY_BANDS - 1 else 0)
             colour = "#%02x%02x%02x" % dim(CEILING_RGB, bright)
             item = self.canvas.create_rectangle(0, y0, SCREEN_W, y1,
                                                 fill=colour, outline="")
             self.bg_items.append((item, y0, y1))
 
             y0 = self.half_h + i * band_h
-            y1 = y0 + band_h
+            y1 = y0 + band_h + (overhang if i == SKY_BANDS - 1 else 0)
             colour = "#%02x%02x%02x" % dim(FLOOR_RGB, bright)
             item = self.canvas.create_rectangle(0, y0, SCREEN_W, y1,
                                                 fill=colour, outline="")
@@ -546,25 +579,31 @@ class Game:
         self._on_screen = set()
 
     def _build_weapon(self):
-        """The shotgun held at the bottom of the screen, plus its muzzle flash."""
-        # A double-barrelled shotgun, built out of nothing but rectangles.
-        # Each one is (x0, y0, x1, y1, colour) measured from the bottom-centre
-        # of the 3D view, so negative y means "further up the screen". They are
-        # listed back-to-front, the way a painter would lay them down.
+        """The carbine held at the bottom of the screen, plus its muzzle flash."""
+        # An M4-style carbine, built out of nothing but rectangles. Each one is
+        # (x0, y0, x1, y1, colour) measured from the bottom-centre of the 3D
+        # view, so negative y means "further up the screen". They are listed
+        # back-to-front, the way a painter would lay them down.
         self.gun_parts = [
-            ( 16,  -46,  80,   16, "#6b4520"),   # wooden stock, under your arm
-            ( 22,  -36,  72,    4, "#8a5a2a"),   # lighter streak along the stock
-            (-42,  -76,  32,  -16, "#3a3a44"),   # receiver
-            (-38,  -72,  26,  -56, "#50505c"),   # light on top of the receiver
-            ( -8,  -20,  18,  -10, "#2a2a32"),   # trigger guard
-            (-32,  -92,  28,  -58, "#7a4a22"),   # wooden fore-grip
-            (-34, -150,  -4,  -90, "#26262e"),   # left barrel
-            ( -2, -150,  28,  -90, "#26262e"),   # right barrel
-            (-30, -146, -24,  -94, "#5a5a68"),   # highlight down the left barrel
-            (  2, -146,   8,  -94, "#5a5a68"),   # highlight down the right barrel
-            (-38, -158,  32, -146, "#8e8e9c"),   # muzzle ring
+            ( 26,  -44,  86,   16, "#4a4d54"),   # buttstock, into the shoulder
+            ( 32,  -36,  78,   -2, "#5c6069"),   # light along the top of it
+            (-18,  -66,  40,  -30, "#44474e"),   # lower receiver
+            ( 14,  -28,  40,   16, "#34363b"),   # pistol grip
+            (-24,  -28,   6,   30, "#3c3f45"),   # magazine
+            (-26,   24,   8,   34, "#26282c"),   # magazine floorplate
+            (-14,  -92,  30,  -60, "#4e525a"),   # upper receiver
+            (-10,  -98,  26,  -92, "#2a2c32"),   # top rail
+            (-14, -146,  22,  -90, "#464a52"),   # handguard
+            ( -8, -140,  16, -136, "#191b1f"),   # rail slots cut in the guard
+            ( -8, -128,  16, -124, "#191b1f"),
+            ( -8, -116,  16, -112, "#191b1f"),
+            ( -1, -160,  13, -142, "#35383e"),   # barrel
+            ( -3, -172,  15, -156, "#565b64"),   # front sight base
+            ( -3, -180,  15, -166, "#6b7178"),   # flash hider
+            ( -2, -118,  22,  -96, "#33363c"),   # optic body
+            (  2, -114,  18, -110, "#c4453d"),   # optic lens, faintly red
         ]
-        self.muzzle_y = -158        # where the flash appears
+        self.muzzle_y = -180        # where the flash appears
         self.gun_items = [self.canvas.create_rectangle(0, 0, 0, 0,
                                                        fill=colour, outline="")
                           for *_, colour in self.gun_parts]
@@ -574,21 +613,20 @@ class Game:
                                                      fill="#ffe680", outline="")
         self.canvas.itemconfigure(self.flash_item, state="hidden")
 
-        # Crosshair
-        self.cross_items = [
-            self.canvas.create_rectangle(SCREEN_W / 2 - 7, self.half_h - 1,
-                                         SCREEN_W / 2 - 2, self.half_h + 1,
-                                         fill="#7de07d", outline=""),
-            self.canvas.create_rectangle(SCREEN_W / 2 + 2, self.half_h - 1,
-                                         SCREEN_W / 2 + 7, self.half_h + 1,
-                                         fill="#7de07d", outline=""),
-            self.canvas.create_rectangle(SCREEN_W / 2 - 1, self.half_h - 7,
-                                         SCREEN_W / 2 + 1, self.half_h - 2,
-                                         fill="#7de07d", outline=""),
-            self.canvas.create_rectangle(SCREEN_W / 2 - 1, self.half_h + 2,
-                                         SCREEN_W / 2 + 1, self.half_h + 7,
-                                         fill="#7de07d", outline=""),
+        # Crosshair. It rides the horizon rather than sitting at a fixed spot
+        # on the screen, because looking up and down only shears the picture -
+        # rounds still travel level, straight along the horizon line. Keeping
+        # the reticle there means it always covers what you will actually hit.
+        self.cross_parts = [
+            (-8, -1, -3, 1),
+            ( 3, -1,  8, 1),
+            (-1, -8, 1, -3),
+            (-1,  3, 1,  8),
         ]
+        self.cross_items = [self.canvas.create_rectangle(0, 0, 0, 0,
+                                                         fill="#7de07d",
+                                                         outline="")
+                            for _ in self.cross_parts]
 
     def _build_overlay(self):
         """Full-screen tints and the big centred text used for menus."""
@@ -632,19 +670,19 @@ class Game:
         self.hp_bar = self.canvas.create_rectangle(19, top + 59, 121, top + 67,
                                                    fill="#54d454", outline="")
 
-        self.canvas.create_text(200, top + 16, text="SHELLS", fill="#8a8a96",
+        self.canvas.create_text(200, top + 16, text="ROUNDS", fill="#8a8a96",
                                 font=label_font)
         self.ammo_text = self.canvas.create_text(200, top + 42, text="24",
                                                  fill="#e0c24a", font=big_font)
 
-        self.canvas.create_text(330, top + 16, text="KILLS", fill="#8a8a96",
+        self.canvas.create_text(330, top + 16, text="HOSTILES", fill="#8a8a96",
                                 font=label_font)
         self.kills_text = self.canvas.create_text(330, top + 42, text="0/0",
                                                   fill="#d8d8e0", font=big_font)
 
-        self.canvas.create_text(470, top + 16, text="SCORE", fill="#8a8a96",
+        self.canvas.create_text(455, top + 16, text="SCORE", fill="#8a8a96",
                                 font=label_font)
-        self.score_text = self.canvas.create_text(470, top + 42, text="0",
+        self.score_text = self.canvas.create_text(455, top + 42, text="0",
                                                   fill="#d8d8e0", font=big_font)
 
         self.level_text = self.canvas.create_text(
@@ -701,12 +739,88 @@ class Game:
         self.minimap_items.append(self.map_player)
         self.minimap_items.append(self.map_facing)
 
-    # -- keyboard ----------------------------------------------------------
+    # -- keyboard and mouse ------------------------------------------------
 
     def _bind_keys(self):
         self.canvas.focus_set()
         self.root.bind("<KeyPress>", self._on_key_press)
         self.root.bind("<KeyRelease>", self._on_key_release)
+        self.canvas.bind("<Button-1>", self._on_mouse_down)
+        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
+        self.canvas.bind("<Motion>", self._on_mouse_move)
+        # If the window loses focus (you alt-tabbed, or a dialog opened) let
+        # the mouse go, otherwise the pointer stays trapped in a dead window.
+        self.root.bind("<FocusOut>", lambda _e: self._release_mouse())
+
+    # Mouse aiming
+    #
+    # Real games ask the operating system to lock the pointer and then read
+    # raw movement. Tkinter has no such thing, so we fake it: every time the
+    # mouse moves we measure how far it got from the centre of the window,
+    # turn by that much, and then teleport the pointer back to the centre.
+    # That way it never reaches an edge and can keep turning forever.
+    #
+    # Warping the pointer generates *another* Motion event, which would look
+    # like the player yanking the mouse back the other way. `_warping` marks
+    # that echo so it can be thrown away.
+
+    def _capture_mouse(self):
+        if self.mouse_captured or not self.mouse_enabled:
+            return
+        self.mouse_captured = True
+        self.canvas.configure(cursor="none")
+        self._centre_pointer()
+        self.say("Mouse captured - press Esc to release it", 2.0)
+
+    def _release_mouse(self):
+        if not self.mouse_captured:
+            return
+        self.mouse_captured = False
+        self.canvas.configure(cursor="")
+
+    def _centre_pointer(self):
+        """Put the pointer back in the middle of the view."""
+        self._warping = True
+        self.canvas.event_generate("<Motion>", warp=True,
+                                   x=int(SCREEN_W // 2), y=int(SCREEN_H // 2))
+
+    def _on_mouse_down(self, _event):
+        if self.state == STATE_TITLE:
+            self.state = STATE_PLAYING
+            self._hide_overlay()
+        if not self.mouse_captured:
+            # The first click is what grabs the pointer, so it does not also
+            # fire - otherwise clicking on the window would waste a round.
+            self._capture_mouse()
+            return
+        self.firing = True
+
+    def _on_mouse_up(self, _event):
+        self.firing = False
+
+    def _on_mouse_move(self, event):
+        if self._warping:
+            self._warping = False       # this is our own teleport echoing back
+            return
+        if not self.mouse_captured or self.state != STATE_PLAYING:
+            return
+
+        move_x = event.x - SCREEN_W // 2
+        move_y = event.y - SCREEN_H // 2
+        if move_x == 0 and move_y == 0:
+            return
+
+        self.angle = (self.angle + move_x * MOUSE_SENSITIVITY) % (2 * math.pi)
+        self._update_camera_vectors()
+
+        # Looking up and down is a cheat: a grid raycaster has no idea what
+        # "up" means, so we just slide the whole horizon line instead. It is
+        # the same trick Doom used, and it holds up fine over a small range.
+        step = move_y * MOUSE_SENSITIVITY * PITCH_SENSITIVITY * SCREEN_H
+        self.pitch -= -step if MOUSE_INVERT_Y else step
+        self.pitch = max(-MAX_PITCH, min(MAX_PITCH, self.pitch))
+
+        self._centre_pointer()
 
     @staticmethod
     def _key_name(event):
@@ -743,6 +857,12 @@ class Game:
     def _on_key_tapped(self, key):
         """Handle keys that should fire once per press, not once per frame."""
         if key == "escape":
+            # First Esc hands the pointer back, so you are never trapped in
+            # the window. A second Esc actually quits.
+            if self.mouse_captured:
+                self._release_mouse()
+                self.say("Mouse released - click the window to take it back")
+                return
             # Stop the loop first: if we destroyed the window while a tick was
             # still booked in, that tick would wake up and find nothing to draw.
             self.running = False
@@ -752,11 +872,20 @@ class Game:
         if self.state == STATE_TITLE:
             self.state = STATE_PLAYING
             self._hide_overlay()
+            self._capture_mouse()
             return
 
         if key == "tab":
             self.show_minimap = not self.show_minimap
             self._apply_minimap_visibility()
+        elif key == "m":
+            self.mouse_enabled = not self.mouse_enabled
+            if self.mouse_enabled:
+                self.say("Mouse aiming ON - click the window to capture it")
+            else:
+                self._release_mouse()
+                self.pitch = 0.0
+                self.say("Mouse aiming OFF - turn with the arrow keys")
         elif key == "r":
             self.load_level(self.level_index)
             self.state = STATE_PLAYING
@@ -834,11 +963,14 @@ class Game:
         self.message = ""
         self.message_timer = 0.0
         self.exit_pulse = 0.0
+        self.pitch = 0.0
 
         self._update_camera_vectors()
         self._draw_minimap_walls()
         self._apply_minimap_visibility()
         self._hud_cache.clear()
+        self.say("OP %d - %s: neutralise %d hostiles"
+                 % (index + 1, level["name"], self.total_monsters), 4.0)
 
     def _update_camera_vectors(self):
         """
@@ -1053,7 +1185,7 @@ class Game:
         else:
             self.bob_offset *= max(0.0, 1.0 - dt * 8.0)
 
-        if self._held("space", "control_l", "control_r"):
+        if self.firing or self._held("space", "control_l", "control_r"):
             self.shoot()
 
         self.check_pickups()
@@ -1066,9 +1198,9 @@ class Game:
             # With no melee attack, an empty gun and no shells left on the
             # floor is a dead end - so say so rather than leaving them stuck.
             if any(not p.taken and p.info["ammo"] for p in self.pickups):
-                self.say("*click* - out of shells! Find a shell box.")
+                self.say("Dry! Find a magazine.")
             else:
-                self.say("*click* - out of shells, and none left. Press R.", 4.0)
+                self.say("Dry, and no magazines left on site. Press R.", 4.0)
             self.shot_timer = 0.35
             return
 
@@ -1128,8 +1260,9 @@ class Game:
             monster.death_timer = 0.0
             self.kills += 1
             self.level_score += monster.info["score"]
+            self.say("%s down." % monster.info["name"], 1.4)
             if self.kills >= self.total_monsters:
-                self.say("All hostiles down - get to the exit!", 4.0)
+                self.say("All hostiles neutralised - move to extraction!", 4.0)
 
     def update_monsters(self, dt):
         for monster in self.monsters:
@@ -1204,9 +1337,9 @@ class Game:
         if self.hp <= 0:
             self.hp = 0
             self.state = STATE_DEAD
-            self._set_overlay("YOU DIED",
-                              "score this level: %d" % self.level_score,
-                              "press R to try again")
+            self._set_overlay("OPERATOR DOWN",
+                              "score this mission: %d" % self.level_score,
+                              "press R to reinsert")
 
     def check_pickups(self):
         for pickup in self.pickups:
@@ -1220,12 +1353,12 @@ class Game:
                 if self.hp >= PLAYER_MAX_HP:
                     continue        # leave it on the floor for later
                 self.hp = min(PLAYER_MAX_HP, self.hp + info["heal"])
-                self.say("Picked up a medikit  (+%d health)" % info["heal"])
+                self.say("Medkit applied  (+%d)" % info["heal"])
             if info["ammo"]:
                 if self.ammo >= MAX_AMMO:
                     continue
                 self.ammo = min(MAX_AMMO, self.ammo + info["ammo"])
-                self.say("Picked up %d shells" % info["ammo"])
+                self.say("Magazine recovered  (+%d rounds)" % info["ammo"])
 
             pickup.taken = True
             self.level_score += 25
@@ -1235,7 +1368,7 @@ class Game:
             if int(self.px) != col or int(self.py) != row:
                 continue
             if self.kills < self.total_monsters:
-                self.say("The exit is sealed - %d hostiles left"
+                self.say("Extraction is on hold - %d hostiles still up"
                          % (self.total_monsters - self.kills))
                 return
 
@@ -1248,15 +1381,15 @@ class Game:
 
             if self.level_index + 1 < len(LEVELS):
                 self.state = STATE_CLEARED
-                self._set_overlay("LEVEL CLEAR",
+                self._set_overlay("AREA SECURE",
                                   "score: %d      total: %d"
                                   % (earned, self.total_score),
-                                  "press N for the next level")
+                                  "press N for the next mission")
             else:
                 self.state = STATE_WON
-                self._set_overlay("YOU WIN",
+                self._set_overlay("MISSION COMPLETE",
                                   "final score: %d" % self.total_score,
-                                  "press N to play again")
+                                  "press N to run it again")
             return
 
     def say(self, text, seconds=2.2):
@@ -1266,15 +1399,15 @@ class Game:
     # -- drawing -----------------------------------------------------------
 
     def draw_background(self):
-        """Slide the ceiling/floor bands with the head bob."""
-        offset = self.bob_offset
+        """Slide the ceiling/floor bands to wherever the horizon now is."""
+        offset = self.horizon - self.half_h
         for item, y0, y1 in self.bg_items:
             self.canvas.coords(item, 0, y0 + offset, SCREEN_W, y1 + offset)
 
     def draw_walls(self, rays):
         canvas = self.canvas
         column_w = self.column_w
-        horizon = self.half_h + self.bob_offset
+        horizon = self.horizon
         items = self.column_items
         fills = self.column_fill
 
@@ -1378,7 +1511,7 @@ class Game:
     def _draw_one_sprite(self, slot, kind, info, depth, screen_x, used,
                          flash=False, squash=0.0, level_override=None):
         canvas = self.canvas
-        horizon = self.half_h + self.bob_offset
+        horizon = self.horizon
 
         full_height = SCREEN_H / depth
         height = full_height * info["height_scale"]
@@ -1449,10 +1582,17 @@ class Game:
     def draw_weapon(self):
         canvas = self.canvas
         centre = SCREEN_W * 0.5 + self.bob_offset * 2.2
-        base = SCREEN_H + self.bob_offset + self.recoil
+        # The carbine tracks the pitch alongside the horizon, so the reticle
+        # stays a fixed distance above the muzzle however you are looking.
+        base = SCREEN_H + self.bob_offset + self.recoil + self.pitch
 
         for item, (x0, y0, x1, y1, _colour) in zip(self.gun_items, self.gun_parts):
             canvas.coords(item, centre + x0, base + y0, centre + x1, base + y1)
+
+        aim_x = SCREEN_W * 0.5
+        aim_y = self.horizon
+        for item, (x0, y0, x1, y1) in zip(self.cross_items, self.cross_parts):
+            canvas.coords(item, aim_x + x0, aim_y + y0, aim_x + x1, aim_y + y1)
 
         if self.flash_timer > 0:
             muzzle_x = centre - 3
@@ -1474,8 +1614,7 @@ class Game:
         self._set_text(self.ammo_text, str(self.ammo))
         self._set_text(self.kills_text, "%d/%d" % (self.kills, self.total_monsters))
         self._set_text(self.score_text, str(self.total_score + self.level_score))
-        self._set_text(self.level_text, "MAP %d  %s"
-                       % (self.level_index + 1, self.level["name"]))
+        self._set_text(self.level_text, "OP %d" % (self.level_index + 1))
         self._set_text(self.fps_text, "%d fps  %d rays" % (self.fps, NUM_COLUMNS))
 
         fraction = self.hp / PLAYER_MAX_HP
@@ -1628,6 +1767,10 @@ class Game:
         self.message_timer = max(0.0, self.message_timer - dt)
         self.recoil *= max(0.0, 1.0 - dt * 9.0)
         self.exit_pulse = (self.exit_pulse + dt * 3.2) % (2 * math.pi)
+
+        # Where the eye line sits this frame: the middle of the view, nudged
+        # by the walking bob and by however far you are looking up or down.
+        self.horizon = self.half_h + self.bob_offset + self.pitch
 
         rays = self.cast_rays()
         self.draw_background()
