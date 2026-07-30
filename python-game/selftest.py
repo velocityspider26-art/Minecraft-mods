@@ -423,12 +423,30 @@ def test_game_loop(root, game):
     game.bob_offset = 0.0
     game.recoil = 0.0
     game.ads = 0.0
+    game.sway_x = game.sway_y = 0.0
     game.tick()
     gun_top = min(game.canvas.coords(i)[1] for i in game.gun_items)
     check("the reticle stays clear of the weapon at full upward pitch",
           game.horizon < gun_top,
           "reticle %.0f vs weapon top %.0f" % (game.horizon, gun_top))
+
+    # ...and it must still be clear with the sway shoved as far the wrong way
+    # as it can possibly go, which is what would otherwise park the barrel
+    # right on top of the crosshair.
+    worst = float("-inf")
+    for pitch in (0.0, trident.MAX_PITCH_UP * 0.5, trident.MAX_PITCH_UP):
+        for sway in (-trident.SWAY_MAX, 0.0, trident.SWAY_MAX):
+            for breath in range(0, 7):
+                game.pitch = pitch
+                game.breath = breath * 0.5
+                game.sway_y = sway
+                game.tick()
+                top = min(game.canvas.coords(i)[1] for i in game.gun_items)
+                worst = max(worst, game.horizon - top)
+    check("the reticle stays clear at every pitch and sway combination",
+          worst < 0, "closest approach was %.1f px (negative means clear)" % worst)
     game.pitch = 0.0
+    game.sway_y = 0.0
 
     # The whole view has to move together, or the horizon tears away from the
     # floor and you get a bare strip along the bottom of the screen.

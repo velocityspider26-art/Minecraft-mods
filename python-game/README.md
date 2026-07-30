@@ -68,7 +68,156 @@ any real country, group or people, and no real unit, agency or place is named.
 
 ---
 
-## How the 3D works
+## How it all works — the simple version
+
+This is the whole game explained without any jargon. The section after it says
+the same things again properly, with the real names for everything.
+
+### 1. The world is just typing
+
+There is no 3D world anywhere in this game. The map is a picture made out of
+letters, like something you would draw on graph paper:
+
+```
+"#......#.........#.....#",
+"#..P...#....h....#..t..#",
+```
+
+`#` is a wall, `.` is empty floor, `P` is you, `t` is a bad guy. That is
+genuinely all the game knows about the level.
+
+### 2. Torch beams
+
+To draw the view, the game chops the screen into **320 thin vertical strips**.
+For each strip it fires an invisible torch beam straight out into that letter
+map and asks: *how far before you hit a wall?*
+
+### 3. Close things look big
+
+Hold your thumb up close to your eye and it looks huge. Move it away and it
+looks tiny. Nothing about your thumb changed — only the distance. The game uses
+that exact rule:
+
+```
+how tall to draw the wall  =  400  ÷  how far away it is
+```
+
+A wall 1 step away is drawn 400 pixels tall and fills the screen. A wall 10
+steps away is drawn 40 pixels tall. Draw all 320 strips side by side, tall ones
+near and short ones far, and your brain glues them into a corridor. It is a
+flip-book trick, not real 3D.
+
+### 4. Why the walls have lines on them
+
+If every strip were one flat colour, the walls would look like wallpaper. So
+each strip is chopped into a few chunks, each a slightly different brightness —
+like painted stripes across a fence. Because near strips are tall and far ones
+are short, the stripes automatically bunch up in the distance, and *that* is
+what makes the corridor look like it goes somewhere.
+
+### 5. The bad guys are cardboard cutouts
+
+Every hostile is a flat cardboard cutout that always spins to face you, like a
+standee in a cinema foyer. You never see their back, because there isn't one.
+
+### 6. How a cutout knows to hide behind a wall
+
+While firing all those torch beams, the game writes down a list:
+
+> *"At strip 57, the wall is 4 steps away."*
+
+Then before drawing a cutout it checks that list. If the cutout is 6 steps away
+and the wall at that strip is only 4, the cutout is behind the wall — so don't
+draw it. That list has a proper name: a **depth buffer**.
+
+### 7. The mouse treadmill
+
+Here is the problem with mouse aiming: your mouse would slide to the edge of
+the window and stop, and so would your turning.
+
+So the game cheats. Every time you move the mouse it:
+
+1. measures how far the pointer got from the middle of the window,
+2. turns you by that much,
+3. **secretly teleports the pointer back to the middle.**
+
+It is a treadmill. You keep moving, you never reach the end. The pointer is
+also made invisible so you don't see it snapping about.
+
+*(One funny catch: teleporting the mouse makes the computer think you moved
+the mouse. If the game believed that, it would think you yanked the mouse back
+the other way and you would never turn at all. So the game leaves itself a
+sticky note saying "that next one was me" and ignores it.)*
+
+### 8. Looking up and down is a fib
+
+The game genuinely has no idea what "up" means — the world is flat letters.
+So when you look up, it does not tilt anything. It just **slides the whole
+picture down the screen**, like sliding a photo behind a window frame. Your
+brain reads that as looking up. Doom did the same thing in 1993.
+
+This is also why you can't look *straight* up: slide too far and the picture
+starts to look wrong.
+
+### 9. Right-click to zoom
+
+Looking down the sight is like squinting through a cardboard tube. You see
+**less** of the room, but what you do see is **bigger**. The game does this by
+making its pretend camera lens narrower. Everything else — slower mouse,
+slower walk, steadier rifle — follows from that one change.
+
+### 10. Leaning is just moving your eyeballs
+
+Press `Q` or `E` and your **feet stay exactly where they are** while your
+**head slides sideways**. That is the entire trick, and it is why you can peek
+past a corner without stepping into the open. If your head would end up inside
+a wall, the game shortens the lean until it fits.
+
+### 11. Blood
+
+Each speck of blood is a tiny dot that remembers three things: where it is, how
+high off the floor it is, and how fast it is travelling. Thirty times a second
+each dot moves a little and falls a little. When it hits the floor, it is
+deleted. Bodies leave a dark pool that spreads out over about a second.
+
+### 12. The gun is a staircase
+
+The gun has to sit at an angle, but the only shape this game can draw is a
+rectangle that is perfectly straight up and down. You cannot tilt a rectangle.
+
+So the rifle is drawn the way you would draw a diagonal line on graph paper:
+lots of little blocks, each one nudged slightly to the side of the one below.
+Close up you would see the steps. At this size your eye just sees a slope.
+
+The gun also has **weight**. Swing the view fast and it trails behind for a
+moment before catching up, and it drifts very gently even when you stand still,
+as if you were breathing.
+
+### 13. Why it doesn't run like treacle
+
+Python is slow, and drawing is slow, so the game follows two rules:
+
+- **Make every shape once, then just move it.** All 2,000-odd rectangles are
+  created when the game starts and are never thrown away. Moving a rectangle
+  is cheap; making a new one is not.
+- **Mix every colour before you start.** The drawing library wants colours
+  written out as text like `"#8a4a34"`. Writing those out mid-game, hundreds of
+  times a frame, would be slow — so every shade of every colour is worked out
+  once at the beginning and looked up from a list afterwards.
+
+### 14. The heartbeat
+
+About 30 times a second the game does the same three things: **read the
+keyboard and mouse → move everything a tiny bit → redraw the screen.** Then it
+asks to be woken up again in 33 milliseconds.
+
+It politely asks to be woken rather than sitting in a `while True:` loop,
+because the window needs a moment to itself to notice your keypresses and
+actually paint. A busy loop would freeze the whole thing solid.
+
+---
+
+## How the 3D works — the proper version
 
 **There is no 3D in this game.** The world is a flat grid of text characters:
 
@@ -227,7 +376,36 @@ to a single flat stripe, since bands a pixel tall are just noise — and most
 columns in view at any moment are distant ones. And the existing "has this
 changed colour?" cache still applies per band.
 
-### 6. Aiming down the sight
+### 6. Drawing a weapon that cannot be rotated
+
+A rifle held in first person runs diagonally — butt down by your shoulder,
+muzzle up and away towards the centre of the screen. A tkinter canvas
+rectangle cannot be rotated, so the weapon is built as a **staircase**: each
+length of it is a short stack of blocks that each step sideways, laid along a
+straight line from the muzzle position to the butt position. At this size the
+steps read as a slope rather than as stairs.
+
+Everything hangs off that one line. `gun_axis(y)` says where the centre of the
+weapon is at any height, and `gun_run()` builds one length of it — with two
+extra arguments that do most of the work: `sideways` shifts a run off the
+centre-line, which is how the highlight down one edge and the shadow down the
+other are drawn, and `drift` leans a run away from the axis as it descends,
+which is how the magazine and the pistol grip hang off at their own angles.
+
+Giving every material a light and a dark version and painting a thin highlight
+along one edge is what stops a heap of rectangles reading as a heap of
+rectangles. It is the cheapest possible way to fake a rounded, solid object.
+
+The weapon also has inertia. However far the view swung this frame — from the
+mouse and the arrow keys alike — is banked up and pushes the weapon the
+opposite way, then it springs back to centre. A slow sine drift stands in for
+breathing. One consequence needed guarding: looking a long way up slides the
+weapon down with the horizon, and sway can shove it back up, and between them
+they could park the barrel right over the reticle. So the hip-fire pose is
+clamped to always leave clear air above the muzzle, and `selftest.py` sweeps
+every combination of pitch, sway and breathing to prove it.
+
+### 7. Aiming down the sight
 
 Holding the right mouse button raises the sight, and one number drives all of
 it. `self.ads` slides between 0 and 1 rather than snapping, and everything
@@ -243,7 +421,7 @@ your eye means you stop seeing it side-on and start looking along it. Once you
 are properly behind the optic the crosshair disappears and a red dot takes
 over, which is what you aim with from then on.
 
-### 7. Leaning
+### 8. Leaning
 
 `Q` and `E` tip you out to the side. The important part is that leaning moves
 **where you look from without moving where you stand** — the whole point is to
@@ -258,7 +436,7 @@ outright, the code tries the full distance, and if that spot is solid it keeps
 shortening the reach until it finds one that is not. So leaning into a wall
 just quietly stops part-way instead of clipping through.
 
-### 8. Blood
+### 9. Blood
 
 Specks live in the **world**, not on the screen: each has a map position, a
 height above the floor, and a velocity, and falls under gravity until it lands
@@ -271,7 +449,7 @@ Bodies stay where they fall and a pool spreads underneath them over about a
 second. The particle pool is capped, so a long firefight cannot slowly fill
 memory with old specks.
 
-### 9. Hostiles: billboards and a depth buffer
+### 10. Hostiles: billboards and a depth buffer
 
 Hostiles and pickups are **billboards** — flat cut-outs that always turn to
 face you. Each is projected onto the screen by inverting the camera matrix
@@ -290,7 +468,7 @@ The code goes a bit further and walks outwards from the sprite's centre column
 to find how much of it is unobstructed, so a hostile can be *half* hidden
 around a corner rather than popping in and out all at once.
 
-### 10. Making it fast enough in Python
+### 11. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -307,9 +485,11 @@ colour once, at import time, and the render loop just indexes into a list.
 There is also a small cache so a stripe that has not changed colour does not
 get recoloured at all.
 
-Measured by `selftest.py` in this environment: **about 13 ms of work per
-frame** at 320 rays with the wall texturing on, against a 33 ms budget for
-30 fps.
+Measured by `selftest.py` in this environment: **about 19 ms of work per
+frame** at 320 rays, against a 33 ms budget for 30 fps. That figure is the
+worst case — the benchmark spins the camera every frame, which defeats the
+"has this changed colour?" cache completely. Walking normally it is well under
+half that, because most stripes keep the colour they already had.
 
 ---
 
@@ -371,12 +551,15 @@ plus confirm that nothing has ended up walled off where you cannot reach it.
 
 Everything worth changing is at the top of the file in **Section 1**.
 
-- **Mouse too fast or too slow?** `MOUSE_SENSITIVITY`. Set `MOUSE_INVERT_Y`
+- **Mouse too fast or too slow?** `MOUSE_SENSITIVITY` (halved recently — raise
+  it back towards `0.003` if you want it quicker). Set `MOUSE_INVERT_Y`
   to `True` if you prefer inverted look. `MAX_PITCH_UP` and `MAX_PITCH_DOWN`
   control how far you can look up and down.
 - **Sight not to your taste?** `ADS_FOV_DEGREES` sets the zoom,
   `ADS_SENSITIVITY` how much the mouse slows while zoomed.
 - **Lean too far or too little?** `LEAN_DISTANCE`.
+- **Weapon swings too much?** `SWAY_TURN`, or `SWAY_MAX` for the limit.
+  `SWAY_BREATH` is the idle drift. Zero them all to lock the weapon still.
 - **Too much blood?** `BLOOD_ON_HIT`, `BLOOD_ON_DEATH`, or `MAX_BLOOD` for
   the overall cap. Set them all to 0 to turn it off.
 - **Game runs slowly?** Lower `NUM_COLUMNS` from `320` to `160` or `128`. This
@@ -393,8 +576,10 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 61 checks covering the level
-data, the raycasting maths, mouse aiming and pitch clamping, and a few hundred
+or just open it in IDLE and press F5. It runs 92 checks covering the level
+data, the raycasting maths, the wall texture tables, mouse aiming, pitch
+clamping, leaning being cut short at a wall, the sight, blood physics, the
+reticle staying clear of the weapon at every pitch and sway, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 

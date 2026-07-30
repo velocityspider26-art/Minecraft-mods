@@ -91,7 +91,7 @@ MAX_AMMO = 180
 MAG_SIZE = 30           # rounds in one magazine, used by the HUD readout
 
 # Mouse aiming
-MOUSE_SENSITIVITY = 0.0032   # radians of turn per pixel of mouse movement
+MOUSE_SENSITIVITY = 0.0016   # radians of turn per pixel of mouse movement
 MOUSE_INVERT_Y = False
 PITCH_SENSITIVITY = 1.0      # vertical responds exactly like horizontal
 # How far up and down you can look, measured in pixels of screen shift. The
@@ -115,6 +115,16 @@ ADS_MOVE_SCALE = 0.48   # so does your walk
 ADS_SPREAD_SCALE = 0.18 # and the rifle tightens right up
 ADS_SQUEEZE_X = 0.34    # how far the weapon narrows as it lines up with you
 ADS_SQUEEZE_Y = 0.72    # and how much it shortens
+
+# Weapon sway. A real rifle has weight: swing the view and it lags behind,
+# then settles. SWAY_TURN is how many pixels it trails per radian you turn.
+SWAY_TURN = 90.0
+SWAY_PITCH = 0.34       # the same idea for looking up and down
+SWAY_RETURN = 8.0       # how fast it catches back up, in "per second"
+SWAY_MAX = 30.0         # it never trails further than this
+SWAY_BREATH = 2.4       # gentle drift while you stand still
+ADS_SWAY_SCALE = 0.25   # shouldered against your body, it barely moves
+RETICLE_CLEARANCE = 16  # pixels of clear air kept between muzzle and reticle
 
 # Leaning around corners (Q and E)
 LEAN_DISTANCE = 0.42    # how far out you peek, in grid squares
@@ -257,11 +267,113 @@ FLAT_BAND = ((0.0, 1.0, 0),)
 
 SEAM_STEPS = 32         # how finely we sample across the wall face
 
-# Where the middle of the optic sits on the carbine sprite, measured from the
-# weapon's own anchor point. Aiming down the sight slides the whole weapon
-# until this lands exactly on the aim point, which is what lines the sight up.
-OPTIC_CENTRE_X = 10
-OPTIC_CENTRE_Y = -107
+# ---------------------------------------------------------------------------
+#  THE CARBINE
+#
+#  A rifle held in first person does not sit upright in the middle of the
+#  screen - it runs diagonally, butt down by your shoulder on the right, muzzle
+#  up and away towards the centre. Canvas rectangles cannot be rotated, so the
+#  weapon is built as a STAIRCASE: each length of it is a short stack of blocks
+#  that each step a little to the side, and at this size the steps read as a
+#  clean slope rather than as stairs.
+#
+#  Everything is measured from the bottom centre of the view, and negative y is
+#  further up the screen. The muzzle stops at -180 so there is always clear air
+#  between it and the reticle.
+# ---------------------------------------------------------------------------
+
+GUN_MUZZLE_X, GUN_MUZZLE_Y = 6, -180     # tip of the flash hider
+GUN_BUTT_X, GUN_BUTT_Y = 74, 30          # bottom of the buttstock
+
+
+def gun_axis(y):
+    """Where the centre-line of the weapon sits at this height."""
+    along = (y - GUN_MUZZLE_Y) / (GUN_BUTT_Y - GUN_MUZZLE_Y)
+    return GUN_MUZZLE_X + (GUN_BUTT_X - GUN_MUZZLE_X) * along
+
+
+def gun_run(y_top, y_bottom, half_width, colour, steps=5, sideways=0.0,
+            drift=0.0):
+    """
+    One length of the weapon, as a short staircase along its axis.
+
+    `sideways` shifts the whole run off the centre-line, which is how the
+    highlights down one edge and the shadows down the other are made. `drift`
+    leans the run away from the axis as it goes - the magazine and the pistol
+    grip both hang off at their own angle rather than following the barrel.
+    """
+    parts = []
+    span = (y_bottom - y_top) / steps
+    for step in range(steps):
+        y0 = y_top + step * span
+        y1 = y0 + span + 1              # +1 so blocks overlap, no hairlines
+        fraction = (step + 0.5) / steps
+        centre = gun_axis((y0 + y1) * 0.5) + sideways + drift * fraction
+        parts.append((centre - half_width, y0, centre + half_width, y1, colour))
+    return parts
+
+
+def build_carbine():
+    """The whole weapon, back to front the way a painter would lay it down."""
+    poly, poly_hi = "#2a2c31", "#40444b"        # black polymer furniture
+    alu, alu_hi, alu_lo = "#41454c", "#5b606a", "#2c2f34"    # receiver
+    steel, steel_hi = "#25272b", "#767c86"      # barrel and gas block
+    slot = "#17191c"
+    optic, optic_hi, glass = "#2d3035", "#474b53", "#6d2a26"
+
+    parts = []
+    # buttstock, wide and low by your shoulder
+    parts += gun_run(-24, 30, 23, poly, steps=4)
+    parts += gun_run(-24, 30, 7, poly_hi, steps=4, sideways=-11)
+    parts += gun_run(-24, 30, 5, alu_lo, steps=4, sideways=15)
+
+    # receiver extension
+    parts += gun_run(-54, -20, 12, poly, steps=3)
+    parts += gun_run(-54, -20, 4, poly_hi, steps=3, sideways=-6)
+
+    # pistol grip, angling back and down out of the receiver
+    parts += gun_run(-44, 14, 10, poly, steps=4, sideways=6, drift=12)
+    parts += gun_run(-44, 14, 3, poly_hi, steps=4, sideways=1, drift=12)
+
+    # magazine, angling forward and down, curving as it goes
+    parts += gun_run(-46, 40, 12, poly, steps=5, sideways=-14, drift=-13)
+    parts += gun_run(-46, 40, 4, poly_hi, steps=5, sideways=-22, drift=-13)
+    parts += gun_run(30, 44, 14, alu_lo, steps=2, sideways=-27)      # floorplate
+
+    # lower and upper receiver - the solid middle of the weapon
+    parts += gun_run(-104, -46, 19, alu, steps=5)
+    parts += gun_run(-104, -46, 5, alu_hi, steps=5, sideways=-13)
+    parts += gun_run(-104, -46, 5, alu_lo, steps=5, sideways=14)
+    parts += gun_run(-92, -70, 9, alu_lo, steps=2, sideways=6)       # ejection port
+    parts += gun_run(-112, -100, 17, steel, steps=2)                 # charging handle
+    parts += gun_run(-110, -104, 14, slot, steps=2)                  # rail
+
+    # handguard, with the rail slots cut into it
+    parts += gun_run(-162, -106, 16, poly, steps=5)
+    parts += gun_run(-162, -106, 4, poly_hi, steps=5, sideways=-10)
+    for slot_y in (-152, -140, -128, -116):
+        parts += gun_run(slot_y, slot_y + 4, 11, slot, steps=1)
+
+    # gas block, front sight, muzzle
+    parts += gun_run(-172, -158, 11, steel, steps=2)
+    parts += gun_run(-178, -168, 5, steel, steps=1)                  # sight post
+    parts += gun_run(-180, -170, 9, steel_hi, steps=1)               # flash hider
+
+    # optic last, so it sits on top of the receiver
+    parts += gun_run(-138, -106, 14, optic, steps=3)
+    parts += gun_run(-138, -130, 14, optic_hi, steps=1)
+    parts += gun_run(-132, -112, 9, glass, steps=2)
+    return parts
+
+
+CARBINE_PARTS = build_carbine()
+
+# Where the middle of the optic ends up, so aiming down the sight can line it
+# up with the aim point. Read off the axis rather than typed in by hand, so it
+# stays correct if the weapon is ever redrawn.
+OPTIC_CENTRE_Y = -120
+OPTIC_CENTRE_X = round(gun_axis(OPTIC_CENTRE_Y))
+
 
 
 def make_seam_table(joints, depth=-5, width=0.035):
@@ -596,6 +708,11 @@ class Game:
         self.mouse_captured = False
         self.firing = False
         self.aiming = False         # right mouse button held
+        self.sway_x = 0.0           # how far the weapon is trailing the view
+        self.sway_y = 0.0
+        self._turn_accum = 0.0      # view movement waiting to be turned into sway
+        self._pitch_accum = 0.0
+        self.breath = 0.0
         self.ads = 0.0              # 0 = hip fire, 1 = fully sighted in
         self.lean = 0.0             # -1 hard left, +1 hard right
         self.lean_applied = 0.0     # how much of it the walls allowed
@@ -735,6 +852,8 @@ class Game:
                                                          fill="#000000",
                                                          outline="")
                             for _ in range(MAX_BLOOD)]
+        self._blood_shown = 0       # how many were visible last frame
+        self._pools_shown = 0
 
         # Which shapes are currently sitting on screen. Anything not in here is
         # already parked out of sight, so we never waste a call re-hiding it.
@@ -746,26 +865,12 @@ class Game:
         # (x0, y0, x1, y1, colour) measured from the bottom-centre of the 3D
         # view, so negative y means "further up the screen". They are listed
         # back-to-front, the way a painter would lay them down.
-        self.gun_parts = [
-            ( 26,  -44,  86,   16, "#4a4d54"),   # buttstock, into the shoulder
-            ( 32,  -36,  78,   -2, "#5c6069"),   # light along the top of it
-            (-18,  -66,  40,  -30, "#44474e"),   # lower receiver
-            ( 14,  -28,  40,   16, "#34363b"),   # pistol grip
-            (-24,  -28,   6,   30, "#3c3f45"),   # magazine
-            (-26,   24,   8,   34, "#26282c"),   # magazine floorplate
-            (-14,  -92,  30,  -60, "#4e525a"),   # upper receiver
-            (-10,  -98,  26,  -92, "#2a2c32"),   # top rail
-            (-14, -146,  22,  -90, "#464a52"),   # handguard
-            ( -8, -140,  16, -136, "#191b1f"),   # rail slots cut in the guard
-            ( -8, -128,  16, -124, "#191b1f"),
-            ( -8, -116,  16, -112, "#191b1f"),
-            ( -1, -160,  13, -142, "#35383e"),   # barrel
-            ( -3, -172,  15, -156, "#565b64"),   # front sight base
-            ( -3, -180,  15, -166, "#6b7178"),   # flash hider
-            ( -2, -118,  22,  -96, "#33363c"),   # optic body
-            (  2, -114,  18, -110, "#c4453d"),   # optic lens, faintly red
-        ]
+        self.gun_parts = CARBINE_PARTS
         self.muzzle_y = -180        # where the flash appears
+        # The highest point on the weapon, worked out from the model itself so
+        # it stays right if the model is ever redrawn. Used to keep the
+        # reticle clear of the barrel.
+        self.gun_top = -min(part[1] for part in self.gun_parts)
         self.gun_items = [self.canvas.create_rectangle(0, 0, 0, 0,
                                                        fill=colour, outline="")
                           for *_, colour in self.gun_parts]
@@ -986,15 +1091,19 @@ class Game:
             return
 
         sensitivity = MOUSE_SENSITIVITY * (1.0 + (ADS_SENSITIVITY - 1.0) * self.ads)
-        self.angle = (self.angle + move_x * sensitivity) % (2 * math.pi)
+        turn = move_x * sensitivity
+        self.angle = (self.angle + turn) % (2 * math.pi)
+        self._turn_accum += turn
         self._update_camera_vectors()
 
         # Looking up and down is a cheat: a grid raycaster has no idea what
         # "up" means, so we just slide the whole horizon line instead. It is
         # the same trick Doom used, and it holds up fine over a small range.
         step = move_y * sensitivity * PITCH_SENSITIVITY * SCREEN_H
+        before = self.pitch
         self.pitch -= -step if MOUSE_INVERT_Y else step
         self.pitch = max(-MAX_PITCH_DOWN, min(MAX_PITCH_UP, self.pitch))
+        self._pitch_accum += self.pitch - before
 
         self._centre_pointer()
 
@@ -1142,6 +1251,10 @@ class Game:
         self.pitch = 0.0
         self.lean = 0.0
         self.lean_applied = 0.0
+        self.sway_x = 0.0
+        self.sway_y = 0.0
+        self._turn_accum = 0.0
+        self._pitch_accum = 0.0
         self.ads = 0.0
         self.aiming = False
         self.blood = []
@@ -1395,7 +1508,9 @@ class Game:
             turn -= 1.0
 
         if turn:
-            self.angle = (self.angle + turn * TURN_SPEED * dt) % (2 * math.pi)
+            step = turn * TURN_SPEED * dt
+            self.angle = (self.angle + step) % (2 * math.pi)
+            self._turn_accum += step
 
         # --- aiming down the sight ---
         # `ads` slides towards 0 or 1 rather than snapping, so the sight comes
@@ -1441,11 +1556,40 @@ class Game:
         else:
             self.bob_offset *= max(0.0, 1.0 - dt * 8.0)
 
+        self._update_sway(dt)
+
         if self.firing or self._held("space", "control_l", "control_r"):
             self.shoot()
 
         self.check_pickups()
         self.check_exit()
+
+    def _update_sway(self, dt):
+        """
+        Make the carbine feel like it weighs something.
+
+        Swing the view and the weapon does not snap round with it - it trails
+        behind for a moment and then catches up. We do that by banking however
+        far the view turned this frame (from the mouse and from the arrow keys
+        alike) and pushing the weapon the opposite way, then letting it spring
+        back to centre. Standing still, a slow drift stands in for breathing.
+        """
+        damp = 1.0 + (ADS_SWAY_SCALE - 1.0) * self.ads
+
+        self.sway_x -= self._turn_accum * SWAY_TURN * damp
+        self.sway_y -= self._pitch_accum * SWAY_PITCH * damp
+        self._turn_accum = 0.0
+        self._pitch_accum = 0.0
+
+        limit = SWAY_MAX * damp
+        self.sway_x = max(-limit, min(limit, self.sway_x))
+        self.sway_y = max(-limit, min(limit, self.sway_y))
+
+        catch_up = min(1.0, SWAY_RETURN * dt)
+        self.sway_x -= self.sway_x * catch_up
+        self.sway_y -= self.sway_y * catch_up
+
+        self.breath += dt
 
     def shoot(self):
         if self.shot_timer > 0.0:
@@ -1953,9 +2097,11 @@ class Game:
                                  fill=BLOOD_POOL_SHADES[shade_index(depth)])
             slot += 1
 
-        while slot < len(self.pool_items):
-            canvas.itemconfigure(self.pool_items[slot], state="hidden")
-            slot += 1
+        # Only hide the ones that were on screen last frame. Blindly hiding
+        # the whole pool every frame is a hundred wasted calls to tkinter.
+        for spare in range(slot, self._pools_shown):
+            canvas.itemconfigure(self.pool_items[spare], state="hidden")
+        self._pools_shown = slot
 
         # --- specks in flight ---
         slot = 0
@@ -1987,9 +2133,9 @@ class Game:
                 fill=BLOOD_SHADES[int(fade * (SHADE_LEVELS - 1))])
             slot += 1
 
-        while slot < len(self.blood_items):
-            canvas.itemconfigure(self.blood_items[slot], state="hidden")
-            slot += 1
+        for spare in range(slot, self._blood_shown):
+            canvas.itemconfigure(self.blood_items[spare], state="hidden")
+        self._blood_shown = slot
 
     def draw_weapon(self):
         canvas = self.canvas
@@ -2000,8 +2146,25 @@ class Game:
         # Hip fire: the carbine sits low, sways with your stride and slides
         # across as you lean. It tracks the pitch alongside the horizon, so
         # the reticle keeps a fixed distance above the muzzle.
-        hip_x = aim_x + self.bob_offset * 2.2 + self.lean_applied * LEAN_GUN_SHIFT
-        hip_y = SCREEN_H + self.bob_offset + self.recoil + self.pitch
+        # A slow figure-of-eight drift so the weapon is never perfectly still.
+        damp = 1.0 + (ADS_SWAY_SCALE - 1.0) * ads
+        breath_x = math.sin(self.breath * 1.3) * SWAY_BREATH * damp
+        breath_y = math.sin(self.breath * 2.1) * SWAY_BREATH * 0.6 * damp
+
+        hip_x = (aim_x + self.bob_offset * 2.2
+                 + self.lean_applied * LEAN_GUN_SHIFT
+                 + self.sway_x + breath_x)
+        hip_y = (SCREEN_H + self.bob_offset + self.recoil + self.pitch
+                 + self.sway_y + breath_y)
+
+        # Looking a long way up slides the weapon down with the horizon, and
+        # sway can shove it back up again. Between them they could park the
+        # barrel right over the reticle, so the hip pose is not allowed any
+        # higher than leaves a clear gap above the muzzle. (The sighted pose
+        # is exempt - putting the optic ON the aim point is the whole idea.)
+        highest = aim_y + self.gun_top + RETICLE_CLEARANCE
+        if hip_y < highest:
+            hip_y = highest
 
         # Bringing the weapon in line with your eye foreshortens it: you stop
         # seeing it side-on and start looking along it, so it narrows a lot and
@@ -2015,8 +2178,10 @@ class Game:
         # The optic moves with the squeeze, so line up against the squeezed
         # position or the sight ends up off to one side.
         sight_x = (aim_x - OPTIC_CENTRE_X * squeeze_x
-                   + self.lean_applied * LEAN_GUN_SHIFT * 0.3)
-        sight_y = aim_y - OPTIC_CENTRE_Y * squeeze_y + self.recoil * 0.5
+                   + self.lean_applied * LEAN_GUN_SHIFT * 0.3
+                   + self.sway_x * 0.35 + breath_x * 0.5)
+        sight_y = (aim_y - OPTIC_CENTRE_Y * squeeze_y + self.recoil * 0.5
+                   + self.sway_y * 0.35 + breath_y * 0.5)
 
         centre = hip_x + (sight_x - hip_x) * ads
         base = hip_y + (sight_y - hip_y) * ads
