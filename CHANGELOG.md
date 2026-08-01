@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.0.2 — blades and a dynamic plume mesh
+
+### Blades
+- `blade_ring()` can now build 4/8/12/16 blades. Minecraft only allows one rotation axis at one of
+  five fixed angles, so the four axis-aligned blades are rotated by `0/±22.5/45` to fill in the rest.
+- Fan rotor is now 16 thin blades instead of 8 fat ones, with a four-step spinner cone. The old
+  version read as a handful of loose plates rather than a bladed disc.
+- Compressor rotors are 12 blades per stage; stators and afterburner spray bars thinned to match.
+
+### Dynamic plume mesh
+- New `PlumeTrail`: the plume is generated from the nozzle's **emission history**, not bolted to the
+  block. Once per tick the nozzle emits a gas parcel recording where in the world it left and which
+  way it was pointing; each parcel then drifts downstream along *its own* emission direction,
+  spreads, cools and fades. The plume is the surface through all live parcels.
+  - Fly forward and older parcels are left behind, so the plume stretches and lags.
+  - Turn, roll or pitch and the plume **bends**, because each parcel keeps the direction the nozzle
+    had when it was emitted.
+  - Each parcel stores a raycast clearance measured ahead of the nozzle, so the plume **splashes
+    flat against terrain** instead of passing through it.
+- Rendered from `RenderLevelStageEvent` in **world space**, not from the block entity renderer.
+  A block entity inside a Sable sublevel is drawn with the sublevel transform already applied, so
+  anything drawn there moves rigidly with the aircraft — exhaust gas must not.
+- Ring frames are parallel-transported between parcels, so the tube does not spin about its own axis
+  when the aircraft rolls.
+- Custom additive `RenderType` (no depth write, no cull) drawn as two concentric shells, so the
+  overlap accumulates into a hot core with a soft edge.
+- Reheat radius follows a spindle — bulging just past the nozzle, necking to a point — rather than
+  widening monotonically, which read as a fat cone.
+- Colour ramp corrected: blue collapses early and hard, otherwise the mid-plume sits at roughly
+  equal red and blue and reads as mauve rather than flame.
+- The particle system is unchanged and layers on top; the mesh supplies the volume, the particles
+  the turbulence and shock diamonds.
+
+### Tooling
+- Added `tools/preview_plume.py`, which reimplements the parcel model with the same constants and
+  renders four scenarios (stationary, flying straight, banking turn, impinging on terrain) so the
+  plume's shape can be checked without launching the game.
+
 ## 1.0.1 — model and particle rework
 
 ### Models

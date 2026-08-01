@@ -107,7 +107,10 @@ public class JetModuleRenderer implements BlockEntityRenderer<JetModuleBlockEnti
         if (core != null) {
             open = core.getNozzleOpen();
             if (be.tryEffectTick()) {
+                // Particles add the fine detail; the plume mesh is fed here but drawn later,
+                // in world space, so it does not move rigidly with the aircraft.
                 ExhaustEffects.emit(be, core, 0.0F);
+                PlumeManager.emit(be, core);
             }
         }
         float openDegrees = -6.0F + open * 26.0F;
@@ -140,48 +143,6 @@ public class JetModuleRenderer implements BlockEntityRenderer<JetModuleBlockEnti
             float b = lit ? 1.0F : 0.16F;
             JetPartials.render(pose, vc, state, JetPartials.model(JetPartials.NOZZLE_INNER),
                     FULL_BRIGHT, overlay, r * heat, g * heat, b * heat);
-            pose.popPose();
-
-            renderPlume(state, pose, buffers, overlay, facing, spool, lit);
-        }
-    }
-
-    /**
-     * The exhaust plume, built as a stack of progressively smaller shells marching out of the
-     * nozzle rather than one camera-facing quad. Alternate shells are rolled 22.5 degrees so the
-     * silhouette stays convincing from any viewing angle, and the periodic scale ripple reads as
-     * shock diamonds.
-     */
-    private void renderPlume(BlockState state, PoseStack pose, MultiBufferSource buffers,
-                             int overlay, Direction facing, float spool, boolean lit) {
-        int segments = lit ? 14 : 6;
-        float length = (lit ? 3.4F : 0.9F) * (0.35F + 0.65F * spool);
-        var glow = JetPartials.model(JetPartials.AFTERBURNER_GLOW);
-        VertexConsumer vc = buffers.getBuffer(RenderType.translucent());
-
-        for (int i = 0; i < segments; i++) {
-            float t = i / (float) segments;
-            // exhaust leaves along the model's -Z
-            float dist = t * length;
-            float taper = (1.0F - t) * (lit ? 0.85F : 0.55F);
-            // shock diamonds: periodic pinch in the core flow
-            float diamond = lit ? 1.0F + 0.18F * (float) Math.sin(t * Math.PI * 5.0) : 1.0F;
-            float s = Math.max(0.02F, taper * diamond * (0.5F + 0.5F * spool));
-
-            float alpha = (1.0F - t) * (lit ? 0.9F : 0.28F);
-            float r = lit ? (t < 0.35F ? 0.45F : 1.0F) : 1.0F;
-            float g = lit ? (t < 0.35F ? 0.55F : 0.62F) : 0.55F;
-            float b = lit ? 1.0F : 0.38F;
-
-            pose.pushPose();
-            JetPartials.orient(pose, facing);
-            pose.translate(0.5F, 0.5F, 0.5F);
-            pose.translate(0.0F, 0.0F, -dist);
-            pose.mulPose(Axis.ZP.rotationDegrees(i % 2 == 0 ? 0.0F : 22.5F));
-            pose.scale(s, s, Math.max(0.05F, length / segments * 1.6F));
-            pose.translate(-0.5F, -0.5F, -0.5F);
-            JetPartials.render(pose, vc, state, glow, FULL_BRIGHT, overlay,
-                    r * alpha, g * alpha, b * alpha);
             pose.popPose();
         }
     }

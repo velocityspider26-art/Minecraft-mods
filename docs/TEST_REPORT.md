@@ -1,4 +1,4 @@
-# Test report — Create: Jet Engines 1.0.1
+# Test report — Create: Jet Engines 1.0.2
 
 Everything below was actually run in this environment. Where something could **not** be verified
 here, it says so plainly rather than claiming a pass.
@@ -39,9 +39,9 @@ xvfb-run ./gradlew runClient                # BUILD SUCCESSFUL (clean exit after
 ## Artifact
 
 ```
-build/libs/create-jet-engines-1.0.1.jar
+build/libs/create-jet-engines-1.0.2.jar
 size    288,651 bytes   (valid zip)
-sha256  6afd6857d1967173287111a708a03599fe10f9ca4351e6ea7b4a1cf51076aece
+sha256  d91bde683b2f4d16bb399c69297fecbf57c0e613883fbdcdfd16d2f23c2b7799
 ```
 
 Jar inspection: **no** Minecraft, NeoForge, Create, Sable or Veil classes bundled — the only
@@ -165,6 +165,24 @@ corrected so the tail goes orange rather than pink. Those are reasoned fixes to 
 problem, but the *tuned* result has not been seen — driving the client through synthetic X input to
 rebuild the scene did not converge before this session ran out of road. Treat the current particle
 numbers as a first tuning pass, not a finished look.
+
+## Plume mesh (third pass) — what is and is not verified
+
+The plume is now a generated mesh driven by the nozzle's emission history (see the changelog for
+the model). Status:
+
+* **Verified:** the geometry. `tools/preview_plume.py` reimplements the parcel model with the same
+  constants and renders it; all four intended behaviours are visible — a straight tapering cone when
+  stationary, a stretched trail in forward flight, a genuine bend through a banking turn, and a kink
+  flat against the ground on impingement. Renders land in `build/preview/plume.png`.
+* **Verified:** it compiles, the 6 gametests still pass, and a client boots to the title screen and
+  into a fresh creative world with the new code loaded.
+* **NOT verified:** the plume has never actually been drawn in-game. `PlumeManager.render` returns
+  early when no trail exists, so the custom additive `RenderType` and the vertex-writing path were
+  never executed — I could not get a powered engine into frame. Driving the client through synthetic
+  X input kept dropping the leading `/` of chat commands, so the test scene never got built.
+  **If something is going to break, this is where it will break**, and it will most likely be the
+  render-state combination rather than the geometry.
 
 ## What still needs you, and why
 

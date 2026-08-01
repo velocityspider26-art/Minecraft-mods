@@ -6,6 +6,7 @@ import com.velocityspider.createjetengines.client.render.JetModuleRenderer;
 import com.velocityspider.createjetengines.client.particle.ExhaustParticle;
 import com.velocityspider.createjetengines.client.particle.JetFlameParticle;
 import com.velocityspider.createjetengines.client.render.JetPartials;
+import com.velocityspider.createjetengines.client.render.PlumeManager;
 import com.velocityspider.createjetengines.client.sound.JetSoundHandler;
 import com.velocityspider.createjetengines.registry.JetBlockEntities;
 import com.velocityspider.createjetengines.registry.JetParticles;
@@ -17,6 +18,8 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 /**
  * Client-only wiring.
@@ -52,9 +55,30 @@ public final class JetClientSetup {
         event.registerSpriteSet(JetParticles.SHOCK_DIAMOND.get(), JetFlameParticle.ShockProvider::new);
     }
 
-    /** Drop all looping sounds when leaving a world so nothing carries over. */
+    /**
+     * Draws the exhaust plumes in world space.
+     *
+     * <p>After translucent blocks but before particles, so the particles composite on top of the
+     * plume rather than being swallowed by it.
+     */
+    @SubscribeEvent
+    static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            PlumeManager.render(event.getPoseStack(), event.getCamera(),
+                    event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        }
+    }
+
+    /** Ages the plumes even when their nozzle is off screen. */
+    @SubscribeEvent
+    static void onClientTick(ClientTickEvent.Post event) {
+        PlumeManager.tick();
+    }
+
+    /** Drop all looping sounds and plumes when leaving a world so nothing carries over. */
     @SubscribeEvent
     static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         JetSoundHandler.reset();
+        PlumeManager.reset();
     }
 }
