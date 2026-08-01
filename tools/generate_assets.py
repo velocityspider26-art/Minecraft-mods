@@ -411,14 +411,28 @@ def tube(r_out, r_in, z0, z1, tex, per_face=None):
 
 
 def disc(r, z0, z1, tex, per_face=None):
-    """A filled octagonal plate: four crossed bars whose union covers the circle."""
-    s = r * 0.46
+    """
+    A filled octagonal plate: four crossed bars whose union covers the circle.
+
+    The bars necessarily pass through each other at the centre. Left exactly coincident
+    their caps and side faces share planes, and Minecraft z-fights them into a flickering
+    mess. Each bar is therefore nudged by a hair in z and in radius so no two faces are
+    ever coplanar — invisible at block scale, and it removes the artefact entirely.
+    """
     zc = (z0 + z1) / 2.0
-    horiz = ((C - r, C - s, z0), (C + r, C + s, z1))
-    vert = ((C - s, C - r, z0), (C + s, C + r, z1))
-    es = [elem(a, b, tex, per_face=per_face) for a, b in (horiz, vert)]
-    for ang in (45, -45):
-        es.append(elem(horiz[0], horiz[1], tex, rotation=rot(zc, ang), per_face=per_face))
+    es = []
+    for k, ang in enumerate((0, 90, 45, -45)):
+        eps = 0.012 * k
+        rr = r * (1.0 - 0.018 * k)
+        ss = rr * 0.46
+        za, zb = z0 + eps, z1 - eps
+        if ang == 90:
+            box = ((C - ss, C - rr, za), (C + ss, C + rr, zb))
+            es.append(elem(box[0], box[1], tex, per_face=per_face))
+        else:
+            box = ((C - rr, C - ss, za), (C + rr, C + ss, zb))
+            es.append(elem(box[0], box[1], tex,
+                           rotation=None if ang == 0 else rot(zc, ang), per_face=per_face))
     return es
 
 
@@ -435,21 +449,36 @@ _BLADE_OFFSETS = {
 
 def blade_ring(r_hub, r_tip, half_w, z0, z1, tex, count=8):
     """
-    A ring of radial blades. Sixteen thin blades read far better than eight fat ones —
-    the fat version looks like a handful of loose plates rather than a bladed disc.
+    A ring of radial blades, staggered into two axial layers.
+
+    Blades are boxes, so near the hub neighbouring blades overlap: at radius r the gap
+    between blades is 2*r*sin(pi/count), and once that drops below the blade width
+    2*half_w they interpenetrate and z-fight into a mess of shards. Sixteen blades at a
+    usable width simply cannot fit in one plane.
+
+    Splitting them into two axial layers halves the count per layer, which doubles the
+    available gap, and any pair that still overlaps radially now sits at a different
+    depth so no faces are coplanar. Real fans are staggered for the same packing reason.
     """
     offsets = _BLADE_OFFSETS[count]
-    zc = (z0 + z1) / 2.0
-    bases = (
-        ((C - half_w, C + r_hub, z0), (C + half_w, C + r_tip, z1)),   # top    (0 deg)
-        ((C + r_hub, C - half_w, z0), (C + r_tip, C + half_w, z1)),   # right  (90)
-        ((C - half_w, C - r_tip, z0), (C + half_w, C - r_hub, z1)),   # bottom (180)
-        ((C - r_tip, C - half_w, z0), (C - r_hub, C + half_w, z1)),   # left   (270)
+    bases_for = lambda z0_, z1_: (
+        ((C - half_w, C + r_hub, z0_), (C + half_w, C + r_tip, z1_)),   # top    (0 deg)
+        ((C + r_hub, C - half_w, z0_), (C + r_tip, C + half_w, z1_)),   # right  (90)
+        ((C - half_w, C - r_tip, z0_), (C + half_w, C - r_hub, z1_)),   # bottom (180)
+        ((C - r_tip, C - half_w, z0_), (C - r_hub, C + half_w, z1_)),   # left   (270)
     )
+    mid = (z0 + z1) / 2.0
+    # front layer takes the even offsets, rear layer the odd ones
+    layers = ((z0, mid + 0.05, offsets[0::2]), (mid - 0.05, z1, offsets[1::2]))
+
     es = []
-    for a, b in bases:
-        for ang in offsets:
-            es.append(elem(a, b, tex, rotation=None if ang == 0 else rot(zc, ang)))
+    for za, zb, angs in layers:
+        if not angs:
+            continue
+        zc = (za + zb) / 2.0
+        for a, b in bases_for(za, zb):
+            for ang in angs:
+                es.append(elem(a, b, tex, rotation=None if ang == 0 else rot(zc, ang)))
     return es
 
 
@@ -498,7 +527,7 @@ def build_models():
     els += tube(R_JOIN, 6.2, 0.0, 1.0, "casing_ribbed")  # rear collar
     els += tube(5.6, 5.0, 1.0, 13.0, "intake_inner")     # dark liner down the duct
     els += disc(5.2, 1.4, 2.2, "fan_face")               # stator face, seen down the intake
-    els += blade_ring(1.6, 5.0, 0.32, 3.2, 3.7, "compressor_blade", count=16)  # stator vanes
+    els += blade_ring(2.3, 5.0, 0.55, 3.0, 3.9, "compressor_blade", count=12)  # stator vanes
     out["fan_module"] = model(tex(casing="casing", collar="collar",
                                   casing_ribbed="casing_ribbed", fan_face="fan_face",
                                   intake_inner="intake_inner",
@@ -506,7 +535,7 @@ def build_models():
                                   particle="casing"), els)
 
     rotor = []
-    rotor += blade_ring(1.9, 5.35, 0.85, 8.9, 11.5, "fan_blade", count=16)
+    rotor += blade_ring(2.5, 5.35, 0.80, 8.7, 11.7, "fan_blade", count=16)
     rotor += disc(2.1, 8.4, 11.8, "spinner")             # hub
     # stepped nose cone — more, smaller steps read as a smooth spinner
     for i, (r, za, zb) in enumerate(((1.75, 11.8, 12.7), (1.35, 12.7, 13.5),
@@ -522,8 +551,8 @@ def build_models():
     for z in (1.0, 7.4, 14.0):
         els += tube(R_JOIN, 6.4, z, z + 1.4, "casing_ribbed")   # proud bands
     els += disc(1.5, 0.0, 16.0, "spinner")                       # shaft
-    els += blade_ring(1.5, 4.9, 0.28, 4.4, 4.8, "compressor_blade", count=12)   # stators
-    els += blade_ring(1.5, 4.9, 0.28, 11.0, 11.4, "compressor_blade", count=12)
+    els += blade_ring(2.1, 4.9, 0.50, 4.3, 5.0, "compressor_blade", count=8)   # stators
+    els += blade_ring(2.1, 4.9, 0.50, 10.9, 11.6, "compressor_blade", count=8)
     els += disc(5.0, 15.2, 15.8, "compressor_face")               # interstage face
     out["compressor_module"] = model(tex(compressor_casing="compressor_casing",
                                          casing_ribbed="casing_ribbed",
@@ -534,7 +563,7 @@ def build_models():
 
     rotor = []
     for z in (2.2, 8.2, 12.6):
-        rotor += blade_ring(1.7, 4.9, 0.42, z, z + 1.2, "compressor_blade", count=12)
+        rotor += blade_ring(2.2, 4.9, 0.60, z, z + 1.5, "compressor_blade", count=12)
     out["compressor_rotor"] = model(tex(compressor_blade="compressor_blade",
                                         particle="compressor_blade"), rotor)
 
@@ -562,7 +591,7 @@ def build_models():
     els += tube(R_JOIN, 6.6, 14.0, 15.4, "casing_ribbed")
     els += tube(5.2, 4.0, 3.4, 4.8, "flame_holder")       # flame holder rings
     els += tube(5.2, 4.0, 9.0, 10.4, "flame_holder")
-    els += blade_ring(1.2, 5.2, 0.30, 6.4, 6.9, "flame_holder", count=8)   # spray bars
+    els += blade_ring(1.8, 5.2, 0.45, 6.3, 7.0, "flame_holder", count=8)   # spray bars
     out["afterburner_module"] = model(tex(afterburner_casing="afterburner_casing",
                                           casing_ribbed="casing_ribbed",
                                           flame_holder="flame_holder",

@@ -1,4 +1,4 @@
-# Test report — Create: Jet Engines 1.0.2
+# Test report — Create: Jet Engines 1.0.3
 
 Everything below was actually run in this environment. Where something could **not** be verified
 here, it says so plainly rather than claiming a pass.
@@ -39,9 +39,9 @@ xvfb-run ./gradlew runClient                # BUILD SUCCESSFUL (clean exit after
 ## Artifact
 
 ```
-build/libs/create-jet-engines-1.0.2.jar
+build/libs/create-jet-engines-1.0.3.jar
 size    288,651 bytes   (valid zip)
-sha256  d91bde683b2f4d16bb399c69297fecbf57c0e613883fbdcdfd16d2f23c2b7799
+sha256  e1f918afba3e7b57f5d17befe300171de301bbafe02b0fd9bbf46132be4553b3
 ```
 
 Jar inspection: **no** Minecraft, NeoForge, Create, Sable or Veil classes bundled — the only

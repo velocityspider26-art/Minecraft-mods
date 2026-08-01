@@ -25,7 +25,10 @@ os.makedirs(OUT_DIR, exist_ok=True)
 # --- constants mirrored from PlumeTrail.java -----------------------------------
 MAX_AGE = 12
 MAX_SAMPLES = 20
-RING = 8
+RING = 12
+SHOCK_NODES = 5
+SHOCK_AMPLITUDE = 0.52
+TURBULENCE = 0.42
 WORLD_UP = np.array([0.0, 1.0, 0.0])
 
 W, H = 640, 360
@@ -42,12 +45,20 @@ def parcel_position(p, partial=0.0):
     return p["origin"] + p["dir"] * travel + WORLD_UP * rise
 
 
+def hash01(seed, k):
+    h = (seed * 374761393 + k * 668265263) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((h ^ (h >> 16)) & 0xFFFF) / 65535.0
+
+
 def parcel_radius(p, partial=0.0):
     u = min(1.0, (p["age"] + partial) / MAX_AGE)
     r0 = 0.26 + 0.10 * p["throttle"]
     if p["lit"]:
-        # spindle: bulges past the nozzle, then necks to a point
-        return r0 * (1.0 + 0.9 * u) * (1.0 - u) ** 0.45
+        spindle = r0 * (1.0 + 0.9 * u) * (1.0 - u) ** 0.45
+        # mach diamonds
+        shock = 1.0 + SHOCK_AMPLITUDE * math.exp(-1.2 * u) * math.sin(u * math.pi * SHOCK_NODES)
+        return spindle * shock
     return r0 * (1.0 + 1.9 * u)
 
 
@@ -58,7 +69,9 @@ def parcel_colour(p, alpha_scale):
         r = 0.55 + 0.45 * min(1.0, t * 1.8)
         g = 0.74 - 0.34 * t
         b = max(0.0, 1.0 - 1.7 * t)
-        a = fade * (0.55 + 0.45 * p["throttle"])
+        a = (1.0 - t) ** 2.2 * (0.65 + 0.35 * p["throttle"])
+        a *= 0.78 + 0.22 * hash01(p["seed"], 7)
+        a *= 1.0 + 0.40 * math.exp(-1.2 * t) * math.sin(t * math.pi * SHOCK_NODES)
     else:
         r, g, b = 1.0, 0.86, 0.72
         a = fade * 0.10 * (0.4 + 0.6 * p["throttle"])
@@ -99,13 +112,18 @@ def simulate(path_fn, ticks=26, throttle=1.0, lit=True, ground_y=None):
             p["age"] += 1
         parcels = [p for p in parcels if p["age"] <= MAX_AGE]
         parcels.insert(0, {"origin": pos, "dir": direction, "side": side, "other": other,
-                           "throttle": throttle, "lit": lit, "clearance": clearance, "age": 0})
+                           "throttle": throttle, "lit": lit, "clearance": clearance,
+                           "seed": tick + 1, "age": 0})
         parcels = parcels[:MAX_SAMPLES]
     return parcels
 
 
-def ring_point(p, centre, radius, theta):
-    return centre + p["side"] * (math.cos(theta) * radius) + p["other"] * (math.sin(theta) * radius)
+def ring_point(p, centre, radius, theta, k=0, partial=0.0):
+    u = min(1.0, (p["age"] + partial) / MAX_AGE)
+    amount = TURBULENCE * u * u
+    n = (hash01(p["seed"], k) - 0.5) * 2.0
+    r = radius * (1.0 + amount * n)
+    return centre + p["side"] * (math.cos(theta) * r) + p["other"] * (math.sin(theta) * r)
 
 
 def render(parcels, title, yaw=-40.0, pitch=-18.0, span=9.0, centre=None):
@@ -141,10 +159,10 @@ def render(parcels, title, yaw=-40.0, pitch=-18.0, span=9.0, centre=None):
             for k in range(RING):
                 t0 = (k / RING) * 2 * math.pi
                 t1 = ((k + 1) / RING) * 2 * math.pi
-                quad = [project(ring_point(a, pa, ra, t0)),
-                        project(ring_point(a, pa, ra, t1)),
-                        project(ring_point(b, pb, rb, t1)),
-                        project(ring_point(b, pb, rb, t0))]
+                quad = [project(ring_point(a, pa, ra, t0, k)),
+                        project(ring_point(a, pa, ra, t1, k + 1)),
+                        project(ring_point(b, pb, rb, t1, k + 1)),
+                        project(ring_point(b, pb, rb, t0, k))]
                 col = (ca * aa + cb * ab) * 0.5
                 fill_quad(img, quad, col)
 

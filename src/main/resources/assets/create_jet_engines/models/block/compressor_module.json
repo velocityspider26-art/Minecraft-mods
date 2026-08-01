@@ -1212,14 +1212,14 @@
     },
     {
       "from": [
-        7.31,
-        6.5,
-        0.0
+        7.322,
+        6.527,
+        0.012
       ],
       "to": [
-        8.69,
-        9.5,
-        16.0
+        8.678,
+        9.473,
+        15.988
       ],
       "faces": {
         "north": {
@@ -1244,14 +1244,14 @@
     },
     {
       "from": [
-        6.5,
-        7.31,
-        0.0
+        6.554,
+        7.335,
+        0.024
       ],
       "to": [
-        9.5,
-        8.69,
-        16.0
+        9.446,
+        8.665,
+        15.976
       ],
       "faces": {
         "north": {
@@ -1285,14 +1285,14 @@
     },
     {
       "from": [
-        6.5,
-        7.31,
-        0.0
+        6.581,
+        7.347,
+        0.036
       ],
       "to": [
-        9.5,
-        8.69,
-        16.0
+        9.419,
+        8.653,
+        15.964
       ],
       "faces": {
         "north": {
@@ -1326,14 +1326,14 @@
     },
     {
       "from": [
-        7.72,
-        9.5,
-        4.4
+        7.5,
+        10.1,
+        4.3
       ],
       "to": [
-        8.28,
+        8.5,
         12.9,
-        4.8
+        4.7
       ],
       "faces": {
         "north": {
@@ -1358,14 +1358,110 @@
     },
     {
       "from": [
-        7.72,
-        9.5,
-        4.4
+        10.1,
+        7.5,
+        4.3
       ],
       "to": [
-        8.28,
         12.9,
-        4.8
+        8.5,
+        4.7
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        3.1,
+        4.3
+      ],
+      "to": [
+        8.5,
+        5.9,
+        4.7
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        3.1,
+        7.5,
+        4.3
+      ],
+      "to": [
+        5.9,
+        8.5,
+        4.7
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        10.1,
+        4.6
+      ],
+      "to": [
+        8.5,
+        12.9,
+        5.0
       ],
       "faces": {
         "north": {
@@ -1391,48 +1487,7 @@
         "origin": [
           8.0,
           8.0,
-          4.6
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        7.72,
-        9.5,
-        4.4
-      ],
-      "to": [
-        8.28,
-        12.9,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          4.6
+          4.8
         ],
         "axis": "z",
         "angle": 45
@@ -1440,46 +1495,14 @@
     },
     {
       "from": [
-        9.5,
-        7.72,
-        4.4
+        10.1,
+        7.5,
+        4.6
       ],
       "to": [
         12.9,
-        8.28,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        9.5,
-        7.72,
-        4.4
-      ],
-      "to": [
-        12.9,
-        8.28,
-        4.8
+        8.5,
+        5.0
       ],
       "faces": {
         "north": {
@@ -1505,48 +1528,7 @@
         "origin": [
           8.0,
           8.0,
-          4.6
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        9.5,
-        7.72,
-        4.4
-      ],
-      "to": [
-        12.9,
-        8.28,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          4.6
+          4.8
         ],
         "axis": "z",
         "angle": 45
@@ -1554,46 +1536,14 @@
     },
     {
       "from": [
-        7.72,
+        7.5,
         3.1,
-        4.4
+        4.6
       ],
       "to": [
-        8.28,
-        6.5,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        7.72,
-        3.1,
-        4.4
-      ],
-      "to": [
-        8.28,
-        6.5,
-        4.8
+        8.5,
+        5.9,
+        5.0
       ],
       "faces": {
         "north": {
@@ -1619,48 +1569,7 @@
         "origin": [
           8.0,
           8.0,
-          4.6
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        7.72,
-        3.1,
-        4.4
-      ],
-      "to": [
-        8.28,
-        6.5,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          4.6
+          4.8
         ],
         "axis": "z",
         "angle": 45
@@ -1669,45 +1578,13 @@
     {
       "from": [
         3.1,
-        7.72,
-        4.4
+        7.5,
+        4.6
       ],
       "to": [
-        6.5,
-        8.28,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        3.1,
-        7.72,
-        4.4
-      ],
-      "to": [
-        6.5,
-        8.28,
-        4.8
+        5.9,
+        8.5,
+        5.0
       ],
       "faces": {
         "north": {
@@ -1733,48 +1610,7 @@
         "origin": [
           8.0,
           8.0,
-          4.6
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        3.1,
-        7.72,
-        4.4
-      ],
-      "to": [
-        6.5,
-        8.28,
-        4.8
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          4.6
+          4.8
         ],
         "axis": "z",
         "angle": 45
@@ -1782,14 +1618,14 @@
     },
     {
       "from": [
-        7.72,
-        9.5,
-        11.0
+        7.5,
+        10.1,
+        10.9
       ],
       "to": [
-        8.28,
+        8.5,
         12.9,
-        11.4
+        11.3
       ],
       "faces": {
         "north": {
@@ -1814,14 +1650,110 @@
     },
     {
       "from": [
-        7.72,
-        9.5,
-        11.0
+        10.1,
+        7.5,
+        10.9
       ],
       "to": [
-        8.28,
         12.9,
-        11.4
+        8.5,
+        11.3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        3.1,
+        10.9
+      ],
+      "to": [
+        8.5,
+        5.9,
+        11.3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        3.1,
+        7.5,
+        10.9
+      ],
+      "to": [
+        5.9,
+        8.5,
+        11.3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#compressor_blade"
+        },
+        "east": {
+          "texture": "#compressor_blade"
+        },
+        "south": {
+          "texture": "#compressor_blade"
+        },
+        "west": {
+          "texture": "#compressor_blade"
+        },
+        "up": {
+          "texture": "#compressor_blade"
+        },
+        "down": {
+          "texture": "#compressor_blade"
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        10.1,
+        11.2
+      ],
+      "to": [
+        8.5,
+        12.9,
+        11.6
       ],
       "faces": {
         "north": {
@@ -1847,48 +1779,7 @@
         "origin": [
           8.0,
           8.0,
-          11.2
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        7.72,
-        9.5,
-        11.0
-      ],
-      "to": [
-        8.28,
-        12.9,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          11.2
+          11.4
         ],
         "axis": "z",
         "angle": 45
@@ -1896,46 +1787,14 @@
     },
     {
       "from": [
-        9.5,
-        7.72,
-        11.0
+        10.1,
+        7.5,
+        11.2
       ],
       "to": [
         12.9,
-        8.28,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        9.5,
-        7.72,
-        11.0
-      ],
-      "to": [
-        12.9,
-        8.28,
-        11.4
+        8.5,
+        11.6
       ],
       "faces": {
         "north": {
@@ -1961,48 +1820,7 @@
         "origin": [
           8.0,
           8.0,
-          11.2
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        9.5,
-        7.72,
-        11.0
-      ],
-      "to": [
-        12.9,
-        8.28,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          11.2
+          11.4
         ],
         "axis": "z",
         "angle": 45
@@ -2010,46 +1828,14 @@
     },
     {
       "from": [
-        7.72,
+        7.5,
         3.1,
-        11.0
+        11.2
       ],
       "to": [
-        8.28,
-        6.5,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        7.72,
-        3.1,
-        11.0
-      ],
-      "to": [
-        8.28,
-        6.5,
-        11.4
+        8.5,
+        5.9,
+        11.6
       ],
       "faces": {
         "north": {
@@ -2075,48 +1861,7 @@
         "origin": [
           8.0,
           8.0,
-          11.2
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        7.72,
-        3.1,
-        11.0
-      ],
-      "to": [
-        8.28,
-        6.5,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          11.2
+          11.4
         ],
         "axis": "z",
         "angle": 45
@@ -2125,45 +1870,13 @@
     {
       "from": [
         3.1,
-        7.72,
-        11.0
+        7.5,
+        11.2
       ],
       "to": [
-        6.5,
-        8.28,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      }
-    },
-    {
-      "from": [
-        3.1,
-        7.72,
-        11.0
-      ],
-      "to": [
-        6.5,
-        8.28,
-        11.4
+        5.9,
+        8.5,
+        11.6
       ],
       "faces": {
         "north": {
@@ -2189,48 +1902,7 @@
         "origin": [
           8.0,
           8.0,
-          11.2
-        ],
-        "axis": "z",
-        "angle": 22.5
-      }
-    },
-    {
-      "from": [
-        3.1,
-        7.72,
-        11.0
-      ],
-      "to": [
-        6.5,
-        8.28,
-        11.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#compressor_blade"
-        },
-        "east": {
-          "texture": "#compressor_blade"
-        },
-        "south": {
-          "texture": "#compressor_blade"
-        },
-        "west": {
-          "texture": "#compressor_blade"
-        },
-        "up": {
-          "texture": "#compressor_blade"
-        },
-        "down": {
-          "texture": "#compressor_blade"
-        }
-      },
-      "rotation": {
-        "origin": [
-          8.0,
-          8.0,
-          11.2
+          11.4
         ],
         "axis": "z",
         "angle": 45
@@ -2270,14 +1942,14 @@
     },
     {
       "from": [
-        5.7,
-        3.0,
-        15.2
+        5.741,
+        3.09,
+        15.212
       ],
       "to": [
-        10.3,
-        13.0,
-        15.8
+        10.259,
+        12.91,
+        15.788
       ],
       "faces": {
         "north": {
@@ -2302,14 +1974,14 @@
     },
     {
       "from": [
-        3.0,
-        5.7,
-        15.2
+        3.18,
+        5.783,
+        15.224
       ],
       "to": [
-        13.0,
-        10.3,
-        15.8
+        12.82,
+        10.217,
+        15.776
       ],
       "faces": {
         "north": {
@@ -2343,14 +2015,14 @@
     },
     {
       "from": [
-        3.0,
-        5.7,
-        15.2
+        3.27,
+        5.824,
+        15.236
       ],
       "to": [
-        13.0,
-        10.3,
-        15.8
+        12.73,
+        10.176,
+        15.764
       ],
       "faces": {
         "north": {

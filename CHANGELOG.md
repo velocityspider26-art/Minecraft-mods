@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.0.3 — blade z-fighting fix, flame-like plume
+
+### Blades (the in-game screenshot showed shards, not blades)
+- Root cause was not thin geometry, it was **overlap**. At `r_hub = 1.9` with 16 blades the
+  angular gap is 22.5 deg — about 0.75 units of arc — while each blade is 1.7 units wide, so
+  neighbouring blades interpenetrated near the hub and z-fought into a mess of slivers.
+- `blade_ring()` now **staggers blades into two axial layers**. That halves the count per layer,
+  doubling the available gap, and any pair that still overlaps radially sits at a different depth
+  so no faces are coplanar. Real fans are staggered for the same packing reason.
+- Hub radii pushed out and blades widened so the packing actually closes.
+- `disc()` was the other half: four full-length crossed bars share caps and side planes at the
+  centre. Each bar is now nudged a hair in z and radius, so nothing is ever coplanar.
+
+### Plume — flame instead of liquid
+- **Mach diamonds.** Radius is modulated periodically along the core, and — more importantly —
+  so is brightness. Beading the outline alone was too subtle; diamonds are bright *nodes*, and
+  modulating brightness on the same period is what actually makes them read.
+- **Turbulence.** Each ring vertex is perturbed by a per-parcel hash, with the amount growing as
+  the square of age: the jet leaves the nozzle clean and breaks up as it entrains air. A perfectly
+  circular cross-section is most of why the old version looked like water.
+- **Flicker** per parcel rather than per plume, so brightness ripples along the length instead of
+  the whole thing pulsing at once.
+- Alpha falls off more steeply, so the *bright* core stays short and the rest trails off as haze.
+  A long uniformly-bright tube was the other half of the liquid look.
+- Ring resolution raised from 8 to 12 so the broken-up surface has something to break up.
+
+### Fixes
+- The off-centre torque gametest sampled angular velocity at a single instant. The craft yaws and
+  swings back, so the sample could land near a zero crossing — observed 1.7e-3 to 5.5 across runs
+  against a 1e-3 threshold, which made the suite intermittently red. Now peak-sampled like the
+  others; typical peak is ~30.
+
 ## 1.0.2 — blades and a dynamic plume mesh
 
 ### Blades

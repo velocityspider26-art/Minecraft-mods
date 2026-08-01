@@ -34,8 +34,14 @@ public class PlumeTrail {
     /** How many ticks a gas parcel stays visible. */
     private static final int MAX_AGE = 12;
     private static final int MAX_SAMPLES = 20;
-    /** Vertices per ring. Eight matches the octagonal engine geometry and is cheap. */
-    private static final int RING = 8;
+    /** Vertices per ring. Twelve gives enough resolution for the surface to look broken up. */
+    private static final int RING = 12;
+
+    /** Mach-diamond nodes along the core, and how hard each one pinches the flow. */
+    private static final int SHOCK_NODES = 5;
+    private static final float SHOCK_AMPLITUDE = 0.52F;
+    /** How ragged the surface gets downstream. Flow leaves the nozzle laminar and breaks up. */
+    private static final float TURBULENCE = 0.42F;
 
     private static final Vec3 WORLD_UP = new Vec3(0.0D, 1.0D, 0.0D);
 
@@ -48,10 +54,13 @@ public class PlumeTrail {
         final float throttle;
         final boolean lit;
         final double clearance;
+        /** Drives this parcel's turbulence and flicker so the plume never repeats. */
+        final int seed;
         int age;
 
         Parcel(Vec3 origin, Vec3 dir, Vec3 side, Vec3 other,
-               float throttle, boolean lit, double clearance) {
+               float throttle, boolean lit, double clearance, int seed) {
+            this.seed = seed;
             this.origin = origin;
             this.dir = dir;
             this.side = side;
@@ -82,7 +91,13 @@ public class PlumeTrail {
                 // A reheat core is a spindle: it bulges just past the nozzle as the flow expands,
                 // then necks back down to a point. Letting it widen monotonically made it read as
                 // a fat cone rather than a flame.
-                return (float) (r0 * (1.0D + 0.9D * u) * Math.pow(1.0D - u, 0.45D));
+                double spindle = r0 * (1.0D + 0.9D * u) * Math.pow(1.0D - u, 0.45D);
+                // Mach diamonds: the over-expanded jet repeatedly pinches and re-expands. This
+                // periodic beading is the single most recognisable feature of a real reheat
+                // plume, and without it the tube reads as a smooth liquid noodle.
+                double shock = 1.0D + SHOCK_AMPLITUDE * Math.exp(-1.2D * u)
+                        * Math.sin(u * Math.PI * SHOCK_NODES);
+                return (float) (spindle * shock);
             }
             // Dry exhaust has nothing burning in it; it just diffuses and keeps spreading.
             return (float) (r0 * (1.0D + 1.9D * u));
@@ -92,6 +107,7 @@ public class PlumeTrail {
     private final Deque<Parcel> parcels = new ArrayDeque<>();
     private Vec3 lastSide = null;
     private int idleTicks;
+    private int nextSeed = 1;
 
     /** True once the trail has fully faded and can be dropped. */
     public boolean isDead() {
@@ -140,7 +156,7 @@ public class PlumeTrail {
         Vec3 other = dir.cross(side).normalize();
         lastSide = side;
 
-        parcels.addFirst(new Parcel(origin, dir, side, other, throttle, lit, clearance));
+        parcels.addFirst(new Parcel(origin, dir, side, other, throttle, lit, clearance, nextSeed++));
         while (parcels.size() > MAX_SAMPLES) {
             parcels.removeLast();
         }
@@ -186,10 +202,10 @@ public class PlumeTrail {
                 double t0 = (k / (double) RING) * Math.PI * 2.0D;
                 double t1 = ((k + 1) / (double) RING) * Math.PI * 2.0D;
 
-                Vec3 a0 = ringPoint(a, pa, ra, t0);
-                Vec3 a1 = ringPoint(a, pa, ra, t1);
-                Vec3 b1 = ringPoint(b, pb, rb, t1);
-                Vec3 b0 = ringPoint(b, pb, rb, t0);
+                Vec3 a0 = ringPoint(a, pa, ra, t0, k, partialTick);
+                Vec3 a1 = ringPoint(a, pa, ra, t1, k + 1, partialTick);
+                Vec3 b1 = ringPoint(b, pb, rb, t1, k + 1, partialTick);
+                Vec3 b0 = ringPoint(b, pb, rb, t0, k, partialTick);
 
                 vertex(consumer, matrix, a0, ca);
                 vertex(consumer, matrix, a1, ca);
@@ -199,10 +215,25 @@ public class PlumeTrail {
         }
     }
 
-    private static Vec3 ringPoint(Parcel p, Vec3 centre, float radius, double theta) {
+    private static Vec3 ringPoint(Parcel p, Vec3 centre, float radius, double theta, int k,
+                                  float partial) {
+        // Perturb each ring vertex so the cross-section is not a perfect circle. The amount grows
+        // with age: the jet leaves the nozzle clean and breaks up as it entrains air, which is what
+        // turns a smooth tube into something that reads as burning gas.
+        float u = Math.min(1.0F, (p.age + partial) / (float) MAX_AGE);
+        float amount = TURBULENCE * u * u;
+        float n = (hash(p.seed, k) - 0.5F) * 2.0F;
+        float r = radius * (1.0F + amount * n);
         return centre
-                .add(p.side.scale(Math.cos(theta) * radius))
-                .add(p.other.scale(Math.sin(theta) * radius));
+                .add(p.side.scale(Math.cos(theta) * r))
+                .add(p.other.scale(Math.sin(theta) * r));
+    }
+
+    /** Cheap deterministic hash in 0..1, so the same parcel always jitters the same way. */
+    private static float hash(int seed, int k) {
+        int h = seed * 374761393 + k * 668265263;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        return ((h ^ (h >>> 16)) & 0xFFFF) / 65535.0F;
     }
 
     private static void vertex(VertexConsumer consumer, Matrix4f matrix, Vec3 v, int argb) {
@@ -230,7 +261,15 @@ public class PlumeTrail {
             // Blue has to collapse early and hard. Falling off as t^2 leaves the middle of the
             // plume sitting at roughly equal red and blue, which reads as mauve, not flame.
             b = Math.max(0.0F, 1.0F - 1.7F * t);
-            a = fade * (0.55F + 0.45F * p.throttle);
+            // Steeper than the geometric fade so the *bright* core stays short and the rest
+            // trails off as haze; a long uniformly-bright tube is what looked like liquid.
+            a = (float) Math.pow(1.0F - t, 2.2D) * (0.65F + 0.35F * p.throttle);
+            // Combustion is never steady. Flicker per parcel, not per plume, so the brightness
+            // ripples along the length instead of the whole thing pulsing at once.
+            a *= 0.78F + 0.22F * hash(p.seed, 7);
+            // Diamonds are bright *nodes*, not just pinches in the outline. Beading the
+            // brightness on the same period is what actually makes them read.
+            a *= 1.0F + 0.40F * (float) (Math.exp(-1.2D * t) * Math.sin(t * Math.PI * SHOCK_NODES));
         } else {
             // Dry thrust is nearly invisible: just enough hot haze to catch the light.
             r = 1.0F;
