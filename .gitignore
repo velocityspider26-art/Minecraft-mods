@@ -44,3 +44,7 @@ libs/*.jar
 
 ### Local scratch
 run/
+
+### Model preview renders
+
+build/preview/

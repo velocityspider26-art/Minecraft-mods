@@ -1,20 +1,21 @@
 {
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
   "textures": {
     "nozzle_petal": "create_jet_engines:block/nozzle_petal",
-    "nozzle_inner": "create_jet_engines:block/nozzle_inner",
     "particle": "create_jet_engines:block/nozzle_petal"
   },
   "elements": [
     {
       "from": [
-        6.4,
-        11.0,
-        0.0
+        5.6,
+        12.4,
+        1.0
       ],
       "to": [
-        9.6,
-        13.4,
-        6.5
+        10.4,
+        14.4,
+        9.6
       ],
       "faces": {
         "north": {
@@ -37,6 +38,5 @@
         }
       }
     }
-  ],
-  "ambientocclusion": false
+  ]
 }

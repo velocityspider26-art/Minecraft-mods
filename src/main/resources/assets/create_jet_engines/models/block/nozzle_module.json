@@ -1,5 +1,8 @@
 {
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
   "textures": {
+    "casing_ribbed": "create_jet_engines:block/casing_ribbed",
     "nozzle_petal": "create_jet_engines:block/nozzle_petal",
     "nozzle_inner": "create_jet_engines:block/nozzle_inner",
     "particle": "create_jet_engines:block/nozzle_petal"
@@ -7,168 +10,168 @@
   "elements": [
     {
       "from": [
-        0.0,
-        14.4,
-        10.0
+        4.99,
+        13.6,
+        11.5
       ],
       "to": [
-        16.0,
-        16.0,
+        11.01,
+        15.0,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       }
     },
     {
       "from": [
-        0.0,
-        0.0,
-        10.0
+        4.99,
+        1.0,
+        11.5
       ],
       "to": [
-        16.0,
-        1.5999999999999996,
+        11.01,
+        2.4,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       }
     },
     {
       "from": [
-        0.0,
-        1.5999999999999996,
-        10.0
+        13.6,
+        4.99,
+        11.5
       ],
       "to": [
-        1.5999999999999996,
-        14.4,
+        15.0,
+        11.01,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       }
     },
     {
       "from": [
-        14.4,
-        1.5999999999999996,
-        10.0
+        1.0,
+        4.99,
+        11.5
       ],
       "to": [
-        16.0,
-        14.4,
+        2.4,
+        11.01,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       }
     },
     {
       "from": [
-        1.7599999999999998,
-        14.399999999999999,
-        10.0
+        4.99,
+        13.6,
+        11.5
       ],
       "to": [
-        14.24,
-        16.0,
+        11.01,
+        15.0,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       },
       "rotation": {
         "origin": [
           8.0,
           8.0,
-          13.0
+          13.75
         ],
         "axis": "z",
         "angle": 45
@@ -176,40 +179,40 @@
     },
     {
       "from": [
-        1.7599999999999998,
-        0.0,
-        10.0
+        4.99,
+        1.0,
+        11.5
       ],
       "to": [
-        14.24,
-        1.5999999999999996,
+        11.01,
+        2.4,
         16.0
       ],
       "faces": {
         "north": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "east": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "south": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "west": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "up": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         },
         "down": {
-          "texture": "#nozzle_petal"
+          "texture": "#casing_ribbed"
         }
       },
       "rotation": {
         "origin": [
           8.0,
           8.0,
-          13.0
+          13.75
         ],
         "axis": "z",
         "angle": 45
@@ -217,14 +220,224 @@
     },
     {
       "from": [
-        1.7599999999999998,
-        14.399999999999999,
-        10.0
+        4.99,
+        13.6,
+        11.5
       ],
       "to": [
-        14.24,
-        16.0,
+        11.01,
+        15.0,
         16.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#casing_ribbed"
+        },
+        "east": {
+          "texture": "#casing_ribbed"
+        },
+        "south": {
+          "texture": "#casing_ribbed"
+        },
+        "west": {
+          "texture": "#casing_ribbed"
+        },
+        "up": {
+          "texture": "#casing_ribbed"
+        },
+        "down": {
+          "texture": "#casing_ribbed"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          13.75
+        ],
+        "axis": "z",
+        "angle": -45
+      }
+    },
+    {
+      "from": [
+        4.99,
+        1.0,
+        11.5
+      ],
+      "to": [
+        11.01,
+        2.4,
+        16.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#casing_ribbed"
+        },
+        "east": {
+          "texture": "#casing_ribbed"
+        },
+        "south": {
+          "texture": "#casing_ribbed"
+        },
+        "west": {
+          "texture": "#casing_ribbed"
+        },
+        "up": {
+          "texture": "#casing_ribbed"
+        },
+        "down": {
+          "texture": "#casing_ribbed"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          13.75
+        ],
+        "axis": "z",
+        "angle": -45
+      }
+    },
+    {
+      "from": [
+        5.162,
+        13.4,
+        9.0
+      ],
+      "to": [
+        10.838,
+        14.6,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      }
+    },
+    {
+      "from": [
+        5.162,
+        1.4,
+        9.0
+      ],
+      "to": [
+        10.838,
+        2.6,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      }
+    },
+    {
+      "from": [
+        13.4,
+        5.162,
+        9.0
+      ],
+      "to": [
+        14.6,
+        10.838,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      }
+    },
+    {
+      "from": [
+        1.4,
+        5.162,
+        9.0
+      ],
+      "to": [
+        2.6,
+        10.838,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      }
+    },
+    {
+      "from": [
+        5.162,
+        13.4,
+        9.0
+      ],
+      "to": [
+        10.838,
+        14.6,
+        11.5
       ],
       "faces": {
         "north": {
@@ -250,22 +463,22 @@
         "origin": [
           8.0,
           8.0,
-          13.0
+          10.25
         ],
         "axis": "z",
-        "angle": -45
+        "angle": 45
       }
     },
     {
       "from": [
-        1.7599999999999998,
-        0.0,
-        10.0
+        5.162,
+        1.4,
+        9.0
       ],
       "to": [
-        14.24,
-        1.5999999999999996,
-        16.0
+        10.838,
+        2.6,
+        11.5
       ],
       "faces": {
         "north": {
@@ -291,7 +504,48 @@
         "origin": [
           8.0,
           8.0,
-          13.0
+          10.25
+        ],
+        "axis": "z",
+        "angle": 45
+      }
+    },
+    {
+      "from": [
+        5.162,
+        13.4,
+        9.0
+      ],
+      "to": [
+        10.838,
+        14.6,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          10.25
         ],
         "axis": "z",
         "angle": -45
@@ -299,14 +553,55 @@
     },
     {
       "from": [
-        3.4,
-        3.4,
-        12.0
+        5.162,
+        1.4,
+        9.0
       ],
       "to": [
-        12.6,
-        12.6,
-        13.0
+        10.838,
+        2.6,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          10.25
+        ],
+        "axis": "z",
+        "angle": -45
+      }
+    },
+    {
+      "from": [
+        2.6,
+        5.516,
+        10.4
+      ],
+      "to": [
+        13.4,
+        10.484,
+        11.0
       ],
       "faces": {
         "north": {
@@ -327,8 +622,121 @@
         "down": {
           "texture": "#nozzle_inner"
         }
+      }
+    },
+    {
+      "from": [
+        5.516,
+        2.6,
+        10.4
+      ],
+      "to": [
+        10.484,
+        13.4,
+        11.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      }
+    },
+    {
+      "from": [
+        2.6,
+        5.516,
+        10.4
+      ],
+      "to": [
+        13.4,
+        10.484,
+        11.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          10.7
+        ],
+        "axis": "z",
+        "angle": 45
+      }
+    },
+    {
+      "from": [
+        2.6,
+        5.516,
+        10.4
+      ],
+      "to": [
+        13.4,
+        10.484,
+        11.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          10.7
+        ],
+        "axis": "z",
+        "angle": -45
       }
     }
-  ],
-  "ambientocclusion": false
+  ]
 }

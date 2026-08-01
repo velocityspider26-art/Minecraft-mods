@@ -6,6 +6,7 @@ import com.velocityspider.createjetengines.registry.JetBlockEntities;
 import com.velocityspider.createjetengines.registry.JetBlocks;
 import com.velocityspider.createjetengines.registry.JetCreativeTabs;
 import com.velocityspider.createjetengines.registry.JetItems;
+import com.velocityspider.createjetengines.registry.JetParticles;
 import com.velocityspider.createjetengines.registry.JetSounds;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -33,6 +34,7 @@ public class CreateJetEngines {
         JetItems.register(modBus);
         JetBlockEntities.register(modBus);
         JetSounds.register(modBus);
+        JetParticles.register(modBus);
         JetCreativeTabs.register(modBus);
 
         container.registerConfig(ModConfig.Type.SERVER, JetEngineConfig.SPEC);

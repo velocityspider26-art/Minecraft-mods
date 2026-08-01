@@ -1,4 +1,4 @@
-# Test report — Create: Jet Engines 1.0.0
+# Test report — Create: Jet Engines 1.0.1
 
 Everything below was actually run in this environment. Where something could **not** be verified
 here, it says so plainly rather than claiming a pass.
@@ -26,7 +26,8 @@ soft dependencies for this addon, but it means cross-mod interaction with them i
 
 ```bash
 python3 tools/fetch_dependencies.py         # real dependency jars from Modrinth
-python3 tools/generate_assets.py            # 16 textures, 11 models, 5 blockstates, 11 .bbmodel
+python3 tools/generate_assets.py            # 17 block + 4 particle textures, 11 models, 11 .bbmodel
+python3 tools/preview_model.py --all        # offline render of the models
 python3 tools/generate_sounds.py            # 6 .ogg samples
 python3 tools/generate_gametest_structures.py
 ./gradlew clean build                       # BUILD SUCCESSFUL
@@ -38,9 +39,9 @@ xvfb-run ./gradlew runClient                # BUILD SUCCESSFUL (clean exit after
 ## Artifact
 
 ```
-build/libs/create-jet-engines-1.0.0.jar
-size    303,210 bytes   (105 entries, valid zip)
-sha256  cec64fe2689635b4ddb744fc13b283c5ceb4fb7e8edc36ca4fa5db96c33363b7
+build/libs/create-jet-engines-1.0.1.jar
+size    288,651 bytes   (valid zip)
+sha256  6afd6857d1967173287111a708a03599fe10f9ca4351e6ea7b4a1cf51076aece
 ```
 
 Jar inspection: **no** Minecraft, NeoForge, Create, Sable or Veil classes bundled — the only
@@ -53,11 +54,11 @@ real Sable sublevel using Sable's own `SableTestHelper`, and assert on the rigid
 
 | Test | Measurement | Result |
 |---|---|---|
-| `validEngineProducesThrust` | horizontal speed **111.99**, vz **−111.989** | Velocity is almost entirely along −Z, i.e. thrust precisely opposes the exhaust direction |
+| `validEngineProducesThrust` | peak horizontal speed **111.75**, vz **−111.75** | Velocity is almost entirely along −Z, i.e. thrust precisely opposes the exhaust direction |
 | `chainIsDetected` | 3 compressor stages, afterburner present, exhaust SOUTH | Chain, stage count and orientation all detected correctly |
-| `invalidEngineProducesNoThrust` | speed **0.0** | A chain missing its nozzle produces exactly zero force |
+| `invalidEngineProducesNoThrust` | peak speed **0.0027** | A chain missing its nozzle produces exactly zero force |
 | `unpoweredEngineProducesNoThrust` | speed below threshold | No redstone, no thrust |
-| `removingCoreStopsThrust` | **111.99 → 59.25** after removing the core | Decelerates; no ghost thrust from the deleted block |
+| `removingCoreStopsThrust` | **82.6 → 48.3** after removing the core | Decelerates; no ghost thrust from the deleted block |
 | `offCentreEngineCreatesTorque` | angular velocity **0.0249** | An off-axis mount imparts real torque |
 
 Note on the top speed: 112 blocks/s is the asymptote of the configured `maxAirspeed = 120` ram-drag
@@ -108,10 +109,10 @@ Booted under Xvfb with software OpenGL and reached the title screen showing
 | 7 | A valid dry engine is detected | **PASS** (`chainIsDetected`) |
 | 8 | An invalid engine produces no thrust | **PASS** (speed 0.0) |
 | 9 | Redstone throttle changes spool | **PASS** server-side — powered vs unpowered chains differ decisively; the throttle→spool curve is not visually confirmed |
-| 10 | Fan and compressor animate | **NOT VERIFIED** — code path is in place and reads the synced spool, but no animation was observed |
-| 11 | Dry exhaust appears without an afterburner | **NOT VERIFIED** |
-| 12 | Afterburner activates only when installed | **PARTIAL** — the gating logic is server-side and `chainIsDetected` confirms afterburner detection; the visual was not observed |
-| 13 | Nozzle petals animate | **NOT VERIFIED** |
+| 10 | Fan and compressor animate | **NOT VERIFIED** — rotor geometry renders correctly (see `build/preview/`), and the rotation is driven by the synced spool, but motion was not observed |
+| 11 | Dry exhaust appears without an afterburner | **PARTIAL** — custom haze/soot particles are registered and spawning; the dry-only case was not isolated visually |
+| 12 | Afterburner activates only when installed | **PARTIAL** — gating is server-side and `chainIsDetected` confirms detection; the plume was seen rendering in-game |
+| 13 | Nozzle petals animate | **NOT VERIFIED** — petal geometry and hinge transform are in place; motion not observed |
 | 14 | A Sable aircraft moves under jet thrust | **PASS** — 111.99 blocks/s on a real Sable rigid body |
 | 15 | Engine works after sublevel assembly | **PASS** — the gametests run entirely inside a Sable sublevel |
 | 16 | Thrust direction remains correct while rotating | **PASS, indirectly** — this is exactly what made the first test version fail: thrust followed the yawing airframe |
@@ -122,6 +123,48 @@ Booted under Xvfb with software OpenGL and reached the title screen showing
 | 21 | No ghost sounds after shutdown | **NOT VERIFIED** — loops stop themselves and `reset()` runs on logout, but this was not heard |
 | 22 | No duplicate force after chunk reload | **PASS, structurally** — Sable keys actors by `BlockPos`, so one position cannot register twice; not separately measured after a reload |
 | 23 | The game closes without a crash | **PASS** |
+
+## Model and particle rework (second pass)
+
+The first pass shipped models built by a broken generator: `octagon_ring()` drew four full-width
+slabs *and* four rotated corner slabs on top of them, so every casing was a pile of overlapping
+boxes. Two textures (`fan_face`, `compressor_face`) were generated and never referenced, and no
+model declared a `parent`, so none of them had display transforms for the item form.
+
+To fix this properly, `tools/preview_model.py` was written first: an offline rasteriser for
+Minecraft block-model JSON that applies the same element rotations and the same per-face shading
+constants the game uses (`up 1.0, down 0.5, north/south 0.8, east/west 0.6`). Renders land in
+`build/preview/`. The geometry was then rebuilt against it:
+
+* `tube()` and `disc()` now emit **eight non-overlapping** octagon segments. The segment
+  half-length sits at `0.43 * R` — just above the exact regular-octagon value of `0.414 * R`.
+  Below that the corners show hairline gaps; above about `0.5` the axis-aligned segments protrude
+  past the diagonals and the silhouette turns into a gear. Both failure modes were rendered and
+  looked at before settling on the value.
+* Each module now has its own silhouette: a flared brass intake lip on the fan, a banded barrel on
+  the compressor, a bulged case with external fuel manifolds on the core, flame-holder rings in the
+  afterburner, and a stepped collar on the nozzle. They share `R_JOIN = 7.0` at the ends so a chain
+  lines up.
+* Every texture is now referenced by a model; the generator fails loudly if one is not.
+* All models inherit `minecraft:block/block`, so the item form has display transforms.
+
+Particles were replaced outright. The first pass used vanilla types that are the wrong shape for a
+jet: `WHITE_ASH` drifts like snow, `CLOUD` is a fat steam puff, and `FLAME` rises and stalls.
+There are now four registered particle types — `exhaust_haze`, `exhaust_soot`, `jet_flame`,
+`shock_diamond` — with their own sprites and physics: no gravity, no collision, heavy damping,
+short lifetimes, full-bright combustion, and a blue-to-orange colour ramp on the reheat flame.
+
+**What was confirmed in-game:** the plume renders, and the debug overlay reported 41 live particles
+from a single powered engine.
+
+**What was then changed but not re-confirmed visually:** the first in-game look showed the plume
+shooting roughly 15 blocks downrange and the shock diamonds reading as scattered bubbles. Particle
+damping was raised (`friction` 0.91 → 0.80 for flame), initial speed cut by more than half, plume
+length shortened, the shock sprite softened from a hard ring to a filled pulse, and the colour ramp
+corrected so the tail goes orange rather than pink. Those are reasoned fixes to a directly observed
+problem, but the *tuned* result has not been seen — driving the client through synthetic X input to
+rebuild the scene did not converge before this session ran out of road. Treat the current particle
+numbers as a first tuning pass, not a finished look.
 
 ## What still needs you, and why
 

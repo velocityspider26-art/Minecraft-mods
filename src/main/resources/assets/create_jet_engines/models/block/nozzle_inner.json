@@ -1,4 +1,6 @@
 {
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
   "textures": {
     "nozzle_inner": "create_jet_engines:block/nozzle_inner",
     "particle": "create_jet_engines:block/nozzle_inner"
@@ -6,14 +8,78 @@
   "elements": [
     {
       "from": [
-        4.6,
-        4.6,
-        0.0
+        3.4,
+        5.884,
+        0.5
       ],
       "to": [
-        11.4,
-        11.4,
-        11.0
+        12.6,
+        10.116,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      }
+    },
+    {
+      "from": [
+        5.884,
+        3.4,
+        0.5
+      ],
+      "to": [
+        10.116,
+        12.6,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      }
+    },
+    {
+      "from": [
+        3.4,
+        5.884,
+        0.5
+      ],
+      "to": [
+        12.6,
+        10.116,
+        10.5
       ],
       "faces": {
         "north": {
@@ -35,8 +101,56 @@
           "texture": "#nozzle_inner"
         }
       },
-      "shade": false
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          5.5
+        ],
+        "axis": "z",
+        "angle": 45
+      }
+    },
+    {
+      "from": [
+        3.4,
+        5.884,
+        0.5
+      ],
+      "to": [
+        12.6,
+        10.116,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_inner"
+        },
+        "east": {
+          "texture": "#nozzle_inner"
+        },
+        "south": {
+          "texture": "#nozzle_inner"
+        },
+        "west": {
+          "texture": "#nozzle_inner"
+        },
+        "up": {
+          "texture": "#nozzle_inner"
+        },
+        "down": {
+          "texture": "#nozzle_inner"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          5.5
+        ],
+        "axis": "z",
+        "angle": -45
+      }
     }
-  ],
-  "ambientocclusion": false
+  ]
 }

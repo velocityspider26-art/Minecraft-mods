@@ -3,30 +3,31 @@ package com.velocityspider.createjetengines.client.particle;
 import com.velocityspider.createjetengines.blockentity.CombustionCoreBlockEntity;
 import com.velocityspider.createjetengines.blockentity.JetModuleBlockEntity;
 import com.velocityspider.createjetengines.client.SubLevelClientUtil;
+import com.velocityspider.createjetengines.registry.JetParticles;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Exhaust and intake particles.
+ * Exhaust and intake effects.
  *
- * <p>Every spawn point is computed as a sublevel-local offset first and only then projected into
- * world space, and directions go through the normal transform rather than the position transform.
- * That is what keeps the plume attached to a rolling, pitching aircraft instead of leaving it
- * behind at the block's pre-assembly coordinates.
+ * <p>Everything is emitted as a cone about the nozzle axis: a point on the nozzle mouth, a velocity
+ * along the exhaust direction, and a small perpendicular spread. The sublevel's own velocity is
+ * added on top, so the plume trails behind a moving aircraft instead of hanging in the air where it
+ * was born.
+ *
+ * <p>Spawn points are computed in sublevel-local space and only then projected into the world, and
+ * directions go through the normal transform rather than the position transform — mixing those two
+ * up is what makes a plume appear mirrored or pointing sideways.
  */
 public final class ExhaustEffects {
 
     private ExhaustEffects() {
     }
 
-    /**
-     * @param nozzle the nozzle module; effects originate from its exhaust face
-     */
     public static void emit(JetModuleBlockEntity nozzle, CombustionCoreBlockEntity core, float partialTick) {
         Level level = nozzle.getLevel();
         if (level == null) {
@@ -36,94 +37,110 @@ public final class ExhaustEffects {
         if (spool <= 0.02F) {
             return;
         }
+
         RandomSource rng = level.getRandom();
         Direction exhaust = nozzle.getFacing();
         BlockPos pos = nozzle.getBlockPos();
 
         Vec3 localDir = new Vec3(exhaust.getStepX(), exhaust.getStepY(), exhaust.getStepZ());
         Vec3 worldDir = SubLevelClientUtil.dirToWorld(level, pos, localDir).normalize();
-        Vec3 localMouth = pos.getCenter().add(localDir.scale(0.55D));
-        Vec3 carrier = SubLevelClientUtil.velocityAt(level, localMouth);
+        Vec3 mouth = pos.getCenter().add(localDir.scale(0.52D));
+        Vec3 carrier = SubLevelClientUtil.velocityAt(level, mouth);
+
+        // perpendicular basis for the cone spread, built in world space
+        Vec3 up = Math.abs(worldDir.y) > 0.9D ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 side = worldDir.cross(up).normalize();
+        Vec3 other = worldDir.cross(side).normalize();
 
         boolean lit = core.isAfterburnerActive();
         float throttle = core.getThrottle();
+        float nozzleOpen = core.getNozzleOpen();
+        // A wide-open nozzle at low power spreads; a tight one at high power collimates.
+        double spread = 0.055D + 0.075D * (1.0D - spool) + 0.03D * nozzleOpen;
+        // Kept low on purpose: the plume is built by spawning along the axis, so the
+        // particles only need enough speed to drift, not to fly downrange.
+        double exhaustSpeed = 0.10D + 0.30D * spool;
 
-        // ---- dry exhaust: always present while running -----------------------------------
-        int shimmer = 1 + (int) (spool * 3);
-        for (int i = 0; i < shimmer; i++) {
-            spawn(level, ParticleTypes.WHITE_ASH, localMouth, worldDir, carrier, rng,
-                    0.10D, 0.35D + spool * 0.9D, 0.22D);
-        }
-        if (rng.nextFloat() < 0.35F + spool * 0.4F) {
-            // faint translucent plume body
-            spawn(level, ParticleTypes.CLOUD, localMouth.add(localDir.scale(0.25D)),
-                    worldDir, carrier, rng, 0.09D, 0.5D + spool * 1.4D, 0.16D);
-        }
-
-        // light grey smoke while spooling up, darker on abrupt throttle changes
-        if (spool < 0.5F && rng.nextFloat() < 0.30F) {
-            spawn(level, ParticleTypes.CAMPFIRE_COSY_SMOKE, localMouth, worldDir, carrier, rng,
-                    0.08D, 0.22D, 0.10D);
-        }
-        if (throttle - spool > 0.25F && rng.nextFloat() < 0.5F) {
-            spawn(level, ParticleTypes.LARGE_SMOKE, localMouth, worldDir, carrier, rng,
-                    0.10D, 0.30D, 0.12D);
+        // ---- dry exhaust: hot air, always present while running -------------------------
+        int haze = 2 + (int) (spool * 5);
+        for (int i = 0; i < haze; i++) {
+            emitCone(level, JetParticles.EXHAUST_HAZE.get(), mouth, worldDir, side, other, carrier,
+                    rng, 0.16D, exhaustSpeed, spread, 0.0D);
         }
 
-        // condensation in cold or humid air at low power
-        if (spool < 0.6F && level.isRaining() && rng.nextFloat() < 0.2F) {
-            spawn(level, ParticleTypes.CLOUD, localMouth, worldDir, carrier, rng,
-                    0.12D, 0.18D, 0.20D);
+        // ---- soot: heavy while spooling up, and on a sharp throttle push -----------------
+        boolean spoolingUp = spool < 0.55F;
+        boolean richTransient = throttle - spool > 0.22F;
+        if (spoolingUp && rng.nextFloat() < 0.45F) {
+            emitCone(level, JetParticles.EXHAUST_SOOT.get(), mouth, worldDir, side, other, carrier,
+                    rng, 0.14D, exhaustSpeed * 0.55D, spread * 1.5D, 0.0D);
         }
-
-        // ---- afterburner --------------------------------------------------------------------
-        if (lit) {
-            int flames = 3 + (int) (throttle * 6);
-            for (int i = 0; i < flames; i++) {
-                double t = rng.nextDouble();
-                Vec3 at = localMouth.add(localDir.scale(t * 2.6D * (0.4D + 0.6D * throttle)));
-                // blue core near the nozzle, orange further out
-                ParticleOptions type = t < 0.4D ? ParticleTypes.SOUL_FIRE_FLAME : ParticleTypes.FLAME;
-                spawn(level, type, at, worldDir, carrier, rng, 0.05D, 1.6D + throttle * 1.6D, 0.10D);
+        if (richTransient) {
+            for (int i = 0; i < 2; i++) {
+                emitCone(level, JetParticles.EXHAUST_SOOT.get(), mouth, worldDir, side, other, carrier,
+                        rng, 0.16D, exhaustSpeed * 0.7D, spread * 1.8D, 0.0D);
             }
-            // shock diamonds: brighter puffs at regular intervals down the plume
+        }
+
+        // ---- afterburner ------------------------------------------------------------------
+        if (lit) {
+            double plumeLength = 1.5D + 2.3D * throttle;
+            int flames = 7 + (int) (throttle * 11);
+            for (int i = 0; i < flames; i++) {
+                // Spawn along the plume so the whole column is populated at once, rather than
+                // waiting for particles to travel out from the mouth.
+                double along = rng.nextDouble() * plumeLength;
+                double taper = 1.0D - 0.55D * (along / plumeLength);
+                emitCone(level, JetParticles.JET_FLAME.get(), mouth, worldDir, side, other, carrier,
+                        rng, 0.13D * taper, exhaustSpeed * 0.8D, spread * 0.55D * taper, along);
+            }
+
+            // shock diamonds at regular intervals down the core flow
+            double spacing = 0.50D + 0.30D * throttle;
             for (int k = 1; k <= 3; k++) {
-                if (rng.nextFloat() > 0.55F) {
+                double along = spacing * k;
+                if (along > plumeLength * 0.8D || rng.nextFloat() > 0.22F) {
                     continue;
                 }
-                Vec3 at = localMouth.add(localDir.scale(0.55D * k * (0.6D + throttle)));
-                spawn(level, ParticleTypes.SOUL_FIRE_FLAME, at, worldDir, carrier, rng,
-                        0.03D, 1.2D, 0.04D);
+                emitCone(level, JetParticles.SHOCK_DIAMOND.get(), mouth, worldDir, side, other, carrier,
+                        rng, 0.015D, exhaustSpeed * 0.35D, 0.006D, along);
             }
         }
 
-        // ---- intake suction -----------------------------------------------------------------
+        // ---- intake suction ---------------------------------------------------------------
         var chain = core.getChain();
-        if (chain.valid() && chain.fanPos() != null && spool > 0.25F && rng.nextFloat() < spool * 0.5F) {
-            Vec3 localIntake = chain.fanPos().getCenter().subtract(localDir.scale(0.75D));
-            // pulled inward, i.e. along the exhaust direction
-            spawn(level, ParticleTypes.CLOUD, localIntake, worldDir, carrier, rng,
-                    0.22D, 0.25D * spool, 0.05D);
+        if (chain.valid() && chain.fanPos() != null && spool > 0.28F && rng.nextFloat() < spool * 0.55F) {
+            Vec3 intake = chain.fanPos().getCenter().subtract(localDir.scale(0.85D));
+            Vec3 intakeCarrier = SubLevelClientUtil.velocityAt(level, intake);
+            // drawn inward, i.e. along the exhaust direction
+            emitCone(level, JetParticles.EXHAUST_HAZE.get(), intake, worldDir, side, other,
+                    intakeCarrier, rng, 0.38D, 0.18D * spool, 0.02D, 0.0D);
         }
     }
 
     /**
-     * Spawns one particle at a sublevel-local point, converting both the point and the velocity
-     * into world space, and adding the sublevel's own motion so the plume trails correctly.
+     * Spawns one particle on the nozzle axis.
+     *
+     * @param localOrigin spawn point in sublevel-local coordinates
+     * @param dir         world-space exhaust direction (unit)
+     * @param spread      perpendicular velocity magnitude, i.e. the cone half-angle
+     * @param along       distance downstream of the mouth to spawn at
      */
-    private static void spawn(Level level, ParticleOptions type, Vec3 localPos, Vec3 worldDir,
-                              Vec3 carrier, RandomSource rng,
-                              double spread, double speed, double jitter) {
-        Vec3 world = SubLevelClientUtil.toWorld(level, localPos);
-        Vec3 vel = worldDir.scale(speed)
-                .add(carrier)
-                .add((rng.nextDouble() - 0.5D) * jitter,
-                        (rng.nextDouble() - 0.5D) * jitter,
-                        (rng.nextDouble() - 0.5D) * jitter);
-        level.addParticle(type,
-                world.x + (rng.nextDouble() - 0.5D) * spread,
-                world.y + (rng.nextDouble() - 0.5D) * spread,
-                world.z + (rng.nextDouble() - 0.5D) * spread,
-                vel.x, vel.y, vel.z);
+    private static void emitCone(Level level, ParticleOptions type, Vec3 localOrigin,
+                                 Vec3 dir, Vec3 side, Vec3 other, Vec3 carrier,
+                                 RandomSource rng, double jitter, double speed,
+                                 double spread, double along) {
+        // The origin is local and must be projected out first; `along` is already a
+        // world-space direction, so it is added after the projection.
+        Vec3 world = SubLevelClientUtil.toWorld(level, localOrigin).add(dir.scale(along));
+
+        double a = rng.nextDouble() * Math.PI * 2.0D;
+        double r = Math.sqrt(rng.nextDouble());
+        Vec3 radial = side.scale(Math.cos(a) * r).add(other.scale(Math.sin(a) * r));
+
+        Vec3 spawn = world.add(radial.scale(jitter));
+        Vec3 velocity = dir.scale(speed).add(radial.scale(spread)).add(carrier);
+
+        level.addParticle(type, spawn.x, spawn.y, spawn.z, velocity.x, velocity.y, velocity.z);
     }
 }

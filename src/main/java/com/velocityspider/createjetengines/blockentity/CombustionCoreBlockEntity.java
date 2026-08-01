@@ -200,7 +200,7 @@ public class CombustionCoreBlockEntity extends JetModuleBlockEntity implements B
      */
     @Override
     public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
-        if (!actorActive) {
+        if (!actorActive || !handle.isValid()) {
             return;
         }
         EngineChain c = chain;

@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.0.1 — model and particle rework
+
+### Models
+- Rewrote the octagon builder. The previous `octagon_ring()` drew four full-width slabs *and* four
+  rotated corner slabs over them, so every casing was a pile of interpenetrating boxes. `tube()` and
+  `disc()` now emit eight non-overlapping segments at `0.43 * R` half-length (exact regular octagon
+  is `0.414 * R`).
+- Gave each module its own silhouette: flared brass intake lip, banded compressor barrel, bulged
+  core with external fuel manifolds, afterburner flame-holder rings, stepped nozzle collar. All
+  share `R_JOIN = 7.0` at the ends so a chain lines up.
+- Fixed two textures that were generated but never referenced; the generator now fails loudly on
+  unused textures.
+- All models inherit `minecraft:block/block`, so the item form finally has display transforms.
+- Textures redrawn at 16x16 with flat banding instead of per-pixel noise.
+
+### Particles
+- Replaced the vanilla stand-ins (`WHITE_ASH`, `CLOUD`, `FLAME`) with four custom types:
+  `exhaust_haze`, `exhaust_soot`, `jet_flame`, `shock_diamond`, each with its own sprite.
+- Jet-appropriate physics: no gravity, no collision, heavy damping, short lifetimes, full-bright
+  combustion, blue-to-orange cooling ramp on the reheat flame.
+- Emission is a proper cone about the nozzle axis, with flames spawned *along* the plume rather than
+  fired downrange.
+
+### Tooling
+- Added `tools/preview_model.py`, an offline rasteriser for block-model JSON that reproduces
+  Minecraft's per-face shading, so models can be iterated on without launching the game.
+
+### Fixes
+- Gametests no longer read a destroyed physics body. A light test craft under full thrust leaves the
+  loaded area within seconds and Sable frees its rigid body; every read is now `isValid()`-guarded
+  and peak speed is sampled per tick rather than once at the end.
+- `sable$physicsTick` also checks `handle.isValid()` before touching the body.
+
 ## 1.0.0 — full rebuild
 
 Rebuilt from an empty NeoForge MDK. Nothing from the previous stub-compiled builds was carried over.

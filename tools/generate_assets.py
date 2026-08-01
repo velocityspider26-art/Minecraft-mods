@@ -2,26 +2,34 @@
 """
 Asset generator for Create: Jet Engines.
 
-Everything visual is produced from one source of truth in this file:
+Everything visual comes from this one file:
 
-  * 32x32 PNG textures (procedural panelled metal, blades, heat staining, glow)
-  * block models (JSON)      -> src/main/resources/assets/.../models/block
-  * blockstates (JSON)       -> src/main/resources/assets/.../blockstates
-  * item models (JSON)       -> src/main/resources/assets/.../models/item
+  * 16x16 PNG textures (deliberate low-noise pixel art, Create-adjacent palette)
+  * block models (JSON)      -> assets/.../models/block
+  * blockstates (JSON)       -> assets/.../blockstates
+  * item models (JSON)       -> assets/.../models/item
   * editable Blockbench      -> assets_src/*.bbmodel
 
+Geometry notes
+--------------
+Minecraft only allows an element to be rotated about ONE axis by one of
+-45/-22.5/0/22.5/45 degrees. A clean octagonal tube is therefore built from eight
+*non-overlapping* wall segments: four axis-aligned (top/bottom/left/right) and four
+made by rotating the top and bottom segments by +-45 degrees. Each segment spans only
+the flat side length, so they meet at the corners instead of crossing through each
+other — which is what made the first version look like a pile of scrap.
+
 Models are authored pointing NORTH (-Z); the blockstate rotates them for the other
-five facings, matching the vanilla convention used by end_rod/furnace.
+five facings, matching the vanilla end_rod/furnace convention.
 
 Run:  python3 tools/generate_assets.py
+      python3 tools/preview_model.py --all      # to look at the result
 """
 
 import base64
 import json
 import math
 import os
-import random
-from io import BytesIO
 
 from PIL import Image, ImageDraw
 
@@ -29,92 +37,88 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODID = "create_jet_engines"
 ASSETS = os.path.join(ROOT, "src/main/resources/assets", MODID)
 TEX_DIR = os.path.join(ASSETS, "textures/block")
+PARTICLE_TEX_DIR = os.path.join(ASSETS, "textures/particle")
+PARTICLE_DEF_DIR = os.path.join(ASSETS, "particles")
 MODEL_DIR = os.path.join(ASSETS, "models/block")
 ITEM_MODEL_DIR = os.path.join(ASSETS, "models/item")
 STATE_DIR = os.path.join(ASSETS, "blockstates")
 BB_DIR = os.path.join(ROOT, "assets_src")
 
-for d in (TEX_DIR, MODEL_DIR, ITEM_MODEL_DIR, STATE_DIR, BB_DIR):
+for d in (TEX_DIR, MODEL_DIR, ITEM_MODEL_DIR, STATE_DIR, BB_DIR,
+          PARTICLE_TEX_DIR, PARTICLE_DEF_DIR):
     os.makedirs(d, exist_ok=True)
 
-S = 32  # texture size
-rng = random.Random(20260801)
+S = 16
+C = 8.0  # block centre in model units
 
 
-# ---------------------------------------------------------------------------
-# texture helpers
-# ---------------------------------------------------------------------------
+# =========================================================================
+# texture helpers — deliberately flat and low-noise
+# =========================================================================
 
-def _clamp(v):
+def _c(v):
     return max(0, min(255, int(v)))
 
 
-def base_metal(img, top, bottom, grain=10):
-    """Vertical gradient with fine grain noise."""
+def shade(col, f):
+    return (_c(col[0] * f), _c(col[1] * f), _c(col[2] * f), 255)
+
+
+def new_img():
+    return Image.new("RGBA", (S, S), (0, 0, 0, 255))
+
+
+def fill_bands(img, base, steps=(1.14, 1.0, 0.88, 0.76)):
+    """Horizontal value banding: reads as a curved metal surface without noise."""
     d = ImageDraw.Draw(img)
-    for y in range(S):
-        t = y / (S - 1)
-        c = [top[i] + (bottom[i] - top[i]) * t for i in range(3)]
-        for x in range(S):
-            n = rng.randint(-grain, grain)
-            d.point((x, y), fill=(_clamp(c[0] + n), _clamp(c[1] + n), _clamp(c[2] + n), 255))
+    n = len(steps)
+    for i, f in enumerate(steps):
+        y0 = round(i * S / n)
+        y1 = round((i + 1) * S / n)
+        d.rectangle([0, y0, S - 1, y1 - 1], fill=shade(base, f))
 
 
-def panel_lines(img, color=(40, 42, 46), step=8, offset=0):
+def specular(img, base, y, f=1.35):
+    ImageDraw.Draw(img).line([(0, y), (S - 1, y)], fill=shade(base, f))
+
+
+def seam(img, base, y, f=0.55):
+    ImageDraw.Draw(img).line([(0, y), (S - 1, y)], fill=shade(base, f))
+
+
+def vseams(img, base, xs, f=0.62):
     d = ImageDraw.Draw(img)
-    for x in range(offset, S, step):
-        d.line([(x, 0), (x, S - 1)], fill=color + (255,))
-    for y in range(offset, S, step):
-        d.line([(0, y), (S - 1, y)], fill=color + (255,))
+    for x in xs:
+        d.line([(x, 0), (x, S - 1)], fill=shade(base, f))
 
 
-def rivets(img, color=(150, 152, 158), step=8, inset=3):
+def bolts(img, base, ys, xs, f=1.5):
     d = ImageDraw.Draw(img)
-    for x in range(inset, S, step):
-        for y in range(inset, S, step):
-            d.point((x, y), fill=color + (255,))
+    for y in ys:
+        for x in xs:
+            d.point((x, y), fill=shade(base, f))
 
 
-def heat_stain(img, strength=1.0):
-    """Blue/straw tempering colours, strongest toward the bottom of the texture."""
-    px = img.load()
-    for y in range(S):
-        t = (y / (S - 1)) ** 1.5 * strength
-        for x in range(S):
-            r, g, b, a = px[x, y]
-            px[x, y] = (
-                _clamp(r + 70 * t + rng.randint(-6, 6)),
-                _clamp(g + 30 * t - 10 * t),
-                _clamp(b - 25 * t + 40 * t * (0.4 + 0.6 * math.sin(x * 0.7))),
-                a,
-            )
-
-
-def radial_blades(img, blades, inner, outer, blade_col, gap_col, hub_col):
-    """Draws a bladed disc seen face-on — used for fan/compressor end caps."""
+def radial_disc(img, blades, r_hub, r_tip, blade, gap, hub, twist=1.1):
+    """A bladed disc seen face-on, for intake and interstage faces."""
     cx = cy = (S - 1) / 2.0
     px = img.load()
     for y in range(S):
         for x in range(S):
             dx, dy = x - cx, y - cy
             r = math.hypot(dx, dy) / (S / 2.0)
-            if r > outer:
+            if r > r_tip:
+                px[x, y] = shade(gap, 0.35)
                 continue
-            if r < inner:
-                px[x, y] = hub_col + (255,)
+            if r < r_hub:
+                px[x, y] = shade(hub, 1.0 - 0.25 * r)
                 continue
-            a = math.atan2(dy, dx)
-            # twisted blade: angle offset grows with radius
-            phase = (a + r * 1.4) * blades / (2 * math.pi)
-            frac = phase - math.floor(phase)
-            shade = 0.55 + 0.45 * math.sin(frac * math.pi)
-            col = blade_col if frac < 0.62 else gap_col
-            px[x, y] = (
-                _clamp(col[0] * shade), _clamp(col[1] * shade), _clamp(col[2] * shade), 255)
-
-
-def new_img(alpha=False):
-    return Image.new("RGBA", (S, S), (0, 0, 0, 0) if alpha else (0, 0, 0, 255))
+            a = math.atan2(dy, dx) + r * twist
+            frac = (a * blades / (2 * math.pi)) % 1.0
+            if frac < 0.55:
+                px[x, y] = shade(blade, 0.72 + 0.5 * math.sin(frac / 0.55 * math.pi))
+            else:
+                px[x, y] = shade(gap, 0.5)
 
 
 def save(img, name):
@@ -122,326 +126,461 @@ def save(img, name):
     return name
 
 
-# ---------------------------------------------------------------------------
+# =========================================================================
 # textures
-# ---------------------------------------------------------------------------
+# =========================================================================
+
+STEEL = (156, 162, 172)
+DARK_STEEL = (104, 110, 122)
+BRASS = (168, 140, 96)
+SOOT = (74, 70, 70)
+TITANIUM = (140, 132, 124)
+
 
 def build_textures():
     made = []
 
-    # --- generic casings ---------------------------------------------------
+    # --- plain nacelle skin ------------------------------------------------
     img = new_img()
-    base_metal(img, (150, 154, 162), (96, 100, 108))
-    panel_lines(img)
-    rivets(img)
+    fill_bands(img, STEEL)
+    specular(img, STEEL, 3)
+    seam(img, STEEL, 8)
+    bolts(img, STEEL, (1, 14), (2, 7, 12))
     made.append(save(img, "casing"))
 
+    # --- ribbed skin, used for collars and bands ---------------------------
     img = new_img()
-    base_metal(img, (128, 132, 140), (78, 82, 90))
-    panel_lines(img, step=16, offset=0)
-    rivets(img, step=16, inset=5)
-    made.append(save(img, "casing_plain"))
+    fill_bands(img, DARK_STEEL, steps=(1.2, 0.95, 0.8))
+    for y in (2, 6, 10, 13):
+        seam(img, DARK_STEEL, y, 0.6)
+    made.append(save(img, "casing_ribbed"))
 
-    # --- fan ---------------------------------------------------------------
+    # --- compressor barrel: tight banding ---------------------------------
     img = new_img()
-    base_metal(img, (60, 63, 70), (34, 36, 42), grain=6)
-    radial_blades(img, 9, 0.14, 1.05, (176, 180, 190), (58, 61, 68), (120, 124, 132))
+    fill_bands(img, DARK_STEEL, steps=(1.15, 1.0, 0.86))
+    for y in range(1, S, 3):
+        seam(img, DARK_STEEL, y, 0.66)
+    specular(img, DARK_STEEL, 2, 1.3)
+    made.append(save(img, "compressor_casing"))
+
+    # --- combustion barrel: hot-side titanium with straw temper -----------
+    img = new_img()
+    fill_bands(img, TITANIUM, steps=(1.16, 1.0, 0.86, 0.74))
+    specular(img, TITANIUM, 3, 1.3)
+    px = img.load()
+    for y in range(S):
+        t = (y / (S - 1)) ** 1.6
+        for x in range(S):
+            r, g, b, a = px[x, y]
+            px[x, y] = (_c(r + 46 * t), _c(g + 16 * t), _c(b - 14 * t), 255)
+    bolts(img, BRASS, (1, 14), (3, 8, 13), 1.0)
+    made.append(save(img, "combustion_casing"))
+
+    # --- afterburner barrel: heat-darkened -------------------------------
+    img = new_img()
+    fill_bands(img, SOOT, steps=(1.25, 1.0, 0.82, 0.7))
+    px = img.load()
+    for y in range(S):
+        t = (y / (S - 1)) ** 1.3
+        for x in range(S):
+            r, g, b, a = px[x, y]
+            px[x, y] = (_c(r + 30 * t), _c(g + 8 * t), _c(b + 26 * t), 255)
+    for y in (4, 11):
+        seam(img, SOOT, y, 0.55)
+    made.append(save(img, "afterburner_casing"))
+
+    # --- nozzle petal: heat-stained, streaked along the flow --------------
+    img = new_img()
+    fill_bands(img, TITANIUM, steps=(1.1, 0.94, 0.8, 0.68))
+    px = img.load()
+    for y in range(S):
+        t = (y / (S - 1)) ** 1.4
+        for x in range(S):
+            r, g, b, a = px[x, y]
+            k = 1.0 + 0.10 * math.sin(x * 1.7)
+            px[x, y] = (_c((r + 52 * t) * k), _c((g + 10 * t) * k), _c((b - 8 * t) * k), 255)
+    vseams(img, TITANIUM, (3, 8, 12), 0.6)
+    made.append(save(img, "nozzle_petal"))
+
+    # --- structural collar -------------------------------------------------
+    img = new_img()
+    fill_bands(img, BRASS, steps=(1.2, 1.0, 0.82))
+    for y in (5, 10):
+        seam(img, BRASS, y, 0.62)
+    made.append(save(img, "collar"))
+
+    # --- fan face: big wide-chord blades ---------------------------------
+    img = new_img()
+    radial_disc(img, 8, 0.16, 1.02, (196, 202, 214), (44, 46, 54), (188, 190, 196), twist=1.3)
     made.append(save(img, "fan_face"))
 
+    # --- compressor face: many small blades ------------------------------
     img = new_img()
-    base_metal(img, (186, 190, 200), (132, 136, 146), grain=8)
-    d = ImageDraw.Draw(img)
-    for i in range(0, S, 4):
-        d.line([(i, 0), (i, S - 1)], fill=(96, 100, 108, 255))
+    radial_disc(img, 14, 0.24, 1.02, (162, 168, 180), (38, 40, 48), (150, 154, 164), twist=0.9)
+    made.append(save(img, "compressor_face"))
+
+    # --- blade metal (edge-on) -------------------------------------------
+    img = new_img()
+    fill_bands(img, (196, 202, 214), steps=(1.16, 1.0, 0.84))
+    vseams(img, (196, 202, 214), (2, 5, 8, 11, 14), 0.72)
     made.append(save(img, "fan_blade"))
 
     img = new_img()
-    base_metal(img, (200, 202, 210), (140, 143, 150))
-    d = ImageDraw.Draw(img)
-    d.ellipse([6, 6, S - 7, S - 7], outline=(90, 93, 100, 255))
-    made.append(save(img, "fan_hub"))
-
-    # --- compressor --------------------------------------------------------
-    img = new_img()
-    base_metal(img, (52, 55, 62), (30, 32, 38), grain=6)
-    radial_blades(img, 15, 0.20, 1.05, (150, 154, 164), (48, 51, 58), (104, 108, 116))
-    made.append(save(img, "compressor_face"))
-
-    img = new_img()
-    base_metal(img, (140, 144, 152), (92, 96, 104))
-    panel_lines(img, color=(52, 55, 60), step=4)
-    rivets(img, step=8, inset=2)
-    made.append(save(img, "compressor_casing"))
-
-    img = new_img()
-    base_metal(img, (168, 172, 182), (120, 124, 132), grain=6)
-    d = ImageDraw.Draw(img)
-    for i in range(0, S, 3):
-        d.line([(i, 0), (i, S - 1)], fill=(84, 88, 96, 255))
+    fill_bands(img, (168, 174, 186), steps=(1.14, 1.0, 0.86))
+    vseams(img, (168, 174, 186), (1, 3, 5, 7, 9, 11, 13, 15), 0.74)
     made.append(save(img, "compressor_blade"))
 
-    # --- combustion --------------------------------------------------------
+    # --- spinner / shaft ---------------------------------------------------
     img = new_img()
-    base_metal(img, (132, 122, 112), (92, 84, 78))
-    panel_lines(img, color=(58, 52, 48), step=8)
-    rivets(img, color=(178, 166, 152))
-    heat_stain(img, 0.5)
-    made.append(save(img, "combustion_casing"))
+    fill_bands(img, (206, 208, 216), steps=(1.18, 1.0, 0.82))
+    ImageDraw.Draw(img).line([(0, 7), (S - 1, 7)], fill=shade((206, 208, 216), 0.55))
+    made.append(save(img, "spinner"))
+
+    # --- flame holder ------------------------------------------------------
+    img = new_img()
+    fill_bands(img, (118, 96, 74), steps=(1.2, 1.0, 0.82))
+    for y in (3, 7, 11):
+        seam(img, (118, 96, 74), y, 0.6)
+    made.append(save(img, "flame_holder"))
+
+    # --- dark interiors ----------------------------------------------------
+    img = new_img()
+    fill_bands(img, (30, 32, 38), steps=(1.5, 1.1, 0.8, 0.6))
+    made.append(save(img, "intake_inner"))
 
     img = new_img()
-    base_metal(img, (255, 214, 138), (255, 132, 40), grain=14)
+    fill_bands(img, (46, 38, 36), steps=(1.4, 1.05, 0.8, 0.62))
     px = img.load()
     for y in range(S):
         for x in range(S):
             r, g, b, a = px[x, y]
-            f = 0.75 + 0.25 * math.sin(x * 0.9) * math.cos(y * 0.7)
-            px[x, y] = (_clamp(r * f), _clamp(g * f * 0.95), _clamp(b * f * 0.8), 255)
-    made.append(save(img, "combustion_glow"))
-
-    # --- afterburner -------------------------------------------------------
-    img = new_img()
-    base_metal(img, (96, 90, 88), (62, 58, 58))
-    panel_lines(img, color=(38, 35, 35), step=8)
-    heat_stain(img, 1.0)
-    rivets(img, color=(150, 138, 128))
-    made.append(save(img, "afterburner_casing"))
-
-    img = new_img()
-    base_metal(img, (170, 205, 255), (86, 120, 255), grain=16)
-    made.append(save(img, "afterburner_glow"))
-
-    img = new_img()
-    base_metal(img, (120, 112, 108), (74, 70, 68))
-    d = ImageDraw.Draw(img)
-    d.ellipse([2, 2, S - 3, S - 3], outline=(190, 150, 90, 255), width=2)
-    d.ellipse([9, 9, S - 10, S - 10], outline=(190, 150, 90, 255), width=1)
-    heat_stain(img, 0.8)
-    made.append(save(img, "flame_holder"))
-
-    # --- nozzle ------------------------------------------------------------
-    img = new_img()
-    base_metal(img, (128, 120, 116), (86, 80, 78))
-    panel_lines(img, color=(44, 40, 40), step=6)
-    heat_stain(img, 1.2)
-    made.append(save(img, "nozzle_petal"))
-
-    img = new_img()
-    base_metal(img, (58, 50, 48), (26, 22, 22), grain=8)
-    heat_stain(img, 0.6)
+            px[x, y] = (_c(r * (1 + 0.5 * (y / S))), _c(g), _c(b), 255)
     made.append(save(img, "nozzle_inner"))
 
-    # --- dark intake depth --------------------------------------------------
+    # --- glows -------------------------------------------------------------
     img = new_img()
-    base_metal(img, (34, 36, 42), (12, 13, 16), grain=4)
-    made.append(save(img, "intake_inner"))
+    for y in range(S):
+        for x in range(S):
+            f = 0.80 + 0.20 * math.sin(x * 0.8) * math.cos(y * 0.6)
+            img.putpixel((x, y), (_c(255 * f), _c(178 * f), _c(72 * f), 255))
+    made.append(save(img, "combustion_glow"))
+
+    img = new_img()
+    for y in range(S):
+        for x in range(S):
+            f = 0.82 + 0.18 * math.sin(x * 0.9 + y * 0.4)
+            img.putpixel((x, y), (_c(150 * f), _c(190 * f), _c(255 * f), 255))
+    made.append(save(img, "afterburner_glow"))
 
     return made
 
 
-# ---------------------------------------------------------------------------
-# model geometry
-# ---------------------------------------------------------------------------
+# =========================================================================
+# particle sprites
+# =========================================================================
 
-ALL = ["north", "east", "south", "west", "up", "down"]
+PS = 16  # particle sprite size
 
 
-def faces(tex, uv=None, cull=None, tint=None, light=None):
+def _radial(fn):
+    """Builds a PSxPS RGBA sprite from fn(distance_0_1, x, y) -> (r,g,b,a)."""
+    img = Image.new("RGBA", (PS, PS), (0, 0, 0, 0))
+    cx = cy = (PS - 1) / 2.0
+    px = img.load()
+    for y in range(PS):
+        for x in range(PS):
+            d = math.hypot(x - cx, y - cy) / (PS / 2.0)
+            px[x, y] = fn(d, x, y)
+    return img
+
+
+def build_particle_textures():
+    made = []
+
+    # Heat haze: almost invisible, just enough to disturb what is behind it.
+    def haze(d, x, y):
+        if d > 1.0:
+            return (0, 0, 0, 0)
+        a = int(70 * (1.0 - d) ** 1.6)
+        v = 226 + int(18 * math.sin(x * 1.9 + y * 1.3))
+        return (_c(v), _c(v), _c(v), a)
+
+    _radial(haze).save(os.path.join(PARTICLE_TEX_DIR, "exhaust_haze.png"))
+    made.append("exhaust_haze")
+
+    # Soot: soft dark puff with a broken edge so it does not read as a circle.
+    def soot(d, x, y):
+        edge = 0.86 + 0.14 * math.sin(x * 2.1) * math.cos(y * 1.7)
+        if d > edge:
+            return (0, 0, 0, 0)
+        a = int(210 * (1.0 - d / edge) ** 0.9)
+        v = 96 + int(26 * math.sin(x * 1.3 + y * 0.9))
+        return (_c(v), _c(v * 0.97), _c(v * 0.95), a)
+
+    _radial(soot).save(os.path.join(PARTICLE_TEX_DIR, "exhaust_soot.png"))
+    made.append("exhaust_soot")
+
+    # Flame: hot white core falling off fast. Tinted per particle at runtime,
+    # so the sprite itself stays neutral.
+    def flame(d, x, y):
+        if d > 1.0:
+            return (0, 0, 0, 0)
+        core = max(0.0, 1.0 - d / 0.42) ** 1.5
+        halo = max(0.0, 1.0 - d) ** 2.4
+        a = int(255 * min(1.0, core + 0.55 * halo))
+        v = 200 + 55 * core
+        return (_c(v), _c(v), _c(v), a)
+
+    _radial(flame).save(os.path.join(PARTICLE_TEX_DIR, "jet_flame.png"))
+    made.append("jet_flame")
+
+    # Shock diamond: a soft bright pulse. An actual hard ring reads as a floating
+    # bubble in-game, so this is a filled falloff with only a faint ring hint.
+    def ring(d, x, y):
+        if d > 1.0:
+            return (0, 0, 0, 0)
+        core = max(0.0, 1.0 - d / 0.55) ** 1.3
+        hint = 0.28 * math.exp(-((d - 0.60) ** 2) / 0.020)
+        a = int(215 * min(1.0, core + hint))
+        return (255, 255, 255, _c(a))
+
+    _radial(ring).save(os.path.join(PARTICLE_TEX_DIR, "shock_diamond.png"))
+    made.append("shock_diamond")
+
+    for name in made:
+        with open(os.path.join(PARTICLE_DEF_DIR, name + ".json"), "w") as fh:
+            json.dump({"textures": [f"{MODID}:{name}"]}, fh, indent=2)
+
+    return made
+
+
+# =========================================================================
+# geometry primitives
+# =========================================================================
+
+ALL_FACES = ["north", "east", "south", "west", "up", "down"]
+
+
+def faces(tex):
+    return {f: {"texture": "#" + tex} for f in ALL_FACES}
+
+
+def cap_faces(side, cap):
+    """Barrel sides get one texture; the two ends (north/south) get another."""
     out = {}
-    for f in ALL:
-        d = {"texture": "#" + tex}
-        if uv:
-            d["uv"] = uv
-        if cull == f or cull == "all":
-            d["cullface"] = f
-        out[f] = d
+    for f in ALL_FACES:
+        out[f] = {"texture": "#" + (cap if f in ("north", "south") else side)}
     return out
 
 
-def elem(frm, to, tex, rotation=None, uv=None, shade=True, per_face=None):
-    e = {"from": list(frm), "to": list(to), "faces": per_face or faces(tex, uv)}
+def elem(frm, to, tex, rotation=None, shade_on=True, per_face=None):
+    e = {"from": [round(v, 3) for v in frm], "to": [round(v, 3) for v in to],
+         "faces": per_face or faces(tex)}
     if rotation:
         e["rotation"] = rotation
-    if not shade:
+    if not shade_on:
         e["shade"] = False
     return e
 
 
-def rot(origin, axis, angle):
-    return {"origin": list(origin), "axis": axis, "angle": angle}
+def rot(z_centre, angle):
+    return {"origin": [C, C, round(z_centre, 3)], "axis": "z", "angle": angle}
 
 
-def octagon_ring(r_out, r_in, z0, z1, tex):
+def tube(r_out, r_in, z0, z1, tex, per_face=None):
     """
-    Approximates a cylindrical casing with 4 axis-aligned slabs plus 4 slabs rotated
-    45 degrees, giving an octagonal shell that reads as round from any angle.
+    A clean octagonal tube: eight wall segments that meet at the corners rather
+    than overlapping. Segment half-length is derived from the octagon side length
+    (2*R*tan(22.5) ~= 0.828*R) with a small overlap so the seams stay watertight.
     """
-    c = 8.0
-    es = []
-    # axis-aligned top/bottom/left/right slabs
-    es.append(elem((c - r_out, c + r_in, z0), (c + r_out, c + r_out, z1), tex))
-    es.append(elem((c - r_out, c - r_out, z0), (c + r_out, c - r_in, z1), tex))
-    es.append(elem((c - r_out, c - r_in, z0), (c - r_in, c + r_in, z1), tex))
-    es.append(elem((c + r_in, c - r_in, z0), (c + r_out, c + r_in, z1), tex))
-    # 45-degree corner slabs, rotated about the engine axis (Z)
-    d = (r_out + r_in) / 2.0
-    t = (r_out - r_in) / 2.0
-    for ang, off in ((45, (0, d)), (45, (0, -d)), (-45, (0, d)), (-45, (0, -d))):
-        es.append(elem(
-            (c - r_out * 0.78, c + off[1] - t, z0),
-            (c + r_out * 0.78, c + off[1] + t, z1),
-            tex, rotation=rot((c, c, (z0 + z1) / 2.0), "z", ang)))
+    # 0.414*R is the exact regular-octagon side half-length. Sit just above it:
+    # lower leaves hairline gaps at the corners, higher makes the axis-aligned
+    # segments protrude past the diagonals and the silhouette turns into a gear.
+    s = r_out * 0.43
+    zc = (z0 + z1) / 2.0
+    top = ((C - s, C + r_in, z0), (C + s, C + r_out, z1))
+    bot = ((C - s, C - r_out, z0), (C + s, C - r_in, z1))
+    rgt = ((C + r_in, C - s, z0), (C + r_out, C + s, z1))
+    lft = ((C - r_out, C - s, z0), (C - r_in, C + s, z1))
+
+    es = [elem(a, b, tex, per_face=per_face) for a, b in (top, bot, rgt, lft)]
+    for ang in (45, -45):
+        es.append(elem(top[0], top[1], tex, rotation=rot(zc, ang), per_face=per_face))
+        es.append(elem(bot[0], bot[1], tex, rotation=rot(zc, ang), per_face=per_face))
     return es
 
 
-def blade_disc(radius, thickness, z_center, tex, count8=True):
-    """
-    Eight blades: four axis-aligned, four rotated 45 degrees about the engine axis.
-    The whole disc is spun by the block entity renderer.
-    """
-    c = 8.0
-    z0, z1 = z_center - thickness / 2.0, z_center + thickness / 2.0
-    es = []
-    # vertical + horizontal blade pairs
-    es.append(elem((c - 0.6, c, z0), (c + 0.6, c + radius, z1), tex))
-    es.append(elem((c - 0.6, c - radius, z0), (c + 0.6, c, z1), tex))
-    es.append(elem((c, c - 0.6, z0), (c + radius, c + 0.6, z1), tex))
-    es.append(elem((c - radius, c - 0.6, z0), (c, c + 0.6, z1), tex))
-    if count8:
-        for ang in (45, -45):
-            es.append(elem((c - 0.6, c, z0), (c + 0.6, c + radius, z1), tex,
-                           rotation=rot((c, c, z_center), "z", ang)))
-            es.append(elem((c - 0.6, c - radius, z0), (c + 0.6, c, z1), tex,
-                           rotation=rot((c, c, z_center), "z", ang)))
+def disc(r, z0, z1, tex, per_face=None):
+    """A filled octagonal plate: four crossed bars whose union covers the circle."""
+    s = r * 0.46
+    zc = (z0 + z1) / 2.0
+    horiz = ((C - r, C - s, z0), (C + r, C + s, z1))
+    vert = ((C - s, C - r, z0), (C + s, C + r, z1))
+    es = [elem(a, b, tex, per_face=per_face) for a, b in (horiz, vert)]
+    for ang in (45, -45):
+        es.append(elem(horiz[0], horiz[1], tex, rotation=rot(zc, ang), per_face=per_face))
     return es
 
 
-def model(textures, elements, parent=None, ao=True):
-    m = {}
-    if parent:
-        m["parent"] = parent
-    m["textures"] = textures
-    m["elements"] = elements
-    if not ao:
-        m["ambientocclusion"] = False
-    return m
+def blade_ring(r_hub, r_tip, half_w, z0, z1, tex):
+    """Eight radial blades around the engine axis."""
+    zc = (z0 + z1) / 2.0
+    top = ((C - half_w, C + r_hub, z0), (C + half_w, C + r_tip, z1))
+    bot = ((C - half_w, C - r_tip, z0), (C + half_w, C - r_hub, z1))
+    rgt = ((C + r_hub, C - half_w, z0), (C + r_tip, C + half_w, z1))
+    lft = ((C - r_tip, C - half_w, z0), (C - r_hub, C + half_w, z1))
+
+    es = [elem(a, b, tex) for a, b in (top, bot, rgt, lft)]
+    for ang in (45, -45):
+        es.append(elem(top[0], top[1], tex, rotation=rot(zc, ang)))
+        es.append(elem(bot[0], bot[1], tex, rotation=rot(zc, ang)))
+    return es
 
 
-# ---------------------------------------------------------------------------
-# the five modules  (authored facing NORTH: exhaust toward -Z)
-# ---------------------------------------------------------------------------
+def struts(count_axis, r_in, r_out, half_w, z0, z1, tex):
+    """Four external pipes/bars running along the barrel."""
+    es = []
+    es.append(elem((C - half_w, C + r_in, z0), (C + half_w, C + r_out, z1), tex))
+    es.append(elem((C - half_w, C - r_out, z0), (C + half_w, C - r_in, z1), tex))
+    es.append(elem((C + r_in, C - half_w, z0), (C + r_out, C + half_w, z1), tex))
+    es.append(elem((C - r_out, C - half_w, z0), (C - r_in, C + half_w, z1), tex))
+    return es
+
+
+def model(textures, elements, ao=False):
+    return {
+        # Inheriting block/block gives the standard display transforms, without
+        # which the item form renders with an identity transform in the GUI.
+        "parent": "minecraft:block/block",
+        "ambientocclusion": ao,
+        "textures": textures,
+        "elements": elements,
+    }
+
+
+def tex(**kw):
+    out = {k: f"{MODID}:block/{v}" for k, v in kw.items()}
+    out.setdefault("particle", list(out.values())[0])
+    return out
+
+
+# =========================================================================
+# the five modules (authored facing NORTH: exhaust toward -Z)
+# =========================================================================
+
+R_JOIN = 7.0  # shared outer radius at module joints, so a chain lines up
+
 
 def build_models():
     out = {}
 
-    # ---------------- FAN --------------------------------------------------
-    # Intake at +Z (rear/upstream), exhaust toward -Z.
+    # ------------------------------------------------------------ FAN ----
+    # Widest module: a nacelle with a pronounced intake lip at the rear (+Z).
     els = []
-    els += octagon_ring(8.0, 6.0, 0, 16, "casing")          # outer casing
-    els += octagon_ring(6.0, 5.0, 12, 16, "fan_hub")        # intake lip
-    els.append(elem((3, 3, 1), (13, 13, 3), "intake_inner"))  # dark depth plate
-    # rear stator vanes (static)
-    els += blade_disc(5.0, 0.6, 3.0, "compressor_blade", count8=False)
-    out["fan_module"] = model({"casing": f"{MODID}:block/casing",
-                               "fan_hub": f"{MODID}:block/fan_hub",
-                               "intake_inner": f"{MODID}:block/intake_inner",
-                               "compressor_blade": f"{MODID}:block/compressor_blade",
-                               "particle": f"{MODID}:block/casing"}, els, ao=False)
-
-    # rotating rotor: spinner cone + 8 blades, drawn by the BER
-    rotor = []
-    rotor += blade_disc(5.2, 1.0, 11.0, "fan_blade")
-    rotor.append(elem((6.5, 6.5, 9.5), (9.5, 9.5, 14.5), "fan_hub"))   # hub
-    rotor.append(elem((7.2, 7.2, 14.0), (8.8, 8.8, 15.6), "fan_hub"))  # spinner tip
-    out["fan_rotor"] = model({"fan_blade": f"{MODID}:block/fan_blade",
-                              "fan_hub": f"{MODID}:block/fan_hub",
-                              "particle": f"{MODID}:block/fan_hub"}, rotor, ao=False)
-
-    # ---------------- COMPRESSOR ------------------------------------------
-    els = []
-    els += octagon_ring(8.0, 5.5, 0, 16, "compressor_casing")
-    els.append(elem((6.8, 6.8, 0), (9.2, 9.2, 16), "fan_hub"))  # shaft
-    # static stator rings between rotating stages
-    els += blade_disc(5.0, 0.5, 4.0, "compressor_blade", count8=False)
-    els += blade_disc(5.0, 0.5, 12.0, "compressor_blade", count8=False)
-    out["compressor_module"] = model({"compressor_casing": f"{MODID}:block/compressor_casing",
-                                      "compressor_blade": f"{MODID}:block/compressor_blade",
-                                      "fan_hub": f"{MODID}:block/fan_hub",
-                                      "particle": f"{MODID}:block/compressor_casing"}, els, ao=False)
+    els += tube(R_JOIN, 5.6, 1.0, 13.0, "casing")
+    els += tube(7.6, 5.2, 13.0, 16.0, "collar")          # intake lip, flared
+    els += tube(R_JOIN, 6.2, 0.0, 1.0, "casing_ribbed")  # rear collar
+    els += tube(5.6, 5.0, 1.0, 13.0, "intake_inner")     # dark liner down the duct
+    els += disc(5.2, 1.4, 2.2, "fan_face")               # stator face, seen down the intake
+    els += blade_ring(1.6, 5.0, 0.5, 3.2, 3.8, "compressor_blade")  # static stator vanes
+    out["fan_module"] = model(tex(casing="casing", collar="collar",
+                                  casing_ribbed="casing_ribbed", fan_face="fan_face",
+                                  intake_inner="intake_inner",
+                                  compressor_blade="compressor_blade",
+                                  particle="casing"), els)
 
     rotor = []
-    rotor += blade_disc(4.8, 0.8, 8.0, "compressor_blade")
-    rotor += blade_disc(4.4, 0.8, 2.0, "compressor_blade")
-    rotor += blade_disc(4.4, 0.8, 14.0, "compressor_blade")
-    out["compressor_rotor"] = model({"compressor_blade": f"{MODID}:block/compressor_blade",
-                                     "particle": f"{MODID}:block/compressor_blade"}, rotor, ao=False)
+    rotor += blade_ring(1.9, 5.3, 1.7, 8.8, 11.6, "fan_blade")
+    rotor += disc(2.0, 8.6, 12.0, "spinner")             # hub
+    rotor += disc(1.3, 12.0, 13.6, "spinner")            # spinner cone step
+    rotor += disc(0.7, 13.6, 14.6, "spinner")
+    out["fan_rotor"] = model(tex(fan_blade="fan_blade", spinner="spinner",
+                                 particle="spinner"), rotor)
 
-    # ---------------- COMBUSTION CORE -------------------------------------
+    # ----------------------------------------------------- COMPRESSOR ----
+    # Slimmer barrel with raised bands, so it reads differently from the fan.
     els = []
-    els += octagon_ring(8.0, 6.0, 0, 16, "combustion_casing")
-    # structural ribs
-    for z in (2.0, 8.0, 14.0):
-        els += octagon_ring(8.3, 7.6, z - 0.7, z + 0.7, "casing_plain")
-    # fuel manifold detail
-    els.append(elem((1.2, 7.2, 3), (2.6, 8.8, 13), "casing_plain"))
-    els.append(elem((13.4, 7.2, 3), (14.8, 8.8, 13), "casing_plain"))
-    els.append(elem((7.2, 13.4, 3), (8.8, 14.8, 13), "casing_plain"))
-    els.append(elem((6.8, 6.8, 0), (9.2, 9.2, 16), "fan_hub"))  # shaft continuation
-    out["combustion_core"] = model({"combustion_casing": f"{MODID}:block/combustion_casing",
-                                    "casing_plain": f"{MODID}:block/casing_plain",
-                                    "fan_hub": f"{MODID}:block/fan_hub",
-                                    "particle": f"{MODID}:block/combustion_casing"}, els, ao=False)
+    els += tube(6.4, 5.2, 0.0, 16.0, "compressor_casing")
+    for z in (1.0, 7.4, 14.0):
+        els += tube(R_JOIN, 6.4, z, z + 1.4, "casing_ribbed")   # proud bands
+    els += disc(1.5, 0.0, 16.0, "spinner")                       # shaft
+    els += blade_ring(1.5, 4.9, 0.4, 4.4, 4.9, "compressor_blade")   # stators
+    els += blade_ring(1.5, 4.9, 0.4, 11.0, 11.5, "compressor_blade")
+    els += disc(5.0, 15.2, 15.8, "compressor_face")               # interstage face
+    out["compressor_module"] = model(tex(compressor_casing="compressor_casing",
+                                         casing_ribbed="casing_ribbed",
+                                         spinner="spinner",
+                                         compressor_blade="compressor_blade",
+                                         compressor_face="compressor_face",
+                                         particle="compressor_casing"), els)
 
-    # inner glowing combustion volume, scaled by the BER with spool/throttle
+    rotor = []
+    for z in (2.2, 8.2, 12.6):
+        rotor += blade_ring(1.7, 4.9, 0.95, z, z + 1.3, "compressor_blade")
+    out["compressor_rotor"] = model(tex(compressor_blade="compressor_blade",
+                                        particle="compressor_blade"), rotor)
+
+    # ------------------------------------------------ COMBUSTION CORE ----
+    # Bulged barrel with external fuel manifolds — the fattest silhouette.
+    els = []
+    els += tube(7.4, 5.4, 2.0, 14.0, "combustion_casing")
+    els += tube(R_JOIN, 5.8, 0.0, 2.0, "casing_ribbed")
+    els += tube(R_JOIN, 5.8, 14.0, 16.0, "casing_ribbed")
+    els += struts(4, 7.4, 8.0, 0.9, 3.0, 13.0, "collar")   # fuel manifold pipes
+    els += disc(1.4, 0.0, 16.0, "spinner")                  # shaft continuation
+    out["combustion_core"] = model(tex(combustion_casing="combustion_casing",
+                                       casing_ribbed="casing_ribbed",
+                                       collar="collar", spinner="spinner",
+                                       particle="combustion_casing"), els)
+
     out["combustion_glow"] = model(
-        {"combustion_glow": f"{MODID}:block/combustion_glow",
-         "particle": f"{MODID}:block/combustion_glow"},
-        [elem((4.5, 4.5, 2.0), (11.5, 11.5, 14.0), "combustion_glow", shade=False)], ao=False)
+        tex(combustion_glow="combustion_glow", particle="combustion_glow"),
+        disc(5.0, 2.5, 13.5, "combustion_glow"))
 
-    # ---------------- AFTERBURNER -----------------------------------------
+    # ----------------------------------------------------- AFTERBURNER ---
     els = []
-    els += octagon_ring(8.0, 6.2, 0, 16, "afterburner_casing")
-    els += octagon_ring(6.2, 4.6, 3.0, 4.4, "flame_holder")   # flame holder rings
-    els += octagon_ring(6.2, 4.6, 9.0, 10.4, "flame_holder")
-    # fuel spray bars
-    els.append(elem((2.0, 7.4, 6.0), (14.0, 8.6, 7.0), "casing_plain"))
-    els.append(elem((7.4, 2.0, 6.0), (8.6, 14.0, 7.0), "casing_plain"))
-    out["afterburner_module"] = model({"afterburner_casing": f"{MODID}:block/afterburner_casing",
-                                       "flame_holder": f"{MODID}:block/flame_holder",
-                                       "casing_plain": f"{MODID}:block/casing_plain",
-                                       "particle": f"{MODID}:block/afterburner_casing"}, els, ao=False)
+    els += tube(6.6, 5.4, 0.0, 16.0, "afterburner_casing")
+    els += tube(R_JOIN, 6.6, 0.6, 2.0, "casing_ribbed")
+    els += tube(R_JOIN, 6.6, 14.0, 15.4, "casing_ribbed")
+    els += tube(5.2, 4.0, 3.4, 4.8, "flame_holder")       # flame holder rings
+    els += tube(5.2, 4.0, 9.0, 10.4, "flame_holder")
+    els += blade_ring(1.2, 5.2, 0.45, 6.4, 7.0, "flame_holder")   # spray bars
+    out["afterburner_module"] = model(tex(afterburner_casing="afterburner_casing",
+                                          casing_ribbed="casing_ribbed",
+                                          flame_holder="flame_holder",
+                                          particle="afterburner_casing"), els)
 
     out["afterburner_glow"] = model(
-        {"afterburner_glow": f"{MODID}:block/afterburner_glow",
-         "particle": f"{MODID}:block/afterburner_glow"},
-        [elem((5.0, 5.0, 1.0), (11.0, 11.0, 15.0), "afterburner_glow", shade=False)], ao=False)
+        tex(afterburner_glow="afterburner_glow", particle="afterburner_glow"),
+        disc(4.6, 1.0, 15.0, "afterburner_glow"))
 
-    # ---------------- NOZZLE ----------------------------------------------
+    # ---------------------------------------------------------- NOZZLE ---
+    # Fixed collar at the rear; the petals are instanced and hinged by the renderer.
     els = []
-    els += octagon_ring(8.0, 6.4, 10.0, 16.0, "nozzle_petal")   # fixed collar
-    els.append(elem((3.4, 3.4, 12.0), (12.6, 12.6, 13.0), "nozzle_inner"))
-    out["nozzle_module"] = model({"nozzle_petal": f"{MODID}:block/nozzle_petal",
-                                  "nozzle_inner": f"{MODID}:block/nozzle_inner",
-                                  "particle": f"{MODID}:block/nozzle_petal"}, els, ao=False)
+    els += tube(R_JOIN, 5.6, 11.5, 16.0, "casing_ribbed")
+    els += tube(6.6, 5.4, 9.0, 11.5, "nozzle_petal")
+    els += disc(5.4, 10.4, 11.0, "nozzle_inner")
+    out["nozzle_module"] = model(tex(casing_ribbed="casing_ribbed",
+                                     nozzle_petal="nozzle_petal",
+                                     nozzle_inner="nozzle_inner",
+                                     particle="nozzle_petal"), els)
 
-    # one petal, instanced 8x and hinged open/closed by the BER
+    # One petal, authored at the top of the ring; the renderer instances it eight
+    # times around the axis and hinges it at the collar end.
     out["nozzle_petal"] = model(
-        {"nozzle_petal": f"{MODID}:block/nozzle_petal",
-         "nozzle_inner": f"{MODID}:block/nozzle_inner",
-         "particle": f"{MODID}:block/nozzle_petal"},
-        [elem((6.4, 11.0, 0.0), (9.6, 13.4, 6.5), "nozzle_petal")], ao=False)
+        tex(nozzle_petal="nozzle_petal", particle="nozzle_petal"),
+        [elem((C - 2.4, C + 4.4, 1.0), (C + 2.4, C + 6.4, 9.6), "nozzle_petal")])
 
-    # exhaust tunnel interior
     out["nozzle_inner"] = model(
-        {"nozzle_inner": f"{MODID}:block/nozzle_inner",
-         "particle": f"{MODID}:block/nozzle_inner"},
-        [elem((4.6, 4.6, 0.0), (11.4, 11.4, 11.0), "nozzle_inner", shade=False)], ao=False)
+        tex(nozzle_inner="nozzle_inner", particle="nozzle_inner"),
+        disc(4.6, 0.5, 10.5, "nozzle_inner"))
 
     return out
 
 
-# ---------------------------------------------------------------------------
+# =========================================================================
 # blockstates / item models / bbmodel
-# ---------------------------------------------------------------------------
+# =========================================================================
 
 FACING_ROT = {
     "north": {},
@@ -451,6 +590,9 @@ FACING_ROT = {
     "up": {"x": 270},
     "down": {"x": 90},
 }
+
+BLOCK_MODULES = ["fan_module", "compressor_module", "combustion_core",
+                 "afterburner_module", "nozzle_module"]
 
 
 def build_blockstate(model_name):
@@ -463,10 +605,9 @@ def build_blockstate(model_name):
 
 
 def to_bbmodel(name, m):
-    """Emit an editable Blockbench project from the same element data."""
     textures = []
     tex_index = {}
-    for i, (key, path) in enumerate(sorted(m["textures"].items())):
+    for key, path in sorted(m["textures"].items()):
         if key == "particle":
             continue
         rel = path.split("block/")[-1] + ".png"
@@ -489,26 +630,21 @@ def to_bbmodel(name, m):
         f = {}
         for face, fd in e["faces"].items():
             key = fd["texture"].lstrip("#")
-            f[face] = {"uv": fd.get("uv", [0, 0, 16, 16]),
-                       "texture": tex_index.get(key, 0)}
+            f[face] = {"uv": fd.get("uv", [0, 0, 16, 16]), "texture": tex_index.get(key, 0)}
         el = {"name": f"part_{i}", "from": e["from"], "to": e["to"],
               "autouv": 0, "color": i % 8, "visibility": True,
               "uuid": f"10000000-0000-4000-8000-{i:012d}", "faces": f}
         if "rotation" in e:
             el["rotation"] = [0, 0, 0]
-            axis = e["rotation"]["axis"]
-            idx = {"x": 0, "y": 1, "z": 2}[axis]
-            el["rotation"][idx] = e["rotation"]["angle"]
+            el["rotation"][{"x": 0, "y": 1, "z": 2}[e["rotation"]["axis"]]] = e["rotation"]["angle"]
             el["origin"] = e["rotation"]["origin"]
         elements.append(el)
 
     return {
         "meta": {"format_version": "4.5", "model_format": "java_block", "box_uv": False},
-        "name": name,
-        "parent": "",
-        "ambientocclusion": m.get("ambientocclusion", True),
-        "front_gui_light": False,
-        "visible_box": [1, 1, 0],
+        "name": name, "parent": "",
+        "ambientocclusion": m.get("ambientocclusion", False),
+        "front_gui_light": False, "visible_box": [1, 1, 0],
         "variable_placeholders": "", "variable_placeholder_buttons": [],
         "resolution": {"width": S, "height": S},
         "elements": elements,
@@ -517,12 +653,9 @@ def to_bbmodel(name, m):
     }
 
 
-BLOCK_MODULES = ["fan_module", "compressor_module", "combustion_core",
-                 "afterburner_module", "nozzle_module"]
-
-
 def main():
-    tex = build_textures()
+    made_tex = build_textures()
+    made_particles = build_particle_textures()
     models = build_models()
 
     for name, m in models.items():
@@ -537,10 +670,17 @@ def main():
         with open(os.path.join(ITEM_MODEL_DIR, name + ".json"), "w") as fh:
             json.dump({"parent": f"{MODID}:block/{name}"}, fh, indent=2)
 
-    print(f"textures: {len(tex)}")
-    print(f"models:   {len(models)}")
-    print(f"states:   {len(BLOCK_MODULES)}")
-    print(f"bbmodels: {len(models)} -> assets_src/")
+    # every texture must be referenced by something, or it is dead weight
+    referenced = set()
+    for m in models.values():
+        for v in m["textures"].values():
+            referenced.add(v.split("/")[-1])
+    unused = sorted(set(made_tex) - referenced)
+
+    print(f"textures: {len(made_tex)}  particles: {len(made_particles)}  "
+          f"models: {len(models)}  states: {len(BLOCK_MODULES)}")
+    print(f"elements: " + ", ".join(f"{n}={len(m['elements'])}" for n, m in models.items()))
+    print(f"unused textures: {unused if unused else 'none'}")
 
 
 if __name__ == "__main__":

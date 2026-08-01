@@ -16,21 +16,21 @@
  "variable_placeholders": "",
  "variable_placeholder_buttons": [],
  "resolution": {
-  "width": 32,
-  "height": 32
+  "width": 16,
+  "height": 16
  },
  "elements": [
   {
    "name": "part_0",
    "from": [
-    7.4,
-    8.0,
-    7.6
+    7.05,
+    9.7,
+    2.2
    ],
    "to": [
-    8.6,
-    12.8,
-    8.4
+    8.95,
+    12.9,
+    3.5
    ],
    "autouv": 0,
    "color": 0,
@@ -96,14 +96,14 @@
   {
    "name": "part_1",
    "from": [
-    7.4,
-    3.2,
-    7.6
+    7.05,
+    3.1,
+    2.2
    ],
    "to": [
-    8.6,
-    8.0,
-    8.4
+    8.95,
+    6.3,
+    3.5
    ],
    "autouv": 0,
    "color": 1,
@@ -169,14 +169,14 @@
   {
    "name": "part_2",
    "from": [
-    8.0,
-    7.4,
-    7.6
+    9.7,
+    7.05,
+    2.2
    ],
    "to": [
-    12.8,
-    8.6,
-    8.4
+    12.9,
+    8.95,
+    3.5
    ],
    "autouv": 0,
    "color": 2,
@@ -242,14 +242,14 @@
   {
    "name": "part_3",
    "from": [
-    3.2,
-    7.4,
-    7.6
+    3.1,
+    7.05,
+    2.2
    ],
    "to": [
-    8.0,
-    8.6,
-    8.4
+    6.3,
+    8.95,
+    3.5
    ],
    "autouv": 0,
    "color": 3,
@@ -315,14 +315,14 @@
   {
    "name": "part_4",
    "from": [
-    7.4,
-    8.0,
-    7.6
+    7.05,
+    9.7,
+    2.2
    ],
    "to": [
-    8.6,
-    12.8,
-    8.4
+    8.95,
+    12.9,
+    3.5
    ],
    "autouv": 0,
    "color": 4,
@@ -392,20 +392,20 @@
    "origin": [
     8.0,
     8.0,
-    8.0
+    2.85
    ]
   },
   {
    "name": "part_5",
    "from": [
-    7.4,
-    3.2,
-    7.6
+    7.05,
+    3.1,
+    2.2
    ],
    "to": [
-    8.6,
-    8.0,
-    8.4
+    8.95,
+    6.3,
+    3.5
    ],
    "autouv": 0,
    "color": 5,
@@ -475,20 +475,20 @@
    "origin": [
     8.0,
     8.0,
-    8.0
+    2.85
    ]
   },
   {
    "name": "part_6",
    "from": [
-    7.4,
-    8.0,
-    7.6
+    7.05,
+    9.7,
+    2.2
    ],
    "to": [
-    8.6,
-    12.8,
-    8.4
+    8.95,
+    12.9,
+    3.5
    ],
    "autouv": 0,
    "color": 6,
@@ -558,20 +558,20 @@
    "origin": [
     8.0,
     8.0,
-    8.0
+    2.85
    ]
   },
   {
    "name": "part_7",
    "from": [
-    7.4,
-    3.2,
-    7.6
+    7.05,
+    3.1,
+    2.2
    ],
    "to": [
-    8.6,
-    8.0,
-    8.4
+    8.95,
+    6.3,
+    3.5
    ],
    "autouv": 0,
    "color": 7,
@@ -641,20 +641,20 @@
    "origin": [
     8.0,
     8.0,
-    8.0
+    2.85
    ]
   },
   {
    "name": "part_8",
    "from": [
-    7.4,
-    8.0,
-    1.6
+    7.05,
+    9.7,
+    8.2
    ],
    "to": [
-    8.6,
-    12.4,
-    2.4
+    8.95,
+    12.9,
+    9.5
    ],
    "autouv": 0,
    "color": 0,
@@ -720,14 +720,14 @@
   {
    "name": "part_9",
    "from": [
-    7.4,
-    3.5999999999999996,
-    1.6
+    7.05,
+    3.1,
+    8.2
    ],
    "to": [
-    8.6,
-    8.0,
-    2.4
+    8.95,
+    6.3,
+    9.5
    ],
    "autouv": 0,
    "color": 1,
@@ -793,14 +793,14 @@
   {
    "name": "part_10",
    "from": [
-    8.0,
-    7.4,
-    1.6
+    9.7,
+    7.05,
+    8.2
    ],
    "to": [
-    12.4,
-    8.6,
-    2.4
+    12.9,
+    8.95,
+    9.5
    ],
    "autouv": 0,
    "color": 2,
@@ -866,14 +866,14 @@
   {
    "name": "part_11",
    "from": [
-    3.5999999999999996,
-    7.4,
-    1.6
+    3.1,
+    7.05,
+    8.2
    ],
    "to": [
-    8.0,
-    8.6,
-    2.4
+    6.3,
+    8.95,
+    9.5
    ],
    "autouv": 0,
    "color": 3,
@@ -939,14 +939,14 @@
   {
    "name": "part_12",
    "from": [
-    7.4,
-    8.0,
-    1.6
+    7.05,
+    9.7,
+    8.2
    ],
    "to": [
-    8.6,
-    12.4,
-    2.4
+    8.95,
+    12.9,
+    9.5
    ],
    "autouv": 0,
    "color": 4,
@@ -1016,20 +1016,20 @@
    "origin": [
     8.0,
     8.0,
-    2.0
+    8.85
    ]
   },
   {
    "name": "part_13",
    "from": [
-    7.4,
-    3.5999999999999996,
-    1.6
+    7.05,
+    3.1,
+    8.2
    ],
    "to": [
-    8.6,
-    8.0,
-    2.4
+    8.95,
+    6.3,
+    9.5
    ],
    "autouv": 0,
    "color": 5,
@@ -1099,20 +1099,20 @@
    "origin": [
     8.0,
     8.0,
-    2.0
+    8.85
    ]
   },
   {
    "name": "part_14",
    "from": [
-    7.4,
-    8.0,
-    1.6
+    7.05,
+    9.7,
+    8.2
    ],
    "to": [
-    8.6,
-    12.4,
-    2.4
+    8.95,
+    12.9,
+    9.5
    ],
    "autouv": 0,
    "color": 6,
@@ -1182,20 +1182,20 @@
    "origin": [
     8.0,
     8.0,
-    2.0
+    8.85
    ]
   },
   {
    "name": "part_15",
    "from": [
-    7.4,
-    3.5999999999999996,
-    1.6
+    7.05,
+    3.1,
+    8.2
    ],
    "to": [
-    8.6,
-    8.0,
-    2.4
+    8.95,
+    6.3,
+    9.5
    ],
    "autouv": 0,
    "color": 7,
@@ -1265,20 +1265,20 @@
    "origin": [
     8.0,
     8.0,
-    2.0
+    8.85
    ]
   },
   {
    "name": "part_16",
    "from": [
-    7.4,
-    8.0,
-    13.6
+    7.05,
+    9.7,
+    12.6
    ],
    "to": [
-    8.6,
-    12.4,
-    14.4
+    8.95,
+    12.9,
+    13.9
    ],
    "autouv": 0,
    "color": 0,
@@ -1344,14 +1344,14 @@
   {
    "name": "part_17",
    "from": [
-    7.4,
-    3.5999999999999996,
-    13.6
+    7.05,
+    3.1,
+    12.6
    ],
    "to": [
-    8.6,
-    8.0,
-    14.4
+    8.95,
+    6.3,
+    13.9
    ],
    "autouv": 0,
    "color": 1,
@@ -1417,14 +1417,14 @@
   {
    "name": "part_18",
    "from": [
-    8.0,
-    7.4,
-    13.6
+    9.7,
+    7.05,
+    12.6
    ],
    "to": [
-    12.4,
-    8.6,
-    14.4
+    12.9,
+    8.95,
+    13.9
    ],
    "autouv": 0,
    "color": 2,
@@ -1490,14 +1490,14 @@
   {
    "name": "part_19",
    "from": [
-    3.5999999999999996,
-    7.4,
-    13.6
+    3.1,
+    7.05,
+    12.6
    ],
    "to": [
-    8.0,
-    8.6,
-    14.4
+    6.3,
+    8.95,
+    13.9
    ],
    "autouv": 0,
    "color": 3,
@@ -1563,14 +1563,14 @@
   {
    "name": "part_20",
    "from": [
-    7.4,
-    8.0,
-    13.6
+    7.05,
+    9.7,
+    12.6
    ],
    "to": [
-    8.6,
-    12.4,
-    14.4
+    8.95,
+    12.9,
+    13.9
    ],
    "autouv": 0,
    "color": 4,
@@ -1640,20 +1640,20 @@
    "origin": [
     8.0,
     8.0,
-    14.0
+    13.25
    ]
   },
   {
    "name": "part_21",
    "from": [
-    7.4,
-    3.5999999999999996,
-    13.6
+    7.05,
+    3.1,
+    12.6
    ],
    "to": [
-    8.6,
-    8.0,
-    14.4
+    8.95,
+    6.3,
+    13.9
    ],
    "autouv": 0,
    "color": 5,
@@ -1723,20 +1723,20 @@
    "origin": [
     8.0,
     8.0,
-    14.0
+    13.25
    ]
   },
   {
    "name": "part_22",
    "from": [
-    7.4,
-    8.0,
-    13.6
+    7.05,
+    9.7,
+    12.6
    ],
    "to": [
-    8.6,
-    12.4,
-    14.4
+    8.95,
+    12.9,
+    13.9
    ],
    "autouv": 0,
    "color": 6,
@@ -1806,20 +1806,20 @@
    "origin": [
     8.0,
     8.0,
-    14.0
+    13.25
    ]
   },
   {
    "name": "part_23",
    "from": [
-    7.4,
-    3.5999999999999996,
-    13.6
+    7.05,
+    3.1,
+    12.6
    ],
    "to": [
-    8.6,
-    8.0,
-    14.4
+    8.95,
+    6.3,
+    13.9
    ],
    "autouv": 0,
    "color": 7,
@@ -1889,7 +1889,7 @@
    "origin": [
     8.0,
     8.0,
-    14.0
+    13.25
    ]
   }
  ],
@@ -1931,7 +1931,7 @@
    "mode": "bitmap",
    "saved": false,
    "uuid": "00000000-0000-4000-8000-000000000000",
-   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFPUlEQVR4nHVX25LbNgw9pESJ0v7bjseTpEnah35csjuT2TaXT/PaEine+kDhmNpM/QRTEAgcHFyk3n38uzw+nqC1xo8f/+J0OqOUgp8/v+N8fgetNV5evuF0OmOaJjw/f8X5/A7WWjw9fcHpdMY8z3h6+oLPn/9CKQXPz1/x6dOfcM7h+/d/8Ph4wjAMeHn5hvfv/4D3Hr9+/cCHDx+hASDnDPl1XQdjDAAgxoi+7wEAfd8jxggAMMYgpUT919dXiJ1SCgDger1SZxgGbNsGACilYJomAMCyLOjFiLyYc6aytRYhBL6otQYAbNtGx1onU0q8VCnFoJZloZxzZsA554pAKYUOaK150bquNOS9JwLOOTqplOKlzjl0XcfLxDGtNeZ5JmJyF4CKgDGGXsUYD5HKpfLsLaRaa16ac2Y6Wofbdy+XC+1P01QdcG6lYkqREU2TpWPb5qmjFGBMv/8r8L4+KyWj6zRlpbr98gCgRj3PE5xzO8JLTUHX9QDUrpyglN6dyUgp7y8+IOeyOxN4viwrQhBkRp6XUvWqw5r2SwHtxJgqAut6J0kIW5N3x3yVkjEMhmhYaxndvWoCdbpOYxxHoiTIbJuH8NPasTrQcALWToQ9pTtjnfMYhkGSAOf8nqaZ7y7LSj606Dnn4f3GqMVOSrk6YO3ISG+3a1P7HZTqiYD3jp6v67obX1mqNTKJpuy5r3YkkFIydZxbJQX3clNK0YGcMwkZQiB7c868VKrh7XnbuLy/o2eMweVy2Z0plYTGDDsRazoELqU0CZZzQd8bytZOhFHSYMxAHec8yTyOFjGmHeHldxLebtemlhMjSilimixlgS7nxBQABctyI6RCyKoTfjvXWqHr7rKucBkSMefCqJXSJNswjFjXyoHX1yv1x9FSP8aEZVkhNoWEKWWi0ffmgKoGahlKmRjTw9pxT0cmkVqCTZOF1orRjeNAnYeHmo5lubFZ5ZxI4BA26oew1RQopcjSVl6WhbWccyYJY4ysmr7vmY52GGmtSdCWzNu28d1hGKoD7UTz3h+Mi5F1XZv+kCiv68p35ZnYFF7N88wqG4aB9kMINQXzPLM/t5OuLbG2DNso2jGttT6MdXGmlEL5er0edMiB2iBqC5VWmXNirkvJ6PsakTE9W+44DtT33jHX02TJqxA22ldKKqq25aoBRcYaM1AGFFlt7YTbbdmdqZVQnXeU24oIIR6qQ6pGKc0hZe0kK1nCPE/7pYURGdMf2C4IbJunfovYtnnqe+9YQcb0jNp7R/TWdV/JtO5wudRF4nZbSJ5lWbm/xZjYzUKIKEU405LWsCJCiJyYznm2aGMGogqo6sCyLFyZ7hOvrk/Sz0sp1NFak/lySXX+xvN5nulYW2W/zZfqeYfrVVYpR9m5ldANg6H8ti0L1LWB3SedEC/ndEiTyErhvhHJEKkEVJDzdpMREqaU2aIr0RRlIZ7WHYnXdT3b+DhakrDr+urAtnmWTM6JA6iNLsbA8//bcNZ1YZutu6XMFBCNlOKhFRMBiajdZAB18LaNTnRiTJS7rqeslD4gJuP7dluow2GUUuTg6PsOIWzMo5zfbleWWNdpNpyWP28jldGeUqTOw8NM+xxGKSX26naXr044nsvO75w7zA5pxSklrujbtrFqSimsrvbLSGt9H0ZtychPeoDI8qx12FrLS+WZXCrnXddRDiFwwqa0b0QhhEP9y29d18PQaT/HWmdk2wkhsIm93SFFf9u2w8fwvhOaw5evvNh+YL79fpQUhBCYphACdcZxJBopJdps7QPAf0bHgwvrHnAZAAAAAElFTkSuQmCC"
+   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAP0lEQVR4nGPcf+zK/727tjI4u3kzkEMzMVAIhoMBL188Y2BgYGAglx4EXhgGBrx4/pSBgYGBgVx6EHhhwA0AAPSaRfzGeKINAAAAAElFTkSuQmCC"
   }
  ]
 }
