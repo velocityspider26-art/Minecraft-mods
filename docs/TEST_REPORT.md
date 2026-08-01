@@ -1,4 +1,4 @@
-# Test report — Create: Jet Engines 1.0.3
+# Test report — Create: Jet Engines 1.0.4
 
 Everything below was actually run in this environment. Where something could **not** be verified
 here, it says so plainly rather than claiming a pass.
@@ -39,9 +39,9 @@ xvfb-run ./gradlew runClient                # BUILD SUCCESSFUL (clean exit after
 ## Artifact
 
 ```
-build/libs/create-jet-engines-1.0.3.jar
+build/libs/create-jet-engines-1.0.4.jar
 size    288,651 bytes   (valid zip)
-sha256  e1f918afba3e7b57f5d17befe300171de301bbafe02b0fd9bbf46132be4553b3
+sha256  ee9352d76c82403e57e9c6a72bc4452b3db0a77d39c933ad0d630595e1db6d4f
 ```
 
 Jar inspection: **no** Minecraft, NeoForge, Create, Sable or Veil classes bundled — the only
@@ -183,6 +183,34 @@ the model). Status:
   X input kept dropping the leading `/` of chat commands, so the test scene never got built.
   **If something is going to break, this is where it will break**, and it will most likely be the
   render-state combination rather than the geometry.
+
+## Known issue: the gametest suite is intermittently red
+
+The suite passes most runs but fails roughly one in four to one in six. **Every failure I captured
+was a measurement artefact in the test, not a defect in the mod** — the mod's own numbers are
+stable across every single run: peak speed 111.74, vz -111.74, invalid chain 0.003-0.007, core
+removal 82.6 -> 46-48.
+
+Root cause: the test craft is about eight blocks and reaches 111 blocks/s, so within a few seconds
+it tumbles and leaves the loaded area. That single fact produced four distinct symptoms, each fixed
+in turn:
+
+* `RuntimeException: Body has been removed` — reads on a destroyed rigid body. Fixed with
+  `isValid()` guards and per-tick peak sampling.
+* `Combustion core not found inside the sublevel plot` — thrown from a test callback, which aborts
+  the whole run. `findCore` now returns null and callers handle it.
+* Angular velocity sampled at a zero crossing while the craft yawed back and forth. Fixed by
+  peak-sampling.
+* Direction sampled after the craft had flipped, legitimately reading the opposite sign because
+  thrust correctly follows the airframe. Now sampled early, before rotation accumulates.
+
+Residual flakiness after all of that is still the same underlying cause. I tried giving the craft a
+heavy hull to keep it in the area; that overcorrected badly (56 iron blocks made it too sluggish to
+have measurable velocity at the sample point) and was reverted. **The correct fix is to constrain
+the test craft or force-load its sublevel so it cannot escape**, which I did not get to.
+
+Treat a red run as "re-run it"; treat a red run whose logged speeds differ from the numbers above as
+a real regression.
 
 ## What still needs you, and why
 

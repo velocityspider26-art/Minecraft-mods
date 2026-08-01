@@ -37,11 +37,23 @@ public class PlumeTrail {
     /** Vertices per ring. Twelve gives enough resolution for the surface to look broken up. */
     private static final int RING = 12;
 
-    /** Mach-diamond nodes along the core, and how hard each one pinches the flow. */
-    private static final int SHOCK_NODES = 5;
-    private static final float SHOCK_AMPLITUDE = 0.52F;
-    /** How ragged the surface gets downstream. Flow leaves the nozzle laminar and breaks up. */
-    private static final float TURBULENCE = 0.42F;
+    /**
+     * The burning core is drawn as a short stack of straight frusta, six-sided and hard-stepped.
+     * Low ring count and abrupt diameter changes are what make it read as rigid burning gas
+     * instead of a flexible tube.
+     */
+    private static final int CORE_RING = 6;
+    /**
+     * Station radii down the core, as multiples of the nozzle radius: a taper to a point with a
+     * mild mach-diamond ripple on top. Sampled at discrete stations and rendered flat-shaded, so
+     * the silhouette stays hard and faceted. An earlier version rippled nearly 2:1 between
+     * stations, which broke the flame into a string of separate beads.
+     */
+    private static final float[] CORE_PROFILE = {
+            1.000F, 1.086F, 1.039F, 0.901F, 0.781F, 0.745F, 0.758F, 0.745F, 0.666F, 0.543F, 0.419F, 0.292F, 0.060F
+    };
+    /** How ragged the cold trail gets downstream. The burning core is not perturbed at all. */
+    private static final float TURBULENCE = 0.30F;
 
     private static final Vec3 WORLD_UP = new Vec3(0.0D, 1.0D, 0.0D);
 
@@ -87,20 +99,9 @@ public class PlumeTrail {
         float radiusAt(float partial) {
             double u = Math.min(1.0D, (age + partial) / (double) MAX_AGE);
             double r0 = 0.26D + 0.10D * throttle;
-            if (lit) {
-                // A reheat core is a spindle: it bulges just past the nozzle as the flow expands,
-                // then necks back down to a point. Letting it widen monotonically made it read as
-                // a fat cone rather than a flame.
-                double spindle = r0 * (1.0D + 0.9D * u) * Math.pow(1.0D - u, 0.45D);
-                // Mach diamonds: the over-expanded jet repeatedly pinches and re-expands. This
-                // periodic beading is the single most recognisable feature of a real reheat
-                // plume, and without it the tube reads as a smooth liquid noodle.
-                double shock = 1.0D + SHOCK_AMPLITUDE * Math.exp(-1.2D * u)
-                        * Math.sin(u * Math.PI * SHOCK_NODES);
-                return (float) (spindle * shock);
-            }
-            // Dry exhaust has nothing burning in it; it just diffuses and keeps spreading.
-            return (float) (r0 * (1.0D + 1.9D * u));
+            // The trail is spent gas, lit or not: it just diffuses and keeps spreading. The
+            // burning structure lives in buildCore, not here.
+            return (float) (r0 * (1.0D + (lit ? 2.4D : 1.9D) * u));
         }
     }
 
@@ -170,15 +171,89 @@ public class PlumeTrail {
      * closer to a real plume than a single opaque tube.
      */
     public void build(VertexConsumer consumer, PoseStack pose, float partialTick) {
-        if (parcels.size() < 2) {
+        if (parcels.isEmpty()) {
             return;
         }
         Matrix4f matrix = pose.last().pose();
-        Parcel[] arr = parcels.toArray(new Parcel[0]);
+        Parcel head = parcels.peekFirst();
 
-        // inner core, then outer halo
-        buildShell(consumer, matrix, arr, partialTick, 0.55F, 1.0F);
-        buildShell(consumer, matrix, arr, partialTick, 1.0F, 0.40F);
+        // The burning flame is rigid and anchored to the nozzle. Building it from the emission
+        // history made it bend and flex along the flight path like a hose — physically true of the
+        // gas, but a real reheat flame is a stiff cone locked to the engine axis. Only the cold
+        // trail behind it follows the aircraft's path.
+        if (head != null && head.lit) {
+            buildCore(consumer, matrix, head, partialTick);
+        }
+
+        if (parcels.size() >= 2) {
+            Parcel[] arr = parcels.toArray(new Parcel[0]);
+            // Cold trail: faint haze only. This is the part that bends and lags.
+            buildShell(consumer, matrix, arr, partialTick, 1.0F, head != null && head.lit ? 0.14F : 0.40F);
+        }
+    }
+
+    /**
+     * The rigid burning core: a straight stack of six-sided frusta along the current nozzle axis,
+     * with hard steps between stations and flat per-segment colour.
+     */
+    private void buildCore(VertexConsumer consumer, Matrix4f matrix, Parcel head, float partialTick) {
+        int segments = CORE_PROFILE.length - 1;
+        double r0 = 0.26D + 0.10D * head.throttle;
+        double length = Math.min(head.clearance, 1.9D + 3.2D * head.throttle);
+        if (length <= 0.05D) {
+            return;
+        }
+
+        for (int i = 0; i < segments; i++) {
+            double za = length * (i / (double) segments);
+            double zb = length * ((i + 1) / (double) segments);
+            double ra = r0 * CORE_PROFILE[i];
+            double rb = r0 * CORE_PROFILE[i + 1];
+
+            Vec3 pa = head.origin.add(head.dir.scale(za));
+            Vec3 pb = head.origin.add(head.dir.scale(zb));
+
+            // Flat colour per segment. A smooth gradient reads as a soft continuous fluid;
+            // banding it makes the flame look like it has discrete structure.
+            int col = coreColour(i, segments, head, partialTick);
+
+            for (int k = 0; k < CORE_RING; k++) {
+                double t0 = (k / (double) CORE_RING) * Math.PI * 2.0D;
+                double t1 = ((k + 1) / (double) CORE_RING) * Math.PI * 2.0D;
+
+                Vec3 a0 = plainRing(head, pa, ra, t0);
+                Vec3 a1 = plainRing(head, pa, ra, t1);
+                Vec3 b1 = plainRing(head, pb, rb, t1);
+                Vec3 b0 = plainRing(head, pb, rb, t0);
+
+                vertex(consumer, matrix, a0, col);
+                vertex(consumer, matrix, a1, col);
+                vertex(consumer, matrix, b1, col);
+                vertex(consumer, matrix, b0, col);
+            }
+        }
+    }
+
+    private static Vec3 plainRing(Parcel p, Vec3 centre, double radius, double theta) {
+        return centre
+                .add(p.side.scale(Math.cos(theta) * radius))
+                .add(p.other.scale(Math.sin(theta) * radius));
+    }
+
+    /** Banded colour down the core: white-blue at the nozzle, stepping to orange at the tip. */
+    private static int coreColour(int segment, int segments, Parcel head, float partialTick) {
+        float t = segment / (float) (segments - 1);
+        float r = 0.62F + 0.38F * Math.min(1.0F, t * 1.7F);
+        float g = 0.80F - 0.40F * t;
+        float b = Math.max(0.0F, 1.0F - 1.9F * t);
+        // Bright near the nozzle, dropping off hard so the flame has a definite end.
+        float a = (float) Math.pow(1.0F - t, 1.6D) * (0.70F + 0.30F * head.throttle);
+        // Slow global flicker only; per-vertex noise here would soften the hard edges.
+        a *= 0.88F + 0.12F * hash(head.seed, 3);
+
+        int ai = (int) (Math.max(0.0F, Math.min(1.0F, a)) * 255.0F);
+        return (ai << 24) | ((int) (Math.min(1.0F, r) * 255.0F) << 16)
+                | ((int) (Math.min(1.0F, g) * 255.0F) << 8) | (int) (Math.min(1.0F, b) * 255.0F);
     }
 
     private void buildShell(VertexConsumer consumer, Matrix4f matrix, Parcel[] arr,
@@ -256,20 +331,13 @@ public class PlumeTrail {
         float b;
         float a;
         if (p.lit) {
-            r = 0.55F + 0.45F * Math.min(1.0F, t * 1.8F);
-            g = 0.74F - 0.34F * t;
-            // Blue has to collapse early and hard. Falling off as t^2 leaves the middle of the
-            // plume sitting at roughly equal red and blue, which reads as mauve, not flame.
-            b = Math.max(0.0F, 1.0F - 1.7F * t);
-            // Steeper than the geometric fade so the *bright* core stays short and the rest
-            // trails off as haze; a long uniformly-bright tube is what looked like liquid.
-            a = (float) Math.pow(1.0F - t, 2.2D) * (0.65F + 0.35F * p.throttle);
-            // Combustion is never steady. Flicker per parcel, not per plume, so the brightness
-            // ripples along the length instead of the whole thing pulsing at once.
-            a *= 0.78F + 0.22F * hash(p.seed, 7);
-            // Diamonds are bright *nodes*, not just pinches in the outline. Beading the
-            // brightness on the same period is what actually makes them read.
-            a *= 1.0F + 0.40F * (float) (Math.exp(-1.2D * t) * Math.sin(t * Math.PI * SHOCK_NODES));
+            // Cooling exhaust behind the flame: warm grey, never bright. Anything luminous here
+            // competes with the rigid core and drags the silhouette back toward looking fluid.
+            r = 1.0F;
+            g = 0.80F - 0.18F * t;
+            b = 0.62F - 0.30F * t;
+            a = fade * 0.16F * (0.4F + 0.6F * p.throttle);
+            a *= 0.80F + 0.20F * hash(p.seed, 7);
         } else {
             // Dry thrust is nearly invisible: just enough hot haze to catch the light.
             r = 1.0F;

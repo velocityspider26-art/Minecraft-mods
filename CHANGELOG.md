@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.4 — stiff flame
+
+The plume still read as fluid because the whole bright flame bent and flexed along the flight
+path like a hose. That was a design error on my part: it is true of the *gas parcels*, but a real
+reheat flame is anchored rigid to the nozzle and points straight down the engine axis. Only the
+cold smoke behind it curves.
+
+- The burning core is now built **separately from the emission history**, as a straight stack of
+  six-sided frusta along the *current* nozzle axis. It does not bend, lag or flex.
+- Flat per-segment colour instead of a smooth gradient. A continuous ramp reads as soft fluid;
+  banding gives the flame discrete structure.
+- Station radii taper to a point with a mild mach-diamond ripple. A first attempt rippled nearly
+  2:1 between stations and broke the flame into a string of separate hexagonal beads.
+- Six-sided rings with no per-vertex noise on the core, so the silhouette stays hard and faceted.
+- The parcel trail is demoted to faint warm-grey smoke. It still bends, lags and splashes against
+  terrain — that behaviour is intact — but it no longer competes with the flame for the
+  silhouette.
+
 ## 1.0.3 — blade z-fighting fix, flame-like plume
 
 ### Blades (the in-game screenshot showed shards, not blades)

@@ -26,9 +26,9 @@ os.makedirs(OUT_DIR, exist_ok=True)
 MAX_AGE = 12
 MAX_SAMPLES = 20
 RING = 12
-SHOCK_NODES = 5
-SHOCK_AMPLITUDE = 0.52
-TURBULENCE = 0.42
+CORE_RING = 6
+CORE_PROFILE = [1.000, 1.086, 1.039, 0.901, 0.781, 0.745, 0.758, 0.745, 0.666, 0.543, 0.419, 0.292, 0.060]
+TURBULENCE = 0.30
 WORLD_UP = np.array([0.0, 1.0, 0.0])
 
 W, H = 640, 360
@@ -54,24 +54,18 @@ def hash01(seed, k):
 def parcel_radius(p, partial=0.0):
     u = min(1.0, (p["age"] + partial) / MAX_AGE)
     r0 = 0.26 + 0.10 * p["throttle"]
-    if p["lit"]:
-        spindle = r0 * (1.0 + 0.9 * u) * (1.0 - u) ** 0.45
-        # mach diamonds
-        shock = 1.0 + SHOCK_AMPLITUDE * math.exp(-1.2 * u) * math.sin(u * math.pi * SHOCK_NODES)
-        return spindle * shock
-    return r0 * (1.0 + 1.9 * u)
+    return r0 * (1.0 + (2.4 if p["lit"] else 1.9) * u)
 
 
 def parcel_colour(p, alpha_scale):
     t = min(1.0, p["age"] / MAX_AGE)
     fade = (1.0 - t) ** 1.4
     if p["lit"]:
-        r = 0.55 + 0.45 * min(1.0, t * 1.8)
-        g = 0.74 - 0.34 * t
-        b = max(0.0, 1.0 - 1.7 * t)
-        a = (1.0 - t) ** 2.2 * (0.65 + 0.35 * p["throttle"])
-        a *= 0.78 + 0.22 * hash01(p["seed"], 7)
-        a *= 1.0 + 0.40 * math.exp(-1.2 * t) * math.sin(t * math.pi * SHOCK_NODES)
+        r = 1.0
+        g = 0.80 - 0.18 * t
+        b = 0.62 - 0.30 * t
+        a = fade * 0.16 * (0.4 + 0.6 * p["throttle"])
+        a *= 0.80 + 0.20 * hash01(p["seed"], 7)
     else:
         r, g, b = 1.0, 0.86, 0.72
         a = fade * 0.10 * (0.4 + 0.6 * p["throttle"])
@@ -145,8 +139,33 @@ def render(parcels, title, yaw=-40.0, pitch=-18.0, span=9.0, centre=None):
         q = M @ (v - centre)
         return np.array([q[0] * scale + W / 2.0, -q[1] * scale + H / 2.0])
 
-    # additive accumulation, inner core then outer halo
-    for radius_scale, alpha_scale in ((0.55, 1.0), (1.0, 0.40)):
+    # rigid burning core, anchored to the current nozzle axis
+    head = parcels[0]
+    if head["lit"]:
+        segs = len(CORE_PROFILE) - 1
+        r0 = 0.26 + 0.10 * head["throttle"]
+        length = min(head["clearance"], 1.9 + 3.2 * head["throttle"])
+        for i in range(segs):
+            za, zb = length * i / segs, length * (i + 1) / segs
+            ra, rb = r0 * CORE_PROFILE[i], r0 * CORE_PROFILE[i + 1]
+            pa = head["origin"] + head["dir"] * za
+            pb = head["origin"] + head["dir"] * zb
+            tt = i / (segs - 1)
+            col = np.array([0.62 + 0.38 * min(1.0, tt * 1.7),
+                            0.80 - 0.40 * tt,
+                            max(0.0, 1.0 - 1.9 * tt)])
+            al = (1.0 - tt) ** 1.6 * (0.70 + 0.30 * head["throttle"])
+            for k in range(CORE_RING):
+                t0 = (k / CORE_RING) * 2 * math.pi
+                t1 = ((k + 1) / CORE_RING) * 2 * math.pi
+                quad = [project(pa + head["side"] * math.cos(t0) * ra + head["other"] * math.sin(t0) * ra),
+                        project(pa + head["side"] * math.cos(t1) * ra + head["other"] * math.sin(t1) * ra),
+                        project(pb + head["side"] * math.cos(t1) * rb + head["other"] * math.sin(t1) * rb),
+                        project(pb + head["side"] * math.cos(t0) * rb + head["other"] * math.sin(t0) * rb)]
+                fill_quad(img, quad, col * al)
+
+    # faint cold trail
+    for radius_scale, alpha_scale in ((1.0, 0.14),):
         for i in range(len(parcels) - 1):
             a, b = parcels[i], parcels[i + 1]
             pa, pb = parcel_position(a), parcel_position(b)
