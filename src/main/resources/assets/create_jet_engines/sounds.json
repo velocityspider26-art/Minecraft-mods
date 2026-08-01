@@ -1,0 +1,62 @@
+{
+  "engine_start": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.engine_start",
+    "sounds": [
+      {
+        "name": "create_jet_engines:engine_start",
+        "stream": false
+      }
+    ]
+  },
+  "engine_idle": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.engine_idle",
+    "sounds": [
+      {
+        "name": "create_jet_engines:engine_idle",
+        "stream": false
+      }
+    ]
+  },
+  "engine_power": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.engine_power",
+    "sounds": [
+      {
+        "name": "create_jet_engines:engine_power",
+        "stream": false
+      }
+    ]
+  },
+  "engine_stop": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.engine_stop",
+    "sounds": [
+      {
+        "name": "create_jet_engines:engine_stop",
+        "stream": false
+      }
+    ]
+  },
+  "afterburner_ignite": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.afterburner_ignite",
+    "sounds": [
+      {
+        "name": "create_jet_engines:afterburner_ignite",
+        "stream": false
+      }
+    ]
+  },
+  "afterburner_loop": {
+    "category": "block",
+    "subtitle": "subtitles.create_jet_engines.afterburner_loop",
+    "sounds": [
+      {
+        "name": "create_jet_engines:afterburner_loop",
+        "stream": false
+      }
+    ]
+  }
+}

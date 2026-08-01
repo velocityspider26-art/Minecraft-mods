@@ -1,0 +1,42 @@
+{
+  "textures": {
+    "nozzle_petal": "create_jet_engines:block/nozzle_petal",
+    "nozzle_inner": "create_jet_engines:block/nozzle_inner",
+    "particle": "create_jet_engines:block/nozzle_petal"
+  },
+  "elements": [
+    {
+      "from": [
+        6.4,
+        11.0,
+        0.0
+      ],
+      "to": [
+        9.6,
+        13.4,
+        6.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nozzle_petal"
+        },
+        "east": {
+          "texture": "#nozzle_petal"
+        },
+        "south": {
+          "texture": "#nozzle_petal"
+        },
+        "west": {
+          "texture": "#nozzle_petal"
+        },
+        "up": {
+          "texture": "#nozzle_petal"
+        },
+        "down": {
+          "texture": "#nozzle_petal"
+        }
+      }
+    }
+  ],
+  "ambientocclusion": false
+}

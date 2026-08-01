@@ -1,0 +1,23 @@
+{
+  "itemGroup.create_jet_engines": "Create: Jet Engines",
+
+  "block.create_jet_engines.fan_module": "Fan Module",
+  "block.create_jet_engines.compressor_module": "Compressor Module",
+  "block.create_jet_engines.combustion_core": "Combustion Core",
+  "block.create_jet_engines.afterburner_module": "Afterburner Module",
+  "block.create_jet_engines.nozzle_module": "Nozzle Module",
+
+  "subtitles.create_jet_engines.engine_start": "Jet engine spools up",
+  "subtitles.create_jet_engines.engine_idle": "Jet engine idles",
+  "subtitles.create_jet_engines.engine_power": "Jet engine roars",
+  "subtitles.create_jet_engines.engine_stop": "Jet engine winds down",
+  "subtitles.create_jet_engines.afterburner_ignite": "Afterburner lights",
+  "subtitles.create_jet_engines.afterburner_loop": "Afterburner roars",
+
+  "engine.create_jet_engines.invalid.no_fan": "No fan module at the intake end",
+  "engine.create_jet_engines.invalid.no_compressor": "At least one compressor stage is required",
+  "engine.create_jet_engines.invalid.too_many_compressors": "Too many compressor stages",
+  "engine.create_jet_engines.invalid.no_nozzle": "No nozzle module at the exhaust end",
+  "engine.create_jet_engines.invalid.misaligned": "All modules must face the same way",
+  "engine.create_jet_engines.invalid.duplicate_module": "Duplicate module in the chain"
+}

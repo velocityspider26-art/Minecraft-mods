@@ -1,0 +1,42 @@
+{
+  "textures": {
+    "combustion_glow": "create_jet_engines:block/combustion_glow",
+    "particle": "create_jet_engines:block/combustion_glow"
+  },
+  "elements": [
+    {
+      "from": [
+        4.5,
+        4.5,
+        2.0
+      ],
+      "to": [
+        11.5,
+        11.5,
+        14.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#combustion_glow"
+        },
+        "east": {
+          "texture": "#combustion_glow"
+        },
+        "south": {
+          "texture": "#combustion_glow"
+        },
+        "west": {
+          "texture": "#combustion_glow"
+        },
+        "up": {
+          "texture": "#combustion_glow"
+        },
+        "down": {
+          "texture": "#combustion_glow"
+        }
+      },
+      "shade": false
+    }
+  ],
+  "ambientocclusion": false
+}

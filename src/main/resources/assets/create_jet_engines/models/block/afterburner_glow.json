@@ -1,0 +1,42 @@
+{
+  "textures": {
+    "afterburner_glow": "create_jet_engines:block/afterburner_glow",
+    "particle": "create_jet_engines:block/afterburner_glow"
+  },
+  "elements": [
+    {
+      "from": [
+        5.0,
+        5.0,
+        1.0
+      ],
+      "to": [
+        11.0,
+        11.0,
+        15.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#afterburner_glow"
+        },
+        "east": {
+          "texture": "#afterburner_glow"
+        },
+        "south": {
+          "texture": "#afterburner_glow"
+        },
+        "west": {
+          "texture": "#afterburner_glow"
+        },
+        "up": {
+          "texture": "#afterburner_glow"
+        },
+        "down": {
+          "texture": "#afterburner_glow"
+        }
+      },
+      "shade": false
+    }
+  ],
+  "ambientocclusion": false
+}

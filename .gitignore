@@ -38,3 +38,9 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Dependency jars (fetched, not committed — see tools/fetch_dependencies.py)
+libs/*.jar
+
+### Local scratch
+run/
