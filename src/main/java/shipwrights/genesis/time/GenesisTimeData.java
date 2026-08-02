@@ -38,4 +38,10 @@ public class GenesisTimeData extends SavedData {
         timeOffset += delta;
         setDirty();
     }
+
+    public void setOffset(long offset) {
+        if (timeOffset == offset) return;
+        timeOffset = offset;
+        setDirty();
+    }
 }

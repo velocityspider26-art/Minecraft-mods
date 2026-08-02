@@ -33,7 +33,10 @@ import java.util.concurrent.TimeUnit;
  */
 final class PlanetVoxelInterestManager implements AutoCloseable {
     private static final int MAX_RESIDENT_SNAPSHOT = 100_000;
-    private static final int MAX_BASELINE_ROOTS = 384;
+    // Enough for every root of a complete coarse cube: six faces x 8x8 bricks
+    // x two vertical layers at the coverage LOD. Sending half of them left the
+    // far side of the planet with nothing to draw at all.
+    private static final int MAX_BASELINE_ROOTS = 1024;
     private static final int MAX_DESIRED_BRICKS = 8_192;
     private static final int MAX_PREDICTION_REQUESTS = 512;
     private static final int MAX_PENDING_PER_PLAYER = 10_000;

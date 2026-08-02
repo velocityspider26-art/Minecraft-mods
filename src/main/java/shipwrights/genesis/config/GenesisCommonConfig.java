@@ -35,10 +35,16 @@ public class GenesisCommonConfig {
         // Enabled for the overworld only. Sampling is isolated on a dedicated
         // minimum-priority thread, pauses during crossings, and never touches
         // Minecraft's worldgen executor. Slow planetary generators are skipped.
+        // Off by default now. This sampler exists to paint the six-face Earth
+        // texture, and Earth is no longer painted — the voxel pyramid draws it
+        // from real block data. Its only remaining effect is to spend a couple
+        // of minutes of CPU on six 8192-block regions at world join, competing
+        // with the terrain prediction that does feed the visible planet, and
+        // then discard the result.
         planetSurfaceSampling = builder
-                .comment("Build Earth's six-face world LOD from generated Minecraft world columns.",
-                        "Runs on one low-priority thread and pauses during dimension crossings.")
-                .define("planetSurfaceSampling", true);
+                .comment("Legacy: build Earth's six-face painted world texture.",
+                        "Superseded by the planet voxel engine; leave off unless debugging.")
+                .define("planetSurfaceSampling", false);
         return builder.build();
     }
 

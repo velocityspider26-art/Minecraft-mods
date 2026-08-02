@@ -52,7 +52,20 @@ public final class PlanetVoxelService {
     private static final int MAX_CHUNKS_PER_TICK = 1;
     private static final int MAX_PENDING_JOBS = 6;
     private static final int MAX_RESTORED_BRICKS = 100_000;
-    private static final int MAX_LOD = 9;
+    /**
+     * Coarsest level the pyramid builds.
+     *
+     * <p>Tied to the level the complete cube is actually generated at. Building
+     * higher is not free detail, it is the opposite: the LOD selector starts at
+     * the coarsest resident brick and only descends when every occupied child is
+     * present, so a pyramid topped at 9 makes the planet's initial state three
+     * bricks the size of a whole cube face, drawn as 512-block voxels. Topping
+     * out where the data really begins makes that initial state the 64-block
+     * voxels the prediction pass produces.</p>
+     */
+    private static int maximumLod() {
+        return PlanetVoxelPredictionManager.completeCoverageLod();
+    }
     private static final long MEMORY_BUDGET = 2L * 1024L * 1024L * 1024L;
     private static final long FLUSH_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(2L);
 
@@ -405,7 +418,7 @@ public final class PlanetVoxelService {
         Path root = server.getWorldPath(LevelResource.ROOT)
                 .resolve("genesis").resolve("planet_voxels");
         disk = new PlanetVoxelRegionStore(root);
-        pyramid = new PlanetVoxelPyramid(memory, disk, REVISIONS, MAX_LOD);
+        pyramid = new PlanetVoxelPyramid(memory, disk, REVISIONS, maximumLod());
         interests = new PlanetVoxelInterestManager(server, memory,
                 PlanetVoxelService::requestPredictions);
         worker = Executors.newSingleThreadExecutor(runnable -> {

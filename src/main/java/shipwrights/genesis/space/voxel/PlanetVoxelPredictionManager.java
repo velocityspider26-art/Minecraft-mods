@@ -13,6 +13,8 @@ import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.material.MapColor;
 import shipwrights.genesis.GenesisMod;
@@ -293,6 +295,53 @@ final class PlanetVoxelPredictionManager implements AutoCloseable {
             NoiseColumn column = generator.getBaseColumn(
                     worldX, worldZ, heightAccessor, randomState);
             return worldY -> material(column.getBlock(worldY), worldX, worldY, worldZ);
+        }
+
+        /**
+         * The cheap path used for coarse bricks.
+         *
+         * <p>{@code getBaseColumn} evaluates the noise router over an entire
+         * column and materialises every block in it; the complete coarse cube
+         * needs a quarter of a million of those, which is minutes of CPU before
+         * the planet looks like anything. {@code getBaseHeight} answers the one
+         * question a 64-block voxel can actually represent — where the ground
+         * stops — and the sampler fills the column from that.</p>
+         */
+        @Override
+        public PlanetVoxelPredictionSampler.HeightColumn heightColumn(int worldX, int worldZ) {
+            int surfaceY = generator.getBaseHeight(worldX, worldZ,
+                    Heightmap.Types.OCEAN_FLOOR_WG, heightAccessor, randomState);
+            Holder<Biome> biome = biomeSource.getNoiseBiome(
+                    QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY),
+                    QuartPos.fromBlock(worldZ), climateSampler);
+
+            int seaLevel = generator.getSeaLevel();
+            // Surface block chosen from the biome rather than read out of the
+            // world. Running surface rules would mean building the column again,
+            // and at 64 blocks per voxel the only distinction that survives is
+            // roughly "snow, sand, grass or seabed" — which temperature and sea
+            // level already answer. Real surface blocks arrive with the chunk.
+            float temperature = biome.value().getBaseTemperature();
+            BlockState surfaceState;
+            if (surfaceY <= seaLevel) {
+                surfaceState = Blocks.SAND.defaultBlockState();
+            } else if (temperature <= 0.15f) {
+                surfaceState = Blocks.SNOW_BLOCK.defaultBlockState();
+            } else if (temperature >= 1.5f) {
+                surfaceState = Blocks.SAND.defaultBlockState();
+            } else {
+                surfaceState = Blocks.GRASS_BLOCK.defaultBlockState();
+            }
+            long surface = material(surfaceState, worldX, Math.max(surfaceY - 1, 0), worldZ);
+            long subsurface = material(Blocks.STONE.defaultBlockState(),
+                    worldX, Math.max(surfaceY - 8, 0), worldZ);
+
+            long fluid = seaLevel > surfaceY
+                    ? material(Blocks.WATER.defaultBlockState(), worldX, seaLevel - 1, worldZ)
+                    : PlanetVoxelMaterial.AIR;
+            return new PlanetVoxelPredictionSampler.HeightColumn(surfaceY,
+                    seaLevel > surfaceY ? seaLevel : Integer.MIN_VALUE,
+                    surface, subsurface, fluid);
         }
 
         private long material(BlockState state, int worldX, int worldY, int worldZ) {
