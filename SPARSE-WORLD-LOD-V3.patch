@@ -1,0 +1,1398 @@
+--- a/gradle.properties	2026-07-31 12:03:46.000000000 +0000
++++ b/gradle.properties	2026-07-31 14:23:18.601310526 +0000
+@@ -8,7 +8,7 @@
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port-dh-cube-lod1
++mod_version=1.21.1-0.8.0-port-sparse-world-lod3
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+--- a/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 11:56:42.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 14:10:44.881335916 +0000
+@@ -6,6 +6,7 @@
+ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.client.lod.DhCubeLodBridge;
++import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
+ 
+ /**
+  * Drops sampled planet surfaces when leaving a world.
+@@ -23,5 +24,6 @@
+     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+         DhCubeLodBridge.clear();
+         PlanetSurfaceTextures.clear();
++        SparsePlanetLodClientCache.clear();
+     }
+ }
+--- a/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 13:05:17.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 14:08:46.241339912 +0000
+@@ -125,7 +125,12 @@
+         }
+     }
+ 
+-    /** Called every high-altitude frame. It never performs repository I/O. */
++    /**
++     * Called every high-altitude frame. Repository work is event-driven: DH's
++     * chunk-modified event and Genesis' server sparse-tile stream identify the
++     * exact places that changed. The old rotating 49x49-chunk sweep was removed
++     * because it still behaved like a continuous local scan.
++     */
+     public static void update(IDhApiLevelWrapper wrapper, CubeNetSurfaceTransform nextTransform,
+                               ClientLevel level, double cameraX, double cameraZ) {
+         if (wrapper == null || nextTransform == null || level == null) {
+@@ -136,25 +141,6 @@
+         } else {
+             transform = nextTransform;
+         }
+-
+-        long now = System.nanoTime();
+-        if (now >= nextSweepNanos) {
+-            nextSweepNanos = now + SWEEP_INTERVAL_NANOS;
+-            int centerX = floorToInt(cameraX) >> 4;
+-            int centerZ = floorToInt(cameraZ) >> 4;
+-            if (centerX != sweepCenterChunkX || centerZ != sweepCenterChunkZ) {
+-                sweepCenterChunkX = centerX;
+-                sweepCenterChunkZ = centerZ;
+-                sweepCursor = 0;
+-            }
+-            // Queue a small rotating slice. This catches loaded/generated chunks
+-            // even if a third-party event was missed, without making flight a
+-            // world-scanning benchmark.
+-            for (int i = 0; i < 12; i++) {
+-                int[] offset = SWEEP_OFFSETS[sweepCursor++ % SWEEP_OFFSETS.length];
+-                markDirty(centerX + offset[0], centerZ + offset[1]);
+-            }
+-        }
+         scheduleWorker();
+     }
+ 
+--- a/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 12:58:22.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 14:10:32.313336339 +0000
+@@ -19,13 +19,20 @@
+ import org.joml.Vector3d;
+ import org.joml.Vector3dc;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.PlanetSurfaceTextures;
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
+ import shipwrights.genesis.space.renderer.CelestialRenderCoordinates;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
++import shipwrights.genesis.space.surface.SparsePlanetLodTile;
+ import shipwrights.genesis.teleportation.CubeFaceFrame;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
++import java.util.Arrays;
++import java.util.Comparator;
++
+ /**
+  * Carries the exact DH chunk patches into orbital space.
+  *
+@@ -55,7 +62,8 @@
+             return;
+         }
+         DhLiveChunkPatchCache.Patch[] patches = DhLiveChunkPatchCache.snapshot();
+-        if (patches.length == 0) {
++        SparsePlanetLodTile[] sparseTiles = SparsePlanetLodClientCache.snapshot(SparsePlanetLodService.EARTH_ID);
++        if (patches.length == 0 && sparseTiles.length == 0) {
+             return;
+         }
+ 
+@@ -106,6 +114,12 @@
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+ 
++        PlanetSurfaceData coarseSurface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
++        int seaLevel = coarseSurface != null && coarseSurface.isValid()
++                ? coarseSurface.seaLevel() : DhLiveChunkPatchCache.seaLevel();
++        renderSparseTiles(buffer, view, sparseTiles, transform, planetPosition, planetRotation,
++                renderedHalfExtent, worldToRendered, localToCamera, seaLevel, apparentHalf);
++
+         int rendered = 0;
+         for (int patchIndex = patches.length - 1;
+              patchIndex >= 0 && rendered < maximumPatches;
+@@ -124,6 +138,121 @@
+         RenderSystem.depthMask(true);
+     }
+ 
++
++    private static void renderSparseTiles(VertexConsumer buffer, Matrix4f view,
++                                          SparsePlanetLodTile[] tiles,
++                                          CubeNetSurfaceTransform transform,
++                                          Vector3d planetPosition, Quaterniondc planetRotation,
++                                          double renderedHalfExtent, double worldToRendered,
++                                          Vector3d localToCamera, int seaLevel,
++                                          double apparentHalf) {
++        if (tiles.length == 0) {
++            return;
++        }
++        Arrays.sort(tiles, Comparator.comparingInt(SparsePlanetLodTile::cellSize).reversed());
++        int maximum = apparentHalf >= 0.20 ? 3072 : apparentHalf >= 0.075 ? 2048 : 768;
++        int rendered = 0;
++        for (SparsePlanetLodTile tile : tiles) {
++            if (rendered >= maximum) {
++                break;
++            }
++            Vector3dc normal = CubeFaceFrame.axes(tile.face()).up();
++            if (localToCamera.dot(normal) < -0.035) {
++                continue;
++            }
++            int step = apparentHalf >= 0.20 ? 1
++                    : apparentHalf >= 0.075 ? (tile.cellSize() >= 64 ? 2 : 1)
++                    : (tile.cellSize() >= 16 ? 2 : 1);
++            double nudge = tile.exact() ? 0.055
++                    : tile.cellSize() <= 4 ? 0.042
++                    : tile.cellSize() <= 16 ? 0.028 : 0.014;
++            for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z += step) {
++                int z1 = Math.min(SparsePlanetLodTile.RESOLUTION, z + step);
++                for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x += step) {
++                    int x1 = Math.min(SparsePlanetLodTile.RESOLUTION, x + step);
++                    int index = tile.index(x, z);
++                    int colour = tile.colours()[index];
++                    if ((colour >>> 24) == 0) {
++                        continue;
++                    }
++                    int height = tile.heights()[index];
++                    double wx0 = tile.originX() + (double) x * tile.cellSize();
++                    double wx1 = tile.originX() + (double) x1 * tile.cellSize();
++                    double wz0 = tile.originZ() + (double) z * tile.cellSize();
++                    double wz1 = tile.originZ() + (double) z1 * tile.cellSize();
++                    Vector3d p00 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
++                            renderedHalfExtent, worldToRendered, wx0, wz0, height, seaLevel, nudge);
++                    Vector3d p10 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
++                            renderedHalfExtent, worldToRendered, wx1, wz0, height, seaLevel, nudge);
++                    Vector3d p11 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
++                            renderedHalfExtent, worldToRendered, wx1, wz1, height, seaLevel, nudge);
++                    Vector3d p01 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
++                            renderedHalfExtent, worldToRendered, wx0, wz1, height, seaLevel, nudge);
++                    addVertex(buffer, view, p01, colour);
++                    addVertex(buffer, view, p11, colour);
++                    addVertex(buffer, view, p10, colour);
++                    addVertex(buffer, view, p00, colour);
++
++                    if (tile.cellSize() <= 16 && step == 1) {
++                        int east = x1 < SparsePlanetLodTile.RESOLUTION
++                                ? tile.heights()[tile.index(x1, z)] : height;
++                        if (east != height) {
++                            addSparseWall(buffer, view, tile.face(), transform, planetPosition, planetRotation,
++                                    renderedHalfExtent, worldToRendered, wx1, wz0, wx1, wz1,
++                                    height, east, seaLevel, darken(colour, 0.66));
++                        }
++                        int south = z1 < SparsePlanetLodTile.RESOLUTION
++                                ? tile.heights()[tile.index(x, z1)] : height;
++                        if (south != height) {
++                            addSparseWall(buffer, view, tile.face(), transform, planetPosition, planetRotation,
++                                    renderedHalfExtent, worldToRendered, wx0, wz1, wx1, wz1,
++                                    height, south, seaLevel, darken(colour, 0.76));
++                        }
++                    }
++                }
++            }
++            rendered++;
++        }
++    }
++
++    private static void addSparseWall(VertexConsumer buffer, Matrix4f view,
++                                      CubeNetSurfaceTransform.Face face,
++                                      CubeNetSurfaceTransform transform,
++                                      Vector3d planetPosition, Quaterniondc rotation,
++                                      double renderedHalfExtent, double worldToRendered,
++                                      double x0, double z0, double x1, double z1,
++                                      int heightA, int heightB, int seaLevel, int colour) {
++        int low = Math.min(heightA, heightB);
++        int high = Math.max(heightA, heightB);
++        Vector3d p0l = sparseOrbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x0, z0, low, seaLevel, 0.008);
++        Vector3d p1l = sparseOrbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x1, z1, low, seaLevel, 0.008);
++        Vector3d p1h = sparseOrbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x1, z1, high, seaLevel, 0.008);
++        Vector3d p0h = sparseOrbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x0, z0, high, seaLevel, 0.008);
++        addVertex(buffer, view, p0l, colour);
++        addVertex(buffer, view, p1l, colour);
++        addVertex(buffer, view, p1h, colour);
++        addVertex(buffer, view, p0h, colour);
++    }
++
++    private static Vector3d sparseOrbitalPoint(CubeNetSurfaceTransform.Face face,
++                                               CubeNetSurfaceTransform transform,
++                                               Vector3d planetPosition, Quaterniondc rotation,
++                                               double renderedHalfExtent, double worldToRendered,
++                                               double worldX, double worldZ, double height,
++                                               int seaLevel, double nudge) {
++        double u = (worldX - transform.faceCenterX(face)) * worldToRendered;
++        double v = (worldZ - transform.faceCenterZ(face)) * worldToRendered;
++        double elevation = (height - seaLevel) * worldToRendered
++                + nudge * Math.max(0.05, worldToRendered);
++        return CubeFaceFrame.cubePoint(face, u, v, renderedHalfExtent, elevation)
++                .rotate(rotation)
++                .add(planetPosition);
++    }
++
+     private static void renderPatch(VertexConsumer buffer, Matrix4f view,
+                                     DhLiveChunkPatchCache.Patch patch,
+                                     CubeNetSurfaceTransform transform,
+--- a/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java	2026-07-31 14:05:04.213347392 +0000
+@@ -0,0 +1,57 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.resources.ResourceLocation;
++import shipwrights.genesis.space.surface.SparsePlanetLodTile;
++
++import java.util.LinkedHashMap;
++import java.util.Map;
++
++/** Client-side bounded cache for server-authored sparse cube-face terrain. */
++public final class SparsePlanetLodClientCache {
++    private static final int MAX_TILES_PER_PLANET = 12_288;
++    private static final Object LOCK = new Object();
++    private static final Map<ResourceLocation, LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile>> TILES =
++            new LinkedHashMap<>();
++
++    private SparsePlanetLodClientCache() {
++    }
++
++    public static void accept(ResourceLocation planet, SparsePlanetLodTile tile) {
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles =
++                    TILES.computeIfAbsent(planet, ignored -> new LinkedHashMap<>(256, 0.75f, true));
++            SparsePlanetLodTile previous = planetTiles.get(tile.key());
++            if (previous != null && previous.revision() > tile.revision()) {
++                return;
++            }
++            planetTiles.put(tile.key(), tile);
++            while (planetTiles.size() > MAX_TILES_PER_PLANET) {
++                SparsePlanetLodTile.Key eldest = planetTiles.keySet().iterator().next();
++                planetTiles.remove(eldest);
++            }
++        }
++    }
++
++    public static SparsePlanetLodTile[] snapshot(ResourceLocation planet) {
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles = TILES.get(planet);
++            if (planetTiles == null || planetTiles.isEmpty()) {
++                return new SparsePlanetLodTile[0];
++            }
++            return planetTiles.values().toArray(SparsePlanetLodTile[]::new);
++        }
++    }
++
++    public static int tileCount(ResourceLocation planet) {
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles = TILES.get(planet);
++            return planetTiles == null ? 0 : planetTiles.size();
++        }
++    }
++
++    public static void clear() {
++        synchronized (LOCK) {
++            TILES.clear();
++        }
++    }
++}
+--- a/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 12:56:56.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 14:09:41.193338061 +0000
+@@ -22,10 +22,15 @@
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.surface.PlanetSurfaceData;
+ import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.space.surface.SparsePlanetLodTile;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
+ import shipwrights.genesis.teleportation.CubeFaceFrame;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
++import java.util.Arrays;
++import java.util.Comparator;
++
+ /**
+  * Renders the overworld's own DH terrain as one continuous world-to-cube LOD.
+  *
+@@ -125,6 +130,8 @@
+         RenderSystem.depthMask(true);
+         renderCubeNet(buffer, view, camera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
++        renderSparseLodTiles(buffer, view, camera, transform, currentFace, surface,
++                lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         renderLiveChunkPatches(buffer, view, camera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         source.endBatch(LOD_RENDER_TYPE);
+@@ -136,7 +143,9 @@
+             GenesisMod.LOGGER.info(
+                     "[DH-CUBE] world-to-planet LOD visible at y={}; face={}, DH columns={}",
+                     Mth.floor(camera.y), currentFace, DhCubeLodBridge.successfulColumns() + " base / "
+-                            + DhLiveChunkPatchCache.patchCount() + " exact chunks");
++                            + DhLiveChunkPatchCache.patchCount() + " DH exact chunks / "
++                            + SparsePlanetLodClientCache.tileCount(SparsePlanetLodService.EARTH_ID)
++                            + " sparse tiles");
+         }
+         if (foldAlpha >= 0.999f && !loggedFolded) {
+             loggedFolded = true;
+@@ -225,6 +234,120 @@
+         }
+     }
+ 
++
++    /**
++     * Draws the sparse server-authored hierarchy between the 64x64 global face
++     * and exact chunks. Coarse tiles are rendered first and progressively finer
++     * tiles sit a fraction farther outward, so an explored region replaces its
++     * prediction without a sharp square or z-fighting.
++     */
++    private static void renderSparseLodTiles(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                             CubeNetSurfaceTransform transform,
++                                             CubeNetSurfaceTransform.Face currentFace,
++                                             PlanetSurfaceData surface,
++                                             float lodAlpha, float foldAlpha,
++                                             float centerFillAlpha,
++                                             int vanillaRadius,
++                                             double vanillaGroundRadius) {
++        SparsePlanetLodTile[] tiles = SparsePlanetLodClientCache.snapshot(SparsePlanetLodService.EARTH_ID);
++        if (tiles.length == 0) {
++            return;
++        }
++        Arrays.sort(tiles, Comparator.comparingInt(SparsePlanetLodTile::cellSize).reversed());
++
++        double currentCenterX = transform.faceCenterX(currentFace);
++        double currentCenterZ = transform.faceCenterZ(currentFace);
++        double cubeCenterY = surface.seaLevel() - transform.faceHalfSpan();
++        double renderScale = renderDistanceCompression(
++                camera, currentCenterX, cubeCenterY, currentCenterZ, vanillaRadius);
++        int lodRadius = GenesisClientConfig.getWorldLodRadius();
++        int quality = GenesisClientConfig.getWorldLodQuality();
++        int rendered = 0;
++
++        for (SparsePlanetLodTile tile : tiles) {
++            if (rendered >= 3072) {
++                break;
++            }
++            boolean current = tile.face() == currentFace;
++            float baseAlpha = current ? lodAlpha : foldAlpha;
++            if (baseAlpha <= 0.002f) {
++                continue;
++            }
++            int step = tile.exact() ? 1
++                    : quality == 1 ? Math.max(1, tile.cellSize() >= 16 ? 2 : 1)
++                    : quality == 2 && tile.cellSize() >= 64 ? 2 : 1;
++            double nudge = tile.exact() ? 0.11
++                    : tile.cellSize() <= 4 ? 0.085
++                    : tile.cellSize() <= 16 ? 0.055 : 0.025;
++
++            for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z += step) {
++                int z1 = Math.min(SparsePlanetLodTile.RESOLUTION, z + step);
++                for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x += step) {
++                    int x1 = Math.min(SparsePlanetLodTile.RESOLUTION, x + step);
++                    int index = tile.index(x, z);
++                    int colour = tile.colours()[index];
++                    if ((colour >>> 24) == 0) {
++                        continue;
++                    }
++                    double wx0 = tile.originX() + (double) x * tile.cellSize();
++                    double wx1 = tile.originX() + (double) x1 * tile.cellSize();
++                    double wz0 = tile.originZ() + (double) z * tile.cellSize();
++                    double wz1 = tile.originZ() + (double) z1 * tile.cellSize();
++                    double centerX = (wx0 + wx1) * 0.5;
++                    double centerZ = (wz0 + wz1) * 0.5;
++                    float alpha = baseAlpha;
++                    if (current) {
++                        double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
++                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 48.0);
++                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.12 + 24.0);
++                        float outerBand = distanceBand(distance, near0, near1,
++                                lodRadius * 0.995, lodRadius);
++                        alpha *= Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
++                    }
++                    if (alpha <= 0.002f) {
++                        continue;
++                    }
++
++                    int height = tile.heights()[index];
++                    Vector3d p00 = livePoint(tile.face(), currentFace, transform, surface,
++                            wx0, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, nudge);
++                    Vector3d p10 = livePoint(tile.face(), currentFace, transform, surface,
++                            wx1, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, nudge);
++                    Vector3d p11 = livePoint(tile.face(), currentFace, transform, surface,
++                            wx1, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, nudge);
++                    Vector3d p01 = livePoint(tile.face(), currentFace, transform, surface,
++                            wx0, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, nudge);
++                    addVertex(buffer, view, camera, p01, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p11, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p10, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p00, renderScale, colour, alpha);
++
++                    if (tile.cellSize() <= 16 && step == 1) {
++                        int eastHeight = x1 < SparsePlanetLodTile.RESOLUTION
++                                ? tile.heights()[tile.index(x1, z)]
++                                : coarseHeight(surface, tile.face(), transform, wx1, centerZ);
++                        if (eastHeight != height) {
++                            addLiveWall(buffer, view, camera, tile.face(), currentFace, transform, surface,
++                                    wx1, wz0, wx1, wz1, height, eastHeight, foldAlpha,
++                                    currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                    darken(colour, 0.70), alpha);
++                        }
++                        int southHeight = z1 < SparsePlanetLodTile.RESOLUTION
++                                ? tile.heights()[tile.index(x, z1)]
++                                : coarseHeight(surface, tile.face(), transform, centerX, wz1);
++                        if (southHeight != height) {
++                            addLiveWall(buffer, view, camera, tile.face(), currentFace, transform, surface,
++                                    wx0, wz1, wx1, wz1, height, southHeight, foldAlpha,
++                                    currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                    darken(colour, 0.79), alpha);
++                        }
++                    }
++                }
++            }
++            rendered++;
++        }
++    }
++
+ 
+     /**
+      * Draws exact DH chunk columns over the coarse planetary atlas.
+--- a/src/main/java/shipwrights/genesis/mixin/LevelChunkSparseLodMixin.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/mixin/LevelChunkSparseLodMixin.java	2026-07-31 14:13:29.877330358 +0000
+@@ -0,0 +1,28 @@
++package shipwrights.genesis.mixin;
++
++import net.minecraft.core.BlockPos;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.Level;
++import net.minecraft.world.level.block.state.BlockState;
++import net.minecraft.world.level.chunk.LevelChunk;
++import org.spongepowered.asm.mixin.Final;
++import org.spongepowered.asm.mixin.Mixin;
++import org.spongepowered.asm.mixin.Shadow;
++import org.spongepowered.asm.mixin.injection.At;
++import org.spongepowered.asm.mixin.injection.Inject;
++import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
++
++/** Marks only the real loaded chunk that actually changed; no polling scan. */
++@Mixin(value = LevelChunk.class, priority = 1490)
++public abstract class LevelChunkSparseLodMixin {
++    @Shadow @Final private Level level;
++
++    @Inject(method = "setBlockState", at = @At("RETURN"), require = 0)
++    private void genesis$markSparsePlanetLodDirty(BlockPos pos, BlockState state, boolean isMoving,
++                                                   CallbackInfoReturnable<BlockState> cir) {
++        if (cir.getReturnValue() != null && this.level instanceof ServerLevel serverLevel) {
++            SparsePlanetLodService.markChunkDirty(serverLevel, pos.getX() >> 4, pos.getZ() >> 4);
++        }
++    }
++}
+--- a/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java	2026-07-31 05:12:50.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java	2026-07-31 14:13:38.909330054 +0000
+@@ -10,7 +10,7 @@
+ 
+ public class GenesisNetworking {
+ 
+-    private static final String PROTOCOL_VERSION = "1";
++    private static final String PROTOCOL_VERSION = "2";
+ 
+     public static void register(RegisterPayloadHandlersEvent event) {
+         PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+@@ -22,11 +22,7 @@
+         registrar.playToClient(HyperspaceStatePacket.TYPE, HyperspaceStatePacket.STREAM_CODEC, HyperspaceStatePacket::handle);
+         registrar.playToClient(SyncTimeOffsetPacket.TYPE, SyncTimeOffsetPacket.STREAM_CODEC, SyncTimeOffsetPacket::handle);
+         registrar.playToClient(PlanetSurfacePacket.TYPE, PlanetSurfacePacket.STREAM_CODEC, PlanetSurfacePacket::handle);
+-        registrar.playToClient(ShipVisibilityProbePacket.TYPE, ShipVisibilityProbePacket.STREAM_CODEC,
+-                ShipVisibilityProbePacket::handle);
+-        registrar.playToServer(TransitionReadyPacket.TYPE, TransitionReadyPacket.STREAM_CODEC, TransitionReadyPacket::handle);
+-        registrar.playToServer(ShipVisibilityStatusPacket.TYPE, ShipVisibilityStatusPacket.STREAM_CODEC,
+-                ShipVisibilityStatusPacket::handle);
++        registrar.playToClient(SparsePlanetLodTilePacket.TYPE, SparsePlanetLodTilePacket.STREAM_CODEC, SparsePlanetLodTilePacket::handle);
+     }
+ 
+     public static void sendToAll(CustomPacketPayload packet) {
+--- a/src/main/java/shipwrights/genesis/networking/SparsePlanetLodTilePacket.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/networking/SparsePlanetLodTilePacket.java	2026-07-31 14:05:29.241346549 +0000
+@@ -0,0 +1,94 @@
++package shipwrights.genesis.networking;
++
++import io.netty.buffer.ByteBuf;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.network.codec.ByteBufCodecs;
++import net.minecraft.network.codec.StreamCodec;
++import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
++import net.minecraft.resources.ResourceLocation;
++import net.neoforged.neoforge.network.handling.IPayloadContext;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
++import shipwrights.genesis.space.surface.SparsePlanetLodTile;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++/** Streams one sparse LOD patch; packets are small and independently replaceable. */
++public record SparsePlanetLodTilePacket(
++        ResourceLocation planet,
++        int faceOrdinal,
++        int originX,
++        int originZ,
++        int cellSize,
++        boolean exact,
++        long revision,
++        short[] heights,
++        int[] colours) implements CustomPacketPayload {
++
++    public static final Type<SparsePlanetLodTilePacket> TYPE = new Type<>(
++            ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "sparse_planet_lod_tile"));
++
++    public static final StreamCodec<ByteBuf, SparsePlanetLodTilePacket> STREAM_CODEC =
++            StreamCodec.of(SparsePlanetLodTilePacket::write, SparsePlanetLodTilePacket::read);
++
++    public static SparsePlanetLodTilePacket of(ResourceLocation planet, SparsePlanetLodTile tile) {
++        return new SparsePlanetLodTilePacket(
++                planet, tile.face().ordinal(), tile.originX(), tile.originZ(), tile.cellSize(),
++                tile.exact(), tile.revision(), tile.heights(), tile.colours());
++    }
++
++    public SparsePlanetLodTile toTile() {
++        CubeNetSurfaceTransform.Face[] faces = CubeNetSurfaceTransform.Face.values();
++        if (faceOrdinal < 0 || faceOrdinal >= faces.length) {
++            throw new IllegalArgumentException("Invalid cube face ordinal " + faceOrdinal);
++        }
++        return new SparsePlanetLodTile(faces[faceOrdinal], originX, originZ, cellSize,
++                exact, revision, heights, colours);
++    }
++
++    private static void write(ByteBuf raw, SparsePlanetLodTilePacket packet) {
++        FriendlyByteBuf buffer = new FriendlyByteBuf(raw);
++        ResourceLocation.STREAM_CODEC.encode(buffer, packet.planet());
++        ByteBufCodecs.VAR_INT.encode(raw, packet.faceOrdinal());
++        raw.writeInt(packet.originX());
++        raw.writeInt(packet.originZ());
++        ByteBufCodecs.VAR_INT.encode(raw, packet.cellSize());
++        raw.writeBoolean(packet.exact());
++        raw.writeLong(packet.revision());
++        for (short height : packet.heights()) {
++            raw.writeShort(height);
++        }
++        for (int colour : packet.colours()) {
++            raw.writeInt(colour);
++        }
++    }
++
++    private static SparsePlanetLodTilePacket read(ByteBuf raw) {
++        FriendlyByteBuf buffer = new FriendlyByteBuf(raw);
++        ResourceLocation planet = ResourceLocation.STREAM_CODEC.decode(buffer);
++        int face = ByteBufCodecs.VAR_INT.decode(raw);
++        int originX = raw.readInt();
++        int originZ = raw.readInt();
++        int cellSize = ByteBufCodecs.VAR_INT.decode(raw);
++        boolean exact = raw.readBoolean();
++        long revision = raw.readLong();
++        short[] heights = new short[SparsePlanetLodTile.CELL_COUNT];
++        int[] colours = new int[SparsePlanetLodTile.CELL_COUNT];
++        for (int i = 0; i < heights.length; i++) {
++            heights[i] = raw.readShort();
++        }
++        for (int i = 0; i < colours.length; i++) {
++            colours[i] = raw.readInt();
++        }
++        return new SparsePlanetLodTilePacket(planet, face, originX, originZ, cellSize,
++                exact, revision, heights, colours);
++    }
++
++    @Override
++    public Type<? extends CustomPacketPayload> type() {
++        return TYPE;
++    }
++
++    public static void handle(SparsePlanetLodTilePacket packet, IPayloadContext context) {
++        context.enqueueWork(() -> SparsePlanetLodClientCache.accept(packet.planet(), packet.toTile()));
++    }
++}
+--- a/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 14:26:51.873303342 +0000
+@@ -0,0 +1,535 @@
++package shipwrights.genesis.space.surface;
++
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Holder;
++import net.minecraft.core.QuartPos;
++import net.minecraft.resources.ResourceLocation;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerChunkCache;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.util.Mth;
++import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.Level;
++import net.minecraft.world.level.LevelHeightAccessor;
++import net.minecraft.world.level.NoiseColumn;
++import net.minecraft.world.level.biome.Biome;
++import net.minecraft.world.level.biome.BiomeSource;
++import net.minecraft.world.level.biome.Climate;
++import net.minecraft.world.level.block.state.BlockState;
++import net.minecraft.world.level.chunk.ChunkGenerator;
++import net.minecraft.world.level.chunk.LevelChunk;
++import net.minecraft.world.level.levelgen.Heightmap;
++import net.minecraft.world.level.levelgen.RandomState;
++import net.minecraft.world.level.material.MapColor;
++import net.neoforged.bus.api.SubscribeEvent;
++import net.neoforged.fml.common.EventBusSubscriber;
++import net.neoforged.neoforge.event.entity.player.PlayerEvent;
++import net.neoforged.neoforge.event.level.ChunkEvent;
++import net.neoforged.neoforge.event.server.ServerStoppedEvent;
++import net.neoforged.neoforge.event.tick.ServerTickEvent;
++import net.neoforged.neoforge.network.PacketDistributor;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.networking.SparsePlanetLodTilePacket;
++import shipwrights.genesis.space.Celestial;
++import shipwrights.genesis.teleportation.ArrivalGate;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.UUID;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.ConcurrentLinkedQueue;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.ThreadFactory;
++import java.util.concurrent.atomic.AtomicLong;
++
++/**
++ * Server-owned sparse world-to-planet LOD.
++ *
++ * <p>Normal Minecraft chunks remain authoritative around players. Outside that
++ * area this service asks the real overworld chunk generator for lightweight
++ * surface columns without creating chunks. When a real chunk is loaded or
++ * changed, a 16x16 exact tile replaces the prediction and is broadcast to every
++ * client, including players already in orbit.</p>
++ *
++ * <p>No whole-world scan exists. One small tile request is scheduled per player
++ * per tick, cycling through three detail rings. The cache therefore grows only
++ * where players actually travel while the existing six-face global surface
++ * remains the fallback for everything else.</p>
++ */
++@EventBusSubscriber(modid = GenesisMod.MOD_ID)
++public final class SparsePlanetLodService {
++    public static final ResourceLocation EARTH_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++
++    private static final int[] PROCEDURAL_CELL_SIZES = {4, 16, 64};
++    private static final int[] PROCEDURAL_RADII = {8, 10, 6};
++    private static final int MAX_SERVER_TILES = 24_576;
++    private static final int MAX_QUEUED = 4096;
++    private static final int COMPLETED_PER_TICK = 3;
++    private static final int DIRTY_PER_TICK = 4;
++    private static final int REPLAY_PER_TICK = 3;
++
++    private static final ThreadFactory THREAD_FACTORY = runnable -> {
++        Thread thread = new Thread(runnable, "Genesis-Sparse-Planet-LOD");
++        thread.setDaemon(true);
++        thread.setPriority(Thread.MIN_PRIORITY);
++        return thread;
++    };
++    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(THREAD_FACTORY);
++    private static final AtomicLong REVISION = new AtomicLong();
++
++    private static final Object TILE_LOCK = new Object();
++    private static final LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> SERVER_TILES =
++            new LinkedHashMap<>(512, 0.75f, true) {
++                @Override
++                protected boolean removeEldestEntry(Map.Entry<SparsePlanetLodTile.Key, SparsePlanetLodTile> eldest) {
++                    return size() > MAX_SERVER_TILES;
++                }
++            };
++    private static final Set<SparsePlanetLodTile.Key> QUEUED = ConcurrentHashMap.newKeySet();
++    private static final ConcurrentLinkedQueue<CompletedTile> COMPLETED = new ConcurrentLinkedQueue<>();
++    private static final ConcurrentLinkedQueue<Long> DIRTY_CHUNKS = new ConcurrentLinkedQueue<>();
++    private static final Set<Long> DIRTY_SET = ConcurrentHashMap.newKeySet();
++    private static final Map<UUID, PlayerCursor> PLAYER_CURSORS = new ConcurrentHashMap<>();
++    private static final Map<UUID, Integer> REPLAY_CURSORS = new ConcurrentHashMap<>();
++
++    private static volatile int generation;
++    private static volatile boolean loggedActive;
++
++    private SparsePlanetLodService() {
++    }
++
++    /**
++     * A generated/loaded chunk becomes an exact planetary tile without a scan.
++     * The event only queues its coordinates; the normal per-tick budget performs
++     * the block-column capture later, after the chunk is fully available.
++     */
++    @SubscribeEvent
++    public static void onChunkLoad(ChunkEvent.Load event) {
++        if (event.getLevel() instanceof ServerLevel level
++                && level.dimension().equals(Level.OVERWORLD)
++                && event.getChunk() instanceof LevelChunk chunk) {
++            markChunkDirty(level, chunk.getPos().x, chunk.getPos().z);
++        }
++    }
++
++    /** Called by the LevelChunk mixin after an actual server-side block change. */
++    public static void markChunkDirty(ServerLevel level, int chunkX, int chunkZ) {
++        if (level == null || !level.dimension().equals(Level.OVERWORLD)) {
++            return;
++        }
++        long key = ChunkPos.asLong(chunkX, chunkZ);
++        if (DIRTY_SET.add(key)) {
++            DIRTY_CHUNKS.offer(key);
++        }
++    }
++
++    @SubscribeEvent
++    public static void onServerTick(ServerTickEvent.Post event) {
++        MinecraftServer server = event.getServer();
++        ServerLevel overworld = server.overworld();
++        if (overworld == null) {
++            return;
++        }
++
++        applyCompleted(server);
++        replayCachedTiles(server);
++
++        // Crossings are the highest-priority latency path. Keep completed data
++        // flowing to clients, but do not start generator work or exact chunk
++        // captures while ArrivalGate is transferring a craft/player. Dirty
++        // chunks remain queued and are processed on the first quiet tick.
++        if (ArrivalGate.crossingInProgress()) {
++            return;
++        }
++
++        processDirty(overworld, server);
++
++        Celestial earth = GenesisMod.getCelestialForLevel(overworld);
++        if (earth == null) {
++            return;
++        }
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++        long tick = overworld.getGameTime();
++
++        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
++            if (!player.level().dimension().equals(Level.OVERWORLD)) {
++                continue;
++            }
++            schedulePlayerTile(overworld, transform, player, tick);
++            if ((tick + player.getId()) % 20L == 0L) {
++                captureExactChunk(overworld, transform, player.chunkPosition().x, player.chunkPosition().z, server);
++            }
++        }
++
++        if (!loggedActive && !SERVER_TILES.isEmpty()) {
++            loggedActive = true;
++            GenesisMod.LOGGER.info(
++                    "[SPARSE-LOD] active: real chunks near players, generator-predicted 3D tiles outside them, global cube fallback beyond the sparse cache");
++        }
++    }
++
++    private static void schedulePlayerTile(ServerLevel level, CubeNetSurfaceTransform transform,
++                                           ServerPlayer player, long tick) {
++        if (QUEUED.size() >= MAX_QUEUED) {
++            return;
++        }
++        int tier = Math.floorMod((int) (tick + player.getId()), PROCEDURAL_CELL_SIZES.length);
++        int cellSize = PROCEDURAL_CELL_SIZES[tier];
++        int radius = PROCEDURAL_RADII[tier];
++        int span = SparsePlanetLodTile.RESOLUTION * cellSize;
++
++        CubeNetSurfaceTransform.Face face = transform.faceContaining(player.getX(), player.getZ());
++        if (face == null) {
++            face = CubeNetSurfaceTransform.Face.UP;
++        }
++        int centerOriginX = Math.floorDiv(Mth.floor(player.getX()), span) * span;
++        int centerOriginZ = Math.floorDiv(Mth.floor(player.getZ()), span) * span;
++
++        PlayerCursor cursor = PLAYER_CURSORS.computeIfAbsent(player.getUUID(), ignored -> new PlayerCursor());
++        int[] offset = cursor.next(tier, centerOriginX, centerOriginZ, radius);
++        int originX = centerOriginX + offset[0] * span;
++        int originZ = centerOriginZ + offset[1] * span;
++        if (!insideFace(transform, face, originX, originZ, span)) {
++            return;
++        }
++
++        SparsePlanetLodTile.Key key = new SparsePlanetLodTile.Key(face, originX, originZ, cellSize);
++        synchronized (TILE_LOCK) {
++            if (SERVER_TILES.containsKey(key)) {
++                return;
++            }
++        }
++        if (!QUEUED.add(key)) {
++            return;
++        }
++
++        int currentGeneration = generation;
++        TileJob job = new TileJob(level, face, originX, originZ, cellSize, currentGeneration);
++        WORKER.execute(() -> {
++            SparsePlanetLodTile tile = job.sample();
++            QUEUED.remove(key);
++            if (tile != null && currentGeneration == generation) {
++                COMPLETED.offer(new CompletedTile(EARTH_ID, tile));
++            }
++        });
++    }
++
++    private static boolean insideFace(CubeNetSurfaceTransform transform,
++                                      CubeNetSurfaceTransform.Face face,
++                                      int originX, int originZ, int span) {
++        double minX = transform.faceCenterX(face) - transform.faceHalfSpan();
++        double minZ = transform.faceCenterZ(face) - transform.faceHalfSpan();
++        double maxX = minX + transform.faceSpan();
++        double maxZ = minZ + transform.faceSpan();
++        return originX >= minX && originZ >= minZ
++                && originX + span <= maxX && originZ + span <= maxZ;
++    }
++
++    private static void processDirty(ServerLevel level, MinecraftServer server) {
++        Celestial earth = GenesisMod.getCelestialForLevel(level);
++        if (earth == null) {
++            return;
++        }
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++        for (int i = 0; i < DIRTY_PER_TICK; i++) {
++            Long packed = DIRTY_CHUNKS.poll();
++            if (packed == null) {
++                return;
++            }
++            DIRTY_SET.remove(packed);
++            captureExactChunk(level, transform, ChunkPos.getX(packed), ChunkPos.getZ(packed), server);
++        }
++    }
++
++    /** Reads only an already-loaded real chunk; never creates or loads one. */
++    private static void captureExactChunk(ServerLevel level, CubeNetSurfaceTransform transform,
++                                          int chunkX, int chunkZ, MinecraftServer server) {
++        LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
++        if (chunk == null) {
++            return;
++        }
++        int originX = chunkX << 4;
++        int originZ = chunkZ << 4;
++        CubeNetSurfaceTransform.Face face = transform.faceContaining(originX + 8.0, originZ + 8.0);
++        if (face == null || !insideFace(transform, face, originX, originZ, 16)) {
++            return;
++        }
++
++        short[] heights = new short[SparsePlanetLodTile.CELL_COUNT];
++        int[] colours = new int[SparsePlanetLodTile.CELL_COUNT];
++        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
++        for (int z = 0; z < 16; z++) {
++            for (int x = 0; x < 16; x++) {
++                int worldX = originX + x;
++                int worldZ = originZ + z;
++                int surfaceY = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
++                surfaceY = Mth.clamp(surfaceY, level.getMinBuildHeight(), level.getMaxBuildHeight() - 1);
++                pos.set(worldX, surfaceY, worldZ);
++                BlockState state = level.getBlockState(pos);
++                Holder<Biome> biome = level.getBiome(pos);
++                int index = z * 16 + x;
++                heights[index] = (short) surfaceY;
++                colours[index] = colourFor(state, biome, surfaceY, level.getSeaLevel());
++            }
++        }
++
++        SparsePlanetLodTile tile = new SparsePlanetLodTile(face, originX, originZ, 1,
++                true, REVISION.incrementAndGet(), heights, colours);
++        storeAndBroadcast(server, EARTH_ID, tile);
++    }
++
++    private static void applyCompleted(MinecraftServer server) {
++        for (int i = 0; i < COMPLETED_PER_TICK; i++) {
++            CompletedTile completed = COMPLETED.poll();
++            if (completed == null) {
++                return;
++            }
++            storeAndBroadcast(server, completed.planet(), completed.tile());
++        }
++    }
++
++    private static void storeAndBroadcast(MinecraftServer server, ResourceLocation planet,
++                                          SparsePlanetLodTile tile) {
++        boolean changed;
++        synchronized (TILE_LOCK) {
++            SparsePlanetLodTile previous = SERVER_TILES.get(tile.key());
++            changed = previous == null
++                    || previous.exact() != tile.exact()
++                    || !Arrays.equals(previous.heights(), tile.heights())
++                    || !Arrays.equals(previous.colours(), tile.colours());
++            if (changed) {
++                SERVER_TILES.put(tile.key(), tile);
++            }
++        }
++        if (changed && !server.getPlayerList().getPlayers().isEmpty()) {
++            PacketDistributor.sendToAllPlayers(SparsePlanetLodTilePacket.of(planet, tile));
++        }
++    }
++
++    private static void replayCachedTiles(MinecraftServer server) {
++        if (REPLAY_CURSORS.isEmpty()) {
++            return;
++        }
++        List<SparsePlanetLodTile> snapshot;
++        synchronized (TILE_LOCK) {
++            snapshot = new ArrayList<>(SERVER_TILES.values());
++        }
++        if (snapshot.isEmpty()) {
++            return;
++        }
++        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
++            Integer cursor = REPLAY_CURSORS.get(player.getUUID());
++            if (cursor == null) {
++                continue;
++            }
++            int next = cursor;
++            for (int i = 0; i < REPLAY_PER_TICK && next < snapshot.size(); i++, next++) {
++                PacketDistributor.sendToPlayer(player,
++                        SparsePlanetLodTilePacket.of(EARTH_ID, snapshot.get(next)));
++            }
++            if (next >= snapshot.size()) {
++                REPLAY_CURSORS.remove(player.getUUID());
++            } else {
++                REPLAY_CURSORS.put(player.getUUID(), next);
++            }
++        }
++    }
++
++    @SubscribeEvent
++    public static void onLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
++        REPLAY_CURSORS.put(event.getEntity().getUUID(), 0);
++    }
++
++    @SubscribeEvent
++    public static void onLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
++        UUID id = event.getEntity().getUUID();
++        PLAYER_CURSORS.remove(id);
++        REPLAY_CURSORS.remove(id);
++    }
++
++    @SubscribeEvent
++    public static void onServerStopped(ServerStoppedEvent event) {
++        generation++;
++        QUEUED.clear();
++        COMPLETED.clear();
++        DIRTY_CHUNKS.clear();
++        DIRTY_SET.clear();
++        PLAYER_CURSORS.clear();
++        REPLAY_CURSORS.clear();
++        synchronized (TILE_LOCK) {
++            SERVER_TILES.clear();
++        }
++        loggedActive = false;
++    }
++
++    private record CompletedTile(ResourceLocation planet, SparsePlanetLodTile tile) {
++    }
++
++    private static final class PlayerCursor {
++        private final int[] cursor = new int[PROCEDURAL_CELL_SIZES.length];
++        private final int[] centerX = new int[PROCEDURAL_CELL_SIZES.length];
++        private final int[] centerZ = new int[PROCEDURAL_CELL_SIZES.length];
++        private final boolean[] initialized = new boolean[PROCEDURAL_CELL_SIZES.length];
++
++        int[] next(int tier, int nextCenterX, int nextCenterZ, int radius) {
++            if (!initialized[tier] || centerX[tier] != nextCenterX || centerZ[tier] != nextCenterZ) {
++                initialized[tier] = true;
++                centerX[tier] = nextCenterX;
++                centerZ[tier] = nextCenterZ;
++                cursor[tier] = 0;
++            }
++            int[][] offsets = SpiralCache.offsets(radius);
++            return offsets[cursor[tier]++ % offsets.length];
++        }
++    }
++
++    private static final class SpiralCache {
++        private static final Map<Integer, int[][]> CACHE = new ConcurrentHashMap<>();
++
++        static int[][] offsets(int radius) {
++            return CACHE.computeIfAbsent(radius, SparsePlanetLodService::buildSpiral);
++        }
++    }
++
++    private static int[][] buildSpiral(int radius) {
++        List<int[]> values = new ArrayList<>();
++        values.add(new int[]{0, 0});
++        for (int ring = 1; ring <= radius; ring++) {
++            for (int x = -ring; x <= ring; x++) values.add(new int[]{x, -ring});
++            for (int z = -ring + 1; z <= ring; z++) values.add(new int[]{ring, z});
++            for (int x = ring - 1; x >= -ring; x--) values.add(new int[]{x, ring});
++            for (int z = ring - 1; z > -ring; z--) values.add(new int[]{-ring, z});
++        }
++        return values.toArray(int[][]::new);
++    }
++
++    /** Captures immutable generator references on the server thread, samples off-thread. */
++    private static final class TileJob {
++        private final CubeNetSurfaceTransform.Face face;
++        private final int originX;
++        private final int originZ;
++        private final int cellSize;
++        private final int generation;
++        private final LevelHeightAccessor heightAccessor;
++        private final int minBuildHeight;
++        private final int maxBuildHeight;
++        private final int seaLevel;
++        private final RandomState randomState;
++        private final ChunkGenerator generator;
++        private final BiomeSource biomeSource;
++        private final Climate.Sampler climateSampler;
++
++        TileJob(ServerLevel level, CubeNetSurfaceTransform.Face face,
++                int originX, int originZ, int cellSize, int generation) {
++            this.face = face;
++            this.originX = originX;
++            this.originZ = originZ;
++            this.cellSize = cellSize;
++            this.generation = generation;
++            this.heightAccessor = level;
++            this.minBuildHeight = level.getMinBuildHeight();
++            this.maxBuildHeight = level.getMaxBuildHeight();
++            ServerChunkCache cache = level.getChunkSource();
++            this.randomState = cache.randomState();
++            this.generator = cache.getGenerator();
++            this.biomeSource = generator.getBiomeSource();
++            this.climateSampler = randomState.sampler();
++            this.seaLevel = generator.getSeaLevel();
++        }
++
++        SparsePlanetLodTile sample() {
++            try {
++                short[] heights = new short[SparsePlanetLodTile.CELL_COUNT];
++                int[] colours = new int[SparsePlanetLodTile.CELL_COUNT];
++                for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z++) {
++                    for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x++) {
++                        if (generation != SparsePlanetLodService.generation
++                                || ArrivalGate.crossingInProgress()) {
++                            return null;
++                        }
++                        int worldX = originX + x * cellSize + cellSize / 2;
++                        int worldZ = originZ + z * cellSize + cellSize / 2;
++                        NoiseColumn column = generator.getBaseColumn(worldX, worldZ, heightAccessor, randomState);
++                        int surfaceY = findSurfaceY(column);
++                        BlockState state = column.getBlock(surfaceY);
++                        Holder<Biome> biome = biomeSource.getNoiseBiome(
++                                QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY),
++                                QuartPos.fromBlock(worldZ), climateSampler);
++                        int index = z * SparsePlanetLodTile.RESOLUTION + x;
++                        heights[index] = (short) Mth.clamp(surfaceY, Short.MIN_VALUE, Short.MAX_VALUE);
++                        colours[index] = colourFor(state, biome, surfaceY, seaLevel);
++                    }
++                }
++                shade(colours, heights);
++                return new SparsePlanetLodTile(face, originX, originZ, cellSize,
++                        false, REVISION.incrementAndGet(), heights, colours);
++            } catch (Throwable error) {
++                GenesisMod.LOGGER.debug("[SPARSE-LOD] tile generation failed at {},{} cell={}",
++                        originX, originZ, cellSize, error);
++                return null;
++            }
++        }
++
++        private int findSurfaceY(NoiseColumn column) {
++            for (int y = maxBuildHeight - 1; y >= minBuildHeight; y--) {
++                if (!column.getBlock(y).isAir()) {
++                    return y;
++                }
++            }
++            return minBuildHeight;
++        }
++    }
++
++    private static int colourFor(BlockState state, Holder<Biome> biome, int height, int seaLevel) {
++        MapColor mapColor = state.getBlock().defaultMapColor();
++        int rgb;
++        if (!state.getFluidState().isEmpty() || mapColor == MapColor.WATER) {
++            rgb = biome.value().getWaterColor();
++        } else if (mapColor == MapColor.GRASS) {
++            rgb = biome.value().getGrassColor(0.0, 0.0);
++        } else if (mapColor == MapColor.PLANT) {
++            rgb = biome.value().getFoliageColor();
++        } else if (mapColor != MapColor.NONE && mapColor.col != 0) {
++            rgb = mapColor.col;
++        } else {
++            rgb = biome.value().getGrassColor(0.0, 0.0);
++        }
++        float altitude = Mth.clamp((height - seaLevel) / 160.0f, -0.25f, 1.0f);
++        float factor = altitude >= 0.0f ? 1.0f + altitude * 0.16f : 1.0f + altitude * 0.10f;
++        return 0xFF000000 | scaleRgb(rgb, factor);
++    }
++
++    private static int scaleRgb(int rgb, float factor) {
++        int r = Mth.clamp((int) (((rgb >> 16) & 0xFF) * factor), 0, 255);
++        int g = Mth.clamp((int) (((rgb >> 8) & 0xFF) * factor), 0, 255);
++        int b = Mth.clamp((int) ((rgb & 0xFF) * factor), 0, 255);
++        return (r << 16) | (g << 8) | b;
++    }
++
++    private static void shade(int[] colours, short[] heights) {
++        for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z++) {
++            int z0 = Math.max(0, z - 1);
++            int z1 = Math.min(SparsePlanetLodTile.RESOLUTION - 1, z + 1);
++            for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x++) {
++                int x0 = Math.max(0, x - 1);
++                int x1 = Math.min(SparsePlanetLodTile.RESOLUTION - 1, x + 1);
++                int dx = heights[z * 16 + x1] - heights[z * 16 + x0];
++                int dz = heights[z1 * 16 + x] - heights[z0 * 16 + x];
++                float factor = Mth.clamp(1.0f + (dx - dz) * 0.012f, 0.72f, 1.28f);
++                int index = z * 16 + x;
++                colours[index] = 0xFF000000 | scaleRgb(colours[index], factor);
++            }
++        }
++    }
++}
+--- a/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodTile.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodTile.java	2026-07-31 14:05:04.209347392 +0000
+@@ -0,0 +1,75 @@
++package shipwrights.genesis.space.surface;
++
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.util.Objects;
++
++/**
++ * One sparse, independently replaceable patch of a cube face.
++ *
++ * <p>The tile always contains a 16x16 grid. {@code cellSize} is the number of
++ * planet blocks represented by one grid cell, so a tile spans
++ * {@code 16 * cellSize} blocks on each side. Coarse generator-predicted tiles
++ * and exact generated-chunk tiles therefore use the same packet, cache and
++ * renderer.</p>
++ */
++public record SparsePlanetLodTile(
++        CubeNetSurfaceTransform.Face face,
++        int originX,
++        int originZ,
++        int cellSize,
++        boolean exact,
++        long revision,
++        short[] heights,
++        int[] colours) {
++
++    public static final int RESOLUTION = 16;
++    public static final int CELL_COUNT = RESOLUTION * RESOLUTION;
++    public static final int MIN_CELL_SIZE = 1;
++    public static final int MAX_CELL_SIZE = 2048;
++
++    public SparsePlanetLodTile {
++        Objects.requireNonNull(face, "face");
++        if (cellSize < MIN_CELL_SIZE || cellSize > MAX_CELL_SIZE
++                || Integer.bitCount(cellSize) != 1) {
++            throw new IllegalArgumentException("cellSize must be a power of two in [1, 2048]");
++        }
++        if (heights == null || heights.length != CELL_COUNT
++                || colours == null || colours.length != CELL_COUNT) {
++            throw new IllegalArgumentException("Sparse planet LOD tiles must contain exactly 16x16 columns");
++        }
++        int span = RESOLUTION * cellSize;
++        if (Math.floorMod(originX, span) != 0 || Math.floorMod(originZ, span) != 0) {
++            throw new IllegalArgumentException("Tile origin must be aligned to its " + span + "-block span");
++        }
++    }
++
++    public int span() {
++        return RESOLUTION * cellSize;
++    }
++
++    public int index(int x, int z) {
++        if (x < 0 || x >= RESOLUTION || z < 0 || z >= RESOLUTION) {
++            throw new IndexOutOfBoundsException("tile cell " + x + "," + z);
++        }
++        return z * RESOLUTION + x;
++    }
++
++    public double cellMinX(int x) {
++        return originX + (double) x * cellSize;
++    }
++
++    public double cellMinZ(int z) {
++        return originZ + (double) z * cellSize;
++    }
++
++    public record Key(CubeNetSurfaceTransform.Face face, int originX, int originZ, int cellSize) {
++        public Key {
++            Objects.requireNonNull(face, "face");
++        }
++    }
++
++    public Key key() {
++        return new Key(face, originX, originZ, cellSize);
++    }
++}
+--- a/src/main/resources/genesis.mixins.json	2026-07-31 05:12:50.000000000 +0000
++++ b/src/main/resources/genesis.mixins.json	2026-07-31 14:13:30.709330330 +0000
+@@ -1,55 +1,56 @@
+-{
+-  "required": true,
+-  "package": "shipwrights.genesis.mixin",
+-  "refmap": "mixins.shipwrights.genesis.refmap.json",
+-  "compatibilityLevel": "JAVA_21",
+-  "minVersion": "0.8",
+-  "client": [
+-    "ChannelAccessor",
+-    "ChunkBorderRendererMixin",
+-    "ClientLevelMixin",
+-    "DimensionSpecialEffectsManagerMixin",
+-    "EntityRenderDispatcherMixin",
+-    "FallingBlockRendererMixin",
+-    "FlameParticleMixin",
+-    "FogRendererMixin",
+-    "GameRendererMixin",
+-    "HugeExplosionSeedParticleMixin",
+-    "LevelRendererMixin",
+-    "LevelRendererViewAreaMixin",
+-    "ViewAreaAccessor",
+-    "MinecraftMixin",
+-    "ParticleEngineMixin",
+-    "ParticleMixin",
+-    "PehkuiEntityRenderDispatcherMixin",
+-    "RenderStateShardAccessor",
+-    "RisingParticleMixin",
+-    "SoundEngineMixin",
+-    "SoundMixin"
+-  ],
+-  "mixins": [
+-    "ArgumentTypeInfosMixin",
+-    "BlockBehaviourAccessor",
+-    "EntityMixin",
+-    "FallingBlockEntityAccessor",
+-    "FallingBlockEntityMixin",
+-    "FogRendererAccessor",
+-    "LevelChunkMixin",
+-    "LevelMixin",
+-    "LevelRendererAccessor",
+-    "LevelTimeAccessMixin",
+-    "LivingEntityMixin",
+-    "MinecraftServerMixin",
+-    "RebindableTickingBlockEntityWrapperAccessor",
+-    "ServerLevelMixin",
+-    "SubLevelContainerMixin",
+-    "SubLevelHoldingChunkMapMixin",
+-    "TeleportCommandMixin",
+-    "TimeCommandMixin",
+-    "compat.mekanism.AdvancedSolarGeneratorMixin",
+-    "compat.mekanism.WorldUtilsMixin"
+-  ],
+-  "injectors": {
+-    "defaultRequire": 1
+-  }
+-}
+\ No newline at end of file
++{
++  "required": true,
++  "package": "shipwrights.genesis.mixin",
++  "refmap": "mixins.shipwrights.genesis.refmap.json",
++  "compatibilityLevel": "JAVA_21",
++  "minVersion": "0.8",
++  "client": [
++    "ChannelAccessor",
++    "ChunkBorderRendererMixin",
++    "ClientLevelMixin",
++    "DimensionSpecialEffectsManagerMixin",
++    "EntityRenderDispatcherMixin",
++    "FallingBlockRendererMixin",
++    "FlameParticleMixin",
++    "FogRendererMixin",
++    "GameRendererMixin",
++    "HugeExplosionSeedParticleMixin",
++    "LevelRendererMixin",
++    "LevelRendererViewAreaMixin",
++    "ViewAreaAccessor",
++    "MinecraftMixin",
++    "ParticleEngineMixin",
++    "ParticleMixin",
++    "PehkuiEntityRenderDispatcherMixin",
++    "RenderStateShardAccessor",
++    "RisingParticleMixin",
++    "SoundEngineMixin",
++    "SoundMixin"
++  ],
++  "mixins": [
++    "ArgumentTypeInfosMixin",
++    "BlockBehaviourAccessor",
++    "EntityMixin",
++    "FallingBlockEntityAccessor",
++    "FallingBlockEntityMixin",
++    "FogRendererAccessor",
++    "LevelChunkMixin",
++    "LevelChunkSparseLodMixin",
++    "LevelMixin",
++    "LevelRendererAccessor",
++    "LevelTimeAccessMixin",
++    "LivingEntityMixin",
++    "MinecraftServerMixin",
++    "RebindableTickingBlockEntityWrapperAccessor",
++    "ServerLevelMixin",
++    "SubLevelContainerMixin",
++    "SubLevelHoldingChunkMapMixin",
++    "TeleportCommandMixin",
++    "TimeCommandMixin",
++    "compat.mekanism.AdvancedSolarGeneratorMixin",
++    "compat.mekanism.WorldUtilsMixin"
++  ],
++  "injectors": {
++    "defaultRequire": 1
++  }
++}
+--- a/src/test/java/shipwrights/genesis/space/surface/SparsePlanetLodTileTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/src/test/java/shipwrights/genesis/space/surface/SparsePlanetLodTileTest.java	2026-07-31 14:23:51.933309403 +0000
+@@ -0,0 +1,55 @@
++package shipwrights.genesis.space.surface;
++
++import org.junit.jupiter.api.Test;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.util.Random;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++final class SparsePlanetLodTileTest {
++    @Test
++    void alignedTilesStayInsideEveryCubeFace() {
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(512.0, 1000.0);
++        Random random = new Random(0x51A7EL);
++
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            for (int cellSize : new int[]{1, 4, 16, 64, 128}) {
++                int span = SparsePlanetLodTile.RESOLUTION * cellSize;
++                int minX = (int) Math.round(transform.faceCenterX(face) - transform.faceHalfSpan());
++                int minZ = (int) Math.round(transform.faceCenterZ(face) - transform.faceHalfSpan());
++                int tilesPerFace = (int) (transform.faceSpan() / span);
++
++                for (int sample = 0; sample < 1_000; sample++) {
++                    int originX = minX + random.nextInt(tilesPerFace) * span;
++                    int originZ = minZ + random.nextInt(tilesPerFace) * span;
++                    SparsePlanetLodTile tile = tile(face, originX, originZ, cellSize);
++
++                    assertEquals(span, tile.span());
++                    assertEquals(face, transform.faceContaining(
++                            originX + span * 0.5,
++                            originZ + span * 0.5));
++                }
++            }
++        }
++    }
++
++    @Test
++    void rejectsMisalignedAndMalformedTiles() {
++        assertThrows(IllegalArgumentException.class,
++                () -> tile(CubeNetSurfaceTransform.Face.UP, 1, 0, 4));
++        assertThrows(IllegalArgumentException.class,
++                () -> new SparsePlanetLodTile(CubeNetSurfaceTransform.Face.UP, 0, 0, 3,
++                        false, 0, new short[256], new int[256]));
++        assertThrows(IllegalArgumentException.class,
++                () -> new SparsePlanetLodTile(CubeNetSurfaceTransform.Face.UP, 0, 0, 4,
++                        false, 0, new short[255], new int[256]));
++    }
++
++    private static SparsePlanetLodTile tile(CubeNetSurfaceTransform.Face face,
++                                             int originX, int originZ, int cellSize) {
++        return new SparsePlanetLodTile(face, originX, originZ, cellSize,
++                false, 0, new short[256], new int[256]);
++    }
++}

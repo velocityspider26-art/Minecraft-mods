@@ -1,0 +1,72 @@
+Genesis True World LOD 7 validation
+===================================
+
+Target
+------
+Minecraft 1.21.1
+NeoForge 21.1.233/234
+Java 21
+
+Source comparison
+-----------------
+Changed production Java compilation units: 10
+New production Java compilation units: 1 (included in the 10)
+Build/config files changed: 2
+
+Direct Java compilation
+-----------------------
+Result: PASS
+Compiler: javac --release 21
+Compiled class files produced: 33
+
+Compile classpath basis:
+- project NeoForge/Minecraft 1.21.1 merged classes
+- NeoForge 21.1.233 classes
+- uploaded Distant Horizons 3.2.0-b JAR
+- project Registrate JAR
+- preceding Genesis compiled classes
+- temporary compile-only API stubs for dependencies unavailable as standalone jars
+
+The temporary stubs were outside the project and are not packaged.
+
+RAM configuration
+-----------------
+gradle.properties:
+  org.gradle.jvmargs=-Xms1G -Xmx10G -XX:+UseZGC
+
+build.gradle runClient:
+  -Xms2G
+  -Xmx10G
+  -XX:+UseZGC
+
+build.gradle runServer:
+  -Xms2G
+  -Xmx10G
+  -XX:+UseZGC
+
+Visual-frame math
+-----------------
+At actual altitude approximately 21000 blocks:
+- compressed visual altitude: approximately 2183 blocks
+- rendered Earth cube half-face: 4096 blocks
+- rendered center distance: approximately 6279 blocks
+- angular half-size: approximately 33.1 degrees
+- previous approximate angular half-size: approximately 9.3 degrees
+
+The altitude mapping was checked for continuity and monotonic increase at:
+0, 1024, 16000, 20000, 21000, 32768 and 50000 blocks.
+
+Static integrity checks
+-----------------------
+- No -Xmx4G/4096M setting remains in project text files.
+- Persistent render buffers are reused and cleared instead of allocating large native buffers every frame.
+- Exact volume wall sampling uses one-block units rather than four-block stretched strips.
+- Existing simulation/teleport scale remains 1:16; only Earth visual coordinates change.
+
+Not verified here
+-----------------
+- Full client launch
+- GPU output
+- FPS on the user's modpack
+- Exact visual match to the reference video
+- Multiplayer runtime behavior

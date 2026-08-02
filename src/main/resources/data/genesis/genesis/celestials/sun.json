@@ -1,0 +1,23 @@
+{
+  "type": "genesis:star",
+  "size": 2880,
+  "gravity": 2.0,
+  "transformProvider": {
+    "type": "genesis:static",
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "xRot": 15,
+    "yRot": 45,
+    "zRot": 5,
+    "dayLength": 610787
+  },
+  "properties": {
+    "r0": 255,
+    "g0": 148,
+    "b0": 24,
+    "r1": 255,
+    "g1": 244,
+    "b1": 198
+  }
+}

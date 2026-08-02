@@ -1,40 +1,21 @@
-### Gradle ###
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/**/build/
-
-### IntelliJ IDEA ###
+.gradle/
 .idea/
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/**/out/
-
-.run/
-
-### Eclipse ###
-.apt_generated
-.classpath
-.eclipse/
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/**/bin/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
-.DS_Store
-
-### Minecraft Modding ###
+build/
+lib/
+# Loose development-run mod jars (third-party, not ours to redistribute)
+libs/
 run/
-!**/src/**/run/
-**/src/generated/**/.cache/
-repo/
-!**/src/**/repo/
+bin/
+run-data/
+.settings/
+.project
+.classpath
+.DS_Store
+**/.DS_Store
+**/.obsidian/
+/logs
+/local
+gametest.log
+/dist/
+# Upstream mod jars, patched locally; see patched-mods/README.md
+patched-mods/*.jar

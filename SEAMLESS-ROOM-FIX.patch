@@ -1,0 +1,455 @@
+--- a/src/main/java/shipwrights/genesis/dimension/SubDimensions.java
++++ b/src/main/java/shipwrights/genesis/dimension/SubDimensions.java
+@@ -13,51 +13,55 @@
+  *
+  * <p>Vanilla treats every dimension as unrelated, and pays for it on arrival:
+  * changing dimension throws away the client's whole render section grid and
+- * builds a new one, because the destination could be any shape. At render
+- * distance 12 in a 320-tall world that is 12,500 OpenGL buffers created on the
+- * render thread, and it is the entire measured cost of a Genesis crossing —
+- * about two seconds, while chunk loading itself takes a tenth of one.</p>
+- *
+- * <p>That expense is only necessary because the destination is unknown. The
+- * worlds listed here are not: they are built to share a floorplan, so a
+- * traveller moving between them is changing rooms, not moving house, and the
+- * grid that was already standing still fits. Declaring that relationship is
+- * what lets the renderer keep it.</p>
+- *
+- * <p>Membership alone is not enough, and is not trusted on its own —
+- * {@link #sameFloorplan} still checks the geometry actually matches. This set
+- * says which worlds are <em>intended</em> to be interchangeable; the check says
+- * whether they currently are. A body added by a datapack with a different
+- * height simply falls back to vanilla's rebuild, which is correct rather than
+- * broken.</p>
++ * builds a new one, because the destination could be any shape. Genesis rooms
++ * deliberately share one section geometry, so the standing grid can be reused
++ * after the destination is verified to have the same floorplan.</p>
+  */
+ public final class SubDimensions {
+-    private static final Set<String> ROOMS = Set.of(
+-            "great_unknown", "subspace", "mercury", "moon", "malachite");
++    /**
++     * The single source of truth for built-in rooms.
++     *
++     * <p>Keep every room at {@code min_y: -64, height: 384}. New built-in
++     * Genesis dimensions must be added here; render-grid reuse and transition
++     * screen registration both read this set.</p>
++     */
++    private static final Set<ResourceKey<Level>> ROOMS = Set.of(
++            Level.OVERWORLD,
++            genesisRoom("great_unknown"),
++            genesisRoom("subspace"),
++            genesisRoom("mercury"),
++            genesisRoom("moon"),
++            genesisRoom("malachite"));
+ 
+     private SubDimensions() {
+     }
+ 
++    private static ResourceKey<Level> genesisRoom(String path) {
++        return ResourceKey.create(
++                Registries.DIMENSION,
++                ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, path));
++    }
++
++    /**
++     * Returns the immutable built-in room set used by both transition logic and
++     * client screen registration.
++     */
++    public static Set<ResourceKey<Level>> builtInRooms() {
++        return ROOMS;
++    }
++
+     /** Whether this world is one of the rooms. Earth is the overworld. */
+     public static boolean isRoom(ResourceKey<Level> dimension) {
+-        if (dimension == null) {
+-            return false;
+-        }
+-        ResourceLocation id = dimension.location();
+-        if (id.equals(Level.OVERWORLD.location())) {
+-            return true; // Earth
+-        }
+-        return id.getNamespace().equals(GenesisMod.MOD_ID) && ROOMS.contains(id.getPath());
++        return dimension != null && ROOMS.contains(dimension);
+     }
+ 
+     /**
+-     * Whether two worlds are rooms in the same house AND currently share the
++     * Whether two worlds are rooms in the same house and currently share the
+      * section geometry a render grid is built around.
+      *
+-     * <p>Both halves matter. Intent without the geometry check would hand the
+-     * renderer a grid of the wrong height and draw nonsense; geometry without
+-     * intent would quietly reuse the grid for the nether, which is a different
+-     * house and not ours to change.</p>
++     * <p>Intent is not trusted on its own. A datapack or future built-in body
++     * with different height falls back to vanilla's rebuild rather than
++     * reusing a grid that does not fit.</p>
+      */
+     public static boolean sameFloorplan(Level from, Level to) {
+         if (from == null || to == null) {
+--- a/src/main/java/shipwrights/genesis/client/TransitionScreenRegistration.java
++++ b/src/main/java/shipwrights/genesis/client/TransitionScreenRegistration.java
+@@ -1,56 +1,46 @@
+ package shipwrights.genesis.client;
+ 
+-import net.minecraft.core.registries.Registries;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.resources.ResourceLocation;
+ import net.minecraft.world.level.Level;
+ import net.neoforged.api.distmarker.Dist;
+ import net.neoforged.bus.api.SubscribeEvent;
+ import net.neoforged.fml.common.EventBusSubscriber;
+ import net.neoforged.neoforge.client.event.RegisterDimensionTransitionScreenEvent;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.dimension.SubDimensions;
+ 
+ /**
+- * Claims the dimension-transition screen for every Genesis world, so crossing
+- * into or out of one shows {@link SeamlessTransitionScreen} instead of
+- * "Downloading terrain".
+- *
+- * <p>This is NeoForge's own extension point for the job, which is what makes it
+- * safe where the earlier attempt was not: the screen is still a real
+- * {@code ReceivingLevelScreen} with vanilla's dismissal logic intact, so a
+- * crossing can never hang on it. Intercepting {@code ScreenEvent.Opening}
+- * instead — the previous approach — left the player on a permanent loading
+- * screen at 100%, because cancelling that event blocks the new screen without
+- * closing the old one.</p>
+- *
+- * <p>Registered per Genesis dimension rather than for the overworld, which
+- * would be the other way to catch an overworld-to-space launch. Claiming the
+- * overworld would also claim every nether and end portal in the game, and
+- * those are not ours to change. A Genesis crossing always has one of these
+- * worlds on one end of it, so covering them covers every case.</p>
++ * Registers the invisible receiving screen only for travel between Genesis
++ * rooms. Conditional effects have priority over ordinary incoming/outgoing
++ * effects, so another mod cannot accidentally replace the room-to-room path
++ * with a generic dimension screen.
+  */
+ @EventBusSubscriber(modid = GenesisMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+ public final class TransitionScreenRegistration {
+-    /**
+-     * The dimensions Genesis ships. Planet worlds are data-driven, but this
+-     * event fires at mod-load, before a datapack could be consulted — so the
+-     * built-in set is listed here. A pack that adds a body gets vanilla's
+-     * screen, which is the correct fallback rather than a failure.
+-     */
+-    private static final String[] GENESIS_DIMENSIONS = {
+-            "great_unknown", "subspace", "mercury", "moon", "malachite",
+-    };
+-
+     private TransitionScreenRegistration() {
+     }
+ 
+     @SubscribeEvent
+     public static void onRegisterTransitionScreens(RegisterDimensionTransitionScreenEvent event) {
+-        for (String path : GENESIS_DIMENSIONS) {
+-            ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION,
+-                    ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, path));
+-            event.registerIncomingEffect(dimension, SeamlessTransitionScreen::new);
+-            event.registerOutgoingEffect(dimension, SeamlessTransitionScreen::new);
++        int registered = 0;
++        int conflicts = 0;
++
++        for (ResourceKey<Level> from : SubDimensions.builtInRooms()) {
++            for (ResourceKey<Level> to : SubDimensions.builtInRooms()) {
++                if (from.equals(to)) {
++                    continue;
++                }
++                if (event.registerConditionalEffect(to, from, SeamlessTransitionScreen::new)) {
++                    registered++;
++                } else {
++                    conflicts++;
++                }
++            }
+         }
++
++        GenesisMod.LOGGER.info(
++                "[TRANSITION] registered {} seamless room-to-room screen routes{}",
++                registered,
++                conflicts == 0 ? "" : " (" + conflicts + " already claimed)");
+     }
+ }
+--- a/src/main/java/shipwrights/genesis/mixin/MinecraftMixin.java
++++ b/src/main/java/shipwrights/genesis/mixin/MinecraftMixin.java
+@@ -1,57 +1,65 @@
+-package shipwrights.genesis.mixin;
+-
+-import net.minecraft.client.Minecraft;
+-import net.minecraft.client.gui.screens.ProgressScreen;
+-import net.minecraft.client.gui.screens.ReceivingLevelScreen;
+-import net.minecraft.client.gui.screens.Screen;
+-import net.minecraft.client.multiplayer.ClientLevel;
+-import org.spongepowered.asm.mixin.Mixin;
+-import org.spongepowered.asm.mixin.Shadow;
+-import org.spongepowered.asm.mixin.Unique;
+-import org.spongepowered.asm.mixin.injection.At;
+-import org.spongepowered.asm.mixin.injection.Inject;
+-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+-import shipwrights.genesis.GenesisMod;
+-import shipwrights.genesis.client.*;
+-
+-@Mixin(Minecraft.class)
+-public abstract class MinecraftMixin {
+-    @Shadow
+-    static Minecraft instance;
+-
+-    @Unique
+-    private static boolean genesis$settingTransition = false;
+-    @Inject(method = "setLevel", at = @At("HEAD"))
+-    private void setLevelInject(ClientLevel newLevel, ReceivingLevelScreen.Reason reason, CallbackInfo ci) {
+-        ClientLevel oldLevel = instance.level;
+-
+-        if (oldLevel == null) {
+-            TransitionState.CURRENT = TransitionState.NONE;
+-        } else if (GenesisMod.isSubSpaceDimension(oldLevel) || GenesisMod.isSubSpaceDimension(newLevel)) {
+-            TransitionState.CURRENT = TransitionState.WORMHOLE_TRAVEL;
+-        } else if (GenesisMod.isSpaceDimension(oldLevel) || GenesisMod.isSpaceDimension(newLevel)) {
+-            TransitionState.CURRENT = TransitionState.SPACE_TRAVEL;
+-        } else {
+-            TransitionState.CURRENT = TransitionState.NONE;
+-        }
+-    }
+-
+-    @Inject(method = "setScreen", at = @At("RETURN"))
+-    private void setScreenInject(Screen screen, CallbackInfo ci) {
+-        if (genesis$settingTransition || TransitionState.CURRENT == TransitionState.NONE) return;
+-
+-        if (screen == null || screen instanceof WarpLoadingMenu || screen instanceof TransitionScreen) {
+-            return;
+-        }
+-
+-        if (screen instanceof ReceivingLevelScreen || screen instanceof ProgressScreen) {
+-
+-            if (TransitionState.CURRENT == TransitionState.SPACE_TRAVEL || TransitionState.CURRENT == TransitionState.WORMHOLE_TRAVEL) {
+-                genesis$settingTransition = true;
+-                TransitionFrame.captureFrame();
+-                instance.setScreen(new TransitionScreen());
+-                genesis$settingTransition = false;
+-            }
+-        }
+-    }
+-}
++package shipwrights.genesis.mixin;
++
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.gui.screens.ReceivingLevelScreen;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.resources.ResourceKey;
++import net.minecraft.world.level.Level;
++import org.spongepowered.asm.mixin.Mixin;
++import org.spongepowered.asm.mixin.Unique;
++import org.spongepowered.asm.mixin.injection.At;
++import org.spongepowered.asm.mixin.injection.Inject;
++import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.dimension.SubDimensions;
++
++/**
++ * Measures the complete client handoff between Genesis rooms.
++ *
++ * <p>This mixin intentionally does not replace screens. The old implementation
++ * intercepted {@code setScreen}, captured the framebuffer, and replaced
++ * NeoForge's registered receiving screen with a legacy {@code TransitionScreen}
++ * whose completion supplier never became true. That defeated the seamless
++ * screen path and added GPU work directly inside {@code Minecraft.setLevel}.</p>
++ */
++@Mixin(Minecraft.class)
++public abstract class MinecraftMixin {
++    @Unique
++    private long genesis$roomTransitionStartedNanos;
++
++    @Unique
++    private ResourceKey<Level> genesis$roomTransitionFrom;
++
++    @Inject(method = "setLevel", at = @At("HEAD"))
++    private void genesis$beginRoomTransition(ClientLevel newLevel,
++                                             ReceivingLevelScreen.Reason reason,
++                                             CallbackInfo callback) {
++        ClientLevel oldLevel = Minecraft.getInstance().level;
++        if (oldLevel != null && SubDimensions.sameFloorplan(oldLevel, newLevel)) {
++            genesis$roomTransitionStartedNanos = System.nanoTime();
++            genesis$roomTransitionFrom = oldLevel.dimension();
++        } else {
++            genesis$roomTransitionStartedNanos = 0L;
++            genesis$roomTransitionFrom = null;
++        }
++    }
++
++    @Inject(method = "setLevel", at = @At("RETURN"))
++    private void genesis$finishRoomTransition(ClientLevel newLevel,
++                                              ReceivingLevelScreen.Reason reason,
++                                              CallbackInfo callback) {
++        if (genesis$roomTransitionStartedNanos == 0L) {
++            return;
++        }
++
++        long elapsedMillis = (System.nanoTime() - genesis$roomTransitionStartedNanos) / 1_000_000L;
++        GenesisMod.LOGGER.info(
++                "[TRANSITION] client room handoff {} -> {} completed in {} ms",
++                genesis$roomTransitionFrom.location(),
++                newLevel.dimension().location(),
++                elapsedMillis);
++
++        genesis$roomTransitionStartedNanos = 0L;
++        genesis$roomTransitionFrom = null;
++    }
++}
+--- a/src/main/java/shipwrights/genesis/mixin/LevelRendererViewAreaMixin.java
++++ b/src/main/java/shipwrights/genesis/mixin/LevelRendererViewAreaMixin.java
+@@ -9,8 +9,11 @@
+ import org.spongepowered.asm.mixin.Final;
+ import org.spongepowered.asm.mixin.Mixin;
+ import org.spongepowered.asm.mixin.Shadow;
++import org.spongepowered.asm.mixin.Unique;
+ import org.spongepowered.asm.mixin.injection.At;
++import org.spongepowered.asm.mixin.injection.Inject;
+ import org.spongepowered.asm.mixin.injection.Redirect;
++import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.dimension.SubDimensions;
+ 
+@@ -18,36 +21,13 @@
+  * Keeps the render section grid alive across a crossing between rooms of the
+  * same house.
+  *
+- * <p>This is the whole of the measured freeze. {@code Minecraft.setLevel} calls
+- * {@code LevelRenderer.allChanged}, which releases every render section's
+- * OpenGL buffer and builds a fresh {@link ViewArea} — one buffer per section,
+- * on the render thread, synchronously. At render distance 12 in a 320-tall
+- * world that is 12,500 {@code glCreateBuffers} calls and a stall of one and a
+- * half to two and a half seconds, caught in the act by the freeze watchdog:</p>
++ * <p>Vanilla releases every section buffer and allocates a new {@link ViewArea}
++ * whenever the client level changes. Genesis rooms have matching section
++ * geometry, so the existing grid can be re-pointed at the destination instead.
++ * Every other part of {@code LevelRenderer.allChanged} remains vanilla.</p>
+  *
+- * <pre>
+- * Render thread [RUNNABLE]
+- *     GL45C.nglCreateBuffers (native)
+- *     VertexBuffer.&lt;init&gt;
+- *     SectionRenderDispatcher$RenderSection.&lt;init&gt;
+- *     ViewArea.createSections
+- *     LevelRenderer.allChanged
+- *     Minecraft.setLevel
+- * </pre>
+- *
+- * <p>Vanilla already reuses everything else in that method — the section
+- * dispatcher is merely re-pointed via {@code setLevel}. Only the grid is
+- * discarded, and only because the destination could be any shape. Between
+- * worlds that share a floorplan it demonstrably is not, so the grid is
+- * re-pointed instead: two redirects, and every other thing {@code allChanged}
+- * does happens exactly as before, including the occlusion reset and the camera
+- * reposition that make the sections recompile.</p>
+- *
+- * <p>Both redirects are {@code require = 0} on purpose. If a mapping ever moves
+- * under them they quietly stop applying and vanilla's rebuild happens — a
+- * stutter, which is where we started. The alternative is a failed injection
+- * that refuses to launch the game, and this session has already lost an evening
+- * to exactly that failure mode in someone else's mod.</p>
++ * <p>The redirects use {@code require = 0}. If mappings move, the game falls
++ * back to vanilla's slower rebuild instead of failing during class transform.</p>
+  */
+ @Mixin(LevelRenderer.class)
+ public abstract class LevelRendererViewAreaMixin {
+@@ -61,6 +41,28 @@
+     @Final
+     private Minecraft minecraft;
+ 
++    @Unique
++    private long genesis$reuseStartedNanos;
++
++    @Inject(method = "allChanged", at = @At("HEAD"), require = 0)
++    private void genesis$beginReuseTiming(CallbackInfo callback) {
++        genesis$reuseStartedNanos = genesis$canReuse(this.viewArea, this.level)
++                ? System.nanoTime()
++                : 0L;
++    }
++
++    @Inject(method = "allChanged", at = @At("RETURN"), require = 0)
++    private void genesis$finishReuseTiming(CallbackInfo callback) {
++        if (genesis$reuseStartedNanos == 0L) {
++            return;
++        }
++        long elapsedMillis = (System.nanoTime() - genesis$reuseStartedNanos) / 1_000_000L;
++        GenesisMod.LOGGER.info(
++                "[VIEWAREA] room-grid handoff completed in {} ms",
++                elapsedMillis);
++        genesis$reuseStartedNanos = 0L;
++    }
++
+     /**
+      * Skips releasing the buffers we are about to keep. Runs before the grid is
+      * rebuilt, when {@code this.level} is already the destination.
+@@ -75,39 +77,43 @@
+         }
+     }
+ 
+-    /** Hands back the standing grid instead of building a new one. */
++    /** Hands back the standing grid instead of allocating a new one. */
+     @Redirect(
+             method = "allChanged",
+             at = @At(value = "NEW", target = "(Lnet/minecraft/client/renderer/chunk/SectionRenderDispatcher;"
+                     + "Lnet/minecraft/world/level/Level;ILnet/minecraft/client/renderer/LevelRenderer;)"
+                     + "Lnet/minecraft/client/renderer/ViewArea;"),
+             require = 0)
+-    private ViewArea genesis$reuseGridBetweenRooms(SectionRenderDispatcher dispatcher, Level destination,
+-                                                   int viewDistance, LevelRenderer renderer) {
++    private ViewArea genesis$reuseGridBetweenRooms(SectionRenderDispatcher dispatcher,
++                                                   Level destination,
++                                                   int viewDistance,
++                                                   LevelRenderer renderer) {
+         ViewArea existing = this.viewArea;
+         if (!genesis$canReuse(existing, destination)) {
+             return new ViewArea(dispatcher, destination, viewDistance, renderer);
+         }
+ 
+         ((ViewAreaAccessor) existing).genesis$setLevel(destination);
+-        // Every section holds geometry compiled from the world we just left.
+-        // Marking them dirty schedules the rebuild; the old buffers keep
+-        // drawing until it lands, which is a far better thing to look at during
+-        // a crossing than nothing at all.
++
++        // The buffers themselves are reusable, but their geometry belongs to
++        // the world we just left. Mark every section dirty so vanilla rebuilds
++        // them from destination chunks in its normal distance-prioritised queue.
+         for (SectionRenderDispatcher.RenderSection section : existing.sections) {
+             section.setDirty(false);
+         }
+-        GenesisMod.LOGGER.info("[VIEWAREA] reused {} sections crossing into {}",
+-                existing.sections.length, destination.dimension().location());
++
++        GenesisMod.LOGGER.info(
++                "[VIEWAREA] reused {} sections crossing into {}",
++                existing.sections.length,
++                destination.dimension().location());
+         return existing;
+     }
+ 
+     /**
+-     * Whether the standing grid actually fits the destination — same house, and
+-     * the same shape right now. Intent is not taken on trust: a datapack body
+-     * with a different height falls back to the rebuild, which is slow but
+-     * correct, where reusing a mismatched grid would draw nonsense.
++     * Whether the standing grid actually fits the destination: same room set,
++     * same vertical geometry, and the same current render-distance width.
+      */
++    @Unique
+     private boolean genesis$canReuse(ViewArea existing, Level destination) {
+         if (existing == null || destination == null) {
+             return false;
+@@ -116,10 +122,10 @@
+         if (!SubDimensions.sameFloorplan(previous, destination)) {
+             return false;
+         }
+-        // A render distance change is the other reason allChanged runs, and
+-        // then the grid genuinely is the wrong size.
++
+         int expectedWidth = this.minecraft.options.getEffectiveRenderDistance() * 2 + 1;
+         return ((ViewAreaAccessor) existing).genesis$getSectionGridSizeX() == expectedWidth
+-                && ((ViewAreaAccessor) existing).genesis$getSectionGridSizeY() == destination.getSectionsCount();
++                && ((ViewAreaAccessor) existing).genesis$getSectionGridSizeY()
++                == destination.getSectionsCount();
+     }
+ }

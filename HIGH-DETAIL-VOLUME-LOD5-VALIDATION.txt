@@ -1,0 +1,49 @@
+Genesis High-Detail Volume LOD 5 validation
+Date: 2026-08-01
+Target: Minecraft 1.21.1 / NeoForge 21.1.233 / Java 21
+
+SOURCE AND BYTECODE
+- Fresh direct Java 21 compilation of all 13 changed/generated source units: PASS
+- Produced class files, including nested classes: 35
+- Java class major version: 65 (Java 21)
+- Packaged class SHA-256 compared with validated compile output: 35/35 MATCH
+- Temporary Minecraft/NeoForge/JOML/Netty validation stubs packaged: NO
+- Source patch applied to a clean LOD 4 project copy: PASS
+- Patched source files matching working tree: 14/14
+
+JAR
+- ZIP/JAR integrity test: PASS
+- neoforge.mods.toml version: 1.21.1-0.8.0-port-high-detail-volume-lod5
+- Bundled Distant Horizons 3.2.0-b JAR byte-identical to project dependency: PASS
+- Bundled DH SHA-256: d6a7a963f794501678113e2545d8b25c90e123ef6b9256bb5716907d059e1ef5
+- Removed transition_ready payload instruction from previous crash path: CONFIRMED ABSENT
+- New planet_lod_volume_tile payload registration and handler compiled: PASS
+
+VOLUME DATA AND MESH TESTS
+- Synthetic village-house tile:
+  - Visible top quads: 292
+  - Merged exposed side quads: 16
+  - Roof footprint columns preserved: 64/64
+  - Total logical quads: 308
+  - Result: PASS
+- Randomized exact-volume tiles: 200
+- Randomized logical quads generated: 316,594
+- Invalid >12-segments-per-column tile rejected: PASS
+- Empty/reversed segments rejected by record validation: implemented and compiled
+
+ARCHITECTURE CHECKS
+- Exact 16x16 chunks carry vertical material segments rather than one height/colour sample: PASS
+- Actual Minecraft block-state IDs transported to client: PASS
+- Block-atlas sprite lookup compiled: PASS
+- Separate cutout/translucent render paths compiled: PASS
+- Asynchronous logical meshing cache compiled: PASS
+- Server dirty/generated chunk capture limited to one exact volume chunk per tick: PASS
+- Client and server exact volume caches bounded to 8,192 chunks: PASS
+- Sable parent-world rendering path remains in the existing world/orbit renderers: unchanged
+
+NOT VERIFIED IN THIS ENVIRONMENT
+- Full Minecraft client launch
+- GPU appearance in ascent/orbit
+- FPS under the user's actual modpack
+- Distant Horizons runtime database contents
+- Dedicated-server multiplayer propagation timing

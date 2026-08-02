@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "genesis:block/ps5_controller" },
+    "facing=east": { "model": "genesis:block/ps5_controller", "y": 90 },
+    "facing=south": { "model": "genesis:block/ps5_controller", "y": 180 },
+    "facing=west": { "model": "genesis:block/ps5_controller", "y": 270 }
+  }
+}

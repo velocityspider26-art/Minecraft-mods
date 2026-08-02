@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "genesis:block/orbital_stabilizer"
+    },
+    "powered=true": {
+      "model": "genesis:block/orbital_stabilizer_on"
+    }
+  }
+}

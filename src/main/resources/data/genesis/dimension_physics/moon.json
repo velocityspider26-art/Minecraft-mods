@@ -1,0 +1,7 @@
+{
+  "dimension": "genesis:moon",
+  "priority": 0,
+  "base_gravity": [0.0, -1.59, 0.0],
+  "universal_drag": 0.02,
+  "base_pressure": 0.05
+}

@@ -1,0 +1,33 @@
+{
+  "type": "genesis:body",
+  "size": 196,
+  "gravity": 0.38,
+  "transformProvider": {
+    "type": "genesis:orbiting",
+    "parentID": "genesis:sun",
+    "seed": 3,
+    "orbitDistance": 5805,
+    "orbitTime": 1108000,
+    "dayLength": 1411452,
+    "phaseDegrees": 0.0,
+    "eccentricity": 0.2056,
+    "inclinationDegrees": 7.004,
+    "ascendingNodeDegrees": 48.331,
+    "argumentOfPeriapsisDegrees": 29.124,
+    "axialTiltDegrees": 0.034
+  },
+  "properties": {
+    "atmosphere": {
+      "density": 0.0,
+      "thickness": 0.05,
+      "precipitation": false,
+      "isBreathable": false,
+      "color": {
+        "type": "genesis:rgb",
+        "r": 20,
+        "g": 18,
+        "b": 15
+      }
+    }
+  }
+}

@@ -1,0 +1,2126 @@
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2-VALIDATION.txt ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2-VALIDATION.txt
+--- ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2-VALIDATION.txt	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2-VALIDATION.txt	2026-07-31 13:08:20.742336537 +0000
+@@ -0,0 +1,12 @@
++VS Genesis DH live cube v2 validation
++Generated: 2026-07-31
++
++PASS Java 21 compilation: 10 generated/replaced class files
++PASS Cube-net geometry: 120000 randomized face + exact round-trip checks
++PASS Packaged class hash comparison: 10/10
++PASS Nested DH byte comparison: exact match
++PASS Jar-in-Jar metadata JSON parse
++PASS Outer JAR ZIP integrity
++PASS Shader descriptor JSON parse
++
++Not executed: full NeoForge client launch / GPU render / multiplayer session.
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.md ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.md
+--- ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.md	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.md	2026-07-31 13:08:20.730336536 +0000
+@@ -0,0 +1,88 @@
++# DH live cube Earth — v2
++
++This pass fixes the specific problem visible in the test screenshot: the orbital
++Earth was a cube, but most of it was still a 64×64-per-face terrain summary. On
++an 8192×8192 face, one summary cell represents 128×128 world blocks, so builds,
++cliffs and destroyed terrain were crushed into a dark colour patch.
++
++## Rendering architecture
++
++Earth remains a strict six-sided cube. No spherical projection is used.
++
++Genesis now renders two layers from the same cube-net coordinates:
++
++1. **Global DH base** — a bounded coarse surface for the complete six-face
++   planet, so unknown territory does not become an empty black face.
++2. **Exact live chunk patches** — DH's complete 16×16 terrain columns for every
++   observed or modified chunk, rendered as voxel-like top surfaces plus vertical
++   skirts. These preserve buildings, excavations, coastlines and cliffs at
++   block-column resolution.
++
++The exact patches use the same transform in both places:
++
++```text
++Overworld ascent -> folded cube face -> seamless dimension crossing -> orbital cube
++```
++
++There is no texture/model swap at the crossing.
++
++## Live world changes
++
++The client does not rescan the whole world every frame. It uses two bounded
++sources of work:
++
++- `DhApiChunkModifiedEvent` queues the exact chunk changed by placement,
++  breaking, explosions, terrain updates or incoming multiplayer LOD updates.
++- A slow 24-chunk-radius rotating sweep repairs missed notifications and fills
++  nearby DH-cached terrain without force-loading Minecraft chunks.
++
++One minimum-priority daemon processes at most 48 queued chunks per pass. The
++cache keeps the most recently used 8192 chunks and persists beside DH's own
++world database as `genesis-cube-live-v2.bin`.
++
++A multiplayer build can appear from space after the client or DH server has
++actually received and cached that chunk. Genesis does not invent or force-load
++terrain the server never sent.
++
++## One-JAR installation
++
++The release JAR contains the original, unmodified Distant Horizons 3.2.0-b JAR
++as a NeoForge Jar-in-Jar dependency. DH remains its own nested mod with its
++original mod ID, metadata, mixins and LGPL notices. Genesis uses its public
++terrain repository and events instead of copying/renaming DH classes.
++
++Remove any standalone Distant Horizons JAR before installing this build, because
++the nested copy already supplies it.
++
++## Visual changes
++
++- Earth remains cubic in orbit.
++- Default Genesis world-LOD quality is now `3`.
++- The exact current-face patches use one terrain cell per Minecraft block when
++  the cube is close enough.
++- Night-side ambient light was raised from `0.10` to `0.28`, preventing real
++  terrain from becoming an unreadable black slab.
++- Recently observed exact patches are drawn first and back-facing cube faces are
++  culled in orbit.
++
++## Expected log lines
++
++```text
++[DH-CUBE] Distant Horizons terrain and render hooks installed
++[DH-LIVE] attached live 16x16 chunk overlay to ...
++[DH-LIVE] restored ... exact terrain chunks from DH-side cache
++[DH-LIVE] ... exact chunks cached; latest x,z on FACE
++[DH-CUBE] world-to-planet LOD visible at y=... (... DH base columns / ... exact chunks)
++```
++
++## Verification performed
++
++- Java 21 direct compilation passed for every replaced/new class.
++- 120,000 randomized cube-face coordinate and round-trip checks passed.
++- Packaged class hashes match the directly validated bytecode.
++- Nested Distant Horizons JAR is byte-for-byte identical to the supplied file.
++- ZIP/JAR integrity and Jar-in-Jar metadata JSON checks passed.
++
++A full Minecraft launch was not available in this sandbox, so GPU appearance,
++NeoForge nested-mod discovery and multiplayer update timing still require the
++real in-game test.
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.patch ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.patch
+--- ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.patch	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.patch	2026-07-31 13:08:20.750336537 +0000
+@@ -0,0 +1,108 @@
++diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2-VALIDATION.txt ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2-VALIDATION.txt
++--- ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2-VALIDATION.txt	1970-01-01 00:00:00.000000000 +0000
+++++ ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2-VALIDATION.txt	2026-07-31 13:08:20.742336537 +0000
++@@ -0,0 +1,12 @@
+++VS Genesis DH live cube v2 validation
+++Generated: 2026-07-31
+++
+++PASS Java 21 compilation: 10 generated/replaced class files
+++PASS Cube-net geometry: 120000 randomized face + exact round-trip checks
+++PASS Packaged class hash comparison: 10/10
+++PASS Nested DH byte comparison: exact match
+++PASS Jar-in-Jar metadata JSON parse
+++PASS Outer JAR ZIP integrity
+++PASS Shader descriptor JSON parse
+++
+++Not executed: full NeoForge client launch / GPU render / multiplayer session.
++diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.md ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.md
++--- ProjectStarbound_dh_cube/DH-LIVE-CUBE-V2.md	1970-01-01 00:00:00.000000000 +0000
+++++ ProjectStarbound_dh_cube_live/DH-LIVE-CUBE-V2.md	2026-07-31 13:08:20.730336536 +0000
++@@ -0,0 +1,88 @@
+++# DH live cube Earth — v2
+++
+++This pass fixes the specific problem visible in the test screenshot: the orbital
+++Earth was a cube, but most of it was still a 64×64-per-face terrain summary. On
+++an 8192×8192 face, one summary cell represents 128×128 world blocks, so builds,
+++cliffs and destroyed terrain were crushed into a dark colour patch.
+++
+++## Rendering architecture
+++
+++Earth remains a strict six-sided cube. No spherical projection is used.
+++
+++Genesis now renders two layers from the same cube-net coordinates:
+++
+++1. **Global DH base** — a bounded coarse surface for the complete six-face
+++   planet, so unknown territory does not become an empty black face.
+++2. **Exact live chunk patches** — DH's complete 16×16 terrain columns for every
+++   observed or modified chunk, rendered as voxel-like top surfaces plus vertical
+++   skirts. These preserve buildings, excavations, coastlines and cliffs at
+++   block-column resolution.
+++
+++The exact patches use the same transform in both places:
+++
+++```text
+++Overworld ascent -> folded cube face -> seamless dimension crossing -> orbital cube
+++```
+++
+++There is no texture/model swap at the crossing.
+++
+++## Live world changes
+++
+++The client does not rescan the whole world every frame. It uses two bounded
+++sources of work:
+++
+++- `DhApiChunkModifiedEvent` queues the exact chunk changed by placement,
+++  breaking, explosions, terrain updates or incoming multiplayer LOD updates.
+++- A slow 24-chunk-radius rotating sweep repairs missed notifications and fills
+++  nearby DH-cached terrain without force-loading Minecraft chunks.
+++
+++One minimum-priority daemon processes at most 48 queued chunks per pass. The
+++cache keeps the most recently used 8192 chunks and persists beside DH's own
+++world database as `genesis-cube-live-v2.bin`.
+++
+++A multiplayer build can appear from space after the client or DH server has
+++actually received and cached that chunk. Genesis does not invent or force-load
+++terrain the server never sent.
+++
+++## One-JAR installation
+++
+++The release JAR contains the original, unmodified Distant Horizons 3.2.0-b JAR
+++as a NeoForge Jar-in-Jar dependency. DH remains its own nested mod with its
+++original mod ID, metadata, mixins and LGPL notices. Genesis uses its public
+++terrain repository and events instead of copying/renaming DH classes.
+++
+++Remove any standalone Distant Horizons JAR before installing this build, because
+++the nested copy already supplies it.
+++
+++## Visual changes
+++
+++- Earth remains cubic in orbit.
+++- Default Genesis world-LOD quality is now `3`.
+++- The exact current-face patches use one terrain cell per Minecraft block when
+++  the cube is close enough.
+++- Night-side ambient light was raised from `0.10` to `0.28`, preventing real
+++  terrain from becoming an unreadable black slab.
+++- Recently observed exact patches are drawn first and back-facing cube faces are
+++  culled in orbit.
+++
+++## Expected log lines
+++
+++```text
+++[DH-CUBE] Distant Horizons terrain and render hooks installed
+++[DH-LIVE] attached live 16x16 chunk overlay to ...
+++[DH-LIVE] restored ... exact terrain chunks from DH-side cache
+++[DH-LIVE] ... exact chunks cached; latest x,z on FACE
+++[DH-CUBE] world-to-planet LOD visible at y=... (... DH base columns / ... exact chunks)
+++```
+++
+++## Verification performed
+++
+++- Java 21 direct compilation passed for every replaced/new class.
+++- 120,000 randomized cube-face coordinate and round-trip checks passed.
+++- Packaged class hashes match the directly validated bytecode.
+++- Nested Distant Horizons JAR is byte-for-byte identical to the supplied file.
+++- ZIP/JAR integrity and Jar-in-Jar metadata JSON checks passed.
+++
+++A full Minecraft launch was not available in this sandbox, so GPU appearance,
+++NeoForge nested-mod discovery and multiplayer update timing still require the
+++real in-game test.
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/build.gradle ProjectStarbound_dh_cube_live/build.gradle
+--- ProjectStarbound_dh_cube/build.gradle	2026-07-31 11:56:42.638209738 +0000
++++ ProjectStarbound_dh_cube_live/build.gradle	2026-07-31 13:05:17.478331130 +0000
+@@ -106,10 +106,12 @@
+ }
+ 
+ dependencies {
+-    // Genesis reads DH's public terrain repository and render events. The jar
+-    // stays external at runtime; do not shade it into Genesis.
++    // Genesis reads DH's public terrain repository and render events. Keep the
++    // jar on the development classpath, and ship the unmodified LGPL jar as a
++    // NeoForge Jar-in-Jar dependency so players install one Genesis file.
+     compileOnly(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
+     localRuntime(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
++    jarJar(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
+     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.0"))
+     implementation("io.github.llamalad7:mixinextras-neoforge:0.5.0")
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java
+--- ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java	2026-07-31 12:06:41.302227399 +0000
++++ ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java	2026-07-31 12:55:25.282313660 +0000
+@@ -78,7 +78,8 @@
+ 
+     /** Called from the overworld render path; never blocks. */
+     public static void update(ClientLevel level, CubeNetSurfaceTransform transform,
+-                              CubeNetSurfaceTransform.Face currentFace) {
++                              CubeNetSurfaceTransform.Face currentFace,
++                              double cameraX, double cameraZ) {
+         bindEventsOnce();
+         if (level == null || transform == null) {
+             return;
+@@ -100,6 +101,7 @@
+             lastChunkChangeNanos = 0L;
+         }
+         startSamplingIfNeeded(wrapper, transform, prioritisedFace, level);
++        DhLiveChunkPatchCache.update(wrapper, transform, level, cameraX, cameraZ);
+     }
+ 
+     public static PlanetSurfaceData surface() {
+@@ -155,6 +157,7 @@
+                         // debounce signal; the next idle sampling pass refreshes
+                         // the face from DH's now-updated cache.
+                         lastChunkChangeNanos = System.nanoTime();
++                        DhLiveChunkPatchCache.markDirty(value.chunkX, value.chunkZ);
+                     }
+                 }
+             });
+@@ -503,6 +506,7 @@
+         failedColumns = 0;
+         lastChunkChangeNanos = 0L;
+         closeCache();
++        DhLiveChunkPatchCache.clear();
+     }
+ 
+     private static void closeCache() {
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java
+--- ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 13:05:17.478331130 +0000
+@@ -0,0 +1,551 @@
++package shipwrights.genesis.client.lod;
++
++import com.seibel.distanthorizons.api.DhApi;
++import com.seibel.distanthorizons.api.interfaces.block.IDhApiBlockStateWrapper;
++import com.seibel.distanthorizons.api.interfaces.data.IDhApiTerrainDataCache;
++import com.seibel.distanthorizons.api.interfaces.data.IDhApiTerrainDataRepo;
++import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
++import com.seibel.distanthorizons.api.objects.DhApiResult;
++import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
++import net.minecraft.client.multiplayer.ClientLevel;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.awt.Color;
++import java.io.BufferedInputStream;
++import java.io.BufferedOutputStream;
++import java.io.DataInputStream;
++import java.io.DataOutputStream;
++import java.io.EOFException;
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardCopyOption;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Objects;
++import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.ConcurrentLinkedQueue;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.ThreadFactory;
++import java.util.concurrent.atomic.AtomicBoolean;
++import java.util.concurrent.atomic.AtomicInteger;
++
++/**
++ * Persistent high-detail overlay for DH's exact 16x16 chunk columns.
++ *
++ * <p>The six-face base atlas is intentionally coarse because it has to cover
++ * 402 million square blocks. Player edits cannot survive that reduction: on
++ * Earth one 64x64 atlas texel represents 128x128 blocks. This cache keeps the
++ * chunks DH actually knows at block-column resolution and renders them over the
++ * base cube. DH's chunk-modified event makes placement, breaking, explosions,
++ * terrain loading and multiplayer updates dirty the exact affected chunk.</p>
++ *
++ * <p>Nothing scans the whole world every tick. A bounded worker consumes exact
++ * dirty chunks and performs a slow rotating sweep around the player so missed
++ * notifications heal themselves. The cache is stored beside DH's own database,
++ * therefore returning to space after a restart does not erase already observed
++ * structures.</p>
++ */
++public final class DhLiveChunkPatchCache {
++    public static final int PATCH_RESOLUTION = 16;
++    public static final int CELL_COUNT = PATCH_RESOLUTION * PATCH_RESOLUTION;
++
++    private static final int FILE_MAGIC = 0x474C4F44; // GLOD
++    private static final int FILE_VERSION = 2;
++    private static final int MAX_PATCHES = 8192;
++    private static final int MAX_QUEUE_BATCH = 48;
++    private static final long SWEEP_INTERVAL_NANOS = 350_000_000L;
++    private static final long SAVE_INTERVAL_NANOS = 5_000_000_000L;
++    private static final int SWEEP_RADIUS_CHUNKS = 24;
++    private static final int[][] SWEEP_OFFSETS = buildSpiral(SWEEP_RADIUS_CHUNKS);
++
++    private static final ThreadFactory THREAD_FACTORY = runnable -> {
++        Thread thread = new Thread(runnable, "Genesis-DH-Live-Cube");
++        thread.setDaemon(true);
++        thread.setPriority(Thread.MIN_PRIORITY);
++        return thread;
++    };
++    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(THREAD_FACTORY);
++    private static final AtomicBoolean WORK_SCHEDULED = new AtomicBoolean();
++    private static final AtomicInteger GENERATION = new AtomicInteger();
++    private static final ConcurrentLinkedQueue<Long> DIRTY_QUEUE = new ConcurrentLinkedQueue<>();
++    private static final Set<Long> QUEUED = ConcurrentHashMap.newKeySet();
++
++    private static final Object PATCH_LOCK = new Object();
++    private static final LinkedHashMap<Long, Patch> PATCHES = new LinkedHashMap<>(256, 0.75f, true) {
++        @Override
++        protected boolean removeEldestEntry(Map.Entry<Long, Patch> eldest) {
++            return size() > MAX_PATCHES;
++        }
++    };
++
++    private static volatile IDhApiLevelWrapper activeWrapper;
++    private static volatile IDhApiTerrainDataCache dataCache;
++    private static volatile CubeNetSurfaceTransform transform;
++    private static volatile Path persistenceFile;
++    private static volatile int seaLevel = 63;
++    private static volatile int sweepCursor;
++    private static volatile int sweepCenterChunkX;
++    private static volatile int sweepCenterChunkZ;
++    private static volatile long nextSweepNanos;
++    private static volatile long lastSaveNanos;
++    private static volatile int unsavedChanges;
++    private static volatile long revision;
++
++    private DhLiveChunkPatchCache() {
++    }
++
++    public record Patch(int chunkX, int chunkZ, CubeNetSurfaceTransform.Face face,
++                        short[] heights, int[] colours, int minHeight, int maxHeight,
++                        long revision) {
++        public Patch {
++            Objects.requireNonNull(face, "face");
++            if (heights == null || heights.length != CELL_COUNT
++                    || colours == null || colours.length != CELL_COUNT) {
++                throw new IllegalArgumentException("A live DH patch must contain exactly 16x16 columns");
++            }
++        }
++
++        public int index(int x, int z) {
++            return z * PATCH_RESOLUTION + x;
++        }
++
++        public int worldMinX() {
++            return chunkX << 4;
++        }
++
++        public int worldMinZ() {
++            return chunkZ << 4;
++        }
++    }
++
++    /** Called every high-altitude frame. It never performs repository I/O. */
++    public static void update(IDhApiLevelWrapper wrapper, CubeNetSurfaceTransform nextTransform,
++                              ClientLevel level, double cameraX, double cameraZ) {
++        if (wrapper == null || nextTransform == null || level == null) {
++            return;
++        }
++        if (activeWrapper != wrapper) {
++            attach(wrapper, nextTransform, level);
++        } else {
++            transform = nextTransform;
++        }
++
++        long now = System.nanoTime();
++        if (now >= nextSweepNanos) {
++            nextSweepNanos = now + SWEEP_INTERVAL_NANOS;
++            int centerX = floorToInt(cameraX) >> 4;
++            int centerZ = floorToInt(cameraZ) >> 4;
++            if (centerX != sweepCenterChunkX || centerZ != sweepCenterChunkZ) {
++                sweepCenterChunkX = centerX;
++                sweepCenterChunkZ = centerZ;
++                sweepCursor = 0;
++            }
++            // Queue a small rotating slice. This catches loaded/generated chunks
++            // even if a third-party event was missed, without making flight a
++            // world-scanning benchmark.
++            for (int i = 0; i < 12; i++) {
++                int[] offset = SWEEP_OFFSETS[sweepCursor++ % SWEEP_OFFSETS.length];
++                markDirty(centerX + offset[0], centerZ + offset[1]);
++            }
++        }
++        scheduleWorker();
++    }
++
++    /** Exact chunk coordinates come directly from DhApiChunkModifiedEvent. */
++    public static void markDirty(int chunkX, int chunkZ) {
++        long key = pack(chunkX, chunkZ);
++        if (QUEUED.add(key)) {
++            DIRTY_QUEUE.offer(key);
++        }
++        scheduleWorker();
++    }
++
++    public static Patch[] snapshot() {
++        synchronized (PATCH_LOCK) {
++            return PATCHES.values().toArray(Patch[]::new);
++        }
++    }
++
++    public static int patchCount() {
++        synchronized (PATCH_LOCK) {
++            return PATCHES.size();
++        }
++    }
++
++    public static int seaLevel() {
++        return seaLevel;
++    }
++
++    private static synchronized void attach(IDhApiLevelWrapper wrapper,
++                                            CubeNetSurfaceTransform nextTransform,
++                                            ClientLevel level) {
++        int generation = GENERATION.incrementAndGet();
++        closeCache();
++        activeWrapper = wrapper;
++        transform = nextTransform;
++        seaLevel = level.getSeaLevel();
++        sweepCursor = 0;
++        nextSweepNanos = 0L;
++        unsavedChanges = 0;
++        revision = 0L;
++        DIRTY_QUEUE.clear();
++        QUEUED.clear();
++        synchronized (PATCH_LOCK) {
++            PATCHES.clear();
++        }
++
++        IDhApiTerrainDataRepo repo = DhApi.Delayed.terrainRepo;
++        if (repo != null) {
++            try {
++                dataCache = repo.createSoftCache();
++            } catch (Throwable error) {
++                GenesisMod.LOGGER.warn("[DH-LIVE] could not create patch cache", error);
++            }
++        }
++        try {
++            Path folder = wrapper.getDhSaveFolder().toPath();
++            Files.createDirectories(folder);
++            persistenceFile = folder.resolve("genesis-cube-live-v2.bin");
++        } catch (Throwable error) {
++            persistenceFile = null;
++            GenesisMod.LOGGER.warn("[DH-LIVE] persistent patch file unavailable", error);
++        }
++
++        WORKER.execute(() -> loadPersisted(generation, wrapper));
++        GenesisMod.LOGGER.info("[DH-LIVE] attached live 16x16 chunk overlay to {}", wrapper.getDhIdentifier());
++    }
++
++    private static void scheduleWorker() {
++        if (activeWrapper == null || dataCache == null || DIRTY_QUEUE.isEmpty()) {
++            return;
++        }
++        if (WORK_SCHEDULED.compareAndSet(false, true)) {
++            int generation = GENERATION.get();
++            WORKER.execute(() -> drainQueue(generation));
++        }
++    }
++
++    private static void drainQueue(int generation) {
++        try {
++            int processed = 0;
++            while (processed < MAX_QUEUE_BATCH && generation == GENERATION.get()) {
++                Long key = DIRTY_QUEUE.poll();
++                if (key == null) {
++                    break;
++                }
++                QUEUED.remove(key);
++                refreshPatch(generation, unpackX(key), unpackZ(key));
++                processed++;
++            }
++            long now = System.nanoTime();
++            if (unsavedChanges > 0 && now - lastSaveNanos >= SAVE_INTERVAL_NANOS) {
++                savePersisted(generation);
++                lastSaveNanos = now;
++            }
++        } finally {
++            WORK_SCHEDULED.set(false);
++            if (!DIRTY_QUEUE.isEmpty()) {
++                scheduleWorker();
++            }
++        }
++    }
++
++    private static void refreshPatch(int generation, int chunkX, int chunkZ) {
++        IDhApiLevelWrapper wrapper = activeWrapper;
++        IDhApiTerrainDataRepo repo = DhApi.Delayed.terrainRepo;
++        IDhApiTerrainDataCache cache = dataCache;
++        CubeNetSurfaceTransform activeTransform = transform;
++        if (generation != GENERATION.get() || wrapper == null || repo == null
++                || cache == null || activeTransform == null) {
++            return;
++        }
++
++        double centerX = (chunkX << 4) + 8.0;
++        double centerZ = (chunkZ << 4) + 8.0;
++        CubeNetSurfaceTransform.Face face = activeTransform.faceContaining(centerX, centerZ);
++        if (face == null) {
++            return;
++        }
++
++        try {
++            DhApiResult<DhApiTerrainDataPoint[][][]> result =
++                    repo.getAllTerrainDataAtChunkPos(wrapper, chunkX, chunkZ, cache);
++            if (result == null || !result.success || result.payload == null
++                    || result.payload.length == 0) {
++                return;
++            }
++            short[] heights = new short[CELL_COUNT];
++            int[] colours = new int[CELL_COUNT];
++            int min = Integer.MAX_VALUE;
++            int max = Integer.MIN_VALUE;
++            int valid = 0;
++
++            for (int x = 0; x < PATCH_RESOLUTION; x++) {
++                for (int z = 0; z < PATCH_RESOLUTION; z++) {
++                    DhApiTerrainDataPoint[] column = columnAt(result.payload, x, z);
++                    DhApiTerrainDataPoint top = topPoint(column);
++                    int index = z * PATCH_RESOLUTION + x;
++                    if (top == null) {
++                        heights[index] = (short) seaLevel;
++                        colours[index] = 0x00000000;
++                        continue;
++                    }
++                    int height = clampShort(top.topYBlockPos - 1);
++                    heights[index] = (short) height;
++                    colours[index] = colourFor(top, (chunkX << 4) + x, height, (chunkZ << 4) + z);
++                    min = Math.min(min, height);
++                    max = Math.max(max, height);
++                    valid++;
++                }
++            }
++            if (valid == 0 || generation != GENERATION.get()) {
++                return;
++            }
++            long nextRevision = ++revision;
++            Patch patch = new Patch(chunkX, chunkZ, face, heights, colours,
++                    min == Integer.MAX_VALUE ? seaLevel : min,
++                    max == Integer.MIN_VALUE ? seaLevel : max,
++                    nextRevision);
++            synchronized (PATCH_LOCK) {
++                PATCHES.put(pack(chunkX, chunkZ), patch);
++            }
++            unsavedChanges++;
++            if ((nextRevision & 31L) == 1L) {
++                GenesisMod.LOGGER.info("[DH-LIVE] {} exact chunks cached; latest {},{} on {}",
++                        patchCount(), chunkX, chunkZ, face);
++            }
++        } catch (Throwable ignored) {
++            // A missing DH source is normal while its database is still filling.
++        }
++    }
++
++    private static DhApiTerrainDataPoint[] columnAt(DhApiTerrainDataPoint[][][] area, int x, int z) {
++        if (x < area.length && area[x] != null && z < area[x].length) {
++            return area[x][z];
++        }
++        if (z < area.length && area[z] != null && x < area[z].length) {
++            return area[z][x];
++        }
++        return null;
++    }
++
++    private static DhApiTerrainDataPoint topPoint(DhApiTerrainDataPoint[] column) {
++        if (column == null) {
++            return null;
++        }
++        DhApiTerrainDataPoint top = null;
++        for (DhApiTerrainDataPoint point : column) {
++            if (point == null || point.blockStateWrapper == null || point.blockStateWrapper.isAir()) {
++                continue;
++            }
++            if (top == null || point.topYBlockPos > top.topYBlockPos) {
++                top = point;
++            }
++        }
++        return top;
++    }
++
++    private static int colourFor(DhApiTerrainDataPoint point, int x, int y, int z) {
++        IDhApiBlockStateWrapper state = point.blockStateWrapper;
++        try {
++            Object value = state.getClass().getMethod("getMapColor").invoke(state);
++            if (value instanceof Color colour) {
++                int rgb = (colour.getRed() << 16) | (colour.getGreen() << 8) | colour.getBlue();
++                String serial = Objects.toString(state.getSerialString(), "").toLowerCase(Locale.ROOT);
++                String biome = point.biomeWrapper == null ? ""
++                        : Objects.toString(point.biomeWrapper.getName(), "").toLowerCase(Locale.ROOT);
++                if (state.isLiquid()) return tint(rgb, 0x315D9B, 0.72);
++                if (serial.contains("grass") || serial.contains("leaves") || serial.contains("moss")) {
++                    return tint(rgb, biomeGreen(biome), 0.58);
++                }
++                return 0xFF000000 | rgb;
++            }
++        } catch (Throwable ignored) {
++        }
++        return fallbackColour(state, point.biomeWrapper == null ? "" : point.biomeWrapper.getName());
++    }
++
++    private static int biomeGreen(String biome) {
++        String lower = Objects.toString(biome, "").toLowerCase(Locale.ROOT);
++        if (lower.contains("desert") || lower.contains("badlands")) return 0xFF9E9B55;
++        if (lower.contains("snow") || lower.contains("frozen") || lower.contains("ice")) return 0xFFB8C8B2;
++        if (lower.contains("swamp") || lower.contains("mangrove")) return 0xFF4F6B3A;
++        if (lower.contains("jungle")) return 0xFF2F8B3F;
++        if (lower.contains("savanna")) return 0xFF8A9A46;
++        return 0xFF5E9346;
++    }
++
++    private static int tint(int first, int second, double secondWeight) {
++        double w = Math.max(0.0, Math.min(1.0, secondWeight));
++        int r = (int) (((first >> 16) & 0xFF) * (1.0 - w) + ((second >> 16) & 0xFF) * w);
++        int g = (int) (((first >> 8) & 0xFF) * (1.0 - w) + ((second >> 8) & 0xFF) * w);
++        int b = (int) ((first & 0xFF) * (1.0 - w) + (second & 0xFF) * w);
++        return 0xFF000000 | (r << 16) | (g << 8) | b;
++    }
++
++    private static int fallbackColour(IDhApiBlockStateWrapper state, String biomeName) {
++        String serial = state == null ? "" : Objects.toString(state.getSerialString(), "").toLowerCase(Locale.ROOT);
++        if (state != null && state.isLiquid()) return 0xFF315D9B;
++        if (serial.contains("snow") || serial.contains("ice")) return 0xFFE9F0F2;
++        if (serial.contains("sand") || serial.contains("sandstone")) return 0xFFC9B36A;
++        if (serial.contains("stone") || serial.contains("deepslate")) return 0xFF777773;
++        if (serial.contains("dirt") || serial.contains("mud")) return 0xFF71503A;
++        if (serial.contains("leaves") || serial.contains("grass") || serial.contains("moss")) return biomeGreen(biomeName);
++        if (serial.contains("wood") || serial.contains("log") || serial.contains("planks")) return 0xFF856443;
++        return 0xFF6E7D58;
++    }
++
++    private static void loadPersisted(int generation, IDhApiLevelWrapper wrapper) {
++        Path file = persistenceFile;
++        if (file == null || !Files.isRegularFile(file)) {
++            return;
++        }
++        List<Patch> loaded = new ArrayList<>();
++        try (DataInputStream input = new DataInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
++            if (input.readInt() != FILE_MAGIC || input.readInt() != FILE_VERSION) {
++                return;
++            }
++            int count = Math.max(0, Math.min(MAX_PATCHES, input.readInt()));
++            for (int i = 0; i < count; i++) {
++                int chunkX = input.readInt();
++                int chunkZ = input.readInt();
++                int ordinal = input.readUnsignedByte();
++                int min = input.readShort();
++                int max = input.readShort();
++                long patchRevision = input.readLong();
++                short[] heights = new short[CELL_COUNT];
++                int[] colours = new int[CELL_COUNT];
++                for (int cell = 0; cell < CELL_COUNT; cell++) heights[cell] = input.readShort();
++                for (int cell = 0; cell < CELL_COUNT; cell++) colours[cell] = input.readInt();
++                CubeNetSurfaceTransform.Face[] faces = CubeNetSurfaceTransform.Face.values();
++                if (ordinal < faces.length) {
++                    loaded.add(new Patch(chunkX, chunkZ, faces[ordinal], heights, colours,
++                            min, max, patchRevision));
++                }
++            }
++        } catch (EOFException ignored) {
++            loaded.clear();
++        } catch (Throwable error) {
++            GenesisMod.LOGGER.warn("[DH-LIVE] could not read persistent chunk patches", error);
++            loaded.clear();
++        }
++        if (generation != GENERATION.get() || wrapper != activeWrapper || loaded.isEmpty()) {
++            return;
++        }
++        synchronized (PATCH_LOCK) {
++            for (Patch patch : loaded) {
++                PATCHES.put(pack(patch.chunkX(), patch.chunkZ()), patch);
++                revision = Math.max(revision, patch.revision());
++            }
++        }
++        GenesisMod.LOGGER.info("[DH-LIVE] restored {} exact terrain chunks from DH-side cache", loaded.size());
++    }
++
++    private static void savePersisted(int generation) {
++        Path file = persistenceFile;
++        if (file == null || generation != GENERATION.get()) {
++            return;
++        }
++        Patch[] snapshot = snapshot();
++        Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
++        try {
++            Files.createDirectories(file.getParent());
++            try (DataOutputStream output = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temporary)))) {
++                output.writeInt(FILE_MAGIC);
++                output.writeInt(FILE_VERSION);
++                output.writeInt(snapshot.length);
++                for (Patch patch : snapshot) {
++                    output.writeInt(patch.chunkX());
++                    output.writeInt(patch.chunkZ());
++                    output.writeByte(patch.face().ordinal());
++                    output.writeShort(patch.minHeight());
++                    output.writeShort(patch.maxHeight());
++                    output.writeLong(patch.revision());
++                    for (short height : patch.heights()) output.writeShort(height);
++                    for (int colour : patch.colours()) output.writeInt(colour);
++                }
++            }
++            try {
++                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
++            } catch (IOException atomicUnsupported) {
++                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
++            }
++            unsavedChanges = 0;
++        } catch (Throwable error) {
++            GenesisMod.LOGGER.warn("[DH-LIVE] could not persist chunk patches", error);
++            try {
++                Files.deleteIfExists(temporary);
++            } catch (IOException ignored) {
++            }
++        }
++    }
++
++    public static synchronized void clear() {
++        int generation = GENERATION.get();
++        if (unsavedChanges > 0) {
++            savePersisted(generation);
++        }
++        GENERATION.incrementAndGet();
++        activeWrapper = null;
++        transform = null;
++        persistenceFile = null;
++        DIRTY_QUEUE.clear();
++        QUEUED.clear();
++        synchronized (PATCH_LOCK) {
++            PATCHES.clear();
++        }
++        closeCache();
++    }
++
++    private static void closeCache() {
++        IDhApiTerrainDataCache cache = dataCache;
++        dataCache = null;
++        if (cache != null) {
++            try {
++                cache.close();
++            } catch (Throwable ignored) {
++            }
++        }
++    }
++
++    private static int[][] buildSpiral(int radius) {
++        List<int[]> positions = new ArrayList<>((radius * 2 + 1) * (radius * 2 + 1));
++        positions.add(new int[]{0, 0});
++        for (int ring = 1; ring <= radius; ring++) {
++            for (int x = -ring; x <= ring; x++) positions.add(new int[]{x, -ring});
++            for (int z = -ring + 1; z <= ring; z++) positions.add(new int[]{ring, z});
++            for (int x = ring - 1; x >= -ring; x--) positions.add(new int[]{x, ring});
++            for (int z = ring - 1; z > -ring; z--) positions.add(new int[]{-ring, z});
++        }
++        return positions.toArray(int[][]::new);
++    }
++
++    private static long pack(int x, int z) {
++        return ((long) x << 32) ^ (z & 0xFFFFFFFFL);
++    }
++
++    private static int unpackX(long key) {
++        return (int) (key >> 32);
++    }
++
++    private static int unpackZ(long key) {
++        return (int) key;
++    }
++
++    private static int floorToInt(double value) {
++        if (value <= Integer.MIN_VALUE) return Integer.MIN_VALUE;
++        if (value >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
++        return (int) Math.floor(value);
++    }
++
++    private static int clampShort(int value) {
++        return Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, value));
++    }
++}
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java
+--- ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 12:58:22.506318888 +0000
+@@ -0,0 +1,241 @@
++package shipwrights.genesis.client.lod;
++
++import com.mojang.blaze3d.systems.RenderSystem;
++import com.mojang.blaze3d.vertex.VertexConsumer;
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.client.renderer.MultiBufferSource;
++import net.minecraft.client.renderer.RenderType;
++import net.minecraft.core.Registry;
++import net.minecraft.resources.ResourceLocation;
++import net.minecraft.world.phys.Vec3;
++import net.neoforged.api.distmarker.Dist;
++import net.neoforged.bus.api.SubscribeEvent;
++import net.neoforged.fml.common.EventBusSubscriber;
++import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
++import org.joml.Matrix4f;
++import org.joml.Quaterniond;
++import org.joml.Quaterniondc;
++import org.joml.Vector3d;
++import org.joml.Vector3dc;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.space.Celestial;
++import shipwrights.genesis.space.VantagePoint;
++import shipwrights.genesis.space.renderer.CelestialRenderCoordinates;
++import shipwrights.genesis.teleportation.CubeFaceFrame;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
++
++/**
++ * Carries the exact DH chunk patches into orbital space.
++ *
++ * <p>The ordinary planet renderer supplies the complete low-resolution cube.
++ * This pass adds the same block-column chunks that were visible during ascent,
++ * in the same face coordinates and at the same 1:16 scale. No texture swap is
++ * involved, so a tower cached while leaving Earth remains the same raised patch
++ * when seen after the seamless dimension handoff.</p>
++ */
++@EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
++public final class OrbitalDhLivePatchRenderer {
++    private static final ResourceLocation OVERWORLD_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++    private static final RenderType RENDER_TYPE = RenderType.debugQuads();
++
++    private OrbitalDhLivePatchRenderer() {
++    }
++
++    @SubscribeEvent
++    public static void onRender(RenderLevelStageEvent event) {
++        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
++            return;
++        }
++        Minecraft minecraft = Minecraft.getInstance();
++        ClientLevel level = minecraft.level;
++        if (level == null || !GenesisMod.isSpaceDimension(level)) {
++            return;
++        }
++        DhLiveChunkPatchCache.Patch[] patches = DhLiveChunkPatchCache.snapshot();
++        if (patches.length == 0) {
++            return;
++        }
++
++        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
++        Celestial earth = null;
++        for (Celestial candidate : registry) {
++            if (OVERWORLD_ID.equals(registry.getKey(candidate))) {
++                earth = candidate;
++                break;
++            }
++        }
++        if (earth == null) {
++            return;
++        }
++
++        Vec3 camera = event.getCamera().getPosition();
++        long ticks = GenesisMod.getTicks(level);
++        float partialTick = GenesisMod.getPartialTick(level, event);
++        VantagePoint vantage = VantagePoint.get(level,
++                new Vector3d(camera.x, camera.y, camera.z), ticks, partialTick);
++        CelestialRenderCoordinates.RenderTransform renderTransform =
++                CelestialRenderCoordinates.getRenderTransform(
++                        earth, vantage, camera, ticks, partialTick, registry);
++
++        Vector3d planetPosition = new Vector3d(renderTransform.position());
++        Quaterniond planetRotation = new Quaterniond(renderTransform.rotation());
++        double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(planetPosition);
++        if (renderDistanceScale != 1.0) {
++            planetPosition = CelestialRenderCoordinates.scaleRenderPosition(planetPosition, renderDistanceScale);
++        }
++        double physicalHalfExtent = earth.getActualSize() * 0.5;
++        double renderedHalfExtent = physicalHalfExtent * renderDistanceScale;
++        double worldToRendered = renderDistanceScale / CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++
++        Vector3d localToCamera = new Vector3d(planetPosition).negate()
++                .rotate(new Quaterniond(planetRotation).conjugate())
++                .normalize();
++        double distance = Math.max(renderedHalfExtent, planetPosition.length());
++        double apparentHalf = renderedHalfExtent / distance;
++        int step = apparentHalf >= 0.20 ? 1 : apparentHalf >= 0.075 ? 2 : 4;
++        int maximumPatches = apparentHalf >= 0.20 ? 1536 : apparentHalf >= 0.075 ? 1024 : 512;
++
++        MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
++        VertexConsumer buffer = source.getBuffer(RENDER_TYPE);
++        Matrix4f view = new Matrix4f(event.getModelViewMatrix());
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++
++        int rendered = 0;
++        for (int patchIndex = patches.length - 1;
++             patchIndex >= 0 && rendered < maximumPatches;
++             patchIndex--) {
++            DhLiveChunkPatchCache.Patch patch = patches[patchIndex];
++            Vector3dc faceNormal = CubeFaceFrame.axes(patch.face()).up();
++            if (localToCamera.dot(faceNormal) < -0.035) {
++                continue;
++            }
++            renderPatch(buffer, view, patch, transform, planetPosition, planetRotation,
++                    renderedHalfExtent, worldToRendered, step);
++            rendered++;
++        }
++        source.endBatch(RENDER_TYPE);
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++    }
++
++    private static void renderPatch(VertexConsumer buffer, Matrix4f view,
++                                    DhLiveChunkPatchCache.Patch patch,
++                                    CubeNetSurfaceTransform transform,
++                                    Vector3d planetPosition, Quaterniondc planetRotation,
++                                    double renderedHalfExtent, double worldToRendered,
++                                    int step) {
++        int worldMinX = patch.worldMinX();
++        int worldMinZ = patch.worldMinZ();
++        for (int z = 0; z < DhLiveChunkPatchCache.PATCH_RESOLUTION; z += step) {
++            int z1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, z + step);
++            for (int x = 0; x < DhLiveChunkPatchCache.PATCH_RESOLUTION; x += step) {
++                int x1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, x + step);
++                int index = patch.index(x, z);
++                int colour = patch.colours()[index];
++                if ((colour >>> 24) == 0) {
++                    continue;
++                }
++                int height = patch.heights()[index];
++                double wx0 = worldMinX + x;
++                double wx1 = worldMinX + x1;
++                double wz0 = worldMinZ + z;
++                double wz1 = worldMinZ + z1;
++
++                Vector3d p00 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz0, height, 0.045);
++                Vector3d p10 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz0, height, 0.045);
++                Vector3d p11 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz1, height, 0.045);
++                Vector3d p01 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz1, height, 0.045);
++                int topColour = brighten(colour, 1.18);
++                addVertex(buffer, view, p01, topColour);
++                addVertex(buffer, view, p11, topColour);
++                addVertex(buffer, view, p10, topColour);
++                addVertex(buffer, view, p00, topColour);
++
++                if (step <= 2) {
++                    int east = x1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                            ? patch.heights()[patch.index(x1, z)] : height;
++                    if (east != height) {
++                        addWall(buffer, view, patch.face(), transform, planetPosition, planetRotation,
++                                renderedHalfExtent, worldToRendered,
++                                wx1, wz0, wx1, wz1, height, east, darken(colour, 0.62));
++                    }
++                    int south = z1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                            ? patch.heights()[patch.index(x, z1)] : height;
++                    if (south != height) {
++                        addWall(buffer, view, patch.face(), transform, planetPosition, planetRotation,
++                                renderedHalfExtent, worldToRendered,
++                                wx0, wz1, wx1, wz1, height, south, darken(colour, 0.74));
++                    }
++                }
++            }
++        }
++    }
++
++    private static void addWall(VertexConsumer buffer, Matrix4f view,
++                                CubeNetSurfaceTransform.Face face,
++                                CubeNetSurfaceTransform transform,
++                                Vector3d planetPosition, Quaterniondc rotation,
++                                double renderedHalfExtent, double worldToRendered,
++                                double x0, double z0, double x1, double z1,
++                                int heightA, int heightB, int colour) {
++        int low = Math.min(heightA, heightB);
++        int high = Math.max(heightA, heightB);
++        Vector3d p0l = orbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x0, z0, low, 0.02);
++        Vector3d p1l = orbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x1, z1, low, 0.02);
++        Vector3d p1h = orbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x1, z1, high, 0.02);
++        Vector3d p0h = orbitalPoint(face, transform, planetPosition, rotation,
++                renderedHalfExtent, worldToRendered, x0, z0, high, 0.02);
++        addVertex(buffer, view, p0l, colour);
++        addVertex(buffer, view, p1l, colour);
++        addVertex(buffer, view, p1h, colour);
++        addVertex(buffer, view, p0h, colour);
++    }
++
++    private static Vector3d orbitalPoint(CubeNetSurfaceTransform.Face face,
++                                         CubeNetSurfaceTransform transform,
++                                         Vector3d planetPosition, Quaterniondc rotation,
++                                         double renderedHalfExtent, double worldToRendered,
++                                         double worldX, double worldZ, double height,
++                                         double outwardNudge) {
++        double u = (worldX - transform.faceCenterX(face)) * worldToRendered;
++        double v = (worldZ - transform.faceCenterZ(face)) * worldToRendered;
++        double elevation = (height - DhLiveChunkPatchCache.seaLevel()) * worldToRendered
++                + outwardNudge * Math.max(0.05, worldToRendered);
++        return CubeFaceFrame.cubePoint(face, u, v, renderedHalfExtent, elevation)
++                .rotate(rotation)
++                .add(planetPosition);
++    }
++
++    private static void addVertex(VertexConsumer buffer, Matrix4f view, Vector3d point, int argb) {
++        buffer.addVertex(view, (float) point.x, (float) point.y, (float) point.z)
++                .setColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, 255);
++    }
++
++    private static int brighten(int argb, double factor) {
++        int r = clampColour((int) (((argb >> 16) & 0xFF) * factor));
++        int g = clampColour((int) (((argb >> 8) & 0xFF) * factor));
++        int b = clampColour((int) ((argb & 0xFF) * factor));
++        return 0xFF000000 | (r << 16) | (g << 8) | b;
++    }
++
++    private static int darken(int argb, double factor) {
++        return brighten(argb, factor);
++    }
++
++    private static int clampColour(int value) {
++        return Math.max(0, Math.min(255, value));
++    }
++}
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+--- ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 11:58:48.386213448 +0000
++++ ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 12:56:56.886316362 +0000
+@@ -91,7 +91,7 @@
+             currentFace = CubeNetSurfaceTransform.Face.UP;
+         }
+ 
+-        DhCubeLodBridge.update(level, transform, currentFace);
++        DhCubeLodBridge.update(level, transform, currentFace, camera.x, camera.z);
+         PlanetSurfaceData surface = DhCubeLodBridge.surface();
+         if (surface == null || !surface.isValid()) {
+             // Keep the previous real-world sample as a temporary visual source
+@@ -125,6 +125,8 @@
+         RenderSystem.depthMask(true);
+         renderCubeNet(buffer, view, camera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
++        renderLiveChunkPatches(buffer, view, camera, transform, currentFace, surface,
++                lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         source.endBatch(LOD_RENDER_TYPE);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+@@ -133,7 +135,8 @@
+             loggedActive = true;
+             GenesisMod.LOGGER.info(
+                     "[DH-CUBE] world-to-planet LOD visible at y={}; face={}, DH columns={}",
+-                    Mth.floor(camera.y), currentFace, DhCubeLodBridge.successfulColumns());
++                    Mth.floor(camera.y), currentFace, DhCubeLodBridge.successfulColumns() + " base / "
++                            + DhLiveChunkPatchCache.patchCount() + " exact chunks");
+         }
+         if (foldAlpha >= 0.999f && !loggedFolded) {
+             loggedFolded = true;
+@@ -222,6 +225,182 @@
+         }
+     }
+ 
++
++    /**
++     * Draws exact DH chunk columns over the coarse planetary atlas.
++     *
++     * <p>The base face has one sample per 128 blocks; these patches retain one
++     * sample per Minecraft block. Side skirts at height discontinuities keep
++     * buildings and cliffs visibly voxel-shaped instead of smoothing them into
++     * a coloured sheet.</p>
++     */
++    private static void renderLiveChunkPatches(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                               CubeNetSurfaceTransform transform,
++                                               CubeNetSurfaceTransform.Face currentFace,
++                                               PlanetSurfaceData surface,
++                                               float lodAlpha, float foldAlpha,
++                                               float centerFillAlpha,
++                                               int vanillaRadius,
++                                               double vanillaGroundRadius) {
++        DhLiveChunkPatchCache.Patch[] patches = DhLiveChunkPatchCache.snapshot();
++        if (patches.length == 0) {
++            return;
++        }
++        int quality = GenesisClientConfig.getWorldLodQuality();
++        int currentStep = quality >= 3 ? 1 : quality == 2 ? 2 : 4;
++        int remoteStep = quality >= 3 ? 2 : 4;
++        double currentCenterX = transform.faceCenterX(currentFace);
++        double currentCenterZ = transform.faceCenterZ(currentFace);
++        double cubeCenterY = surface.seaLevel() - transform.faceHalfSpan();
++        double renderScale = renderDistanceCompression(
++                camera, currentCenterX, cubeCenterY, currentCenterZ, vanillaRadius);
++        int lodRadius = GenesisClientConfig.getWorldLodRadius();
++        int rendered = 0;
++
++        // LinkedHashMap snapshots are oldest-to-newest. Draw the newest patches
++        // first because they are normally closest to the craft and most likely
++        // to contain the edits the player is checking from orbit.
++        for (int patchIndex = patches.length - 1; patchIndex >= 0 && rendered < 1536; patchIndex--) {
++            DhLiveChunkPatchCache.Patch patch = patches[patchIndex];
++            boolean current = patch.face() == currentFace;
++            float baseAlpha = current ? lodAlpha : foldAlpha;
++            if (baseAlpha <= 0.002f) {
++                continue;
++            }
++            int step = current ? currentStep : remoteStep;
++            int worldMinX = patch.worldMinX();
++            int worldMinZ = patch.worldMinZ();
++
++            for (int z = 0; z < DhLiveChunkPatchCache.PATCH_RESOLUTION; z += step) {
++                int z1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, z + step);
++                for (int x = 0; x < DhLiveChunkPatchCache.PATCH_RESOLUTION; x += step) {
++                    int x1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, x + step);
++                    int index = patch.index(x, z);
++                    int colour = patch.colours()[index];
++                    if ((colour >>> 24) == 0) {
++                        continue;
++                    }
++                    double centerX = worldMinX + (x + x1) * 0.5;
++                    double centerZ = worldMinZ + (z + z1) * 0.5;
++                    float alpha = baseAlpha;
++                    if (current) {
++                        double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
++                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 48.0);
++                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.12 + 24.0);
++                        float outerBand = distanceBand(distance, near0, near1,
++                                lodRadius * 0.98, lodRadius);
++                        alpha *= Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
++                    }
++                    if (alpha <= 0.002f) {
++                        continue;
++                    }
++
++                    int height = patch.heights()[index];
++                    double wx0 = worldMinX + x;
++                    double wx1 = worldMinX + x1;
++                    double wz0 = worldMinZ + z;
++                    double wz1 = worldMinZ + z1;
++                    Vector3d p00 = livePoint(patch.face(), currentFace, transform, surface,
++                            wx0, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                    Vector3d p10 = livePoint(patch.face(), currentFace, transform, surface,
++                            wx1, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                    Vector3d p11 = livePoint(patch.face(), currentFace, transform, surface,
++                            wx1, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                    Vector3d p01 = livePoint(patch.face(), currentFace, transform, surface,
++                            wx0, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                    addVertex(buffer, view, camera, p01, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p11, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p10, renderScale, colour, alpha);
++                    addVertex(buffer, view, camera, p00, renderScale, colour, alpha);
++
++                    // East and south skirts are enough; the neighbouring cell
++                    // draws the opposite boundary. Patch edges drop to the
++                    // coarse base height so isolated structures keep their form.
++                    int eastHeight = x1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                            ? patch.heights()[patch.index(x1, z)] : coarseHeight(surface, patch.face(), transform, wx1, centerZ);
++                    if (eastHeight != height) {
++                        addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
++                                wx1, wz0, wx1, wz1, height, eastHeight, foldAlpha,
++                                currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                darken(colour, 0.68), alpha);
++                    }
++                    int southHeight = z1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                            ? patch.heights()[patch.index(x, z1)] : coarseHeight(surface, patch.face(), transform, centerX, wz1);
++                    if (southHeight != height) {
++                        addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
++                                wx0, wz1, wx1, wz1, height, southHeight, foldAlpha,
++                                currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                darken(colour, 0.78), alpha);
++                    }
++                }
++            }
++            rendered++;
++        }
++    }
++
++    private static void addLiveWall(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                    CubeNetSurfaceTransform.Face face,
++                                    CubeNetSurfaceTransform.Face currentFace,
++                                    CubeNetSurfaceTransform transform, PlanetSurfaceData surface,
++                                    double x0, double z0, double x1, double z1,
++                                    int heightA, int heightB, float foldAlpha,
++                                    double currentCenterX, double cubeCenterY, double currentCenterZ,
++                                    double renderScale, int colour, float alpha) {
++        int low = Math.min(heightA, heightB);
++        int high = Math.max(heightA, heightB);
++        Vector3d p0l = livePoint(face, currentFace, transform, surface, x0, z0, low,
++                foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.08);
++        Vector3d p1l = livePoint(face, currentFace, transform, surface, x1, z1, low,
++                foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.08);
++        Vector3d p1h = livePoint(face, currentFace, transform, surface, x1, z1, high,
++                foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.08);
++        Vector3d p0h = livePoint(face, currentFace, transform, surface, x0, z0, high,
++                foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.08);
++        addVertex(buffer, view, camera, p0l, renderScale, colour, alpha);
++        addVertex(buffer, view, camera, p1l, renderScale, colour, alpha);
++        addVertex(buffer, view, camera, p1h, renderScale, colour, alpha);
++        addVertex(buffer, view, camera, p0h, renderScale, colour, alpha);
++    }
++
++    private static Vector3d livePoint(CubeNetSurfaceTransform.Face face,
++                                      CubeNetSurfaceTransform.Face currentFace,
++                                      CubeNetSurfaceTransform transform, PlanetSurfaceData surface,
++                                      double worldX, double worldZ, double height,
++                                      float foldAlpha,
++                                      double currentCenterX, double cubeCenterY, double currentCenterZ,
++                                      double outwardNudge) {
++        double u = worldX - transform.faceCenterX(face);
++        double v = worldZ - transform.faceCenterZ(face);
++        double elevation = height - surface.seaLevel() + outwardNudge;
++        Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v,
++                transform.faceHalfSpan(), elevation);
++        Vector3d folded = CubeFaceFrame.celestialToSurface(currentFace, celestial)
++                .add(currentCenterX, cubeCenterY, currentCenterZ);
++        return new Vector3d(
++                Mth.lerp(foldAlpha, worldX, folded.x),
++                Mth.lerp(foldAlpha, height + outwardNudge, folded.y),
++                Mth.lerp(foldAlpha, worldZ, folded.z));
++    }
++
++    private static int coarseHeight(PlanetSurfaceData surface, CubeNetSurfaceTransform.Face face,
++                                    CubeNetSurfaceTransform transform, double worldX, double worldZ) {
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++        double localX = worldX - transform.faceCenterX(face);
++        double localZ = worldZ - transform.faceCenterZ(face);
++        int sampleX = Mth.clamp((int) Math.floor((localX / transform.faceSpan() + 0.5) * resolution),
++                0, resolution - 1);
++        int sampleZ = Mth.clamp((int) Math.floor((localZ / transform.faceSpan() + 0.5) * resolution),
++                0, resolution - 1);
++        return surface.heights()[PlanetSurfaceData.index(face, sampleX, sampleZ)];
++    }
++
++    private static int darken(int argb, double factor) {
++        int r = Mth.clamp((int) (((argb >> 16) & 0xFF) * factor), 0, 255);
++        int g = Mth.clamp((int) (((argb >> 8) & 0xFF) * factor), 0, 255);
++        int b = Mth.clamp((int) ((argb & 0xFF) * factor), 0, 255);
++        return 0xFF000000 | (r << 16) | (g << 8) | b;
++    }
++
+     private static Vector3d blendedPoint(CubeNetSurfaceTransform.Face face,
+                                          CubeNetSurfaceTransform.Face currentFace,
+                                          CubeNetSurfaceTransform transform,
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
+--- ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java	2026-07-31 12:07:22.394228611 +0000
++++ ProjectStarbound_dh_cube_live/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java	2026-07-31 13:05:17.478331130 +0000
+@@ -32,7 +32,7 @@
+     private static final int defaultWorldLodRadius = 4096;
+ 
+     private static ModConfigSpec.ConfigValue<Integer> worldLodQuality;
+-    private static final int defaultWorldLodQuality = 2;
++    private static final int defaultWorldLodQuality = 3;
+ 
+     public static boolean enableSpaceLighting() {
+         boolean result = defaultSpaceShaderEnable;
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/src/main/resources/assets/genesis/shaders/core/planet_textured.fsh ProjectStarbound_dh_cube_live/src/main/resources/assets/genesis/shaders/core/planet_textured.fsh
+--- ProjectStarbound_dh_cube/src/main/resources/assets/genesis/shaders/core/planet_textured.fsh	2026-07-31 05:12:50.000000000 +0000
++++ ProjectStarbound_dh_cube_live/src/main/resources/assets/genesis/shaders/core/planet_textured.fsh	2026-07-31 13:05:17.478331130 +0000
+@@ -67,7 +67,7 @@
+ 
+     ndotl = 1. - 1. / (ndotl * ndotl * 5. + 1.);
+ 
+-    float ambient = 0.1;
++    float ambient = 0.28;
+     float lighting = clamp(ambient + ndotl, 0.0, 1.0);
+ 
+     vec3 surfaceColor = texColor.rgb;
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/third_party/DistantHorizons/LICENSE.LESSER.txt ProjectStarbound_dh_cube_live/third_party/DistantHorizons/LICENSE.LESSER.txt
+--- ProjectStarbound_dh_cube/third_party/DistantHorizons/LICENSE.LESSER.txt	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/third_party/DistantHorizons/LICENSE.LESSER.txt	2026-07-31 13:05:17.602331134 +0000
+@@ -0,0 +1,165 @@
++                   GNU LESSER GENERAL PUBLIC LICENSE
++                       Version 3, 29 June 2007
++
++ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
++ Everyone is permitted to copy and distribute verbatim copies
++ of this license document, but changing it is not allowed.
++
++
++  This version of the GNU Lesser General Public License incorporates
++the terms and conditions of version 3 of the GNU General Public
++License, supplemented by the additional permissions listed below.
++
++  0. Additional Definitions.
++
++  As used herein, "this License" refers to version 3 of the GNU Lesser
++General Public License, and the "GNU GPL" refers to version 3 of the GNU
++General Public License.
++
++  "The Library" refers to a covered work governed by this License,
++other than an Application or a Combined Work as defined below.
++
++  An "Application" is any work that makes use of an interface provided
++by the Library, but which is not otherwise based on the Library.
++Defining a subclass of a class defined by the Library is deemed a mode
++of using an interface provided by the Library.
++
++  A "Combined Work" is a work produced by combining or linking an
++Application with the Library.  The particular version of the Library
++with which the Combined Work was made is also called the "Linked
++Version".
++
++  The "Minimal Corresponding Source" for a Combined Work means the
++Corresponding Source for the Combined Work, excluding any source code
++for portions of the Combined Work that, considered in isolation, are
++based on the Application, and not on the Linked Version.
++
++  The "Corresponding Application Code" for a Combined Work means the
++object code and/or source code for the Application, including any data
++and utility programs needed for reproducing the Combined Work from the
++Application, but excluding the System Libraries of the Combined Work.
++
++  1. Exception to Section 3 of the GNU GPL.
++
++  You may convey a covered work under sections 3 and 4 of this License
++without being bound by section 3 of the GNU GPL.
++
++  2. Conveying Modified Versions.
++
++  If you modify a copy of the Library, and, in your modifications, a
++facility refers to a function or data to be supplied by an Application
++that uses the facility (other than as an argument passed when the
++facility is invoked), then you may convey a copy of the modified
++version:
++
++   a) under this License, provided that you make a good faith effort to
++   ensure that, in the event an Application does not supply the
++   function or data, the facility still operates, and performs
++   whatever part of its purpose remains meaningful, or
++
++   b) under the GNU GPL, with none of the additional permissions of
++   this License applicable to that copy.
++
++  3. Object Code Incorporating Material from Library Header Files.
++
++  The object code form of an Application may incorporate material from
++a header file that is part of the Library.  You may convey such object
++code under terms of your choice, provided that, if the incorporated
++material is not limited to numerical parameters, data structure
++layouts and accessors, or small macros, inline functions and templates
++(ten or fewer lines in length), you do both of the following:
++
++   a) Give prominent notice with each copy of the object code that the
++   Library is used in it and that the Library and its use are
++   covered by this License.
++
++   b) Accompany the object code with a copy of the GNU GPL and this license
++   document.
++
++  4. Combined Works.
++
++  You may convey a Combined Work under terms of your choice that,
++taken together, effectively do not restrict modification of the
++portions of the Library contained in the Combined Work and reverse
++engineering for debugging such modifications, if you also do each of
++the following:
++
++   a) Give prominent notice with each copy of the Combined Work that
++   the Library is used in it and that the Library and its use are
++   covered by this License.
++
++   b) Accompany the Combined Work with a copy of the GNU GPL and this license
++   document.
++
++   c) For a Combined Work that displays copyright notices during
++   execution, include the copyright notice for the Library among
++   these notices, as well as a reference directing the user to the
++   copies of the GNU GPL and this license document.
++
++   d) Do one of the following:
++
++       0) Convey the Minimal Corresponding Source under the terms of this
++       License, and the Corresponding Application Code in a form
++       suitable for, and under terms that permit, the user to
++       recombine or relink the Application with a modified version of
++       the Linked Version to produce a modified Combined Work, in the
++       manner specified by section 6 of the GNU GPL for conveying
++       Corresponding Source.
++
++       1) Use a suitable shared library mechanism for linking with the
++       Library.  A suitable mechanism is one that (a) uses at run time
++       a copy of the Library already present on the user's computer
++       system, and (b) will operate properly with a modified version
++       of the Library that is interface-compatible with the Linked
++       Version.
++
++   e) Provide Installation Information, but only if you would otherwise
++   be required to provide such information under section 6 of the
++   GNU GPL, and only to the extent that such information is
++   necessary to install and execute a modified version of the
++   Combined Work produced by recombining or relinking the
++   Application with a modified version of the Linked Version. (If
++   you use option 4d0, the Installation Information must accompany
++   the Minimal Corresponding Source and Corresponding Application
++   Code. If you use option 4d1, you must provide the Installation
++   Information in the manner specified by section 6 of the GNU GPL
++   for conveying Corresponding Source.)
++
++  5. Combined Libraries.
++
++  You may place library facilities that are a work based on the
++Library side by side in a single library together with other library
++facilities that are not Applications and are not covered by this
++License, and convey such a combined library under terms of your
++choice, if you do both of the following:
++
++   a) Accompany the combined library with a copy of the same work based
++   on the Library, uncombined with any other library facilities,
++   conveyed under the terms of this License.
++
++   b) Give prominent notice with the combined library that part of it
++   is a work based on the Library, and explaining where to find the
++   accompanying uncombined form of the same work.
++
++  6. Revised Versions of the GNU Lesser General Public License.
++
++  The Free Software Foundation may publish revised and/or new versions
++of the GNU Lesser General Public License from time to time. Such new
++versions will be similar in spirit to the present version, but may
++differ in detail to address new problems or concerns.
++
++  Each version is given a distinguishing version number. If the
++Library as you received it specifies that a certain numbered version
++of the GNU Lesser General Public License "or any later version"
++applies to it, you have the option of following the terms and
++conditions either of that published version or of any later version
++published by the Free Software Foundation. If the Library as you
++received it does not specify a version number of the GNU Lesser
++General Public License, you may choose any version of the GNU Lesser
++General Public License ever published by the Free Software Foundation.
++
++  If the Library as you received it specifies that a proxy can decide
++whether future versions of the GNU Lesser General Public License shall
++apply, that proxy's public statement of acceptance of any version is
++permanent authorization for you to choose that version for the
++Library.
+\ No newline at end of file
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/third_party/DistantHorizons/LICENSE.txt ProjectStarbound_dh_cube_live/third_party/DistantHorizons/LICENSE.txt
+--- ProjectStarbound_dh_cube/third_party/DistantHorizons/LICENSE.txt	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/third_party/DistantHorizons/LICENSE.txt	2026-07-31 13:05:17.598331134 +0000
+@@ -0,0 +1,621 @@
++                    GNU GENERAL PUBLIC LICENSE
++                       Version 3, 29 June 2007
++
++ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
++ Everyone is permitted to copy and distribute verbatim copies
++ of this license document, but changing it is not allowed.
++
++                            Preamble
++
++  The GNU General Public License is a free, copyleft license for
++software and other kinds of works.
++
++  The licenses for most software and other practical works are designed
++to take away your freedom to share and change the works.  By contrast,
++the GNU General Public License is intended to guarantee your freedom to
++share and change all versions of a program--to make sure it remains free
++software for all its users.  We, the Free Software Foundation, use the
++GNU General Public License for most of our software; it applies also to
++any other work released this way by its authors.  You can apply it to
++your programs, too.
++
++  When we speak of free software, we are referring to freedom, not
++price.  Our General Public Licenses are designed to make sure that you
++have the freedom to distribute copies of free software (and charge for
++them if you wish), that you receive source code or can get it if you
++want it, that you can change the software or use pieces of it in new
++free programs, and that you know you can do these things.
++
++  To protect your rights, we need to prevent others from denying you
++these rights or asking you to surrender the rights.  Therefore, you have
++certain responsibilities if you distribute copies of the software, or if
++you modify it: responsibilities to respect the freedom of others.
++
++  For example, if you distribute copies of such a program, whether
++gratis or for a fee, you must pass on to the recipients the same
++freedoms that you received.  You must make sure that they, too, receive
++or can get the source code.  And you must show them these terms so they
++know their rights.
++
++  Developers that use the GNU GPL protect your rights with two steps:
++(1) assert copyright on the software, and (2) offer you this License
++giving you legal permission to copy, distribute and/or modify it.
++
++  For the developers' and authors' protection, the GPL clearly explains
++that there is no warranty for this free software.  For both users' and
++authors' sake, the GPL requires that modified versions be marked as
++changed, so that their problems will not be attributed erroneously to
++authors of previous versions.
++
++  Some devices are designed to deny users access to install or run
++modified versions of the software inside them, although the manufacturer
++can do so.  This is fundamentally incompatible with the aim of
++protecting users' freedom to change the software.  The systematic
++pattern of such abuse occurs in the area of products for individuals to
++use, which is precisely where it is most unacceptable.  Therefore, we
++have designed this version of the GPL to prohibit the practice for those
++products.  If such problems arise substantially in other domains, we
++stand ready to extend this provision to those domains in future versions
++of the GPL, as needed to protect the freedom of users.
++
++  Finally, every program is threatened constantly by software patents.
++States should not allow patents to restrict development and use of
++software on general-purpose computers, but in those that do, we wish to
++avoid the special danger that patents applied to a free program could
++make it effectively proprietary.  To prevent this, the GPL assures that
++patents cannot be used to render the program non-free.
++
++  The precise terms and conditions for copying, distribution and
++modification follow.
++
++                       TERMS AND CONDITIONS
++
++  0. Definitions.
++
++  "This License" refers to version 3 of the GNU General Public License.
++
++  "Copyright" also means copyright-like laws that apply to other kinds of
++works, such as semiconductor masks.
++
++  "The Program" refers to any copyrightable work licensed under this
++License.  Each licensee is addressed as "you".  "Licensees" and
++"recipients" may be individuals or organizations.
++
++  To "modify" a work means to copy from or adapt all or part of the work
++in a fashion requiring copyright permission, other than the making of an
++exact copy.  The resulting work is called a "modified version" of the
++earlier work or a work "based on" the earlier work.
++
++  A "covered work" means either the unmodified Program or a work based
++on the Program.
++
++  To "propagate" a work means to do anything with it that, without
++permission, would make you directly or secondarily liable for
++infringement under applicable copyright law, except executing it on a
++computer or modifying a private copy.  Propagation includes copying,
++distribution (with or without modification), making available to the
++public, and in some countries other activities as well.
++
++  To "convey" a work means any kind of propagation that enables other
++parties to make or receive copies.  Mere interaction with a user through
++a computer network, with no transfer of a copy, is not conveying.
++
++  An interactive user interface displays "Appropriate Legal Notices"
++to the extent that it includes a convenient and prominently visible
++feature that (1) displays an appropriate copyright notice, and (2)
++tells the user that there is no warranty for the work (except to the
++extent that warranties are provided), that licensees may convey the
++work under this License, and how to view a copy of this License.  If
++the interface presents a list of user commands or options, such as a
++menu, a prominent item in the list meets this criterion.
++
++  1. Source Code.
++
++  The "source code" for a work means the preferred form of the work
++for making modifications to it.  "Object code" means any non-source
++form of a work.
++
++  A "Standard Interface" means an interface that either is an official
++standard defined by a recognized standards body, or, in the case of
++interfaces specified for a particular programming language, one that
++is widely used among developers working in that language.
++
++  The "System Libraries" of an executable work include anything, other
++than the work as a whole, that (a) is included in the normal form of
++packaging a Major Component, but which is not part of that Major
++Component, and (b) serves only to enable use of the work with that
++Major Component, or to implement a Standard Interface for which an
++implementation is available to the public in source code form.  A
++"Major Component", in this context, means a major essential component
++(kernel, window system, and so on) of the specific operating system
++(if any) on which the executable work runs, or a compiler used to
++produce the work, or an object code interpreter used to run it.
++
++  The "Corresponding Source" for a work in object code form means all
++the source code needed to generate, install, and (for an executable
++work) run the object code and to modify the work, including scripts to
++control those activities.  However, it does not include the work's
++System Libraries, or general-purpose tools or generally available free
++programs which are used unmodified in performing those activities but
++which are not part of the work.  For example, Corresponding Source
++includes interface definition files associated with source files for
++the work, and the source code for shared libraries and dynamically
++linked subprograms that the work is specifically designed to require,
++such as by intimate data communication or control flow between those
++subprograms and other parts of the work.
++
++  The Corresponding Source need not include anything that users
++can regenerate automatically from other parts of the Corresponding
++Source.
++
++  The Corresponding Source for a work in source code form is that
++same work.
++
++  2. Basic Permissions.
++
++  All rights granted under this License are granted for the term of
++copyright on the Program, and are irrevocable provided the stated
++conditions are met.  This License explicitly affirms your unlimited
++permission to run the unmodified Program.  The output from running a
++covered work is covered by this License only if the output, given its
++content, constitutes a covered work.  This License acknowledges your
++rights of fair use or other equivalent, as provided by copyright law.
++
++  You may make, run and propagate covered works that you do not
++convey, without conditions so long as your license otherwise remains
++in force.  You may convey covered works to others for the sole purpose
++of having them make modifications exclusively for you, or provide you
++with facilities for running those works, provided that you comply with
++the terms of this License in conveying all material for which you do
++not control copyright.  Those thus making or running the covered works
++for you must do so exclusively on your behalf, under your direction
++and control, on terms that prohibit them from making any copies of
++your copyrighted material outside their relationship with you.
++
++  Conveying under any other circumstances is permitted solely under
++the conditions stated below.  Sublicensing is not allowed; section 10
++makes it unnecessary.
++
++  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
++
++  No covered work shall be deemed part of an effective technological
++measure under any applicable law fulfilling obligations under article
++11 of the WIPO copyright treaty adopted on 20 December 1996, or
++similar laws prohibiting or restricting circumvention of such
++measures.
++
++  When you convey a covered work, you waive any legal power to forbid
++circumvention of technological measures to the extent such circumvention
++is effected by exercising rights under this License with respect to
++the covered work, and you disclaim any intention to limit operation or
++modification of the work as a means of enforcing, against the work's
++users, your or third parties' legal rights to forbid circumvention of
++technological measures.
++
++  4. Conveying Verbatim Copies.
++
++  You may convey verbatim copies of the Program's source code as you
++receive it, in any medium, provided that you conspicuously and
++appropriately publish on each copy an appropriate copyright notice;
++keep intact all notices stating that this License and any
++non-permissive terms added in accord with section 7 apply to the code;
++keep intact all notices of the absence of any warranty; and give all
++recipients a copy of this License along with the Program.
++
++  You may charge any price or no price for each copy that you convey,
++and you may offer support or warranty protection for a fee.
++
++  5. Conveying Modified Source Versions.
++
++  You may convey a work based on the Program, or the modifications to
++produce it from the Program, in the form of source code under the
++terms of section 4, provided that you also meet all of these conditions:
++
++    a) The work must carry prominent notices stating that you modified
++    it, and giving a relevant date.
++
++    b) The work must carry prominent notices stating that it is
++    released under this License and any conditions added under section
++    7.  This requirement modifies the requirement in section 4 to
++    "keep intact all notices".
++
++    c) You must license the entire work, as a whole, under this
++    License to anyone who comes into possession of a copy.  This
++    License will therefore apply, along with any applicable section 7
++    additional terms, to the whole of the work, and all its parts,
++    regardless of how they are packaged.  This License gives no
++    permission to license the work in any other way, but it does not
++    invalidate such permission if you have separately received it.
++
++    d) If the work has interactive user interfaces, each must display
++    Appropriate Legal Notices; however, if the Program has interactive
++    interfaces that do not display Appropriate Legal Notices, your
++    work need not make them do so.
++
++  A compilation of a covered work with other separate and independent
++works, which are not by their nature extensions of the covered work,
++and which are not combined with it such as to form a larger program,
++in or on a volume of a storage or distribution medium, is called an
++"aggregate" if the compilation and its resulting copyright are not
++used to limit the access or legal rights of the compilation's users
++beyond what the individual works permit.  Inclusion of a covered work
++in an aggregate does not cause this License to apply to the other
++parts of the aggregate.
++
++  6. Conveying Non-Source Forms.
++
++  You may convey a covered work in object code form under the terms
++of sections 4 and 5, provided that you also convey the
++machine-readable Corresponding Source under the terms of this License,
++in one of these ways:
++
++    a) Convey the object code in, or embodied in, a physical product
++    (including a physical distribution medium), accompanied by the
++    Corresponding Source fixed on a durable physical medium
++    customarily used for software interchange.
++
++    b) Convey the object code in, or embodied in, a physical product
++    (including a physical distribution medium), accompanied by a
++    written offer, valid for at least three years and valid for as
++    long as you offer spare parts or customer support for that product
++    model, to give anyone who possesses the object code either (1) a
++    copy of the Corresponding Source for all the software in the
++    product that is covered by this License, on a durable physical
++    medium customarily used for software interchange, for a price no
++    more than your reasonable cost of physically performing this
++    conveying of source, or (2) access to copy the
++    Corresponding Source from a network server at no charge.
++
++    c) Convey individual copies of the object code with a copy of the
++    written offer to provide the Corresponding Source.  This
++    alternative is allowed only occasionally and noncommercially, and
++    only if you received the object code with such an offer, in accord
++    with subsection 6b.
++
++    d) Convey the object code by offering access from a designated
++    place (gratis or for a charge), and offer equivalent access to the
++    Corresponding Source in the same way through the same place at no
++    further charge.  You need not require recipients to copy the
++    Corresponding Source along with the object code.  If the place to
++    copy the object code is a network server, the Corresponding Source
++    may be on a different server (operated by you or a third party)
++    that supports equivalent copying facilities, provided you maintain
++    clear directions next to the object code saying where to find the
++    Corresponding Source.  Regardless of what server hosts the
++    Corresponding Source, you remain obligated to ensure that it is
++    available for as long as needed to satisfy these requirements.
++
++    e) Convey the object code using peer-to-peer transmission, provided
++    you inform other peers where the object code and Corresponding
++    Source of the work are being offered to the general public at no
++    charge under subsection 6d.
++
++  A separable portion of the object code, whose source code is excluded
++from the Corresponding Source as a System Library, need not be
++included in conveying the object code work.
++
++  A "User Product" is either (1) a "consumer product", which means any
++tangible personal property which is normally used for personal, family,
++or household purposes, or (2) anything designed or sold for incorporation
++into a dwelling.  In determining whether a product is a consumer product,
++doubtful cases shall be resolved in favor of coverage.  For a particular
++product received by a particular user, "normally used" refers to a
++typical or common use of that class of product, regardless of the status
++of the particular user or of the way in which the particular user
++actually uses, or expects or is expected to use, the product.  A product
++is a consumer product regardless of whether the product has substantial
++commercial, industrial or non-consumer uses, unless such uses represent
++the only significant mode of use of the product.
++
++  "Installation Information" for a User Product means any methods,
++procedures, authorization keys, or other information required to install
++and execute modified versions of a covered work in that User Product from
++a modified version of its Corresponding Source.  The information must
++suffice to ensure that the continued functioning of the modified object
++code is in no case prevented or interfered with solely because
++modification has been made.
++
++  If you convey an object code work under this section in, or with, or
++specifically for use in, a User Product, and the conveying occurs as
++part of a transaction in which the right of possession and use of the
++User Product is transferred to the recipient in perpetuity or for a
++fixed term (regardless of how the transaction is characterized), the
++Corresponding Source conveyed under this section must be accompanied
++by the Installation Information.  But this requirement does not apply
++if neither you nor any third party retains the ability to install
++modified object code on the User Product (for example, the work has
++been installed in ROM).
++
++  The requirement to provide Installation Information does not include a
++requirement to continue to provide support service, warranty, or updates
++for a work that has been modified or installed by the recipient, or for
++the User Product in which it has been modified or installed.  Access to a
++network may be denied when the modification itself materially and
++adversely affects the operation of the network or violates the rules and
++protocols for communication across the network.
++
++  Corresponding Source conveyed, and Installation Information provided,
++in accord with this section must be in a format that is publicly
++documented (and with an implementation available to the public in
++source code form), and must require no special password or key for
++unpacking, reading or copying.
++
++  7. Additional Terms.
++
++  "Additional permissions" are terms that supplement the terms of this
++License by making exceptions from one or more of its conditions.
++Additional permissions that are applicable to the entire Program shall
++be treated as though they were included in this License, to the extent
++that they are valid under applicable law.  If additional permissions
++apply only to part of the Program, that part may be used separately
++under those permissions, but the entire Program remains governed by
++this License without regard to the additional permissions.
++
++  When you convey a copy of a covered work, you may at your option
++remove any additional permissions from that copy, or from any part of
++it.  (Additional permissions may be written to require their own
++removal in certain cases when you modify the work.)  You may place
++additional permissions on material, added by you to a covered work,
++for which you have or can give appropriate copyright permission.
++
++  Notwithstanding any other provision of this License, for material you
++add to a covered work, you may (if authorized by the copyright holders of
++that material) supplement the terms of this License with terms:
++
++    a) Disclaiming warranty or limiting liability differently from the
++    terms of sections 15 and 16 of this License; or
++
++    b) Requiring preservation of specified reasonable legal notices or
++    author attributions in that material or in the Appropriate Legal
++    Notices displayed by works containing it; or
++
++    c) Prohibiting misrepresentation of the origin of that material, or
++    requiring that modified versions of such material be marked in
++    reasonable ways as different from the original version; or
++
++    d) Limiting the use for publicity purposes of names of licensors or
++    authors of the material; or
++
++    e) Declining to grant rights under trademark law for use of some
++    trade names, trademarks, or service marks; or
++
++    f) Requiring indemnification of licensors and authors of that
++    material by anyone who conveys the material (or modified versions of
++    it) with contractual assumptions of liability to the recipient, for
++    any liability that these contractual assumptions directly impose on
++    those licensors and authors.
++
++  All other non-permissive additional terms are considered "further
++restrictions" within the meaning of section 10.  If the Program as you
++received it, or any part of it, contains a notice stating that it is
++governed by this License along with a term that is a further
++restriction, you may remove that term.  If a license document contains
++a further restriction but permits relicensing or conveying under this
++License, you may add to a covered work material governed by the terms
++of that license document, provided that the further restriction does
++not survive such relicensing or conveying.
++
++  If you add terms to a covered work in accord with this section, you
++must place, in the relevant source files, a statement of the
++additional terms that apply to those files, or a notice indicating
++where to find the applicable terms.
++
++  Additional terms, permissive or non-permissive, may be stated in the
++form of a separately written license, or stated as exceptions;
++the above requirements apply either way.
++
++  8. Termination.
++
++  You may not propagate or modify a covered work except as expressly
++provided under this License.  Any attempt otherwise to propagate or
++modify it is void, and will automatically terminate your rights under
++this License (including any patent licenses granted under the third
++paragraph of section 11).
++
++  However, if you cease all violation of this License, then your
++license from a particular copyright holder is reinstated (a)
++provisionally, unless and until the copyright holder explicitly and
++finally terminates your license, and (b) permanently, if the copyright
++holder fails to notify you of the violation by some reasonable means
++prior to 60 days after the cessation.
++
++  Moreover, your license from a particular copyright holder is
++reinstated permanently if the copyright holder notifies you of the
++violation by some reasonable means, this is the first time you have
++received notice of violation of this License (for any work) from that
++copyright holder, and you cure the violation prior to 30 days after
++your receipt of the notice.
++
++  Termination of your rights under this section does not terminate the
++licenses of parties who have received copies or rights from you under
++this License.  If your rights have been terminated and not permanently
++reinstated, you do not qualify to receive new licenses for the same
++material under section 10.
++
++  9. Acceptance Not Required for Having Copies.
++
++  You are not required to accept this License in order to receive or
++run a copy of the Program.  Ancillary propagation of a covered work
++occurring solely as a consequence of using peer-to-peer transmission
++to receive a copy likewise does not require acceptance.  However,
++nothing other than this License grants you permission to propagate or
++modify any covered work.  These actions infringe copyright if you do
++not accept this License.  Therefore, by modifying or propagating a
++covered work, you indicate your acceptance of this License to do so.
++
++  10. Automatic Licensing of Downstream Recipients.
++
++  Each time you convey a covered work, the recipient automatically
++receives a license from the original licensors, to run, modify and
++propagate that work, subject to this License.  You are not responsible
++for enforcing compliance by third parties with this License.
++
++  An "entity transaction" is a transaction transferring control of an
++organization, or substantially all assets of one, or subdividing an
++organization, or merging organizations.  If propagation of a covered
++work results from an entity transaction, each party to that
++transaction who receives a copy of the work also receives whatever
++licenses to the work the party's predecessor in interest had or could
++give under the previous paragraph, plus a right to possession of the
++Corresponding Source of the work from the predecessor in interest, if
++the predecessor has it or can get it with reasonable efforts.
++
++  You may not impose any further restrictions on the exercise of the
++rights granted or affirmed under this License.  For example, you may
++not impose a license fee, royalty, or other charge for exercise of
++rights granted under this License, and you may not initiate litigation
++(including a cross-claim or counterclaim in a lawsuit) alleging that
++any patent claim is infringed by making, using, selling, offering for
++sale, or importing the Program or any portion of it.
++
++  11. Patents.
++
++  A "contributor" is a copyright holder who authorizes use under this
++License of the Program or a work on which the Program is based.  The
++work thus licensed is called the contributor's "contributor version".
++
++  A contributor's "essential patent claims" are all patent claims
++owned or controlled by the contributor, whether already acquired or
++hereafter acquired, that would be infringed by some manner, permitted
++by this License, of making, using, or selling its contributor version,
++but do not include claims that would be infringed only as a
++consequence of further modification of the contributor version.  For
++purposes of this definition, "control" includes the right to grant
++patent sublicenses in a manner consistent with the requirements of
++this License.
++
++  Each contributor grants you a non-exclusive, worldwide, royalty-free
++patent license under the contributor's essential patent claims, to
++make, use, sell, offer for sale, import and otherwise run, modify and
++propagate the contents of its contributor version.
++
++  In the following three paragraphs, a "patent license" is any express
++agreement or commitment, however denominated, not to enforce a patent
++(such as an express permission to practice a patent or covenant not to
++sue for patent infringement).  To "grant" such a patent license to a
++party means to make such an agreement or commitment not to enforce a
++patent against the party.
++
++  If you convey a covered work, knowingly relying on a patent license,
++and the Corresponding Source of the work is not available for anyone
++to copy, free of charge and under the terms of this License, through a
++publicly available network server or other readily accessible means,
++then you must either (1) cause the Corresponding Source to be so
++available, or (2) arrange to deprive yourself of the benefit of the
++patent license for this particular work, or (3) arrange, in a manner
++consistent with the requirements of this License, to extend the patent
++license to downstream recipients.  "Knowingly relying" means you have
++actual knowledge that, but for the patent license, your conveying the
++covered work in a country, or your recipient's use of the covered work
++in a country, would infringe one or more identifiable patents in that
++country that you have reason to believe are valid.
++
++  If, pursuant to or in connection with a single transaction or
++arrangement, you convey, or propagate by procuring conveyance of, a
++covered work, and grant a patent license to some of the parties
++receiving the covered work authorizing them to use, propagate, modify
++or convey a specific copy of the covered work, then the patent license
++you grant is automatically extended to all recipients of the covered
++work and works based on it.
++
++  A patent license is "discriminatory" if it does not include within
++the scope of its coverage, prohibits the exercise of, or is
++conditioned on the non-exercise of one or more of the rights that are
++specifically granted under this License.  You may not convey a covered
++work if you are a party to an arrangement with a third party that is
++in the business of distributing software, under which you make payment
++to the third party based on the extent of your activity of conveying
++the work, and under which the third party grants, to any of the
++parties who would receive the covered work from you, a discriminatory
++patent license (a) in connection with copies of the covered work
++conveyed by you (or copies made from those copies), or (b) primarily
++for and in connection with specific products or compilations that
++contain the covered work, unless you entered into that arrangement,
++or that patent license was granted, prior to 28 March 2007.
++
++  Nothing in this License shall be construed as excluding or limiting
++any implied license or other defenses to infringement that may
++otherwise be available to you under applicable patent law.
++
++  12. No Surrender of Others' Freedom.
++
++  If conditions are imposed on you (whether by court order, agreement or
++otherwise) that contradict the conditions of this License, they do not
++excuse you from the conditions of this License.  If you cannot convey a
++covered work so as to satisfy simultaneously your obligations under this
++License and any other pertinent obligations, then as a consequence you may
++not convey it at all.  For example, if you agree to terms that obligate you
++to collect a royalty for further conveying from those to whom you convey
++the Program, the only way you could satisfy both those terms and this
++License would be to refrain entirely from conveying the Program.
++
++  13. Use with the GNU Affero General Public License.
++
++  Notwithstanding any other provision of this License, you have
++permission to link or combine any covered work with a work licensed
++under version 3 of the GNU Affero General Public License into a single
++combined work, and to convey the resulting work.  The terms of this
++License will continue to apply to the part which is the covered work,
++but the special requirements of the GNU Affero General Public License,
++section 13, concerning interaction through a network will apply to the
++combination as such.
++
++  14. Revised Versions of this License.
++
++  The Free Software Foundation may publish revised and/or new versions of
++the GNU General Public License from time to time.  Such new versions will
++be similar in spirit to the present version, but may differ in detail to
++address new problems or concerns.
++
++  Each version is given a distinguishing version number.  If the
++Program specifies that a certain numbered version of the GNU General
++Public License "or any later version" applies to it, you have the
++option of following the terms and conditions either of that numbered
++version or of any later version published by the Free Software
++Foundation.  If the Program does not specify a version number of the
++GNU General Public License, you may choose any version ever published
++by the Free Software Foundation.
++
++  If the Program specifies that a proxy can decide which future
++versions of the GNU General Public License can be used, that proxy's
++public statement of acceptance of a version permanently authorizes you
++to choose that version for the Program.
++
++  Later license versions may give you additional or different
++permissions.  However, no additional obligations are imposed on any
++author or copyright holder as a result of your choosing to follow a
++later version.
++
++  15. Disclaimer of Warranty.
++
++  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
++APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
++HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
++OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
++THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
++IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
++ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
++
++  16. Limitation of Liability.
++
++  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
++WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
++THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
++GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
++USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
++DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
++PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
++EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
++SUCH DAMAGES.
++
++  17. Interpretation of Sections 15 and 16.
++
++  If the disclaimer of warranty and limitation of liability provided
++above cannot be given local legal effect according to their terms,
++reviewing courts shall apply local law that most closely approximates
++an absolute waiver of all civil liability in connection with the
++Program, unless a warranty or assumption of liability accompanies a
++copy of the Program in return for a fee.
++
++                     END OF TERMS AND CONDITIONS
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.zip' '--exclude=*.jar' '--exclude=*.sha256' ProjectStarbound_dh_cube/third_party/DistantHorizons/SOURCE.txt ProjectStarbound_dh_cube_live/third_party/DistantHorizons/SOURCE.txt
+--- ProjectStarbound_dh_cube/third_party/DistantHorizons/SOURCE.txt	1970-01-01 00:00:00.000000000 +0000
++++ ProjectStarbound_dh_cube_live/third_party/DistantHorizons/SOURCE.txt	2026-07-31 13:05:17.602331134 +0000
+@@ -0,0 +1,14 @@
++Distant Horizons 3.2.0-b for Minecraft 1.21.1
++
++This project distributes the original, unmodified Distant Horizons jar as a
++NeoForge Jar-in-Jar dependency. Genesis calls its public terrain repository and
++event APIs; Distant Horizons remains a separate nested mod and is not shaded or
++renamed.
++
++Upstream source for this exact release:
++https://gitlab.com/distant-horizons-team/distant-horizons/-/tree/3.2.0b
++
++Project home:
++https://gitlab.com/distant-horizons-team/distant-horizons
++
++License notices are preserved alongside this file and inside the nested jar.

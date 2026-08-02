@@ -1,0 +1,2039 @@
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt	2026-07-31 15:50:17.405260576 +0000
+@@ -0,0 +1,20 @@
++Orbital detail LOD 4 validation
++===============================
++
++Uploaded log diagnosis:
++- Seamless room handoff completed before the fatal exception.
++- Fatal cause: unregistered client-to-server genesis:transition_ready payload.
++- Watchdog stacks identified WorldLodEarthRenderer and OrbitalDhLivePatchRenderer render-thread work.
++
++Java target: 21
++Compile base: previous validated Genesis JAR + NeoForge/Minecraft 1.21.1 merged classes + DH 3.2.0-b
++Fresh direct javac compile of changed production sources: PASS
++Compiled production class files: 19
++Compile-only signature stubs packaged: NO
++Packaged class hashes against fresh compile: PASS (19/19)
++SeamlessTransitionScreen PacketDistributor/transition_ready bytecode reference: ABSENT
++Complete fallback geometry: 96 unique aligned tiles (6 faces x 4 x 4): PASS
++Final JAR ZIP integrity: PASS
++Bundled Distant Horizons entry retained: PASS
++Full Minecraft client launch: NOT PERFORMED
++Runtime GPU/FPS/survey visibility: REQUIRES IN-GAME TEST
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md	2026-07-31 15:50:17.397260576 +0000
+@@ -0,0 +1,109 @@
++# Orbital detail LOD 4
++
++Target: Minecraft 1.21.1, NeoForge 21.1.233/234, Java 21.
++Base: `sparse-world-lod3`.
++
++## What the supplied log proved
++
++The Earth/space handoff itself completed: the view area reused 15,000 sections
++and the client changed rooms in 34 ms. The fatal crash happened afterward when
++`SeamlessTransitionScreen` sent `genesis:transition_ready`, a payload that had
++not been registered for client-to-server transmission.
++
++The freeze watchdog separately caught both terrain renderers building large
++numbers of immediate-mode quads on the render thread. The log had 889 sparse
++tiles and more than 360 exact DH chunks available at once, and the old renderer
++attempted to draw thousands of tiles/patches every frame.
++
++## Fixes
++
++### Transition and logout
++
++- Removed the optional `transition_ready` send from the render callback. The
++  existing server follow/retrack fallback remains authoritative.
++- Clears delayed transition and orbital-survey state before a world disconnect.
++- DH exact-patch persistence now snapshots immediately, then writes and closes
++  its DH cache on the existing minimum-priority worker. World exit no longer
++  performs the multi-megabyte save synchronously on the render thread.
++
++### Complete six-face cube
++
++- The server stages 96 generator-predicted tiles: four by four tiles for each of
++  the six faces, one sample per 128 blocks.
++- A cancelled global tile is retried. Coverage is only declared complete after
++  all 96 tiles actually exist, not merely while jobs are queued.
++- Finer 64/16/4-block predictions and exact one-block tiles remain sparse and
++  player-driven.
++
++### Render-thread budget
++
++- All visible faces retain their cheap 128-block fallback.
++- Finer terrain is rendered only on the camera-facing face and only near the
++  relevant point.
++- Overworld ascent is capped at 384 sparse tiles and 96 non-duplicated DH exact
++  patches instead of thousands.
++- Orbit is capped at 224 normal tiles or 512 survey tiles.
++- A DH exact patch is skipped whenever the server already supplied the same
++  authoritative exact chunk.
++- Exact geometry uses top quads and vertical skirts, preserving building roofs,
++  cliffs, towers and other height discontinuities as 3D voxel-like relief.
++
++## Orbital survey
++
++A normal whole-planet view cannot physically show a house clearly. At the
++current 1:16 scale, a 20-block house is only 1.25 space blocks wide. From the
++launch orbit it is far below one pixel at ordinary FOV.
++
++Press **V** in space to enable Orbital Survey, then use the mouse wheel to zoom:
++
++`4x, 8x, 16x, 32x, 64x, 128x`
++
++The crosshair ray is transformed into Earth's rotating cube frame and displays:
++
++- cube face;
++- exact surface X/Z;
++- best terrain resolution currently cached at that point.
++
++At 128x, a 20-block structure at the default launch distance should occupy
++roughly 190 pixels on a 1920-pixel-wide display when centered. This is optical
++magnification; the structure and planet are not enlarged or rescaled.
++
++The same face/X/Z target can be passed directly to a future orbital-bombardment
++weapon. `EXACT 1-BLOCK SURFACE` means the target area is represented by an exact
++generated/DH chunk tile. Procedural regions remain suitable for terrain aiming
++but cannot contain player structures that the server has never generated.
++
++## Installation
++
++Remove every older Genesis JAR and any separate copy of the same bundled
++Distant Horizons JAR. Install only:
++
++`genesis-1.21.1-0.8.0-port-orbital-detail-lod4-bundled.jar`
++
++## Test sequence
++
++1. Enter the world and wait for sparse/global terrain to begin filling.
++2. Fly upward through Y=10,000 and confirm there is no watchdog stall from
++   `WorldLodEarthRenderer`.
++3. Cross into space. There must be no `transition_ready may not be sent` fatal.
++4. Press V, aim at the Earth and scroll to 128x.
++5. Aim at a generated base. The HUD should show its face/X/Z and ideally
++   `EXACT 1-BLOCK SURFACE` after the chunk data has been cached.
++6. Leave the world. The title screen should return immediately while the cache
++   saves asynchronously.
++
++Useful grep:
++
++```bash
++grep -E "\[WATCHDOG\]|transition_ready|\[SPARSE-LOD\]|\[DH-CUBE\]|\[TRANSITION\]" run/logs/latest.log
++```
++
++## Limits of this pass
++
++- No full Minecraft client was available in the build environment, so GPU
++  appearance, FPS and actual multiplayer cache delivery need in-game testing.
++- Exact tiles are a surface-column representation. They show the highest block
++  and vertical height changes, not every hidden interior block, cave or entity.
++- A friend’s base can only become exact after its chunks have been generated
++  and the server/DH data has reached the observing client.
++- Cube-edge walking/gravity rotation is separate work and is not changed here.
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.patch /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.patch
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.patch	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.patch	2026-07-31 15:50:18.769260576 +0000
+@@ -0,0 +1,137 @@
++diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt
++--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt	1970-01-01 00:00:00.000000000 +0000
+++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4-VALIDATION.txt	2026-07-31 15:50:17.405260576 +0000
++@@ -0,0 +1,20 @@
+++Orbital detail LOD 4 validation
+++===============================
+++
+++Uploaded log diagnosis:
+++- Seamless room handoff completed before the fatal exception.
+++- Fatal cause: unregistered client-to-server genesis:transition_ready payload.
+++- Watchdog stacks identified WorldLodEarthRenderer and OrbitalDhLivePatchRenderer render-thread work.
+++
+++Java target: 21
+++Compile base: previous validated Genesis JAR + NeoForge/Minecraft 1.21.1 merged classes + DH 3.2.0-b
+++Fresh direct javac compile of changed production sources: PASS
+++Compiled production class files: 19
+++Compile-only signature stubs packaged: NO
+++Packaged class hashes against fresh compile: PASS (19/19)
+++SeamlessTransitionScreen PacketDistributor/transition_ready bytecode reference: ABSENT
+++Complete fallback geometry: 96 unique aligned tiles (6 faces x 4 x 4): PASS
+++Final JAR ZIP integrity: PASS
+++Bundled Distant Horizons entry retained: PASS
+++Full Minecraft client launch: NOT PERFORMED
+++Runtime GPU/FPS/survey visibility: REQUIRES IN-GAME TEST
++diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md
++--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md	1970-01-01 00:00:00.000000000 +0000
+++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.md	2026-07-31 15:50:17.397260576 +0000
++@@ -0,0 +1,109 @@
+++# Orbital detail LOD 4
+++
+++Target: Minecraft 1.21.1, NeoForge 21.1.233/234, Java 21.
+++Base: `sparse-world-lod3`.
+++
+++## What the supplied log proved
+++
+++The Earth/space handoff itself completed: the view area reused 15,000 sections
+++and the client changed rooms in 34 ms. The fatal crash happened afterward when
+++`SeamlessTransitionScreen` sent `genesis:transition_ready`, a payload that had
+++not been registered for client-to-server transmission.
+++
+++The freeze watchdog separately caught both terrain renderers building large
+++numbers of immediate-mode quads on the render thread. The log had 889 sparse
+++tiles and more than 360 exact DH chunks available at once, and the old renderer
+++attempted to draw thousands of tiles/patches every frame.
+++
+++## Fixes
+++
+++### Transition and logout
+++
+++- Removed the optional `transition_ready` send from the render callback. The
+++  existing server follow/retrack fallback remains authoritative.
+++- Clears delayed transition and orbital-survey state before a world disconnect.
+++- DH exact-patch persistence now snapshots immediately, then writes and closes
+++  its DH cache on the existing minimum-priority worker. World exit no longer
+++  performs the multi-megabyte save synchronously on the render thread.
+++
+++### Complete six-face cube
+++
+++- The server stages 96 generator-predicted tiles: four by four tiles for each of
+++  the six faces, one sample per 128 blocks.
+++- A cancelled global tile is retried. Coverage is only declared complete after
+++  all 96 tiles actually exist, not merely while jobs are queued.
+++- Finer 64/16/4-block predictions and exact one-block tiles remain sparse and
+++  player-driven.
+++
+++### Render-thread budget
+++
+++- All visible faces retain their cheap 128-block fallback.
+++- Finer terrain is rendered only on the camera-facing face and only near the
+++  relevant point.
+++- Overworld ascent is capped at 384 sparse tiles and 96 non-duplicated DH exact
+++  patches instead of thousands.
+++- Orbit is capped at 224 normal tiles or 512 survey tiles.
+++- A DH exact patch is skipped whenever the server already supplied the same
+++  authoritative exact chunk.
+++- Exact geometry uses top quads and vertical skirts, preserving building roofs,
+++  cliffs, towers and other height discontinuities as 3D voxel-like relief.
+++
+++## Orbital survey
+++
+++A normal whole-planet view cannot physically show a house clearly. At the
+++current 1:16 scale, a 20-block house is only 1.25 space blocks wide. From the
+++launch orbit it is far below one pixel at ordinary FOV.
+++
+++Press **V** in space to enable Orbital Survey, then use the mouse wheel to zoom:
+++
+++`4x, 8x, 16x, 32x, 64x, 128x`
+++
+++The crosshair ray is transformed into Earth's rotating cube frame and displays:
+++
+++- cube face;
+++- exact surface X/Z;
+++- best terrain resolution currently cached at that point.
+++
+++At 128x, a 20-block structure at the default launch distance should occupy
+++roughly 190 pixels on a 1920-pixel-wide display when centered. This is optical
+++magnification; the structure and planet are not enlarged or rescaled.
+++
+++The same face/X/Z target can be passed directly to a future orbital-bombardment
+++weapon. `EXACT 1-BLOCK SURFACE` means the target area is represented by an exact
+++generated/DH chunk tile. Procedural regions remain suitable for terrain aiming
+++but cannot contain player structures that the server has never generated.
+++
+++## Installation
+++
+++Remove every older Genesis JAR and any separate copy of the same bundled
+++Distant Horizons JAR. Install only:
+++
+++`genesis-1.21.1-0.8.0-port-orbital-detail-lod4-bundled.jar`
+++
+++## Test sequence
+++
+++1. Enter the world and wait for sparse/global terrain to begin filling.
+++2. Fly upward through Y=10,000 and confirm there is no watchdog stall from
+++   `WorldLodEarthRenderer`.
+++3. Cross into space. There must be no `transition_ready may not be sent` fatal.
+++4. Press V, aim at the Earth and scroll to 128x.
+++5. Aim at a generated base. The HUD should show its face/X/Z and ideally
+++   `EXACT 1-BLOCK SURFACE` after the chunk data has been cached.
+++6. Leave the world. The title screen should return immediately while the cache
+++   saves asynchronously.
+++
+++Useful grep:
+++
+++```bash
+++grep -E "\[WATCHDOG\]|transition_ready|\[SPARSE-LOD\]|\[DH-CUBE\]|\[TRANSITION\]" run/logs/latest.log
+++```
+++
+++## Limits of this pass
+++
+++- No full Minecraft client was available in the build environment, so GPU
+++  appearance, FPS and actual multiplayer cache delivery need in-game testing.
+++- Exact tiles are a surface-column representation. They show the highest block
+++  and vertical height changes, not every hidden interior block, cave or entity.
+++- A friend’s base can only become exact after its chunks have been generated
+++  and the server/DH data has reached the observing client.
+++- Cube-edge walking/gravity rotation is separate work and is not changed here.
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.sha256 /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.sha256
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.sha256	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/ORBITAL-DETAIL-LOD4.sha256	2026-07-31 15:50:17.549260576 +0000
+@@ -0,0 +1 @@
++4cb58646fb38d4850932fde60510c19acb320171a7de7ebfa60efd7b47b80b30  /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/dist/genesis-1.21.1-0.8.0-port-orbital-detail-lod4-bundled.jar
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/gradle.properties /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/gradle.properties
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/gradle.properties	2026-07-31 14:23:18.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/gradle.properties	2026-07-31 15:27:46.073260576 +0000
+@@ -8,7 +8,7 @@
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port-sparse-world-lod3
++mod_version=1.21.1-0.8.0-port-orbital-detail-lod4
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyHandler.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyHandler.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyHandler.java	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyHandler.java	2026-07-31 15:30:26.005260576 +0000
+@@ -15,10 +15,13 @@
+ 
+     @SubscribeEvent
+     public static void onClientTick(ClientTickEvent.Post event) {
+-        if (GenesisKeyMappings.ORBIT_MAP == null) {
++        if (GenesisKeyMappings.ORBIT_MAP == null || GenesisKeyMappings.ORBITAL_SURVEY == null) {
+             return;
+         }
+         Minecraft minecraft = Minecraft.getInstance();
++        if (minecraft.level == null || !GenesisMod.isSpaceDimension(minecraft.level)) {
++            OrbitalSurveyController.reset();
++        }
+         while (GenesisKeyMappings.ORBIT_MAP.consumeClick()) {
+             // The map is the goggles' instrument, so it needs them worn or held,
+             // just like the in-world orbit lines.
+@@ -27,5 +30,11 @@
+                 minecraft.setScreen(new OrbitMapScreen());
+             }
+         }
++
++        while (GenesisKeyMappings.ORBITAL_SURVEY.consumeClick()) {
++            if (minecraft.screen == null && minecraft.player != null) {
++                OrbitalSurveyController.toggle();
++            }
++        }
+     }
+ }
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyMappings.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyMappings.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyMappings.java	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/GenesisKeyMappings.java	2026-07-31 15:30:26.005260576 +0000
+@@ -13,6 +13,7 @@
+ @EventBusSubscriber(modid = GenesisMod.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+ public final class GenesisKeyMappings {
+     public static KeyMapping ORBIT_MAP;
++    public static KeyMapping ORBITAL_SURVEY;
+ 
+     private GenesisKeyMappings() {
+     }
+@@ -25,5 +26,11 @@
+                 GLFW.GLFW_KEY_M,
+                 "key.categories.genesis");
+         event.register(ORBIT_MAP);
++        ORBITAL_SURVEY = new KeyMapping(
++                "key.genesis.orbital_survey",
++                InputConstants.Type.KEYSYM,
++                GLFW.GLFW_KEY_V,
++                "key.categories.genesis");
++        event.register(ORBITAL_SURVEY);
+     }
+ }
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java	2026-07-31 15:45:42.541260576 +0000
+@@ -0,0 +1,185 @@
++package shipwrights.genesis.client;
++
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.gui.GuiGraphics;
++import net.minecraft.network.chat.Component;
++import net.minecraft.util.Mth;
++import net.neoforged.api.distmarker.Dist;
++import net.neoforged.bus.api.SubscribeEvent;
++import net.neoforged.fml.common.EventBusSubscriber;
++import net.neoforged.neoforge.client.event.InputEvent;
++import net.neoforged.neoforge.client.event.RenderGuiEvent;
++import net.neoforged.neoforge.client.event.ViewportEvent;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.lod.DhLiveChunkPatchCache;
++import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++/**
++ * Optical orbital survey view used by the high-detail cube LOD.
++ *
++ * <p>A Minecraft house is physically far below one screen pixel when the full
++ * 8192-block face is visible. The correct solution is optical magnification,
++ * not enlarging structures or lying about planet scale. This controller narrows
++ * the real camera FOV, keeps the crosshair mapped to an exact cube-face world
++ * coordinate, and tells the renderer which small region deserves block-scale
++ * terrain.</p>
++ */
++@EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
++public final class OrbitalSurveyController {
++    private static final int[] ZOOM_LEVELS = {4, 8, 16, 32, 64, 128};
++
++    public record Focus(CubeNetSurfaceTransform.Face face, double worldX, double worldZ,
++                        boolean crosshairHit, int bestCellSize) {
++    }
++
++    private static volatile boolean active;
++    private static volatile int zoomIndex = 2;
++    private static volatile Focus focus;
++
++    private OrbitalSurveyController() {
++    }
++
++    public static boolean isActive() {
++        return active;
++    }
++
++    public static int zoom() {
++        return ZOOM_LEVELS[Mth.clamp(zoomIndex, 0, ZOOM_LEVELS.length - 1)];
++    }
++
++    public static Focus focus() {
++        return focus;
++    }
++
++    public static void toggle() {
++        Minecraft minecraft = Minecraft.getInstance();
++        if (minecraft.level == null || !GenesisMod.isSpaceDimension(minecraft.level)) {
++            active = false;
++            return;
++        }
++        active = !active;
++        if (minecraft.player != null) {
++            minecraft.player.displayClientMessage(Component.literal(
++                    active ? "Orbital survey enabled — scroll to zoom"
++                            : "Orbital survey disabled"), true);
++        }
++    }
++
++    public static void updateTarget(CubeNetSurfaceTransform.Face face,
++                                    double worldX, double worldZ,
++                                    boolean crosshairHit) {
++        int best = SparsePlanetLodClientCache.bestCellSizeAt(
++                SparsePlanetLodService.EARTH_ID, face, worldX, worldZ);
++        if (DhLiveChunkPatchCache.hasPatchAt(face, worldX, worldZ)) {
++            best = 1;
++        }
++        focus = new Focus(face, worldX, worldZ, crosshairHit, best);
++    }
++
++    /** Radius, in planet blocks, that receives exact/high-detail rendering. */
++    public static double detailRadius() {
++        if (!active) {
++            return 384.0;
++        }
++        return switch (zoom()) {
++            case 4 -> 1024.0;
++            case 8 -> 768.0;
++            case 16 -> 512.0;
++            case 32 -> 384.0;
++            case 64 -> 256.0;
++            default -> 160.0;
++        };
++    }
++
++    public static void reset() {
++        active = false;
++        focus = null;
++    }
++
++    @SubscribeEvent
++    public static void onScroll(InputEvent.MouseScrollingEvent event) {
++        if (!active || Minecraft.getInstance().screen != null) {
++            return;
++        }
++        Minecraft minecraft = Minecraft.getInstance();
++        if (minecraft.level == null || !GenesisMod.isSpaceDimension(minecraft.level)) {
++            reset();
++            return;
++        }
++        double delta = event.getScrollDeltaY();
++        if (delta == 0.0) {
++            return;
++        }
++        zoomIndex = Mth.clamp(zoomIndex + (delta > 0.0 ? 1 : -1),
++                0, ZOOM_LEVELS.length - 1);
++        event.setCanceled(true);
++    }
++
++    @SubscribeEvent
++    public static void onFov(ViewportEvent.ComputeFov event) {
++        if (!active) {
++            return;
++        }
++        Minecraft minecraft = Minecraft.getInstance();
++        if (minecraft.level == null || !GenesisMod.isSpaceDimension(minecraft.level)) {
++            reset();
++            return;
++        }
++        event.setFOV(Math.max(0.35, event.getFOV() / zoom()));
++    }
++
++    @SubscribeEvent
++    public static void onHud(RenderGuiEvent.Post event) {
++        if (!active) {
++            return;
++        }
++        Minecraft minecraft = Minecraft.getInstance();
++        if (minecraft.level == null || minecraft.player == null
++                || !GenesisMod.isSpaceDimension(minecraft.level)) {
++            reset();
++            return;
++        }
++
++        GuiGraphics graphics = event.getGuiGraphics();
++        int width = graphics.guiWidth();
++        int height = graphics.guiHeight();
++        int cx = width / 2;
++        int cy = height / 2;
++        int cross = 7;
++        graphics.fill(cx - cross, cy, cx - 2, cy + 1, 0xE0FFFFFF);
++        graphics.fill(cx + 3, cy, cx + cross + 1, cy + 1, 0xE0FFFFFF);
++        graphics.fill(cx, cy - cross, cx + 1, cy - 2, 0xE0FFFFFF);
++        graphics.fill(cx, cy + 3, cx + 1, cy + cross + 1, 0xE0FFFFFF);
++
++        Focus current = focus;
++        int boxWidth = 250;
++        int left = cx - boxWidth / 2;
++        graphics.fill(left, 8, left + boxWidth, current == null ? 34 : 52, 0xA8050910);
++        graphics.drawCenteredString(minecraft.font,
++                "ORBITAL SURVEY  ×" + zoom(), cx, 13, 0xFF9DEBFF);
++        if (current == null) {
++            graphics.drawCenteredString(minecraft.font,
++                    "Aim at Earth", cx, 27, 0xFFB8C0CC);
++            return;
++        }
++
++        graphics.drawCenteredString(minecraft.font,
++                current.face().name() + "  X " + Mth.floor(current.worldX())
++                        + "  Z " + Mth.floor(current.worldZ()),
++                cx, 27, current.crosshairHit() ? 0xFFFFFFFF : 0xFFB8C0CC);
++        graphics.drawCenteredString(minecraft.font,
++                qualityLabel(current.bestCellSize()), cx, 40,
++                current.bestCellSize() <= 1 ? 0xFF7CFF9C : 0xFFFFCE73);
++    }
++
++    private static String qualityLabel(int cellSize) {
++        if (cellSize == Integer.MAX_VALUE) return "NO CACHED TERRAIN — global fallback";
++        if (cellSize <= 1) return "EXACT 1-BLOCK SURFACE — structure targeting ready";
++        if (cellSize <= 4) return "HIGH DETAIL — 4 blocks per sample";
++        if (cellSize <= 16) return "REGIONAL DETAIL — 16 blocks per sample";
++        if (cellSize <= 64) return "COARSE DETAIL — 64 blocks per sample";
++        return "GLOBAL PREDICTION — " + cellSize + " blocks per sample";
++    }
++}
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 14:10:44.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 15:35:03.329260576 +0000
+@@ -22,6 +22,11 @@
+ 
+     @SubscribeEvent
+     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
++        // These client-only state machines survive as static event subscribers.
++        // Reset them before DH closes its level so no delayed render callback can
++        // send a packet or draw stale terrain into the title-screen shutdown.
++        SeamlessTransitionScreen.resetTransitionNotification();
++        OrbitalSurveyController.reset();
+         DhCubeLodBridge.clear();
+         PlanetSurfaceTextures.clear();
+         SparsePlanetLodClientCache.clear();
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/SeamlessTransitionScreen.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/SeamlessTransitionScreen.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/SeamlessTransitionScreen.java	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/SeamlessTransitionScreen.java	2026-07-31 15:43:40.617260576 +0000
+@@ -10,9 +10,7 @@
+ import net.neoforged.bus.api.SubscribeEvent;
+ import net.neoforged.fml.common.EventBusSubscriber;
+ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+-import net.neoforged.neoforge.network.PacketDistributor;
+ import shipwrights.genesis.GenesisMod;
+-import shipwrights.genesis.networking.TransitionReadyPacket;
+ 
+ import java.util.function.BooleanSupplier;
+ 
+@@ -122,8 +120,18 @@
+             return;
+         }
+ 
++        // The old build sent genesis:transition_ready here even though the
++        // payload was not registered client-to-server, crashing the render
++        // thread after an otherwise successful crossing. The acknowledgement
++        // is optional; the existing server-side follow/retrack fallback remains
++        // authoritative, so completing the countdown must be a no-op.
++        destinationFramesUntilReady = -1;
++    }
++
++
++    /** Clears the delayed acknowledgement when disconnecting or changing saves. */
++    public static void resetTransitionNotification() {
+         destinationFramesUntilReady = -1;
+-        PacketDistributor.sendToServer(new TransitionReadyPacket());
+     }
+ 
+     /**
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 14:08:46.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 15:45:42.541260576 +0000
+@@ -159,6 +159,16 @@
+         }
+     }
+ 
++
++    public static boolean hasPatchAt(CubeNetSurfaceTransform.Face face, double worldX, double worldZ) {
++        int chunkX = Math.floorDiv(floorToInt(worldX), 16);
++        int chunkZ = Math.floorDiv(floorToInt(worldZ), 16);
++        synchronized (PATCH_LOCK) {
++            Patch patch = PATCHES.get(pack(chunkX, chunkZ));
++            return patch != null && patch.face() == face;
++        }
++    }
++
+     public static int patchCount() {
+         synchronized (PATCH_LOCK) {
+             return PATCHES.size();
+@@ -439,15 +449,25 @@
+         if (file == null || generation != GENERATION.get()) {
+             return;
+         }
+-        Patch[] snapshot = snapshot();
++        Patch[] patches = snapshot();
++        if (writeSnapshot(file, patches)) {
++            unsavedChanges = 0;
++        }
++    }
++
++    private static boolean writeSnapshot(Path file, Patch[] patches) {
++        if (file == null) {
++            return false;
++        }
+         Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+         try {
+             Files.createDirectories(file.getParent());
+-            try (DataOutputStream output = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temporary)))) {
++            try (DataOutputStream output = new DataOutputStream(
++                    new BufferedOutputStream(Files.newOutputStream(temporary)))) {
+                 output.writeInt(FILE_MAGIC);
+                 output.writeInt(FILE_VERSION);
+-                output.writeInt(snapshot.length);
+-                for (Patch patch : snapshot) {
++                output.writeInt(patches.length);
++                for (Patch patch : patches) {
+                     output.writeInt(patch.chunkX());
+                     output.writeInt(patch.chunkZ());
+                     output.writeByte(patch.face().ordinal());
+@@ -459,40 +479,58 @@
+                 }
+             }
+             try {
+-                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
++                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING,
++                        StandardCopyOption.ATOMIC_MOVE);
+             } catch (IOException atomicUnsupported) {
+                 Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+             }
+-            unsavedChanges = 0;
++            return true;
+         } catch (Throwable error) {
+             GenesisMod.LOGGER.warn("[DH-LIVE] could not persist chunk patches", error);
+             try {
+                 Files.deleteIfExists(temporary);
+             } catch (IOException ignored) {
+             }
++            return false;
+         }
+     }
+ 
+     public static synchronized void clear() {
+-        int generation = GENERATION.get();
+-        if (unsavedChanges > 0) {
+-            savePersisted(generation);
+-        }
++        // Logging out is a render-thread path. The old implementation wrote a
++        // multi-megabyte cache and closed DH synchronously here, making world
++        // exit look like a crash. Snapshot immutable records, detach instantly,
++        // then let the existing low-priority worker save and close in order.
+         GENERATION.incrementAndGet();
++        Path file = persistenceFile;
++        Patch[] patches = unsavedChanges > 0 ? snapshot() : new Patch[0];
++        IDhApiTerrainDataCache cache = dataCache;
++
+         activeWrapper = null;
+         transform = null;
+         persistenceFile = null;
++        dataCache = null;
++        unsavedChanges = 0;
+         DIRTY_QUEUE.clear();
+         QUEUED.clear();
+         synchronized (PATCH_LOCK) {
+             PATCHES.clear();
+         }
+-        closeCache();
++
++        WORKER.execute(() -> {
++            if (patches.length > 0 && file != null) {
++                writeSnapshot(file, patches);
++            }
++            closeCache(cache);
++        });
+     }
+ 
+     private static void closeCache() {
+         IDhApiTerrainDataCache cache = dataCache;
+         dataCache = null;
++        closeCache(cache);
++    }
++
++    private static void closeCache(IDhApiTerrainDataCache cache) {
+         if (cache != null) {
+             try {
+                 cache.close();
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 14:10:32.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 15:45:42.541260576 +0000
+@@ -18,7 +18,9 @@
+ import org.joml.Quaterniondc;
+ import org.joml.Vector3d;
+ import org.joml.Vector3dc;
++import org.joml.Vector3f;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.OrbitalSurveyController;
+ import shipwrights.genesis.client.PlanetSurfaceTextures;
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
+@@ -30,17 +32,20 @@
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
+-import java.util.Arrays;
++import java.util.ArrayList;
+ import java.util.Comparator;
++import java.util.List;
+ 
+ /**
+- * Carries the exact DH chunk patches into orbital space.
++ * Renders the same server/DH terrain tiles on Earth after the seamless crossing.
+  *
+- * <p>The ordinary planet renderer supplies the complete low-resolution cube.
+- * This pass adds the same block-column chunks that were visible during ascent,
+- * in the same face coordinates and at the same 1:16 scale. No texture swap is
+- * involved, so a tower cached while leaving Earth remains the same raised patch
+- * when seen after the seamless dimension handoff.</p>
++ * <p>The previous version submitted thousands of 16x16 tiles and exact chunks
++ * every frame. Besides stalling the render thread, that cannot make a house
++ * readable while the whole 8192-block face is fitted on screen: the house is
++ * physically smaller than a pixel. This pass keeps a cheap complete cube and
++ * spends block-scale geometry only around the camera-facing/surveyed point.
++ * Orbital survey mode supplies genuine optical magnification and exact surface
++ * coordinates instead of enlarging structures or changing planet scale.</p>
+  */
+ @EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
+ public final class OrbitalDhLivePatchRenderer {
+@@ -51,6 +56,11 @@
+     private OrbitalDhLivePatchRenderer() {
+     }
+ 
++    private record FocusRegion(CubeNetSurfaceTransform.Face face,
++                               double worldX, double worldZ,
++                               boolean crosshairHit) {
++    }
++
+     @SubscribeEvent
+     public static void onRender(RenderLevelStageEvent event) {
+         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+@@ -59,22 +69,19 @@
+         Minecraft minecraft = Minecraft.getInstance();
+         ClientLevel level = minecraft.level;
+         if (level == null || !GenesisMod.isSpaceDimension(level)) {
++            OrbitalSurveyController.reset();
+             return;
+         }
++
++        SparsePlanetLodTile[] sparseTiles =
++                SparsePlanetLodClientCache.snapshot(SparsePlanetLodService.EARTH_ID);
+         DhLiveChunkPatchCache.Patch[] patches = DhLiveChunkPatchCache.snapshot();
+-        SparsePlanetLodTile[] sparseTiles = SparsePlanetLodClientCache.snapshot(SparsePlanetLodService.EARTH_ID);
+-        if (patches.length == 0 && sparseTiles.length == 0) {
++        if (sparseTiles.length == 0 && patches.length == 0) {
+             return;
+         }
+ 
+         Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+-        Celestial earth = null;
+-        for (Celestial candidate : registry) {
+-            if (OVERWORLD_ID.equals(registry.getKey(candidate))) {
+-                earth = candidate;
+-                break;
+-            }
+-        }
++        Celestial earth = findEarth(registry);
+         if (earth == null) {
+             return;
+         }
+@@ -90,54 +97,146 @@
+ 
+         Vector3d planetPosition = new Vector3d(renderTransform.position());
+         Quaterniond planetRotation = new Quaterniond(renderTransform.rotation());
+-        double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(planetPosition);
++        double renderDistanceScale =
++                CelestialRenderCoordinates.getPlanetRenderDistanceScale(planetPosition);
+         if (renderDistanceScale != 1.0) {
+-            planetPosition = CelestialRenderCoordinates.scaleRenderPosition(planetPosition, renderDistanceScale);
++            planetPosition = CelestialRenderCoordinates.scaleRenderPosition(
++                    planetPosition, renderDistanceScale);
+         }
+-        double physicalHalfExtent = earth.getActualSize() * 0.5;
+-        double renderedHalfExtent = physicalHalfExtent * renderDistanceScale;
+-        double worldToRendered = renderDistanceScale / CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
++
++        double renderedHalfExtent = earth.getActualSize() * 0.5 * renderDistanceScale;
++        double worldToRendered = renderDistanceScale
++                / CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
+         CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+                 earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
+ 
+-        Vector3d localToCamera = new Vector3d(planetPosition).negate()
+-                .rotate(new Quaterniond(planetRotation).conjugate())
+-                .normalize();
++        Quaterniond inverseRotation = new Quaterniond(planetRotation).conjugate();
++        Vector3d localCamera = new Vector3d(planetPosition).negate().rotate(inverseRotation);
++        Vector3d localToCamera = new Vector3d(localCamera).normalize();
++        Vector3f look = event.getCamera().getLookVector();
++        Vector3d localLook = new Vector3d(look.x, look.y, look.z)
++                .rotate(inverseRotation).normalize();
++        FocusRegion focus = findFocus(localCamera, localLook, renderedHalfExtent,
++                worldToRendered, transform);
++        OrbitalSurveyController.updateTarget(
++                focus.face(), focus.worldX(), focus.worldZ(), focus.crosshairHit());
++
+         double distance = Math.max(renderedHalfExtent, planetPosition.length());
+         double apparentHalf = renderedHalfExtent / distance;
+-        int step = apparentHalf >= 0.20 ? 1 : apparentHalf >= 0.075 ? 2 : 4;
+-        int maximumPatches = apparentHalf >= 0.20 ? 1536 : apparentHalf >= 0.075 ? 1024 : 512;
++        PlanetSurfaceData coarseSurface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
++        int seaLevel = coarseSurface != null && coarseSurface.isValid()
++                ? coarseSurface.seaLevel() : DhLiveChunkPatchCache.seaLevel();
+ 
+         MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
+         VertexConsumer buffer = source.getBuffer(RENDER_TYPE);
+-        Matrix4f view = new Matrix4f(event.getModelViewMatrix());
++        Matrix4f view = event.getModelViewMatrix();
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+ 
+-        PlanetSurfaceData coarseSurface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
+-        int seaLevel = coarseSurface != null && coarseSurface.isValid()
+-                ? coarseSurface.seaLevel() : DhLiveChunkPatchCache.seaLevel();
+-        renderSparseTiles(buffer, view, sparseTiles, transform, planetPosition, planetRotation,
+-                renderedHalfExtent, worldToRendered, localToCamera, seaLevel, apparentHalf);
++        renderSparseTiles(buffer, view, sparseTiles, transform, planetPosition,
++                planetRotation, renderedHalfExtent, worldToRendered,
++                localToCamera, seaLevel, apparentHalf, focus);
++        renderExactDhPatches(buffer, view, patches, transform, planetPosition,
++                planetRotation, renderedHalfExtent, worldToRendered,
++                localToCamera, apparentHalf, focus);
+ 
+-        int rendered = 0;
+-        for (int patchIndex = patches.length - 1;
+-             patchIndex >= 0 && rendered < maximumPatches;
+-             patchIndex--) {
+-            DhLiveChunkPatchCache.Patch patch = patches[patchIndex];
+-            Vector3dc faceNormal = CubeFaceFrame.axes(patch.face()).up();
+-            if (localToCamera.dot(faceNormal) < -0.035) {
+-                continue;
+-            }
+-            renderPatch(buffer, view, patch, transform, planetPosition, planetRotation,
+-                    renderedHalfExtent, worldToRendered, step);
+-            rendered++;
+-        }
+         source.endBatch(RENDER_TYPE);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+     }
+ 
++    private static Celestial findEarth(Registry<Celestial> registry) {
++        for (Celestial candidate : registry) {
++            if (OVERWORLD_ID.equals(registry.getKey(candidate))) {
++                return candidate;
++            }
++        }
++        return null;
++    }
++
++    /** Ray/AABB targeting in the planet's rotating local frame. */
++    private static FocusRegion findFocus(Vector3d localCamera, Vector3d localLook,
++                                         double halfExtent, double worldToRendered,
++                                         CubeNetSurfaceTransform transform) {
++        double hitDistance = intersectCube(localCamera, localLook, halfExtent + 2.0);
++        boolean hit = Double.isFinite(hitDistance) && hitDistance >= 0.0;
++        Vector3d point;
++        if (hit) {
++            point = new Vector3d(localLook).mul(hitDistance).add(localCamera);
++        } else {
++            // Fall back to the radial point under the camera. This keeps detail
++            // stable when looking away from Earth and gives the normal renderer
++            // a deterministic face to prioritize.
++            double reach = maxAbs(localCamera);
++            if (reach < 1.0E-9) {
++                point = new Vector3d(0.0, halfExtent, 0.0);
++            } else {
++                point = new Vector3d(localCamera).mul(halfExtent / reach);
++            }
++        }
++        CubeNetSurfaceTransform.Face face = dominantFace(point);
++        CubeFaceFrame.Axes axes = CubeFaceFrame.axes(face);
++        double u = point.dot(axes.right()) / Math.max(1.0E-9, worldToRendered);
++        double v = point.dot(axes.south()) / Math.max(1.0E-9, worldToRendered);
++        double half = transform.faceHalfSpan();
++        u = Math.max(-half, Math.min(half, u));
++        v = Math.max(-half, Math.min(half, v));
++        return new FocusRegion(face,
++                transform.faceCenterX(face) + u,
++                transform.faceCenterZ(face) + v,
++                hit);
++    }
++
++    private static double intersectCube(Vector3d origin, Vector3d direction, double halfExtent) {
++        double near = 0.0;
++        double far = Double.POSITIVE_INFINITY;
++        double[] origins = {origin.x, origin.y, origin.z};
++        double[] directions = {direction.x, direction.y, direction.z};
++        for (int axis = 0; axis < 3; axis++) {
++            double o = origins[axis];
++            double d = directions[axis];
++            if (Math.abs(d) < 1.0E-10) {
++                if (o < -halfExtent || o > halfExtent) {
++                    return Double.NaN;
++                }
++                continue;
++            }
++            double t0 = (-halfExtent - o) / d;
++            double t1 = (halfExtent - o) / d;
++            if (t0 > t1) {
++                double swap = t0;
++                t0 = t1;
++                t1 = swap;
++            }
++            near = Math.max(near, t0);
++            far = Math.min(far, t1);
++            if (far < near) {
++                return Double.NaN;
++            }
++        }
++        return near;
++    }
++
++    private static CubeNetSurfaceTransform.Face dominantFace(Vector3dc point) {
++        double ax = Math.abs(point.x());
++        double ay = Math.abs(point.y());
++        double az = Math.abs(point.z());
++        if (ay >= ax && ay >= az) {
++            return point.y() >= 0.0 ? CubeNetSurfaceTransform.Face.UP
++                    : CubeNetSurfaceTransform.Face.DOWN;
++        }
++        if (az >= ax) {
++            return point.z() >= 0.0 ? CubeNetSurfaceTransform.Face.SOUTH
++                    : CubeNetSurfaceTransform.Face.NORTH;
++        }
++        return point.x() >= 0.0 ? CubeNetSurfaceTransform.Face.EAST
++                : CubeNetSurfaceTransform.Face.WEST;
++    }
++
++    private static double maxAbs(Vector3dc vector) {
++        return Math.max(Math.abs(vector.x()),
++                Math.max(Math.abs(vector.y()), Math.abs(vector.z())));
++    }
+ 
+     private static void renderSparseTiles(VertexConsumer buffer, Matrix4f view,
+                                           SparsePlanetLodTile[] tiles,
+@@ -145,73 +244,161 @@
+                                           Vector3d planetPosition, Quaterniondc planetRotation,
+                                           double renderedHalfExtent, double worldToRendered,
+                                           Vector3d localToCamera, int seaLevel,
+-                                          double apparentHalf) {
++                                          double apparentHalf, FocusRegion focus) {
+         if (tiles.length == 0) {
+             return;
+         }
+-        Arrays.sort(tiles, Comparator.comparingInt(SparsePlanetLodTile::cellSize).reversed());
+-        int maximum = apparentHalf >= 0.20 ? 3072 : apparentHalf >= 0.075 ? 2048 : 768;
++        boolean survey = OrbitalSurveyController.isActive();
++        double detailRadius = OrbitalSurveyController.detailRadius();
++        int maximum = survey ? 512 : 224;
+         int rendered = 0;
+-        for (SparsePlanetLodTile tile : tiles) {
+-            if (rendered >= maximum) {
+-                break;
+-            }
+-            Vector3dc normal = CubeFaceFrame.axes(tile.face()).up();
+-            if (localToCamera.dot(normal) < -0.035) {
+-                continue;
++
++        // Coarse-to-fine keeps finer tiles on top without sorting all cached
++        // tiles every frame. Only the surveyed/camera-facing region receives
++        // expensive detail; all visible faces retain their 128-block fallback.
++        int[] passes = {128, 64, 16, 4, 1};
++        for (int cellSize : passes) {
++            for (SparsePlanetLodTile tile : tiles) {
++                if (rendered >= maximum) {
++                    return;
++                }
++                if (tile.cellSize() != cellSize) {
++                    continue;
++                }
++                Vector3dc normal = CubeFaceFrame.axes(tile.face()).up();
++                if (localToCamera.dot(normal) < -0.035) {
++                    continue;
++                }
++                double centerX = tile.originX() + tile.span() * 0.5;
++                double centerZ = tile.originZ() + tile.span() * 0.5;
++                double distance = distance(centerX, centerZ, focus.worldX(), focus.worldZ());
++                if (!shouldRenderTile(tile, focus, distance, detailRadius)) {
++                    continue;
++                }
++                int step = sparseStep(tile, apparentHalf, survey);
++                double nudge = tile.exact() ? 0.035
++                        : tile.cellSize() <= 4 ? 0.026
++                        : tile.cellSize() <= 16 ? 0.018
++                        : tile.cellSize() <= 64 ? 0.011 : 0.006;
++                renderSparseTile(buffer, view, tile, transform, planetPosition,
++                        planetRotation, renderedHalfExtent, worldToRendered,
++                        seaLevel, step, nudge, survey);
++                rendered++;
+             }
+-            int step = apparentHalf >= 0.20 ? 1
+-                    : apparentHalf >= 0.075 ? (tile.cellSize() >= 64 ? 2 : 1)
+-                    : (tile.cellSize() >= 16 ? 2 : 1);
+-            double nudge = tile.exact() ? 0.055
+-                    : tile.cellSize() <= 4 ? 0.042
+-                    : tile.cellSize() <= 16 ? 0.028 : 0.014;
+-            for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z += step) {
+-                int z1 = Math.min(SparsePlanetLodTile.RESOLUTION, z + step);
+-                for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x += step) {
+-                    int x1 = Math.min(SparsePlanetLodTile.RESOLUTION, x + step);
+-                    int index = tile.index(x, z);
+-                    int colour = tile.colours()[index];
+-                    if ((colour >>> 24) == 0) {
+-                        continue;
++        }
++    }
++
++    private static boolean shouldRenderTile(SparsePlanetLodTile tile, FocusRegion focus,
++                                            double distance, double detailRadius) {
++        if (tile.cellSize() >= 128) {
++            return true; // complete six-face fallback: only 96 tiles total
++        }
++        if (tile.face() != focus.face()) {
++            return false;
++        }
++        if (tile.cellSize() <= 1) return distance <= detailRadius;
++        if (tile.cellSize() <= 4) return distance <= detailRadius * 2.0;
++        if (tile.cellSize() <= 16) return distance <= detailRadius * 5.0;
++        return distance <= detailRadius * 10.0;
++    }
++
++    private static int sparseStep(SparsePlanetLodTile tile, double apparentHalf, boolean survey) {
++        if (survey && tile.cellSize() <= 4) return 1;
++        if (tile.cellSize() >= 128) return apparentHalf < 0.08 ? 2 : 1;
++        if (tile.cellSize() >= 64) return 2;
++        if (tile.cellSize() >= 16 && apparentHalf < 0.12) return 2;
++        return 1;
++    }
++
++    private static void renderSparseTile(VertexConsumer buffer, Matrix4f view,
++                                         SparsePlanetLodTile tile,
++                                         CubeNetSurfaceTransform transform,
++                                         Vector3d planetPosition, Quaterniondc rotation,
++                                         double renderedHalfExtent, double worldToRendered,
++                                         int seaLevel, int step, double nudge,
++                                         boolean survey) {
++        for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z += step) {
++            int z1 = Math.min(SparsePlanetLodTile.RESOLUTION, z + step);
++            for (int x = 0; x < SparsePlanetLodTile.RESOLUTION; x += step) {
++                int x1 = Math.min(SparsePlanetLodTile.RESOLUTION, x + step);
++                int index = tile.index(x, z);
++                int colour = tile.colours()[index];
++                if ((colour >>> 24) == 0) continue;
++                int height = tile.heights()[index];
++                double wx0 = tile.originX() + (double) x * tile.cellSize();
++                double wx1 = tile.originX() + (double) x1 * tile.cellSize();
++                double wz0 = tile.originZ() + (double) z * tile.cellSize();
++                double wz1 = tile.originZ() + (double) z1 * tile.cellSize();
++                Vector3d p00 = sparseOrbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz0, height, seaLevel, nudge);
++                Vector3d p10 = sparseOrbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz0, height, seaLevel, nudge);
++                Vector3d p11 = sparseOrbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz1, height, seaLevel, nudge);
++                Vector3d p01 = sparseOrbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz1, height, seaLevel, nudge);
++                int top = tile.cellSize() <= 4 ? brighten(colour, 1.10) : colour;
++                addVertex(buffer, view, p01, top);
++                addVertex(buffer, view, p11, top);
++                addVertex(buffer, view, p10, top);
++                addVertex(buffer, view, p00, top);
++
++                if ((survey || tile.exact()) && tile.cellSize() <= 4 && step == 1) {
++                    int east = x1 < SparsePlanetLodTile.RESOLUTION
++                            ? tile.heights()[tile.index(x1, z)] : height;
++                    if (east != height) {
++                        addSparseWall(buffer, view, tile.face(), transform, planetPosition, rotation,
++                                renderedHalfExtent, worldToRendered, wx1, wz0, wx1, wz1,
++                                height, east, seaLevel, darken(colour, 0.62), nudge + 0.003);
+                     }
+-                    int height = tile.heights()[index];
+-                    double wx0 = tile.originX() + (double) x * tile.cellSize();
+-                    double wx1 = tile.originX() + (double) x1 * tile.cellSize();
+-                    double wz0 = tile.originZ() + (double) z * tile.cellSize();
+-                    double wz1 = tile.originZ() + (double) z1 * tile.cellSize();
+-                    Vector3d p00 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
+-                            renderedHalfExtent, worldToRendered, wx0, wz0, height, seaLevel, nudge);
+-                    Vector3d p10 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
+-                            renderedHalfExtent, worldToRendered, wx1, wz0, height, seaLevel, nudge);
+-                    Vector3d p11 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
+-                            renderedHalfExtent, worldToRendered, wx1, wz1, height, seaLevel, nudge);
+-                    Vector3d p01 = sparseOrbitalPoint(tile.face(), transform, planetPosition, planetRotation,
+-                            renderedHalfExtent, worldToRendered, wx0, wz1, height, seaLevel, nudge);
+-                    addVertex(buffer, view, p01, colour);
+-                    addVertex(buffer, view, p11, colour);
+-                    addVertex(buffer, view, p10, colour);
+-                    addVertex(buffer, view, p00, colour);
+-
+-                    if (tile.cellSize() <= 16 && step == 1) {
+-                        int east = x1 < SparsePlanetLodTile.RESOLUTION
+-                                ? tile.heights()[tile.index(x1, z)] : height;
+-                        if (east != height) {
+-                            addSparseWall(buffer, view, tile.face(), transform, planetPosition, planetRotation,
+-                                    renderedHalfExtent, worldToRendered, wx1, wz0, wx1, wz1,
+-                                    height, east, seaLevel, darken(colour, 0.66));
+-                        }
+-                        int south = z1 < SparsePlanetLodTile.RESOLUTION
+-                                ? tile.heights()[tile.index(x, z1)] : height;
+-                        if (south != height) {
+-                            addSparseWall(buffer, view, tile.face(), transform, planetPosition, planetRotation,
+-                                    renderedHalfExtent, worldToRendered, wx0, wz1, wx1, wz1,
+-                                    height, south, seaLevel, darken(colour, 0.76));
+-                        }
++                    int south = z1 < SparsePlanetLodTile.RESOLUTION
++                            ? tile.heights()[tile.index(x, z1)] : height;
++                    if (south != height) {
++                        addSparseWall(buffer, view, tile.face(), transform, planetPosition, rotation,
++                                renderedHalfExtent, worldToRendered, wx0, wz1, wx1, wz1,
++                                height, south, seaLevel, darken(colour, 0.74), nudge + 0.003);
+                     }
+                 }
+             }
+-            rendered++;
++        }
++    }
++
++    private static void renderExactDhPatches(VertexConsumer buffer, Matrix4f view,
++                                             DhLiveChunkPatchCache.Patch[] patches,
++                                             CubeNetSurfaceTransform transform,
++                                             Vector3d planetPosition, Quaterniondc rotation,
++                                             double renderedHalfExtent, double worldToRendered,
++                                             Vector3d localToCamera, double apparentHalf,
++                                             FocusRegion focus) {
++        if (patches.length == 0) return;
++        boolean survey = OrbitalSurveyController.isActive();
++        if (!survey && apparentHalf < 0.16) {
++            return; // exact blocks are sub-pixel at full-planet distance
++        }
++        double radius = survey ? OrbitalSurveyController.detailRadius()
++                : Math.min(512.0, OrbitalSurveyController.detailRadius());
++        List<DhLiveChunkPatchCache.Patch> candidates = new ArrayList<>();
++        for (DhLiveChunkPatchCache.Patch patch : patches) {
++            if (patch.face() != focus.face()) continue;
++            if (localToCamera.dot(CubeFaceFrame.axes(patch.face()).up()) < -0.035) continue;
++            if (SparsePlanetLodClientCache.hasExactChunk(
++                    SparsePlanetLodService.EARTH_ID, patch.face(), patch.chunkX(), patch.chunkZ())) {
++                continue; // server exact tile is authoritative; do not draw twice
++            }
++            double centerX = patch.worldMinX() + 8.0;
++            double centerZ = patch.worldMinZ() + 8.0;
++            if (distance(centerX, centerZ, focus.worldX(), focus.worldZ()) <= radius) {
++                candidates.add(patch);
++            }
++        }
++        candidates.sort(Comparator.comparingDouble(patch -> distanceSquared(
++                patch.worldMinX() + 8.0, patch.worldMinZ() + 8.0,
++                focus.worldX(), focus.worldZ())));
++        int maximum = survey ? 256 : 64;
++        int step = survey ? 1 : 2;
++        for (int index = 0; index < candidates.size() && index < maximum; index++) {
++            renderPatch(buffer, view, candidates.get(index), transform,
++                    planetPosition, rotation, renderedHalfExtent, worldToRendered, step);
+         }
+     }
+ 
+@@ -221,17 +408,18 @@
+                                       Vector3d planetPosition, Quaterniondc rotation,
+                                       double renderedHalfExtent, double worldToRendered,
+                                       double x0, double z0, double x1, double z1,
+-                                      int heightA, int heightB, int seaLevel, int colour) {
++                                      int heightA, int heightB, int seaLevel,
++                                      int colour, double nudge) {
+         int low = Math.min(heightA, heightB);
+         int high = Math.max(heightA, heightB);
+         Vector3d p0l = sparseOrbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x0, z0, low, seaLevel, 0.008);
++                renderedHalfExtent, worldToRendered, x0, z0, low, seaLevel, nudge);
+         Vector3d p1l = sparseOrbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x1, z1, low, seaLevel, 0.008);
++                renderedHalfExtent, worldToRendered, x1, z1, low, seaLevel, nudge);
+         Vector3d p1h = sparseOrbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x1, z1, high, seaLevel, 0.008);
++                renderedHalfExtent, worldToRendered, x1, z1, high, seaLevel, nudge);
+         Vector3d p0h = sparseOrbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x0, z0, high, seaLevel, 0.008);
++                renderedHalfExtent, worldToRendered, x0, z0, high, seaLevel, nudge);
+         addVertex(buffer, view, p0l, colour);
+         addVertex(buffer, view, p1l, colour);
+         addVertex(buffer, view, p1h, colour);
+@@ -246,17 +434,15 @@
+                                                int seaLevel, double nudge) {
+         double u = (worldX - transform.faceCenterX(face)) * worldToRendered;
+         double v = (worldZ - transform.faceCenterZ(face)) * worldToRendered;
+-        double elevation = (height - seaLevel) * worldToRendered
+-                + nudge * Math.max(0.05, worldToRendered);
++        double elevation = (height - seaLevel) * worldToRendered + nudge;
+         return CubeFaceFrame.cubePoint(face, u, v, renderedHalfExtent, elevation)
+-                .rotate(rotation)
+-                .add(planetPosition);
++                .rotate(rotation).add(planetPosition);
+     }
+ 
+     private static void renderPatch(VertexConsumer buffer, Matrix4f view,
+                                     DhLiveChunkPatchCache.Patch patch,
+                                     CubeNetSurfaceTransform transform,
+-                                    Vector3d planetPosition, Quaterniondc planetRotation,
++                                    Vector3d planetPosition, Quaterniondc rotation,
+                                     double renderedHalfExtent, double worldToRendered,
+                                     int step) {
+         int worldMinX = patch.worldMinX();
+@@ -267,43 +453,39 @@
+                 int x1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, x + step);
+                 int index = patch.index(x, z);
+                 int colour = patch.colours()[index];
+-                if ((colour >>> 24) == 0) {
+-                    continue;
+-                }
++                if ((colour >>> 24) == 0) continue;
+                 int height = patch.heights()[index];
+                 double wx0 = worldMinX + x;
+                 double wx1 = worldMinX + x1;
+                 double wz0 = worldMinZ + z;
+                 double wz1 = worldMinZ + z1;
+-
+-                Vector3d p00 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
+-                        renderedHalfExtent, worldToRendered, wx0, wz0, height, 0.045);
+-                Vector3d p10 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
+-                        renderedHalfExtent, worldToRendered, wx1, wz0, height, 0.045);
+-                Vector3d p11 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
+-                        renderedHalfExtent, worldToRendered, wx1, wz1, height, 0.045);
+-                Vector3d p01 = orbitalPoint(patch.face(), transform, planetPosition, planetRotation,
+-                        renderedHalfExtent, worldToRendered, wx0, wz1, height, 0.045);
+-                int topColour = brighten(colour, 1.18);
+-                addVertex(buffer, view, p01, topColour);
+-                addVertex(buffer, view, p11, topColour);
+-                addVertex(buffer, view, p10, topColour);
+-                addVertex(buffer, view, p00, topColour);
+-
+-                if (step <= 2) {
++                Vector3d p00 = orbitalPoint(patch.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz0, height, 0.042);
++                Vector3d p10 = orbitalPoint(patch.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz0, height, 0.042);
++                Vector3d p11 = orbitalPoint(patch.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx1, wz1, height, 0.042);
++                Vector3d p01 = orbitalPoint(patch.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, wx0, wz1, height, 0.042);
++                int top = brighten(colour, 1.18);
++                addVertex(buffer, view, p01, top);
++                addVertex(buffer, view, p11, top);
++                addVertex(buffer, view, p10, top);
++                addVertex(buffer, view, p00, top);
++                if (step == 1) {
+                     int east = x1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
+                             ? patch.heights()[patch.index(x1, z)] : height;
+                     if (east != height) {
+-                        addWall(buffer, view, patch.face(), transform, planetPosition, planetRotation,
+-                                renderedHalfExtent, worldToRendered,
+-                                wx1, wz0, wx1, wz1, height, east, darken(colour, 0.62));
++                        addWall(buffer, view, patch.face(), transform, planetPosition, rotation,
++                                renderedHalfExtent, worldToRendered, wx1, wz0, wx1, wz1,
++                                height, east, darken(colour, 0.62));
+                     }
+                     int south = z1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
+                             ? patch.heights()[patch.index(x, z1)] : height;
+                     if (south != height) {
+-                        addWall(buffer, view, patch.face(), transform, planetPosition, planetRotation,
+-                                renderedHalfExtent, worldToRendered,
+-                                wx0, wz1, wx1, wz1, height, south, darken(colour, 0.74));
++                        addWall(buffer, view, patch.face(), transform, planetPosition, rotation,
++                                renderedHalfExtent, worldToRendered, wx0, wz1, wx1, wz1,
++                                height, south, darken(colour, 0.74));
+                     }
+                 }
+             }
+@@ -320,13 +502,13 @@
+         int low = Math.min(heightA, heightB);
+         int high = Math.max(heightA, heightB);
+         Vector3d p0l = orbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x0, z0, low, 0.02);
++                renderedHalfExtent, worldToRendered, x0, z0, low, 0.045);
+         Vector3d p1l = orbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x1, z1, low, 0.02);
++                renderedHalfExtent, worldToRendered, x1, z1, low, 0.045);
+         Vector3d p1h = orbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x1, z1, high, 0.02);
++                renderedHalfExtent, worldToRendered, x1, z1, high, 0.045);
+         Vector3d p0h = orbitalPoint(face, transform, planetPosition, rotation,
+-                renderedHalfExtent, worldToRendered, x0, z0, high, 0.02);
++                renderedHalfExtent, worldToRendered, x0, z0, high, 0.045);
+         addVertex(buffer, view, p0l, colour);
+         addVertex(buffer, view, p1l, colour);
+         addVertex(buffer, view, p1h, colour);
+@@ -342,15 +524,26 @@
+         double u = (worldX - transform.faceCenterX(face)) * worldToRendered;
+         double v = (worldZ - transform.faceCenterZ(face)) * worldToRendered;
+         double elevation = (height - DhLiveChunkPatchCache.seaLevel()) * worldToRendered
+-                + outwardNudge * Math.max(0.05, worldToRendered);
++                + outwardNudge;
+         return CubeFaceFrame.cubePoint(face, u, v, renderedHalfExtent, elevation)
+-                .rotate(rotation)
+-                .add(planetPosition);
++                .rotate(rotation).add(planetPosition);
++    }
++
++    private static double distance(double x0, double z0, double x1, double z1) {
++        return Math.sqrt(distanceSquared(x0, z0, x1, z1));
++    }
++
++    private static double distanceSquared(double x0, double z0, double x1, double z1) {
++        double dx = x0 - x1;
++        double dz = z0 - z1;
++        return dx * dx + dz * dz;
+     }
+ 
+-    private static void addVertex(VertexConsumer buffer, Matrix4f view, Vector3d point, int argb) {
++    private static void addVertex(VertexConsumer buffer, Matrix4f view,
++                                  Vector3d point, int argb) {
+         buffer.addVertex(view, (float) point.x, (float) point.y, (float) point.z)
+-                .setColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, 255);
++                .setColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF,
++                        argb & 0xFF, 255);
+     }
+ 
+     private static int brighten(int argb, double factor) {
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java	2026-07-31 14:05:04.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/SparsePlanetLodClientCache.java	2026-07-31 15:35:03.329260576 +0000
+@@ -49,6 +49,78 @@
+         }
+     }
+ 
++
++    public static boolean hasExactChunk(ResourceLocation planet,
++                                        shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face,
++                                        int chunkX, int chunkZ) {
++        int originX = chunkX << 4;
++        int originZ = chunkZ << 4;
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles = TILES.get(planet);
++            if (planetTiles == null) {
++                return false;
++            }
++            SparsePlanetLodTile tile = planetTiles.get(new SparsePlanetLodTile.Key(face, originX, originZ, 1));
++            return tile != null && tile.exact();
++        }
++    }
++
++    public static int bestCellSizeAt(ResourceLocation planet,
++                                     shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face,
++                                     double worldX, double worldZ) {
++        // Tile origins are aligned to their 16-cell span, so the best tile can
++        // be found with five direct map lookups instead of scanning up to 12k
++        // cached tiles every render frame while the survey crosshair moves.
++        int blockX = (int) Math.floor(worldX);
++        int blockZ = (int) Math.floor(worldZ);
++        int[] cellSizes = {1, 4, 16, 64, 128};
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles = TILES.get(planet);
++            if (planetTiles == null) {
++                return Integer.MAX_VALUE;
++            }
++            for (int cellSize : cellSizes) {
++                int span = SparsePlanetLodTile.RESOLUTION * cellSize;
++                int originX = Math.floorDiv(blockX, span) * span;
++                int originZ = Math.floorDiv(blockZ, span) * span;
++                SparsePlanetLodTile tile = planetTiles.get(
++                        new SparsePlanetLodTile.Key(face, originX, originZ, cellSize));
++                if (tile != null) {
++                    return cellSize;
++                }
++            }
++        }
++        return Integer.MAX_VALUE;
++    }
++
++    /** Four 2048-block tiles cover one 8192-block face at cell size 128. */
++    public static boolean hasGlobalCoverage(ResourceLocation planet,
++                                            shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face) {
++        int count = 0;
++        synchronized (LOCK) {
++            LinkedHashMap<SparsePlanetLodTile.Key, SparsePlanetLodTile> planetTiles = TILES.get(planet);
++            if (planetTiles == null) {
++                return false;
++            }
++            for (SparsePlanetLodTile tile : planetTiles.values()) {
++                if (tile.face() == face && tile.cellSize() == 128) {
++                    count++;
++                }
++            }
++        }
++        return count >= 16;
++    }
++
++    public static boolean hasCompleteGlobalCube(ResourceLocation planet) {
++        for (shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face
++                : shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face.values()) {
++            if (!hasGlobalCoverage(planet, face)) {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     public static void clear() {
+         synchronized (LOCK) {
+             TILES.clear();
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 14:09:41.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 15:42:37.217260576 +0000
+@@ -28,8 +28,10 @@
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
++import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Comparator;
++import java.util.List;
+ 
+ /**
+  * Renders the overworld's own DH terrain as one continuous world-to-cube LOD.
+@@ -124,7 +126,7 @@
+ 
+         MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
+         VertexConsumer buffer = source.getBuffer(LOD_RENDER_TYPE);
+-        Matrix4f view = new Matrix4f(event.getModelViewMatrix());
++        Matrix4f view = event.getModelViewMatrix();
+ 
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+@@ -264,21 +266,44 @@
+         int quality = GenesisClientConfig.getWorldLodQuality();
+         int rendered = 0;
+ 
++        // The old pass submitted every cached tile every frame (889 tiles in the
++        // supplied log, with up to 256 quads and walls each). Keep the complete
++        // 128-block fallback on all faces, but spend finer geometry only around
++        // the actual camera face. This preserves continuity without stalling the
++        // render thread during ascent.
+         for (SparsePlanetLodTile tile : tiles) {
+-            if (rendered >= 3072) {
++            if (rendered >= 384) {
+                 break;
+             }
+             boolean current = tile.face() == currentFace;
++            if (!current && tile.cellSize() < 128) {
++                continue;
++            }
+             float baseAlpha = current ? lodAlpha : foldAlpha;
+             if (baseAlpha <= 0.002f) {
+                 continue;
+             }
++
++            double tileCenterX = tile.originX() + tile.span() * 0.5;
++            double tileCenterZ = tile.originZ() + tile.span() * 0.5;
++            double tileDistance = horizontalDistance(camera.x, camera.z, tileCenterX, tileCenterZ);
++            if (current) {
++                double allowed = tile.cellSize() <= 1 ? 1536.0
++                        : tile.cellSize() <= 4 ? 3072.0
++                        : tile.cellSize() <= 16 ? Math.max(4096.0, lodRadius)
++                        : Double.POSITIVE_INFINITY;
++                if (tileDistance > allowed) {
++                    continue;
++                }
++            }
++
+             int step = tile.exact() ? 1
++                    : tile.cellSize() >= 128 ? (quality >= 2 ? 1 : 2)
+                     : quality == 1 ? Math.max(1, tile.cellSize() >= 16 ? 2 : 1)
+                     : quality == 2 && tile.cellSize() >= 64 ? 2 : 1;
+-            double nudge = tile.exact() ? 0.11
+-                    : tile.cellSize() <= 4 ? 0.085
+-                    : tile.cellSize() <= 16 ? 0.055 : 0.025;
++            double nudge = tile.exact() ? 0.14
++                    : tile.cellSize() <= 4 ? 0.10
++                    : tile.cellSize() <= 16 ? 0.065 : 0.03;
+ 
+             for (int z = 0; z < SparsePlanetLodTile.RESOLUTION; z += step) {
+                 int z1 = Math.min(SparsePlanetLodTile.RESOLUTION, z + step);
+@@ -286,9 +311,7 @@
+                     int x1 = Math.min(SparsePlanetLodTile.RESOLUTION, x + step);
+                     int index = tile.index(x, z);
+                     int colour = tile.colours()[index];
+-                    if ((colour >>> 24) == 0) {
+-                        continue;
+-                    }
++                    if ((colour >>> 24) == 0) continue;
+                     double wx0 = tile.originX() + (double) x * tile.cellSize();
+                     double wx1 = tile.originX() + (double) x1 * tile.cellSize();
+                     double wz0 = tile.originZ() + (double) z * tile.cellSize();
+@@ -304,9 +327,7 @@
+                                 lodRadius * 0.995, lodRadius);
+                         alpha *= Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
+                     }
+-                    if (alpha <= 0.002f) {
+-                        continue;
+-                    }
++                    if (alpha <= 0.002f) continue;
+ 
+                     int height = tile.heights()[index];
+                     Vector3d p00 = livePoint(tile.face(), currentFace, transform, surface,
+@@ -322,10 +343,9 @@
+                     addVertex(buffer, view, camera, p10, renderScale, colour, alpha);
+                     addVertex(buffer, view, camera, p00, renderScale, colour, alpha);
+ 
+-                    if (tile.cellSize() <= 16 && step == 1) {
++                    if (tile.cellSize() <= 4 && step == 1) {
+                         int eastHeight = x1 < SparsePlanetLodTile.RESOLUTION
+-                                ? tile.heights()[tile.index(x1, z)]
+-                                : coarseHeight(surface, tile.face(), transform, wx1, centerZ);
++                                ? tile.heights()[tile.index(x1, z)] : height;
+                         if (eastHeight != height) {
+                             addLiveWall(buffer, view, camera, tile.face(), currentFace, transform, surface,
+                                     wx1, wz0, wx1, wz1, height, eastHeight, foldAlpha,
+@@ -333,8 +353,7 @@
+                                     darken(colour, 0.70), alpha);
+                         }
+                         int southHeight = z1 < SparsePlanetLodTile.RESOLUTION
+-                                ? tile.heights()[tile.index(x, z1)]
+-                                : coarseHeight(surface, tile.face(), transform, centerX, wz1);
++                                ? tile.heights()[tile.index(x, z1)] : height;
+                         if (southHeight != height) {
+                             addLiveWall(buffer, view, camera, tile.face(), currentFace, transform, surface,
+                                     wx0, wz1, wx1, wz1, height, southHeight, foldAlpha,
+@@ -366,57 +385,56 @@
+                                                int vanillaRadius,
+                                                double vanillaGroundRadius) {
+         DhLiveChunkPatchCache.Patch[] patches = DhLiveChunkPatchCache.snapshot();
+-        if (patches.length == 0) {
+-            return;
+-        }
+-        int quality = GenesisClientConfig.getWorldLodQuality();
+-        int currentStep = quality >= 3 ? 1 : quality == 2 ? 2 : 4;
+-        int remoteStep = quality >= 3 ? 2 : 4;
++        if (patches.length == 0) return;
++
+         double currentCenterX = transform.faceCenterX(currentFace);
+         double currentCenterZ = transform.faceCenterZ(currentFace);
+         double cubeCenterY = surface.seaLevel() - transform.faceHalfSpan();
+         double renderScale = renderDistanceCompression(
+                 camera, currentCenterX, cubeCenterY, currentCenterZ, vanillaRadius);
+         int lodRadius = GenesisClientConfig.getWorldLodRadius();
+-        int rendered = 0;
+ 
+-        // LinkedHashMap snapshots are oldest-to-newest. Draw the newest patches
+-        // first because they are normally closest to the craft and most likely
+-        // to contain the edits the player is checking from orbit.
+-        for (int patchIndex = patches.length - 1; patchIndex >= 0 && rendered < 1536; patchIndex--) {
+-            DhLiveChunkPatchCache.Patch patch = patches[patchIndex];
+-            boolean current = patch.face() == currentFace;
+-            float baseAlpha = current ? lodAlpha : foldAlpha;
+-            if (baseAlpha <= 0.002f) {
+-                continue;
++        List<DhLiveChunkPatchCache.Patch> candidates = new ArrayList<>();
++        for (DhLiveChunkPatchCache.Patch patch : patches) {
++            if (patch.face() != currentFace) continue;
++            if (SparsePlanetLodClientCache.hasExactChunk(
++                    SparsePlanetLodService.EARTH_ID, patch.face(), patch.chunkX(), patch.chunkZ())) {
++                continue; // same exact chunk already arrived from the server
+             }
+-            int step = current ? currentStep : remoteStep;
++            double centerX = patch.worldMinX() + 8.0;
++            double centerZ = patch.worldMinZ() + 8.0;
++            if (horizontalDistance(camera.x, camera.z, centerX, centerZ) <= 1536.0) {
++                candidates.add(patch);
++            }
++        }
++        candidates.sort(Comparator.comparingDouble(patch -> {
++            double dx = patch.worldMinX() + 8.0 - camera.x;
++            double dz = patch.worldMinZ() + 8.0 - camera.z;
++            return dx * dx + dz * dz;
++        }));
++
++        int maximum = Math.min(96, candidates.size());
++        int step = GenesisClientConfig.getWorldLodQuality() >= 3 ? 1 : 2;
++        for (int patchIndex = 0; patchIndex < maximum; patchIndex++) {
++            DhLiveChunkPatchCache.Patch patch = candidates.get(patchIndex);
+             int worldMinX = patch.worldMinX();
+             int worldMinZ = patch.worldMinZ();
+-
+             for (int z = 0; z < DhLiveChunkPatchCache.PATCH_RESOLUTION; z += step) {
+                 int z1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, z + step);
+                 for (int x = 0; x < DhLiveChunkPatchCache.PATCH_RESOLUTION; x += step) {
+                     int x1 = Math.min(DhLiveChunkPatchCache.PATCH_RESOLUTION, x + step);
+                     int index = patch.index(x, z);
+                     int colour = patch.colours()[index];
+-                    if ((colour >>> 24) == 0) {
+-                        continue;
+-                    }
++                    if ((colour >>> 24) == 0) continue;
+                     double centerX = worldMinX + (x + x1) * 0.5;
+                     double centerZ = worldMinZ + (z + z1) * 0.5;
+-                    float alpha = baseAlpha;
+-                    if (current) {
+-                        double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
+-                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 48.0);
+-                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.12 + 24.0);
+-                        float outerBand = distanceBand(distance, near0, near1,
+-                                lodRadius * 0.98, lodRadius);
+-                        alpha *= Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
+-                    }
+-                    if (alpha <= 0.002f) {
+-                        continue;
+-                    }
++                    double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
++                    double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 48.0);
++                    double near1 = Math.max(32.0, vanillaGroundRadius * 1.12 + 24.0);
++                    float outerBand = distanceBand(distance, near0, near1,
++                            lodRadius * 0.98, lodRadius);
++                    float alpha = lodAlpha * Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
++                    if (alpha <= 0.002f) continue;
+ 
+                     int height = patch.heights()[index];
+                     double wx0 = worldMinX + x;
+@@ -424,40 +442,38 @@
+                     double wz0 = worldMinZ + z;
+                     double wz1 = worldMinZ + z1;
+                     Vector3d p00 = livePoint(patch.face(), currentFace, transform, surface,
+-                            wx0, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                            wx0, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.16);
+                     Vector3d p10 = livePoint(patch.face(), currentFace, transform, surface,
+-                            wx1, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                            wx1, wz0, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.16);
+                     Vector3d p11 = livePoint(patch.face(), currentFace, transform, surface,
+-                            wx1, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                            wx1, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.16);
+                     Vector3d p01 = livePoint(patch.face(), currentFace, transform, surface,
+-                            wx0, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.12);
++                            wx0, wz1, height, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.16);
+                     addVertex(buffer, view, camera, p01, renderScale, colour, alpha);
+                     addVertex(buffer, view, camera, p11, renderScale, colour, alpha);
+                     addVertex(buffer, view, camera, p10, renderScale, colour, alpha);
+                     addVertex(buffer, view, camera, p00, renderScale, colour, alpha);
+ 
+-                    // East and south skirts are enough; the neighbouring cell
+-                    // draws the opposite boundary. Patch edges drop to the
+-                    // coarse base height so isolated structures keep their form.
+-                    int eastHeight = x1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
+-                            ? patch.heights()[patch.index(x1, z)] : coarseHeight(surface, patch.face(), transform, wx1, centerZ);
+-                    if (eastHeight != height) {
+-                        addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
+-                                wx1, wz0, wx1, wz1, height, eastHeight, foldAlpha,
+-                                currentCenterX, cubeCenterY, currentCenterZ, renderScale,
+-                                darken(colour, 0.68), alpha);
+-                    }
+-                    int southHeight = z1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
+-                            ? patch.heights()[patch.index(x, z1)] : coarseHeight(surface, patch.face(), transform, centerX, wz1);
+-                    if (southHeight != height) {
+-                        addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
+-                                wx0, wz1, wx1, wz1, height, southHeight, foldAlpha,
+-                                currentCenterX, cubeCenterY, currentCenterZ, renderScale,
+-                                darken(colour, 0.78), alpha);
++                    if (step == 1) {
++                        int eastHeight = x1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                                ? patch.heights()[patch.index(x1, z)] : height;
++                        if (eastHeight != height) {
++                            addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
++                                    wx1, wz0, wx1, wz1, height, eastHeight, foldAlpha,
++                                    currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                    darken(colour, 0.68), alpha);
++                        }
++                        int southHeight = z1 < DhLiveChunkPatchCache.PATCH_RESOLUTION
++                                ? patch.heights()[patch.index(x, z1)] : height;
++                        if (southHeight != height) {
++                            addLiveWall(buffer, view, camera, patch.face(), currentFace, transform, surface,
++                                    wx0, wz1, wx1, wz1, height, southHeight, foldAlpha,
++                                    currentCenterX, cubeCenterY, currentCenterZ, renderScale,
++                                    darken(colour, 0.78), alpha);
++                        }
+                     }
+                 }
+             }
+-            rendered++;
+         }
+     }
+ 
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 14:26:51.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 15:35:03.329260576 +0000
+@@ -70,6 +70,12 @@
+             ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
+ 
+     private static final int[] PROCEDURAL_CELL_SIZES = {4, 16, 64};
++    /** Complete seed-predicted fallback: 64x64 columns per cube face, staged. */
++    private static final int GLOBAL_CELL_SIZE = 128;
++    private static final int GLOBAL_TILE_SPAN = SparsePlanetLodTile.RESOLUTION * GLOBAL_CELL_SIZE;
++    private static final int GLOBAL_TILES_PER_AXIS = 4;
++    private static final int GLOBAL_TILE_COUNT = CubeNetSurfaceTransform.Face.values().length
++            * GLOBAL_TILES_PER_AXIS * GLOBAL_TILES_PER_AXIS;
+     private static final int[] PROCEDURAL_RADII = {8, 10, 6};
+     private static final int MAX_SERVER_TILES = 24_576;
+     private static final int MAX_QUEUED = 4096;
+@@ -103,6 +109,8 @@
+ 
+     private static volatile int generation;
+     private static volatile boolean loggedActive;
++    private static volatile int globalCursor;
++    private static volatile boolean globalCoverageComplete;
+ 
+     private SparsePlanetLodService() {
+     }
+@@ -159,6 +167,7 @@
+         }
+         CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+                 earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++        scheduleGlobalTile(overworld, transform);
+         long tick = overworld.getGameTime();
+ 
+         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+@@ -178,6 +187,59 @@
+         }
+     }
+ 
++    /**
++     * Builds the undiscovered planet without generating real chunks. Ninety-six
++     * small jobs cover all six faces at 128-block spacing; one is admitted at a
++     * time and the ordinary player-centred rings remain higher priority.
++     */
++    private static void scheduleGlobalTile(ServerLevel level, CubeNetSurfaceTransform transform) {
++        if (globalCoverageComplete || QUEUED.size() >= MAX_QUEUED) {
++            return;
++        }
++        boolean allPresent = true;
++        int perFace = GLOBAL_TILES_PER_AXIS * GLOBAL_TILES_PER_AXIS;
++        for (int attempt = 0; attempt < GLOBAL_TILE_COUNT; attempt++) {
++            int index = Math.floorMod(globalCursor++, GLOBAL_TILE_COUNT);
++            CubeNetSurfaceTransform.Face face = CubeNetSurfaceTransform.Face.values()[index / perFace];
++            int withinFace = index % perFace;
++            int tileX = withinFace % GLOBAL_TILES_PER_AXIS;
++            int tileZ = withinFace / GLOBAL_TILES_PER_AXIS;
++            int faceMinX = Mth.floor(transform.faceCenterX(face) - transform.faceHalfSpan());
++            int faceMinZ = Mth.floor(transform.faceCenterZ(face) - transform.faceHalfSpan());
++            int originX = faceMinX + tileX * GLOBAL_TILE_SPAN;
++            int originZ = faceMinZ + tileZ * GLOBAL_TILE_SPAN;
++            SparsePlanetLodTile.Key key = new SparsePlanetLodTile.Key(
++                    face, originX, originZ, GLOBAL_CELL_SIZE);
++            synchronized (TILE_LOCK) {
++                if (SERVER_TILES.containsKey(key)) {
++                    continue;
++                }
++            }
++            allPresent = false;
++            // A job already in flight is not coverage. If it is cancelled by a
++            // dimension crossing its key is removed and this pass will retry it.
++            if (!QUEUED.add(key)) {
++                continue;
++            }
++            int currentGeneration = generation;
++            TileJob job = new TileJob(level, face, originX, originZ,
++                    GLOBAL_CELL_SIZE, currentGeneration);
++            WORKER.execute(() -> {
++                SparsePlanetLodTile tile = job.sample();
++                QUEUED.remove(key);
++                if (tile != null && currentGeneration == generation) {
++                    COMPLETED.offer(new CompletedTile(EARTH_ID, tile));
++                }
++            });
++            return;
++        }
++        if (allPresent) {
++            globalCoverageComplete = true;
++            GenesisMod.LOGGER.info(
++                    "[SPARSE-LOD] complete seed-predicted 64x64 terrain is available on all six Earth faces");
++        }
++    }
++
+     private static void schedulePlayerTile(ServerLevel level, CubeNetSurfaceTransform transform,
+                                            ServerPlayer player, long tick) {
+         if (QUEUED.size() >= MAX_QUEUED) {
+@@ -371,6 +433,8 @@
+             SERVER_TILES.clear();
+         }
+         loggedActive = false;
++        globalCursor = 0;
++        globalCoverageComplete = false;
+     }
+ 
+     private record CompletedTile(ResourceLocation planet, SparsePlanetLodTile tile) {
+diff -ruN '--exclude=build' '--exclude=dist' '--exclude=*.zip' '--exclude=*.jar' /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/resources/assets/genesis/lang/en_us.json /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/resources/assets/genesis/lang/en_us.json
+--- /mnt/data/ProjectStarbound_sparse_fix4/base/ProjectStarbound_sparse_world_lod3/src/main/resources/assets/genesis/lang/en_us.json	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_sparse_fix4/ProjectStarbound_sparse_world_lod3/src/main/resources/assets/genesis/lang/en_us.json	2026-07-31 15:30:26.005260576 +0000
+@@ -1,121 +1,122 @@
+-{
+-  "key.categories.genesis": "Genesis",
+-  "key.genesis.orbit_map": "Open Orbit Map",
+-  "entity.genesis.moon_lurker": "Moon Lurker",
+-  "entity.genesis.cinder_crawler": "Cinder Crawler",
+-  "block.genesis.anorthite": "Anorthite",
+-  "block.genesis.asteroid_0": "Asteroid",
+-  "block.genesis.brine_flower": "Brine Flower",
+-  "block.genesis.brine_trunk": "Brine Trunk",
+-  "block.genesis.chalcopyrite": "Chalcopyrite",
+-  "block.genesis.chalcopyrite_bramble": "Chalcopyrite Bramble",
+-  "block.genesis.chalcopyrite_gravel": "Chalcopyrite Gravel",
+-  "block.genesis.chalcopyrite_sand": "Chalcopyrite Sand",
+-  "block.genesis.chalcopyrite_sprouts": "Chalcopyrite Sprouts",
+-  "block.genesis.cracked_cyan_salt": "Cracked Cyan Salt",
+-  "block.genesis.cracked_pale_red_salt": "Cracked Pale Red Salt",
+-  "block.genesis.cracked_red_salt": "Cracked Red Salt",
+-  "block.genesis.cracked_salt": "Cracked Salt",
+-  "block.genesis.cracked_turquoise_salt": "Cracked Turquoise Salt",
+-  "block.genesis.cyan_salt": "Cyan Salt",
+-  "block.genesis.dark_moon_sand": "Dark Moon Sand",
+-  "block.genesis.dark_wavy_moon_sand": "Dark Wavy Moon Sand",
+-  "block.genesis.dead_moon_coral": "Dead Moon Coral",
+-  "block.genesis.dead_moon_coral_block": "Dead Moon Coral Block",
+-  "block.genesis.dead_moon_coral_fan": "Dead Moon Coral Fan",
+-  "block.genesis.echostone": "Echostone",
+-  "block.genesis.falken_hyperdrive": "Falken Hyperdrive",
+-  "block.genesis.hallow_moon_stone": "Hallow Moon Stone",
+-  "block.genesis.hematite": "Hematite",
+-  "block.genesis.hematite_bramble": "Hematite Bramble",
+-  "block.genesis.hematite_gravel": "Hematite Gravel",
+-  "block.genesis.hematite_sand": "Hematite Sand",
+-  "block.genesis.hematite_sprouts": "Hematite Sprouts",
+-  "block.genesis.hyperdrive": "Hyperdrive",
+-  "block.genesis.hyperdrive_class_0_5": "Class 0.5 Hyperdrive",
+-  "block.genesis.hyperdrive_class_1": "Class 1 Hyperdrive",
+-  "block.genesis.hyperdrive_class_2": "Class 2 Hyperdrive",
+-  "block.genesis.hyperdrive_class_3": "Class 3 Hyperdrive",
+-  "block.genesis.hyperdrive_class_4": "Class 4 Hyperdrive",
+-  "block.genesis.hyperdrive_class_5": "Class 5 Hyperdrive",
+-  "block.genesis.hyperdrive_class_6": "Class 6 Hyperdrive",
+-  "block.genesis.lunar_dust": "Lunar Dust",
+-  "block.genesis.malachite": "Malachite",
+-  "block.genesis.malachite_bramble": "Malachite Bramble",
+-  "block.genesis.malachite_gravel": "Malachite Gravel",
+-  "block.genesis.malachite_sand": "Malachite Sand",
+-  "block.genesis.malachite_sprouts": "Malachite Sprouts",
+-  "block.genesis.miasma_block": "Miasma",
+-  "block.genesis.moon_sand": "Moon Sand",
+-  "block.genesis.moon_stone": "Moon Stone",
+-  "block.genesis.nav_projector": "Navigation Projector",
+-  "block.genesis.nullstone": "Nullstone",
+-  "block.genesis.orbital_stabilizer": "Orbital Stabilizer",
+-  "block.genesis.pale_red_salt": "Pale Red Salt",
+-  "block.genesis.petrified_bush": "Petrified Bush",
+-  "block.genesis.phaserock": "Phaserock",
+-  "block.genesis.ps5_console": "PS5 Console",
+-  "block.genesis.ps5_controller": "DualSense Controller",
+-  "block.genesis.radar_display": "Radar Display",
+-  "block.genesis.red_salt": "Red Salt",
+-  "block.genesis.riftrock": "Riftrock",
+-  "block.genesis.salt": "Salt",
+-  "block.genesis.stellar_sand": "Stellar Sand",
+-  "block.genesis.tulcite_catalyzer_block": "Tulcite Catalyzer",
+-  "block.genesis.tulcite_ore": "Tulcite Ore",
+-  "block.genesis.turquoise_salt": "Turquoise Salt",
+-  "block.genesis.verdite_cluster": "Verdite Cluster",
+-  "block.genesis.verdite_crystal_block": "Verdite Crystal Block",
+-  "block.genesis.verdite_ore": "Verdite Ore",
+-  "block.genesis.void_core": "Void Core",
+-  "block.genesis.void_core_ore": "Void Core Ore",
+-  "block.genesis.void_core_reflector_panel": "Void Core Reflector Panel",
+-  "block.genesis.void_engine_frame": "Void Engine Frame",
+-  "block.genesis.void_engine_interface": "Void Engine Interface",
+-  "block.genesis.void_engine_viewport": "Void Engine Viewport",
+-  "block.genesis.void_focus": "Void Focus",
+-  "block.genesis.voidstone": "Voidstone",
+-  "block.genesis.warpstone": "Warped Riftrock",
+-  "block.genesis.wavy_moon_sand": "Wavy Moon Sand",
+-  "creativetab.genesis_natural_tab": "Genesis Worlds",
+-  "creativetab.genesis_tab": "Genesis",
+-  "fluid.genesis.miasma": "Miasma",
+-  "genesis.screen.hyperdrive": "Hyperdrive",
+-  "genesis.screen.tulcite_catalyzer": "Tulcite Catalyzer",
+-  "item.genesis.anorthite_crystal": "Anorthite Crystal",
+-  "item.genesis.asteroid_0": "Asteroid",
+-  "item.genesis.dead_moon_coral_fan": "Dead Moon Coral Fan",
+-  "item.genesis.echostone": "Echostone",
+-  "item.genesis.hyperdrive": "Hyperdrive",
+-  "item.genesis.lunar_dust": "Lunar Dust",
+-  "item.genesis.miasma_bucket": "Miasma Bucket",
+-  "item.genesis.nav_projector": "Navigation Projector",
+-  "item.genesis.nullstone": "Nullstone",
+-  "item.genesis.orbit_goggles": "Orbit Goggles",
+-  "item.genesis.phaserock": "Phaserock",
+-  "item.genesis.ps5_console": "PS5 Console",
+-  "item.genesis.ps5_controller": "DualSense Controller",
+-  "item.genesis.radar_display": "Radar Display",
+-  "item.genesis.riftrock": "Riftrock",
+-  "item.genesis.space_boots": "Space Boots",
+-  "item.genesis.space_chestplate": "Space Chestplate",
+-  "item.genesis.space_helmet": "Space Helmet",
+-  "item.genesis.space_leggings": "Space Leggings",
+-  "item.genesis.stellar_sand": "Stellar Sand",
+-  "item.genesis.tulcite_chunk": "Tulcite Chunk",
+-  "item.genesis.void_core": "Void Core",
+-  "item.genesis.void_engine_frame": "Void Engine Frame",
+-  "item.genesis.void_engine_interface": "Void Engine Interface",
+-  "item.genesis.void_engine_viewport": "Void Engine Viewport",
+-  "item.genesis.void_shard": "Void Shard",
+-  "item.genesis.voidstone": "Voidstone",
+-  "item.genesis.warpstone": "Warped Riftrock",
+-  "painting.genesis.space_0.author": "rainyatrium",
+-  "painting.genesis.space_0.title": "Orbit Vista",
+-  "subtitles.genesis.miasma_hiss": "Miasma evaporates",
+-  "subtitles.genesis.void_core_ore_sound": "The void calls out",
+-  "subtitles.genesis.void_engine_start": "Void Engine spools up",
+-  "subtitles.genesis.void_engine_stop": "Void Engine spools down",
+-  "subtitles.genesis.void_engine_travel": "Void Engine teleports",
+-  "subtitles.genesis.wormhole_ambiance": "Subspace rings"
++{
++  "key.categories.genesis": "Genesis",
++  "key.genesis.orbit_map": "Open Orbit Map",
++  "key.genesis.orbital_survey": "Toggle Orbital Survey",
++  "entity.genesis.moon_lurker": "Moon Lurker",
++  "entity.genesis.cinder_crawler": "Cinder Crawler",
++  "block.genesis.anorthite": "Anorthite",
++  "block.genesis.asteroid_0": "Asteroid",
++  "block.genesis.brine_flower": "Brine Flower",
++  "block.genesis.brine_trunk": "Brine Trunk",
++  "block.genesis.chalcopyrite": "Chalcopyrite",
++  "block.genesis.chalcopyrite_bramble": "Chalcopyrite Bramble",
++  "block.genesis.chalcopyrite_gravel": "Chalcopyrite Gravel",
++  "block.genesis.chalcopyrite_sand": "Chalcopyrite Sand",
++  "block.genesis.chalcopyrite_sprouts": "Chalcopyrite Sprouts",
++  "block.genesis.cracked_cyan_salt": "Cracked Cyan Salt",
++  "block.genesis.cracked_pale_red_salt": "Cracked Pale Red Salt",
++  "block.genesis.cracked_red_salt": "Cracked Red Salt",
++  "block.genesis.cracked_salt": "Cracked Salt",
++  "block.genesis.cracked_turquoise_salt": "Cracked Turquoise Salt",
++  "block.genesis.cyan_salt": "Cyan Salt",
++  "block.genesis.dark_moon_sand": "Dark Moon Sand",
++  "block.genesis.dark_wavy_moon_sand": "Dark Wavy Moon Sand",
++  "block.genesis.dead_moon_coral": "Dead Moon Coral",
++  "block.genesis.dead_moon_coral_block": "Dead Moon Coral Block",
++  "block.genesis.dead_moon_coral_fan": "Dead Moon Coral Fan",
++  "block.genesis.echostone": "Echostone",
++  "block.genesis.falken_hyperdrive": "Falken Hyperdrive",
++  "block.genesis.hallow_moon_stone": "Hallow Moon Stone",
++  "block.genesis.hematite": "Hematite",
++  "block.genesis.hematite_bramble": "Hematite Bramble",
++  "block.genesis.hematite_gravel": "Hematite Gravel",
++  "block.genesis.hematite_sand": "Hematite Sand",
++  "block.genesis.hematite_sprouts": "Hematite Sprouts",
++  "block.genesis.hyperdrive": "Hyperdrive",
++  "block.genesis.hyperdrive_class_0_5": "Class 0.5 Hyperdrive",
++  "block.genesis.hyperdrive_class_1": "Class 1 Hyperdrive",
++  "block.genesis.hyperdrive_class_2": "Class 2 Hyperdrive",
++  "block.genesis.hyperdrive_class_3": "Class 3 Hyperdrive",
++  "block.genesis.hyperdrive_class_4": "Class 4 Hyperdrive",
++  "block.genesis.hyperdrive_class_5": "Class 5 Hyperdrive",
++  "block.genesis.hyperdrive_class_6": "Class 6 Hyperdrive",
++  "block.genesis.lunar_dust": "Lunar Dust",
++  "block.genesis.malachite": "Malachite",
++  "block.genesis.malachite_bramble": "Malachite Bramble",
++  "block.genesis.malachite_gravel": "Malachite Gravel",
++  "block.genesis.malachite_sand": "Malachite Sand",
++  "block.genesis.malachite_sprouts": "Malachite Sprouts",
++  "block.genesis.miasma_block": "Miasma",
++  "block.genesis.moon_sand": "Moon Sand",
++  "block.genesis.moon_stone": "Moon Stone",
++  "block.genesis.nav_projector": "Navigation Projector",
++  "block.genesis.nullstone": "Nullstone",
++  "block.genesis.orbital_stabilizer": "Orbital Stabilizer",
++  "block.genesis.pale_red_salt": "Pale Red Salt",
++  "block.genesis.petrified_bush": "Petrified Bush",
++  "block.genesis.phaserock": "Phaserock",
++  "block.genesis.ps5_console": "PS5 Console",
++  "block.genesis.ps5_controller": "DualSense Controller",
++  "block.genesis.radar_display": "Radar Display",
++  "block.genesis.red_salt": "Red Salt",
++  "block.genesis.riftrock": "Riftrock",
++  "block.genesis.salt": "Salt",
++  "block.genesis.stellar_sand": "Stellar Sand",
++  "block.genesis.tulcite_catalyzer_block": "Tulcite Catalyzer",
++  "block.genesis.tulcite_ore": "Tulcite Ore",
++  "block.genesis.turquoise_salt": "Turquoise Salt",
++  "block.genesis.verdite_cluster": "Verdite Cluster",
++  "block.genesis.verdite_crystal_block": "Verdite Crystal Block",
++  "block.genesis.verdite_ore": "Verdite Ore",
++  "block.genesis.void_core": "Void Core",
++  "block.genesis.void_core_ore": "Void Core Ore",
++  "block.genesis.void_core_reflector_panel": "Void Core Reflector Panel",
++  "block.genesis.void_engine_frame": "Void Engine Frame",
++  "block.genesis.void_engine_interface": "Void Engine Interface",
++  "block.genesis.void_engine_viewport": "Void Engine Viewport",
++  "block.genesis.void_focus": "Void Focus",
++  "block.genesis.voidstone": "Voidstone",
++  "block.genesis.warpstone": "Warped Riftrock",
++  "block.genesis.wavy_moon_sand": "Wavy Moon Sand",
++  "creativetab.genesis_natural_tab": "Genesis Worlds",
++  "creativetab.genesis_tab": "Genesis",
++  "fluid.genesis.miasma": "Miasma",
++  "genesis.screen.hyperdrive": "Hyperdrive",
++  "genesis.screen.tulcite_catalyzer": "Tulcite Catalyzer",
++  "item.genesis.anorthite_crystal": "Anorthite Crystal",
++  "item.genesis.asteroid_0": "Asteroid",
++  "item.genesis.dead_moon_coral_fan": "Dead Moon Coral Fan",
++  "item.genesis.echostone": "Echostone",
++  "item.genesis.hyperdrive": "Hyperdrive",
++  "item.genesis.lunar_dust": "Lunar Dust",
++  "item.genesis.miasma_bucket": "Miasma Bucket",
++  "item.genesis.nav_projector": "Navigation Projector",
++  "item.genesis.nullstone": "Nullstone",
++  "item.genesis.orbit_goggles": "Orbit Goggles",
++  "item.genesis.phaserock": "Phaserock",
++  "item.genesis.ps5_console": "PS5 Console",
++  "item.genesis.ps5_controller": "DualSense Controller",
++  "item.genesis.radar_display": "Radar Display",
++  "item.genesis.riftrock": "Riftrock",
++  "item.genesis.space_boots": "Space Boots",
++  "item.genesis.space_chestplate": "Space Chestplate",
++  "item.genesis.space_helmet": "Space Helmet",
++  "item.genesis.space_leggings": "Space Leggings",
++  "item.genesis.stellar_sand": "Stellar Sand",
++  "item.genesis.tulcite_chunk": "Tulcite Chunk",
++  "item.genesis.void_core": "Void Core",
++  "item.genesis.void_engine_frame": "Void Engine Frame",
++  "item.genesis.void_engine_interface": "Void Engine Interface",
++  "item.genesis.void_engine_viewport": "Void Engine Viewport",
++  "item.genesis.void_shard": "Void Shard",
++  "item.genesis.voidstone": "Voidstone",
++  "item.genesis.warpstone": "Warped Riftrock",
++  "painting.genesis.space_0.author": "rainyatrium",
++  "painting.genesis.space_0.title": "Orbit Vista",
++  "subtitles.genesis.miasma_hiss": "Miasma evaporates",
++  "subtitles.genesis.void_core_ore_sound": "The void calls out",
++  "subtitles.genesis.void_engine_start": "Void Engine spools up",
++  "subtitles.genesis.void_engine_stop": "Void Engine spools down",
++  "subtitles.genesis.void_engine_travel": "Void Engine teleports",
++  "subtitles.genesis.wormhole_ambiance": "Subspace rings"
+ }
+\ No newline at end of file

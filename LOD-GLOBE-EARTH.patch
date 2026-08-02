@@ -1,0 +1,1991 @@
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
+@@ -3,25 +3,22 @@
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ /**
+- * One planet's six cube-net surface regions as sampled from its own world:
+- * what each face looks like, and what shape it is.
++ * One planet's six cube-net LOD surfaces sampled from its own Minecraft world.
+  *
+  * <p>Arrays are face-major in the exact atlas order declared by
+  * {@link CubeNetSurfaceTransform.Face}: north, west, south, east, down, up.
+- * Each face contributes {@link PlanetSurfaceSampler#RESOLUTION} squared
+- * row-major values. Keeping this order identical from world sampling through
+- * the network packet to the GPU texture is what makes a visible point on the
+- * orbital cube name the same coordinates used for atmosphere entry.</p>
++ * Each value is one coarse world column, not a painted biome pixel. The colour
++ * comes from the generated column's visible block material and the height is
++ * the actual generated surface Y used to displace the orbital globe.</p>
+  *
+- * <p>Heights are raw world Y, not normalised. The range travels with them so a
+- * later geometry pass can scale relief without a second scan.</p>
+- *
+- * @param colours six face grids of ARGB texels, face-major
+- * @param heights the same six grids, as world Y of each column's surface
++ * @param colours six face grids of ARGB block-derived colours, face-major
++ * @param heights the same six grids, as world Y of each LOD column's surface
+  * @param minHeight lowest sampled column across all six regions
+  * @param maxHeight highest sampled column across all six regions
++ * @param seaLevel generator sea level; the globe's base radius is anchored here
+  */
+-public record PlanetSurfaceData(int[] colours, short[] heights, int minHeight, int maxHeight) {
++public record PlanetSurfaceData(int[] colours, short[] heights, int minHeight,
++                                int maxHeight, int seaLevel) {
+     public static int faceLength() {
+         return PlanetSurfaceSampler.RESOLUTION * PlanetSurfaceSampler.RESOLUTION;
+     }
+@@ -42,22 +39,15 @@
+         return faceOffset(face) + y * resolution + x;
+     }
+ 
+-    /** Whether this is a complete, self-consistent six-face atlas. */
++    /** Whether this is a complete, self-consistent six-face LOD atlas. */
+     public boolean isValid() {
+         return colours != null && heights != null
+                 && colours.length == expectedLength()
+                 && heights.length == expectedLength();
+     }
+ 
+-    /**
+-     * How far above the lowest sampled point a column stands, 0 to 1. Flat
+-     * worlds report zero throughout rather than dividing by nothing.
+-     */
+-    public float relief(int index) {
+-        int span = maxHeight - minHeight;
+-        if (span <= 0) {
+-            return 0.0f;
+-        }
+-        return (heights[index] - minHeight) / (float) span;
++    /** Terrain displacement relative to sea level, in planet blocks. */
++    public double elevation(int index) {
++        return heights[index] - (double) seaLevel;
+     }
+ }
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
+@@ -8,39 +8,38 @@
+ import net.minecraft.util.Mth;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.LevelHeightAccessor;
++import net.minecraft.world.level.NoiseColumn;
+ import net.minecraft.world.level.biome.Biome;
+ import net.minecraft.world.level.biome.BiomeSource;
+ import net.minecraft.world.level.biome.Climate;
++import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.chunk.ChunkGenerator;
+-import net.minecraft.world.level.levelgen.Heightmap;
+ import net.minecraft.world.level.levelgen.RandomState;
++import net.minecraft.world.level.material.MapColor;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ /**
+- * Turns a planet's six cube-net world regions into the six faces seen from
+- * orbit.
++ * Builds low-detail chunks for a planet directly from its flat Minecraft world.
+  *
+- * <p>Nothing is loaded to do it. The generator is asked directly for each
+- * column's height and biome, so the atlas represents generated terrain without
+- * forcing tens of thousands of chunks into memory. Player-built structures are
+- * deliberately not included; reflecting those would require saved-chunk reads
+- * and a continuously changing texture stream.</p>
++ * <p>This is not a screenshot and it is not a biome-colour painting. Every LOD
++ * cell asks the planet's real chunk generator for the corresponding vertical
++ * block column, finds its visible top block, stores that block material's map
++ * colour, and stores its actual Y coordinate. The client then stretches these
++ * six flat cube-net regions over a sphere and displaces the sphere by the saved
++ * heights.</p>
++ *
++ * <p>The generator is queried without loading chunks. That makes the global
++ * globe finite and safe, but also means player-built structures are not part of
++ * this baseline pass yet. Loaded-world overlays can be layered on later without
++ * changing the coordinate system or renderer.</p>
+  */
+ public final class PlanetSurfaceSampler {
+-    /** Grid resolution of each individual cube face. */
++    /** Samples along one edge of each face. One sample is one coarse LOD column. */
+     public static final int RESOLUTION = 64;
+ 
+-    /**
+-     * Six faces are now sampled rather than one repeated square. The old
+-     * 30-second total deadline was shorter than a healthy throttled overworld
+-     * pass, so the budget scales with the actual work while still abandoning a
+-     * pathological generator instead of running forever.
+-     */
+     private static final long DEADLINE_NANOS = 90_000_000_000L; // 90 s
+-    private static final int DEADLINE_CHECK_INTERVAL = 256;
+-
+-    /** Fraction of one core the cosmetic sampler may use. */
++    private static final int DEADLINE_CHECK_INTERVAL = 128;
+     private static final double CPU_SHARE = 0.15;
+     private static final long WORK_SLICE_NANOS = 2_000_000L; // 2 ms
+ 
+@@ -54,6 +53,8 @@
+         private final int blockSpan;
+         private final double texelStep;
+         private final int seaLevel;
++        private final int minBuildHeight;
++        private final int maxBuildHeight;
+         private final RandomState randomState;
+         private final ChunkGenerator generator;
+         private final BiomeSource biomeSource;
+@@ -61,7 +62,7 @@
+ 
+         /**
+          * @param blockSpan width in planet blocks of one cube-net face. This must
+-         *                  match the atmosphere transform's celestial size ×16.
++         *                  match the atmosphere transform's celestial size x16.
+          */
+         public Job(ServerLevel level, int blockSpan) {
+             if (blockSpan <= 0) {
+@@ -71,6 +72,8 @@
+             this.heightAccessor = level;
+             this.blockSpan = blockSpan;
+             this.texelStep = blockSpan / (double) RESOLUTION;
++            this.minBuildHeight = level.getMinBuildHeight();
++            this.maxBuildHeight = level.getMaxBuildHeight();
+             ServerChunkCache cache = level.getChunkSource();
+             this.randomState = cache.randomState();
+             this.generator = cache.getGenerator();
+@@ -83,7 +86,7 @@
+             return dimension;
+         }
+ 
+-        /** Samples all six regions. Returns null when the generator is too slow. */
++        /** Samples all six flat regions into block-derived LOD columns. */
+         public PlanetSurfaceData sample() {
+             try {
+                 long deadline = System.nanoTime() + DEADLINE_NANOS;
+@@ -100,7 +103,7 @@
+                     if (index % DEADLINE_CHECK_INTERVAL == 0 && System.nanoTime() > deadline) {
+                         CubeNetSurfaceTransform.Face face = faces[Math.min(faces.length - 1, index / faceTexels)];
+                         GenesisMod.LOGGER.warn(
+-                                "[SURFACE] {} is generating too slowly to sample six faces ({}%, on {} after {}s); keeping its painted texture",
++                                "[SURFACE] {} is generating too slowly to build globe LOD ({}%, on {} after {}s); keeping its painted fallback",
+                                 dimension.location(), index * 100 / texels, face,
+                                 DEADLINE_NANOS / 1_000_000_000L);
+                         return null;
+@@ -109,7 +112,7 @@
+                     while (shipwrights.genesis.teleportation.ArrivalGate.crossingInProgress()) {
+                         Thread.sleep(50L);
+                         if (System.nanoTime() > deadline) {
+-                            GenesisMod.LOGGER.info("[SURFACE] {} abandoned; crossings kept it waiting",
++                            GenesisMod.LOGGER.info("[SURFACE] {} globe LOD abandoned; crossings kept it waiting",
+                                     dimension.location());
+                             return null;
+                         }
+@@ -129,9 +132,6 @@
+                     int texelY = localIndex / RESOLUTION;
+                     CubeNetSurfaceTransform.Face face = faces[faceIndex];
+ 
+-                    // Sample texel centres. Face centres use the same whole-span
+-                    // offsets as CubeNetSurfaceTransform, so the texture and
+-                    // atmosphere travel identify identical world regions.
+                     double faceCenterX = face.netColumnOffset() * (double) blockSpan;
+                     double faceCenterZ = face.netRowOffset() * (double) blockSpan;
+                     int worldX = Mth.floor(faceCenterX - blockSpan * 0.5
+@@ -139,50 +139,87 @@
+                     int worldZ = Mth.floor(faceCenterZ - blockSpan * 0.5
+                             + (texelY + 0.5) * texelStep);
+ 
+-                    int height = generator.getBaseHeight(
+-                            worldX, worldZ, Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
++                    // getBaseColumn gives the actual generated block-state column
++                    // without loading or retaining a Minecraft chunk.
++                    NoiseColumn column = generator.getBaseColumn(worldX, worldZ, heightAccessor, randomState);
++                    int surfaceY = findSurfaceY(column);
++                    BlockState surfaceState = column.getBlock(surfaceY);
+                     Holder<Biome> biome = biomeSource.getNoiseBiome(
+-                            QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
++                            QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY),
+                             QuartPos.fromBlock(worldZ), climateSampler);
+-                    colours[index] = colorFor(biome, height, seaLevel);
+-                    heights[index] = (short) Mth.clamp(height, Short.MIN_VALUE, Short.MAX_VALUE);
+-                    minHeight = Math.min(minHeight, heights[index]);
+-                    maxHeight = Math.max(maxHeight, heights[index]);
++
++                    colours[index] = colorFor(surfaceState, biome, surfaceY, seaLevel);
++                    heights[index] = (short) Mth.clamp(surfaceY, Short.MIN_VALUE, Short.MAX_VALUE);
++                    minHeight = Math.min(minHeight, surfaceY);
++                    maxHeight = Math.max(maxHeight, surfaceY);
+                 }
+-                return new PlanetSurfaceData(colours, heights, minHeight, maxHeight);
++
++                shadeLodCells(colours, heights);
++                return new PlanetSurfaceData(colours, heights, minHeight, maxHeight, seaLevel);
+             } catch (Throwable error) {
+-                GenesisMod.LOGGER.warn("[SURFACE] could not sample {}", dimension.location(), error);
++                GenesisMod.LOGGER.warn("[SURFACE] could not build globe LOD for {}", dimension.location(), error);
+                 return null;
+             }
+         }
++
++        private int findSurfaceY(NoiseColumn column) {
++            for (int y = maxBuildHeight - 1; y >= minBuildHeight; y--) {
++                if (!column.getBlock(y).isAir()) {
++                    return y;
++                }
++            }
++            return minBuildHeight;
++        }
+     }
+ 
+-    private static int colorFor(Holder<Biome> biome, int height, int seaLevel) {
+-        if (height < seaLevel) {
+-            int depth = Math.max(0, seaLevel - height);
+-            float shade = Math.max(0.35f, 1.0f - depth / 64.0f);
+-            int water = biome.value().getWaterColor();
+-            return 0xFF000000 | scale(water, shade);
+-        }
+-
+-        int base = biome.value().getFoliageColor() != 0
+-                ? biome.value().getFoliageColor()
+-                : biome.value().getGrassColor(0.0, 0.0);
+-
+-        float above = Math.min(1.0f, Math.max(0, height - seaLevel) / 96.0f);
+-        int r = (base >> 16) & 0xFF;
+-        int g = (base >> 8) & 0xFF;
+-        int b = base & 0xFF;
+-        r = (int) (r + (235 - r) * above * 0.75f);
+-        g = (int) (g + (235 - g) * above * 0.75f);
+-        b = (int) (b + (235 - b) * above * 0.75f);
+-        return 0xFF000000 | (r << 16) | (g << 8) | b;
++    private static int colorFor(BlockState state, Holder<Biome> biome, int height, int seaLevel) {
++        MapColor mapColor = state.getBlock().defaultMapColor();
++        int rgb;
++        if (!state.getFluidState().isEmpty() || mapColor == MapColor.WATER) {
++            rgb = biome.value().getWaterColor();
++        } else if (mapColor == MapColor.GRASS) {
++            rgb = biome.value().getGrassColor(0.0, 0.0);
++        } else if (mapColor == MapColor.PLANT) {
++            rgb = biome.value().getFoliageColor();
++        } else if (mapColor != MapColor.NONE && mapColor.col != 0) {
++            rgb = mapColor.col;
++        } else {
++            rgb = biome.value().getGrassColor(0.0, 0.0);
++        }
++
++        // A small altitude response keeps the coarse LOD readable without
++        // replacing the underlying block colour with an invented biome palette.
++        float altitude = Mth.clamp((height - seaLevel) / 160.0f, -0.25f, 1.0f);
++        float factor = altitude >= 0.0f ? 1.0f + altitude * 0.16f : 1.0f + altitude * 0.10f;
++        return 0xFF000000 | scaleRgb(rgb, factor);
++    }
++
++    /** Adds directional relief shading so LOD cells read as terrain, not a flat map. */
++    private static void shadeLodCells(int[] colours, short[] heights) {
++        int resolution = RESOLUTION;
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            for (int y = 0; y < resolution; y++) {
++                int y0 = Math.max(0, y - 1);
++                int y1 = Math.min(resolution - 1, y + 1);
++                for (int x = 0; x < resolution; x++) {
++                    int x0 = Math.max(0, x - 1);
++                    int x1 = Math.min(resolution - 1, x + 1);
++                    int index = PlanetSurfaceData.index(face, x, y);
++                    double dx = heights[PlanetSurfaceData.index(face, x1, y)]
++                            - heights[PlanetSurfaceData.index(face, x0, y)];
++                    double dy = heights[PlanetSurfaceData.index(face, x, y1)]
++                            - heights[PlanetSurfaceData.index(face, x, y0)];
++                    float light = (float) Mth.clamp(1.0 + (-dx - dy) * 0.012, 0.72, 1.22);
++                    colours[index] = 0xFF000000 | scaleRgb(colours[index], light);
++                }
++            }
++        }
+     }
+ 
+-    private static int scale(int rgb, float factor) {
+-        int r = (int) (((rgb >> 16) & 0xFF) * factor);
+-        int g = (int) (((rgb >> 8) & 0xFF) * factor);
+-        int b = (int) ((rgb & 0xFF) * factor);
++    private static int scaleRgb(int argbOrRgb, float factor) {
++        int r = Mth.clamp((int) (((argbOrRgb >> 16) & 0xFF) * factor), 0, 255);
++        int g = Mth.clamp((int) (((argbOrRgb >> 8) & 0xFF) * factor), 0, 255);
++        int b = Mth.clamp((int) ((argbOrRgb & 0xFF) * factor), 0, 255);
+         return (r << 16) | (g << 8) | b;
+     }
+ }
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java
+@@ -40,9 +40,10 @@
+  * reached it at all. It also put the work on the dimension-transition path,
+  * which is the one place where a fault does not merely lose a texture.</p>
+  *
+- * <p>Each planet is sampled once and kept. A finished surface is sent to every
+- * player who can see it and not again; the grid is 16 KB, so with a handful of
+- * bodies the sending is free and only the sampling is worth rationing.</p>
++ * <p>Each planet is sampled once and kept. A finished six-face LOD surface is
++ * sent to every player who can see it and not again. The payload is roughly
++ * 150 KB at the current 64x64-per-face resolution, so it is a one-shot transfer
++ * rather than a continuously streamed texture.</p>
+  */
+ @EventBusSubscriber(modid = GenesisMod.MOD_ID)
+ public final class PlanetSurfaceService {
+@@ -52,6 +53,8 @@
+      * size {@code s} covers {@code s * 16} blocks of world.
+      */
+     private static final int PLANET_BLOCKS_PER_SPACE_BLOCK = 16;
++    private static final ResourceLocation OVERWORLD_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
+ 
+     /** Set when the pass fails structurally, so it reports once and stands down. */
+     private static volatile boolean disabled;
+@@ -124,6 +127,13 @@
+                 if (planet == null || ABANDONED.contains(planet)) {
+                     continue;
+                 }
++                // This pass is intentionally Earth-only. The Moon and Mercury
++                // generators are known to take too long for a global sample;
++                // leaving them painted prevents a cosmetic task from occupying
++                // the one sampler thread for 90 seconds each.
++                if (!OVERWORLD_ID.equals(planet)) {
++                    continue;
++                }
+ 
+                 PlanetSurfaceData surface = SAMPLED.get(planet);
+                 if (surface == null) {
+@@ -174,7 +184,7 @@
+             // level's chunk source; only the sampling itself leaves it.
+             PlanetSurfaceSampler.Job job = new PlanetSurfaceSampler.Job(level, span);
+             IN_PROGRESS.put(planet, CompletableFuture.supplyAsync(job::sample, SAMPLER));
+-            GenesisMod.LOGGER.info("[SURFACE] sampling {} across {} blocks", planet, span);
++            GenesisMod.LOGGER.info("[SURFACE] building spherical LOD for {} from six {}-block world regions", planet, span);
+             return;
+         }
+ 
+@@ -196,8 +206,8 @@
+             GenesisMod.LOGGER.warn("[SURFACE] giving up on {}; it keeps its painted texture", planet);
+         } else {
+             SAMPLED.put(planet, surface);
+-            GenesisMod.LOGGER.info("[SURFACE] sampled {} from its own terrain; relief y={}..{}",
+-                    planet, surface.minHeight(), surface.maxHeight());
++            GenesisMod.LOGGER.info("[SURFACE] built spherical LOD for {} from generated block columns; relief y={}..{}, sea={}",
++                    planet, surface.minHeight(), surface.maxHeight(), surface.seaLevel());
+         }
+     }
+ 
+--- a/src/main/java/shipwrights/genesis/networking/PlanetSurfacePacket.java
++++ b/src/main/java/shipwrights/genesis/networking/PlanetSurfacePacket.java
+@@ -19,17 +19,17 @@
+  * players build) move far too slowly to be worth streaming.</p>
+  */
+ public record PlanetSurfacePacket(ResourceLocation planet, int[] colours, short[] heights,
+-                                  int minHeight, int maxHeight) implements CustomPacketPayload {
++                                  int minHeight, int maxHeight, int seaLevel) implements CustomPacketPayload {
+     public static final Type<PlanetSurfacePacket> TYPE =
+             new Type<>(ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "planet_surface"));
+ 
+     public static PlanetSurfacePacket of(ResourceLocation planet, PlanetSurfaceData data) {
+         return new PlanetSurfacePacket(planet, data.colours(), data.heights(),
+-                data.minHeight(), data.maxHeight());
++                data.minHeight(), data.maxHeight(), data.seaLevel());
+     }
+ 
+     public PlanetSurfaceData toData() {
+-        return new PlanetSurfaceData(colours, heights, minHeight, maxHeight);
++        return new PlanetSurfaceData(colours, heights, minHeight, maxHeight, seaLevel);
+     }
+ 
+     public static final StreamCodec<ByteBuf, PlanetSurfacePacket> STREAM_CODEC = StreamCodec.of(
+@@ -46,6 +46,7 @@
+         }
+         buffer.writeInt(packet.minHeight());
+         buffer.writeInt(packet.maxHeight());
++        buffer.writeInt(packet.seaLevel());
+     }
+ 
+     private static PlanetSurfacePacket read(ByteBuf buffer) {
+@@ -65,7 +66,7 @@
+         for (int i = 0; i < length; i++) {
+             heights[i] = buffer.readShort();
+         }
+-        return new PlanetSurfacePacket(planet, colours, heights, buffer.readInt(), buffer.readInt());
++        return new PlanetSurfacePacket(planet, colours, heights, buffer.readInt(), buffer.readInt(), buffer.readInt());
+     }
+ 
+     @Override
+--- a/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
++++ b/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
+@@ -15,12 +15,10 @@
+ /**
+  * Client-side home for planet surfaces sampled from the real world.
+  *
+- * <p>Each planet's grid is uploaded once as a texture and then used in place of
+- * its painted one, so what is seen from orbit is the world that is actually
+- * down there. A planet with no sampled surface simply keeps its painted
+- * texture, which is what makes this safe to add: bodies that are pure set
+- * dressing, and any planet whose sample has not arrived yet, look exactly as
+- * they did before.</p>
++ * <p>Each planet's six block-derived LOD grids are uploaded once as a colour
++ * atlas while the matching height grids drive the spherical terrain mesh. The
++ * atlas is only the material layer; the planet's shape comes from real generated
++ * world columns. A body with no sample keeps its painted fallback.</p>
+  */
+ public final class PlanetSurfaceTextures {
+     private static final Map<ResourceLocation, ResourceLocation> UPLOADED = new HashMap<>();
+@@ -89,7 +87,7 @@
+                     "textures/" + shortName.getPath() + ".png");
+             Minecraft.getInstance().getTextureManager().register(textureFile, new DynamicTexture(image));
+             UPLOADED.put(planet, shortName);
+-            GenesisMod.LOGGER.info("[SURFACE] {} is now drawn from six real cube-net regions", planet);
++            GenesisMod.LOGGER.info("[SURFACE] {} globe is now driven by six real world regions", planet);
+         } catch (Throwable error) {
+             GenesisMod.LOGGER.warn("[SURFACE] could not upload {}", planet, error);
+         }
+--- a/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
++++ b/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
+@@ -1,26 +1,29 @@
+-package shipwrights.genesis.config;
+-
+-import net.neoforged.neoforge.common.ModConfigSpec;
+-
+-public class GenesisClientConfig {
+-
+-    private static ModConfigSpec.ConfigValue<Boolean> spaceShaderEnable;
+-    private static final boolean defaultSpaceShaderEnable = true;
+-
++package shipwrights.genesis.config;
++
++import net.neoforged.neoforge.common.ModConfigSpec;
++
++public class GenesisClientConfig {
++
++    private static ModConfigSpec.ConfigValue<Boolean> spaceShaderEnable;
++    private static final boolean defaultSpaceShaderEnable = true;
++
+     private static ModConfigSpec.ConfigValue<Boolean> renderCurrentPlanet;
+     private static final boolean defaultRenderCurrentPlanet = true;
+ 
+     private static ModConfigSpec.ConfigValue<Double> celestialVisualScale;
+     private static final double defaultCelestialVisualScale = 1.5;
+ 
+-    public static boolean enableSpaceLighting() {
+-        boolean result = defaultSpaceShaderEnable;
+-        try {
+-            result = spaceShaderEnable.get();
+-        } catch (Exception ignored) { }
+-        return result;
+-    }
+-
++    private static ModConfigSpec.ConfigValue<Integer> currentPlanetRevealHeight;
++    private static final int defaultCurrentPlanetRevealHeight = 16000;
++
++    public static boolean enableSpaceLighting() {
++        boolean result = defaultSpaceShaderEnable;
++        try {
++            result = spaceShaderEnable.get();
++        } catch (Exception ignored) { }
++        return result;
++    }
++
+     public static boolean shouldRenderCurrentPlanet() {
+         boolean result = defaultRenderCurrentPlanet;
+         try {
+@@ -29,6 +32,14 @@
+         return result;
+     }
+ 
++    public static int getCurrentPlanetRevealHeight() {
++        int result = defaultCurrentPlanetRevealHeight;
++        try {
++            result = currentPlanetRevealHeight.get();
++        } catch (Exception ignored) { }
++        return Math.max(0, result);
++    }
++
+     public static double getCelestialVisualScale() {
+         double result = defaultCelestialVisualScale;
+         try {
+@@ -37,13 +48,16 @@
+         return Math.max(0.25, Math.min(8.0, result));
+     }
+ 
+-    public static final ModConfigSpec CONFIG_SPEC = buildConfig();
+-
+-    private static ModConfigSpec buildConfig() {
++    public static final ModConfigSpec CONFIG_SPEC = buildConfig();
++
++    private static ModConfigSpec buildConfig() {
+         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+         spaceShaderEnable = builder.define("EnableDynamicSpaceLighting", defaultSpaceShaderEnable);
+         renderCurrentPlanet = builder.define("ShouldRenderCurrentPlanet", defaultRenderCurrentPlanet);
+         celestialVisualScale = builder.defineInRange("CelestialVisualScale", defaultCelestialVisualScale, 0.25, 8.0);
++        currentPlanetRevealHeight = builder
++                .comment("Altitude where the planet below first becomes visible while climbing through its atmosphere.")
++                .defineInRange("CurrentPlanetRevealHeight", defaultCurrentPlanetRevealHeight, 0, 100000);
+         return builder.build();
+     }
+ }
+--- a/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java
++++ b/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java
+@@ -1,51 +1,44 @@
+-package shipwrights.genesis.config;
+-
+-import net.neoforged.neoforge.common.ModConfigSpec;
+-
+-public class GenesisCommonConfig {
+-    private static ModConfigSpec.ConfigValue<Integer> atmosphereExitHeight;
+-    private static ModConfigSpec.ConfigValue<Integer> atmosphereEntryHeight;
+-    private static ModConfigSpec.ConfigValue<Boolean> planetSurfaceSampling;
+-
+-    public static final ModConfigSpec CONFIG_SPEC = buildConfig();
+-
+-    private static ModConfigSpec buildConfig() {
+-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+-        // Entities can fly above the build cap, so the boundary sits high: the
+-        // long climb through the upper sky IS space, and reentry is a real fall
+-        // from atmosphereEntryHeight down to the surface. 20k keeps the ascent a
+-        // genuine climb without being an impractical slog to reach on a ship.
+-        atmosphereExitHeight = builder.define("atmosphereExitHeight", 20000);
+-        atmosphereEntryHeight = builder.define("atmosphereEntryHeight", 19000);
+-        // Draw planets in orbit from their own terrain instead of a painted
+-        // texture.
+-        //
+-        // OFF by default, and that is a considered decision rather than
+-        // timidity. This feature has been implicated in a freeze in three
+-        // separate sessions; each time it was moved somewhere it could do less
+-        // damage — off the transition path, off the tick, off the worldgen
+-        // pool, onto a throttle — and each time something was still felt. It is
+-        // cosmetic, it currently succeeds only for the overworld (Mercury and
+-        // the Moon have generators far too slow to sample and abandon every
+-        // time), and while it is on it is impossible to tell whether a freeze
+-        // is it or something else. Off by default, the question stops being
+-        // ambiguous. Turn it on deliberately once the transition is known good.
+-        planetSurfaceSampling = builder
+-                .comment("Draw planets from their real terrain instead of painted textures.",
+-                        "Off by default: cosmetic, and has repeatedly been hard to rule out as a stutter source.")
+-                .define("planetSurfaceSampling", false);
+-        return builder.build();
+-    }
+-
+-    public static int getAtmosphereExitHeight() {
+-        return atmosphereExitHeight.get();
+-    }
+-
+-    public static int getAtmosphereEntryHeight() {
+-        return atmosphereEntryHeight.get();
+-    }
+-
+-    public static boolean isPlanetSurfaceSamplingEnabled() {
+-        return planetSurfaceSampling.get();
+-    }
+-}
++package shipwrights.genesis.config;
++
++import net.neoforged.neoforge.common.ModConfigSpec;
++
++public class GenesisCommonConfig {
++    private static ModConfigSpec.ConfigValue<Integer> atmosphereExitHeight;
++    private static ModConfigSpec.ConfigValue<Integer> atmosphereEntryHeight;
++    private static ModConfigSpec.ConfigValue<Boolean> planetSurfaceSampling;
++
++    public static final ModConfigSpec CONFIG_SPEC = buildConfig();
++
++    private static ModConfigSpec buildConfig() {
++        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
++        // Entities can fly above the build cap, so the boundary sits high: the
++        // long climb through the upper sky IS space, and reentry is a real fall
++        // from atmosphereEntryHeight down to the surface. 20k keeps the ascent a
++        // genuine climb without being an impractical slog to reach on a ship.
++        atmosphereExitHeight = builder.define("atmosphereExitHeight", 20000);
++        atmosphereEntryHeight = builder.define("atmosphereEntryHeight", 19000);
++        // Build a spherical orbital LOD from each planet dimension's generated
++        // block columns instead of treating the painted atlas as the surface.
++        //
++        // Enabled for the overworld only. Sampling is isolated on a dedicated
++        // minimum-priority thread, pauses during crossings, and never touches
++        // Minecraft's worldgen executor. Slow planetary generators are skipped.
++        planetSurfaceSampling = builder
++                .comment("Build Earth's spherical orbital LOD from generated Minecraft world columns.",
++                        "Runs on one low-priority thread and pauses during dimension crossings.")
++                .define("planetSurfaceSampling", true);
++        return builder.build();
++    }
++
++    public static int getAtmosphereExitHeight() {
++        return atmosphereExitHeight.get();
++    }
++
++    public static int getAtmosphereEntryHeight() {
++        return atmosphereEntryHeight.get();
++    }
++
++    public static boolean isPlanetSurfaceSamplingEnabled() {
++        return planetSurfaceSampling.get();
++    }
++}
+--- a/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java
+@@ -86,19 +86,21 @@
+     }
+ 
+     public static float getCurrentPlanetAlpha(Vec3 cameraPosition) {
+-        // Fade the planet you launched from in well before the space boundary so
+-        // it hangs below you through most of the climb, not only once you are
+-        // practically in orbit. Tied to the boundary height: it starts a quarter
+-        // of the way up and is fully drawn by 60% of the way.
++        // The globe must not appear while the player is still in the ordinary
++        // atmosphere. It begins emerging at 16,000 blocks by default and
++        // reaches full opacity over the next 1,000 blocks, before the 20,000
++        // block atmosphere exit. The reveal height is client-configurable.
++        float fadeStart = GenesisClientConfig.getCurrentPlanetRevealHeight();
+         float boundary = GenesisCommonConfig.getAtmosphereExitHeight();
+-        float fadeStart = boundary * 0.25f;
+-        float fadeEnd = boundary * 0.6f;
++        float fadeEnd = Math.min(boundary, fadeStart + 1000.0f);
+         if (fadeEnd <= fadeStart) {
+-            return cameraPosition.y >= fadeEnd ? 1.0f : 0.0f;
++            return cameraPosition.y >= fadeStart ? 1.0f : 0.0f;
+         }
+ 
+         float alpha = (float) ((cameraPosition.y - fadeStart) / (fadeEnd - fadeStart));
+-        return Math.max(0.0f, Math.min(1.0f, alpha));
++        alpha = Math.max(0.0f, Math.min(1.0f, alpha));
++        // Smoothstep removes the visible speed change at both ends of the fade.
++        return alpha * alpha * (3.0f - 2.0f * alpha);
+     }
+ 
+     private static Vector3d rotatedAxis(Quaterniondc rotation, double x, double y, double z) {
+--- a/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
+@@ -52,6 +52,8 @@
+     private static final int TERRAIN_MESH_HIGH = PlanetSurfaceSampler.RESOLUTION;
+     private static final double PLANET_BLOCKS_PER_SPACE_BLOCK =
+             CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
++    private static final ResourceLocation OVERWORLD_ID = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++    private static final int PAINTED_GLOBE_MESH = 32;
+ 
+     private static final boolean USE_TEST_SHADOWS = false; // Set to false to use real shadows
+ 
+@@ -193,10 +195,15 @@
+         float twoThirds = 2.0f / 3.0f;
+ 
+         PlanetSurfaceData liveSurface = PlanetSurfaceTextures.surface(planetID);
+-        if (live != null && liveSurface != null && liveSurface.isValid() && physicalHalfExtent > 0.0) {
++        boolean lodGlobe = OVERWORLD_ID.equals(planetID);
++        if (lodGlobe && live != null && liveSurface != null && liveSurface.isValid() && physicalHalfExtent > 0.0) {
+             int meshResolution = terrainMeshResolution(x, y, z, halfExtent);
+-            addTerrainCube(matrix, buffer, halfSize, physicalHalfExtent, liveSurface,
++            addTerrainGlobe(matrix, buffer, halfSize, physicalHalfExtent, liveSurface,
+                     meshResolution, rotation, alpha);
++        } else if (lodGlobe) {
++            // Keep the same spherical silhouette before the live LOD packet
++            // arrives, so Earth does not visibly pop from cube to globe.
++            addPaintedGlobe(matrix, buffer, halfSize, PAINTED_GLOBE_MESH, rotation, alpha);
+         } else {
+             addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, 1.0f), rotation, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, twoThirds, 0.0f, 1.0f, 0.5f, alpha);        // South face (+Z)
+             addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, -1.0f), rotation, halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, 0.0f, 0.0f, third, 0.5f, alpha);        // North face (-Z)
+@@ -234,17 +241,15 @@
+         return TERRAIN_MESH_LOW;
+     }
+ 
+-    /** Draws all six sampled regions as an actually displaced cube surface. */
+-    private static void addTerrainCube(Matrix4f matrix, VertexConsumer buffer, float halfSize,
+-                                       double physicalHalfExtent, PlanetSurfaceData surface,
+-                                       int meshResolution, Quaternionf rotation, float alpha) {
+-        // halfSize may include the visual-scale setting and far-distance clamp.
+-        // Scale terrain height by the identical ratio so one planet block keeps
+-        // representing 1/16 of a celestial-space block at every render distance.
++    /** Draws the six flat cube-net regions as a height-displaced LOD globe. */
++    private static void addTerrainGlobe(Matrix4f matrix, VertexConsumer buffer, float halfSize,
++                                        double physicalHalfExtent, PlanetSurfaceData surface,
++                                        int meshResolution, Quaternionf rotation, float alpha) {
++        // One planet block is 1/16 of a celestial-space block. Anchor the
++        // sphere at sea level; only terrain above/below sea level changes radius.
+         double reliefScale = halfSize / physicalHalfExtent / PLANET_BLOCKS_PER_SPACE_BLOCK;
+ 
+         for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
+-            Vector3f normal = faceNormal(face);
+             for (int row = 0; row < meshResolution; row++) {
+                 double t0 = row / (double) meshResolution;
+                 double t1 = (row + 1) / (double) meshResolution;
+@@ -252,31 +257,67 @@
+                     double s0 = column / (double) meshResolution;
+                     double s1 = (column + 1) / (double) meshResolution;
+ 
+-                    addTerrainVertex(matrix, buffer, face, s0, t1, halfSize, reliefScale,
+-                            surface, normal, rotation, alpha);
+-                    addTerrainVertex(matrix, buffer, face, s1, t1, halfSize, reliefScale,
+-                            surface, normal, rotation, alpha);
+-                    addTerrainVertex(matrix, buffer, face, s1, t0, halfSize, reliefScale,
+-                            surface, normal, rotation, alpha);
+-                    addTerrainVertex(matrix, buffer, face, s0, t0, halfSize, reliefScale,
+-                            surface, normal, rotation, alpha);
++                    addTerrainGlobeVertex(matrix, buffer, face, s0, t1, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainGlobeVertex(matrix, buffer, face, s1, t1, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainGlobeVertex(matrix, buffer, face, s1, t0, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainGlobeVertex(matrix, buffer, face, s0, t0, halfSize, reliefScale,
++                            surface, rotation, alpha);
+                 }
+             }
+         }
+     }
+ 
+-    private static void addTerrainVertex(Matrix4f matrix, VertexConsumer buffer,
+-                                         CubeNetSurfaceTransform.Face face, double s, double t,
+-                                         float halfSize, double reliefScale, PlanetSurfaceData surface,
+-                                         Vector3f normal, Quaternionf rotation, float alpha) {
+-        double faceU = (s * 2.0 - 1.0) * halfSize;
+-        double faceV = (t * 2.0 - 1.0) * halfSize;
+-        double radius = halfSize + sampleHeight(surface, face, s, t) * reliefScale;
+-        Vector3f point = facePoint(face, faceU, faceV, radius);
++    /** Painted fallback using identical globe geometry but no terrain displacement. */
++    private static void addPaintedGlobe(Matrix4f matrix, VertexConsumer buffer, float halfSize,
++                                        int meshResolution, Quaternionf rotation, float alpha) {
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            for (int row = 0; row < meshResolution; row++) {
++                double t0 = row / (double) meshResolution;
++                double t1 = (row + 1) / (double) meshResolution;
++                for (int column = 0; column < meshResolution; column++) {
++                    double s0 = column / (double) meshResolution;
++                    double s1 = (column + 1) / (double) meshResolution;
++                    addPaintedGlobeVertex(matrix, buffer, face, s0, t1, halfSize, rotation, alpha);
++                    addPaintedGlobeVertex(matrix, buffer, face, s1, t1, halfSize, rotation, alpha);
++                    addPaintedGlobeVertex(matrix, buffer, face, s1, t0, halfSize, rotation, alpha);
++                    addPaintedGlobeVertex(matrix, buffer, face, s0, t0, halfSize, rotation, alpha);
++                }
++            }
++        }
++    }
++
++    private static void addTerrainGlobeVertex(Matrix4f matrix, VertexConsumer buffer,
++                                               CubeNetSurfaceTransform.Face face, double s, double t,
++                                               float halfSize, double reliefScale, PlanetSurfaceData surface,
++                                               Quaternionf rotation, float alpha) {
++        double elevation = sampleHeight(surface, face, s, t) - surface.seaLevel();
++
++        // The six flat world regions are not seam-wrapped yet. Force exact
++        // shared edges to the same radius and blend relief back in over two LOD
++        // cells, preventing cracks without changing any travel coordinates.
++        double edge = Math.min(Math.min(s, 1.0 - s), Math.min(t, 1.0 - t));
++        double edgeBand = 2.0 / PlanetSurfaceSampler.RESOLUTION;
++        double edgeFade = smoothstep(Mth.clamp(edge / edgeBand, 0.0, 1.0));
++        double radius = halfSize + elevation * reliefScale * edgeFade;
++
++        Vector3f point = globePoint(face, s, t, radius);
++        float textureU = (float) ((face.atlasColumn() + s) / 3.0);
++        float textureV = (float) ((face.atlasRow() + t) / 2.0);
++        addTexturedVertexWithLighting(matrix, buffer, point.x, point.y, point.z,
++                textureU, textureV, new Vector3f(point).normalize(), rotation, alpha);
++    }
++
++    private static void addPaintedGlobeVertex(Matrix4f matrix, VertexConsumer buffer,
++                                               CubeNetSurfaceTransform.Face face, double s, double t,
++                                               float radius, Quaternionf rotation, float alpha) {
++        Vector3f point = globePoint(face, s, t, radius);
+         float textureU = (float) ((face.atlasColumn() + s) / 3.0);
+         float textureV = (float) ((face.atlasRow() + t) / 2.0);
+         addTexturedVertexWithLighting(matrix, buffer, point.x, point.y, point.z,
+-                textureU, textureV, normal, rotation, alpha);
++                textureU, textureV, new Vector3f(point).normalize(), rotation, alpha);
+     }
+ 
+     /** Bilinear height lookup; samples are texel-centred, so edges extend cleanly. */
+@@ -301,26 +342,31 @@
+         return Mth.lerp(fy, top, bottom);
+     }
+ 
+-    private static Vector3f facePoint(CubeNetSurfaceTransform.Face face, double u, double v, double radius) {
+-        return switch (face) {
+-            case NORTH -> new Vector3f((float) -u, (float) -v, (float) -radius);
+-            case WEST -> new Vector3f((float) -radius, (float) -v, (float) u);
+-            case SOUTH -> new Vector3f((float) u, (float) -v, (float) radius);
+-            case EAST -> new Vector3f((float) radius, (float) -v, (float) -u);
+-            case DOWN -> new Vector3f((float) u, (float) -radius, (float) -v);
+-            case UP -> new Vector3f((float) u, (float) radius, (float) v);
++    /** Cube-face UV -> low-distortion spherified-cube direction -> radius. */
++    private static Vector3f globePoint(CubeNetSurfaceTransform.Face face, double s, double t, double radius) {
++        double u = s * 2.0 - 1.0;
++        double v = t * 2.0 - 1.0;
++        Vector3d cube = switch (face) {
++            case NORTH -> new Vector3d(-u, -v, -1.0);
++            case WEST -> new Vector3d(-1.0, -v, u);
++            case SOUTH -> new Vector3d(u, -v, 1.0);
++            case EAST -> new Vector3d(1.0, -v, -u);
++            case DOWN -> new Vector3d(u, -1.0, -v);
++            case UP -> new Vector3d(u, 1.0, v);
+         };
++
++        double x2 = cube.x * cube.x;
++        double y2 = cube.y * cube.y;
++        double z2 = cube.z * cube.z;
++        double sx = cube.x * Math.sqrt(Math.max(0.0, 1.0 - y2 * 0.5 - z2 * 0.5 + y2 * z2 / 3.0));
++        double sy = cube.y * Math.sqrt(Math.max(0.0, 1.0 - z2 * 0.5 - x2 * 0.5 + z2 * x2 / 3.0));
++        double sz = cube.z * Math.sqrt(Math.max(0.0, 1.0 - x2 * 0.5 - y2 * 0.5 + x2 * y2 / 3.0));
++        Vector3d sphere = new Vector3d(sx, sy, sz).normalize().mul(radius);
++        return new Vector3f((float) sphere.x, (float) sphere.y, (float) sphere.z);
+     }
+ 
+-    private static Vector3f faceNormal(CubeNetSurfaceTransform.Face face) {
+-        return switch (face) {
+-            case NORTH -> new Vector3f(0.0f, 0.0f, -1.0f);
+-            case WEST -> new Vector3f(-1.0f, 0.0f, 0.0f);
+-            case SOUTH -> new Vector3f(0.0f, 0.0f, 1.0f);
+-            case EAST -> new Vector3f(1.0f, 0.0f, 0.0f);
+-            case DOWN -> new Vector3f(0.0f, -1.0f, 0.0f);
+-            case UP -> new Vector3f(0.0f, 1.0f, 0.0f);
+-        };
++    private static double smoothstep(double value) {
++        return value * value * (3.0 - 2.0 * value);
+     }
+ 
+     private static void addTexturedCubeFace(Matrix4f matrix, VertexConsumer buffer, float halfSize,
+--- a/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java
+@@ -1,177 +1,244 @@
+-package shipwrights.genesis.space.renderer;
+-
+-import com.mojang.blaze3d.shaders.Uniform;
+-import com.mojang.blaze3d.vertex.PoseStack;
+-import com.mojang.blaze3d.vertex.VertexConsumer;
+-import net.minecraft.client.Minecraft;
+-import net.minecraft.client.multiplayer.ClientLevel;
+-import net.minecraft.client.renderer.MultiBufferSource;
+-import net.minecraft.client.renderer.ShaderInstance;
+-import net.minecraft.util.Mth;
+-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+-import org.jetbrains.annotations.NotNull;
+-import org.joml.*;
+-import net.minecraft.core.Registry;
+-import shipwrights.genesis.GenesisMod;
+-import shipwrights.genesis.client.PlanetDimensionEffects;
+-import shipwrights.genesis.client.ShaderRegistry;
+-import shipwrights.genesis.config.GenesisCommonConfig;
+-import shipwrights.genesis.mixin.LevelRendererAccessor;
+-import shipwrights.genesis.space.Celestial;
+-import shipwrights.genesis.space.VantagePoint;
+-import shipwrights.genesis.space.properties.PlanetProperties;
+-
+-import java.lang.Math;
+-
+-import static shipwrights.genesis.client.ShaderRegistry.getPlanetAtmosphereRenderType;
+-
+-public class PlanetAtmosphereRenderer implements CelestialRenderer {
+-
+-    @Override
+-    public void invoke(@NotNull RenderLevelStageEvent event, @NotNull Celestial toRender, @NotNull VantagePoint vantagePoint) {
+-        ClientLevel level = ((LevelRendererAccessor)event.getLevelRenderer()).getLevel();
+-        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+-        long ticks = GenesisMod.getTicks(level);
+-        float partialTick = GenesisMod.getPartialTick(level, event);
+-        Vector3dc position = toRender.getPosition(ticks, partialTick, registry);
+-        CelestialRenderCoordinates.RenderTransform renderTransform =
+-                CelestialRenderCoordinates.getRenderTransform(toRender, vantagePoint, event.getCamera().getPosition(), ticks, partialTick, registry);
+-        position = renderTransform.position();
+-        Quaterniondc rotation = renderTransform.rotation();
+-        double size = CelestialRenderCoordinates.getVisualHalfExtent(toRender) * 2.0;
+-        double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(position);
+-        if (renderDistanceScale != 1.0) {
+-            position = CelestialRenderCoordinates.scaleRenderPosition(position, renderDistanceScale);
+-            size *= renderDistanceScale;
+-        }
+-
+-        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+-        VertexConsumer atmosphereBuffer = bufferSource.getBuffer(getPlanetAtmosphereRenderType());
+-        renderAtmosphere(event.getPoseStack(), atmosphereBuffer, size, position, rotation, event, toRender, vantagePoint);
+-        bufferSource.endBatch(getPlanetAtmosphereRenderType());
+-    }
+-
+-    private void renderAtmosphere(PoseStack poseStack, VertexConsumer buffer, double size, Vector3dc center, Quaterniondc localRotation, @NotNull RenderLevelStageEvent event, @NotNull Celestial toRender, VantagePoint vantagePoint) {
+-
+-        // Camera is at render origin; planet center is at `center` in render space.
+-        // Camera relative to planet = -center; transform into planet local space for shader.
+-        Vector3f cameraPos0 = new Vector3f((float) -center.x(), (float) -center.y(), (float) -center.z());
+-        Vector3f rotatedCameraPos = new Vector3f(cameraPos0);
+-        new Quaternionf(localRotation).conjugate().transform(rotatedCameraPos);
+-
+-        float halfSize = (float) size / 2;
+-
+-        if (!(toRender.properties() instanceof PlanetProperties props)) return;
+-
+-        // densityFade only applies when leaving a planet's atmosphere (y-based fade in planet dimension).
+-        // When viewing from space, use full density.
+-        double densityFade = (vantagePoint instanceof VantagePoint.InSpace)
+-                ? 1.0
+-                : Mth.clamp((event.getCamera().getPosition().y - 320.0) / (GenesisCommonConfig.getAtmosphereEntryHeight() - 320.0), 0.0, 1.0);
+-
+-        double starBrightness = PlanetDimensionEffects.cachedStarBrightness;
+-
+-        if (vantagePoint instanceof VantagePoint.OnCelestial oc && !oc.celestial().equals(toRender)) {
+-            densityFade = starBrightness;
+-        }
+-
+-        float relativeAtmosphereSize = 1.0f + 0.3f * (float) props.atmosphere().thickness();
+-
+-        // Fade the shell out right as the camera crosses into it — a translucent
+-        // shell drawn from inside has no stable face order and flickers, which
+-        // is the shimmer while approaching a planet. The band is tight around
+-        // the shell surface, so the glow seen from any distance is untouched
+-        // and only the instant of crossing fades.
+-        double cameraDistance = new Vector3d(center).length();
+-        double shellRadius = (size / 2.0) * relativeAtmosphereSize;
+-        double insideFade = Mth.clamp((cameraDistance - shellRadius * 0.95) / (shellRadius * 0.1), 0.0, 1.0);
+-        densityFade *= insideFade;
+-
+-        if (props.atmosphere().density() * densityFade < 0.01) return;
+-
+-        ClientLevel level = ((LevelRendererAccessor)event.getLevelRenderer()).getLevel();
+-        Registry<Celestial> reg = GenesisMod.getCelestialRegistry(level);
+-        long ticks = GenesisMod.getTicks(level);
+-        float partialTick = GenesisMod.getPartialTick(level, event);
+-
+-        Vector3dc starPosition = toRender.getNearestStar(ticks, partialTick, reg).getPosition(ticks, partialTick, reg);
+-        Vector3dc planetPosition = toRender.getPosition(ticks, partialTick, reg);
+-
+-        Quaterniondc lightRot = toRender.getRotation(ticks, partialTick, reg);
+-        Vector3d lightDir = new Vector3d(planetPosition).sub(starPosition).rotate(new Quaterniond(lightRot).conjugate());
+-        ShaderInstance shader = ShaderRegistry.PLANET_ATMOSPHERE_SHADER.getShaderInstance();
+-        shader.safeGetUniform("LightDirection").set((float) lightDir.x, (float) lightDir.y, (float) lightDir.z);
+-        Uniform uniform = shader.getUniform("CameraPosition");
+-        if (uniform != null) {
+-            uniform.set(rotatedCameraPos.x, rotatedCameraPos.y, rotatedCameraPos.z);
+-        }
+-
+-        Uniform uniform1 = shader.getUniform("HalfSize");
+-        if (uniform1 != null) {
+-            uniform1.set(halfSize);
+-        }
+-
+-        Uniform uniformThickness = shader.getUniform("AtmosphereThickness");
+-        if (uniformThickness != null) {
+-            uniformThickness.set(relativeAtmosphereSize);
+-        }
+-
+-        Uniform uniformDensity = shader.getUniform("Density");
+-        if (uniformDensity != null) {
+-            uniformDensity.set((float) (props.atmosphere().density() * densityFade));
+-        }
+-
+-        Matrix4f matrix;
+-        try {
+-            matrix = (Matrix4f) poseStack.last().pose().clone();
+-        } catch (CloneNotSupportedException e) {
+-            throw new RuntimeException(e);
+-        }
+-
+-        matrix.translate(cameraPos0.negate(new Vector3f()));
+-
+-        matrix.rotate(new Quaternionf(localRotation));
+-
+-        Vector3f testPos = new Vector3f(cameraPos0).rotate(new Quaternionf(localRotation).conjugate());
+-
+-        float correctionDist = relativeAtmosphereSize;
+-
+-        float outOverexposureCancel = 1.0f;
+-
+-        boolean cameraInsideAtmosphere = Math.abs(testPos.x) < halfSize * relativeAtmosphereSize
+-                    && Math.abs(testPos.y) < halfSize * relativeAtmosphereSize
+-                    && Math.abs(testPos.z) < halfSize * relativeAtmosphereSize;
+-
+-        if (cameraInsideAtmosphere) {
+-            correctionDist = 1.001f;
+-        } else {
+-            outOverexposureCancel = 0.000000001f;
+-        }
+-
+-        addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-        addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-        addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-        addCubeFaceAtmosphere(matrix, buffer, halfSize, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-        addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-        addCubeFaceAtmosphere(matrix, buffer, -halfSize, halfSize, -halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
+-    }
+-
+-    private static void addCubeFaceAtmosphere(Matrix4f matrix, VertexConsumer buffer, float x1, float y1, float z1, float x2, float y2, float z2,
+-                                              float x3, float y3, float z3, float x4, float y4, float z4,float halfSize,float zFightingCorrection,float atmosphereThickness,float outFact) {
+-
+-        float size = 2 * halfSize;
+-        float sclFct;
+-
+-        sclFct = zFightingCorrection;
+-        buffer.addVertex(matrix, x1 * sclFct, y1 * sclFct, z1 * sclFct).setColor((int)(255 * (x1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z1 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x2 * sclFct, y2 * sclFct, z2 * sclFct).setColor((int)(255 * (x2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z2 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x3 * sclFct, y3 * sclFct, z3 * sclFct).setColor((int)(255 * (x3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z3 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x4 * sclFct, y4 * sclFct, z4 * sclFct).setColor((int)(255 * (x4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z4 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-
+-        sclFct = -atmosphereThickness * outFact;
+-        buffer.addVertex(matrix, x1 * sclFct, y1 * sclFct, z1 * sclFct).setColor((int)(255 * (x1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z1 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x2 * sclFct, y2 * sclFct, z2 * sclFct).setColor((int)(255 * (x2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z2 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x3 * sclFct, y3 * sclFct, z3 * sclFct).setColor((int)(255 * (x3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z3 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-        buffer.addVertex(matrix, x4 * sclFct, y4 * sclFct, z4 * sclFct).setColor((int)(255 * (x4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z4 * sclFct / atmosphereThickness + halfSize) / size), 255);
+-    }
+-}
++package shipwrights.genesis.space.renderer;
++
++import com.mojang.blaze3d.shaders.Uniform;
++import com.mojang.blaze3d.vertex.PoseStack;
++import com.mojang.blaze3d.vertex.VertexConsumer;
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.client.renderer.MultiBufferSource;
++import net.minecraft.client.renderer.ShaderInstance;
++import net.minecraft.util.Mth;
++import net.minecraft.resources.ResourceLocation;
++import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
++import org.jetbrains.annotations.NotNull;
++import org.joml.*;
++import net.minecraft.core.Registry;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.PlanetDimensionEffects;
++import shipwrights.genesis.client.ShaderRegistry;
++import shipwrights.genesis.config.GenesisCommonConfig;
++import shipwrights.genesis.mixin.LevelRendererAccessor;
++import shipwrights.genesis.space.Celestial;
++import shipwrights.genesis.space.VantagePoint;
++import shipwrights.genesis.space.properties.PlanetProperties;
++
++import java.lang.Math;
++
++import static shipwrights.genesis.client.ShaderRegistry.getPlanetAtmosphereRenderType;
++
++public class PlanetAtmosphereRenderer implements CelestialRenderer {
++    private static final ResourceLocation OVERWORLD_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++    private static final int SPHERE_MESH_RESOLUTION = 24;
++
++    @Override
++    public void invoke(@NotNull RenderLevelStageEvent event, @NotNull Celestial toRender, @NotNull VantagePoint vantagePoint) {
++        ClientLevel level = ((LevelRendererAccessor)event.getLevelRenderer()).getLevel();
++        Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
++        long ticks = GenesisMod.getTicks(level);
++        float partialTick = GenesisMod.getPartialTick(level, event);
++        Vector3dc position = toRender.getPosition(ticks, partialTick, registry);
++        CelestialRenderCoordinates.RenderTransform renderTransform =
++                CelestialRenderCoordinates.getRenderTransform(toRender, vantagePoint, event.getCamera().getPosition(), ticks, partialTick, registry);
++        position = renderTransform.position();
++        Quaterniondc rotation = renderTransform.rotation();
++        double size = CelestialRenderCoordinates.getVisualHalfExtent(toRender) * 2.0;
++        double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(position);
++        if (renderDistanceScale != 1.0) {
++            position = CelestialRenderCoordinates.scaleRenderPosition(position, renderDistanceScale);
++            size *= renderDistanceScale;
++        }
++
++        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
++        VertexConsumer atmosphereBuffer = bufferSource.getBuffer(getPlanetAtmosphereRenderType());
++        ResourceLocation celestialId = registry.getResourceKey(toRender).orElseThrow().location();
++        boolean spherical = OVERWORLD_ID.equals(celestialId);
++        renderAtmosphere(event.getPoseStack(), atmosphereBuffer, size, position, rotation, event, toRender, vantagePoint, spherical);
++        bufferSource.endBatch(getPlanetAtmosphereRenderType());
++    }
++
++    private void renderAtmosphere(PoseStack poseStack, VertexConsumer buffer, double size, Vector3dc center, Quaterniondc localRotation, @NotNull RenderLevelStageEvent event, @NotNull Celestial toRender, VantagePoint vantagePoint, boolean spherical) {
++
++        // Camera is at render origin; planet center is at `center` in render space.
++        // Camera relative to planet = -center; transform into planet local space for shader.
++        Vector3f cameraPos0 = new Vector3f((float) -center.x(), (float) -center.y(), (float) -center.z());
++        Vector3f rotatedCameraPos = new Vector3f(cameraPos0);
++        new Quaternionf(localRotation).conjugate().transform(rotatedCameraPos);
++
++        float halfSize = (float) size / 2;
++
++        if (!(toRender.properties() instanceof PlanetProperties props)) return;
++
++        // densityFade only applies when leaving a planet's atmosphere (y-based fade in planet dimension).
++        // When viewing from space, use full density.
++        double densityFade = (vantagePoint instanceof VantagePoint.InSpace)
++                ? 1.0
++                : Mth.clamp((event.getCamera().getPosition().y - 320.0) / (GenesisCommonConfig.getAtmosphereEntryHeight() - 320.0), 0.0, 1.0);
++
++        double starBrightness = PlanetDimensionEffects.cachedStarBrightness;
++
++        if (vantagePoint instanceof VantagePoint.OnCelestial oc && !oc.celestial().equals(toRender)) {
++            densityFade = starBrightness;
++        }
++
++        float relativeAtmosphereSize = 1.0f + 0.3f * (float) props.atmosphere().thickness();
++
++        // Fade the shell out right as the camera crosses into it — a translucent
++        // shell drawn from inside has no stable face order and flickers, which
++        // is the shimmer while approaching a planet. The band is tight around
++        // the shell surface, so the glow seen from any distance is untouched
++        // and only the instant of crossing fades.
++        double cameraDistance = new Vector3d(center).length();
++        double shellRadius = (size / 2.0) * relativeAtmosphereSize;
++        double insideFade = Mth.clamp((cameraDistance - shellRadius * 0.95) / (shellRadius * 0.1), 0.0, 1.0);
++        densityFade *= insideFade;
++
++        if (props.atmosphere().density() * densityFade < 0.01) return;
++
++        ClientLevel level = ((LevelRendererAccessor)event.getLevelRenderer()).getLevel();
++        Registry<Celestial> reg = GenesisMod.getCelestialRegistry(level);
++        long ticks = GenesisMod.getTicks(level);
++        float partialTick = GenesisMod.getPartialTick(level, event);
++
++        Vector3dc starPosition = toRender.getNearestStar(ticks, partialTick, reg).getPosition(ticks, partialTick, reg);
++        Vector3dc planetPosition = toRender.getPosition(ticks, partialTick, reg);
++
++        Quaterniondc lightRot = toRender.getRotation(ticks, partialTick, reg);
++        Vector3d lightDir = new Vector3d(planetPosition).sub(starPosition).rotate(new Quaterniond(lightRot).conjugate());
++        ShaderInstance shader = ShaderRegistry.PLANET_ATMOSPHERE_SHADER.getShaderInstance();
++        shader.safeGetUniform("LightDirection").set((float) lightDir.x, (float) lightDir.y, (float) lightDir.z);
++        Uniform uniform = shader.getUniform("CameraPosition");
++        if (uniform != null) {
++            uniform.set(rotatedCameraPos.x, rotatedCameraPos.y, rotatedCameraPos.z);
++        }
++
++        Uniform uniform1 = shader.getUniform("HalfSize");
++        if (uniform1 != null) {
++            uniform1.set(halfSize);
++        }
++
++        Uniform uniformThickness = shader.getUniform("AtmosphereThickness");
++        if (uniformThickness != null) {
++            uniformThickness.set(relativeAtmosphereSize);
++        }
++
++        Uniform uniformDensity = shader.getUniform("Density");
++        if (uniformDensity != null) {
++            uniformDensity.set((float) (props.atmosphere().density() * densityFade));
++        }
++
++        Uniform sphericalUniform = shader.getUniform("Spherical");
++        if (sphericalUniform != null) {
++            sphericalUniform.set(spherical ? 1.0f : 0.0f);
++        }
++
++        Matrix4f matrix;
++        try {
++            matrix = (Matrix4f) poseStack.last().pose().clone();
++        } catch (CloneNotSupportedException e) {
++            throw new RuntimeException(e);
++        }
++
++        matrix.translate(cameraPos0.negate(new Vector3f()));
++
++        matrix.rotate(new Quaternionf(localRotation));
++
++        Vector3f testPos = new Vector3f(cameraPos0).rotate(new Quaternionf(localRotation).conjugate());
++
++        float correctionDist = relativeAtmosphereSize;
++
++        float outOverexposureCancel = 1.0f;
++
++        float atmosphereRadius = halfSize * relativeAtmosphereSize;
++        boolean cameraInsideAtmosphere = spherical
++                ? (testPos.x * testPos.x + testPos.y * testPos.y + testPos.z * testPos.z)
++                    < atmosphereRadius * atmosphereRadius
++                : Math.abs(testPos.x) < atmosphereRadius
++                    && Math.abs(testPos.y) < atmosphereRadius
++                    && Math.abs(testPos.z) < atmosphereRadius;
++
++        if (cameraInsideAtmosphere) {
++            correctionDist = 1.001f;
++        } else {
++            outOverexposureCancel = 0.000000001f;
++        }
++
++        if (spherical) {
++            addSphereAtmosphere(matrix, buffer, halfSize, correctionDist);
++        } else {
++            addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++            addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++            addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++            addCubeFaceAtmosphere(matrix, buffer, halfSize, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++            addCubeFaceAtmosphere(matrix, buffer, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++            addCubeFaceAtmosphere(matrix, buffer, -halfSize, halfSize, -halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize,  halfSize, correctionDist, relativeAtmosphereSize,outOverexposureCancel);
++        }
++    }
++
++    private static void addSphereAtmosphere(Matrix4f matrix, VertexConsumer buffer,
++                                            float halfSize, float geometryScale) {
++        float radius = halfSize * geometryScale;
++        for (shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face
++                : shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face.values()) {
++            for (int row = 0; row < SPHERE_MESH_RESOLUTION; row++) {
++                double t0 = row / (double) SPHERE_MESH_RESOLUTION;
++                double t1 = (row + 1) / (double) SPHERE_MESH_RESOLUTION;
++                for (int column = 0; column < SPHERE_MESH_RESOLUTION; column++) {
++                    double s0 = column / (double) SPHERE_MESH_RESOLUTION;
++                    double s1 = (column + 1) / (double) SPHERE_MESH_RESOLUTION;
++                    addSphereAtmosphereVertex(matrix, buffer, face, s0, t1, radius);
++                    addSphereAtmosphereVertex(matrix, buffer, face, s1, t1, radius);
++                    addSphereAtmosphereVertex(matrix, buffer, face, s1, t0, radius);
++                    addSphereAtmosphereVertex(matrix, buffer, face, s0, t0, radius);
++                }
++            }
++        }
++    }
++
++    private static void addSphereAtmosphereVertex(Matrix4f matrix, VertexConsumer buffer,
++            shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face,
++            double s, double t, float radius) {
++        double u = s * 2.0 - 1.0;
++        double v = t * 2.0 - 1.0;
++        Vector3d cube = switch (face) {
++            case NORTH -> new Vector3d(-u, -v, -1.0);
++            case WEST -> new Vector3d(-1.0, -v, u);
++            case SOUTH -> new Vector3d(u, -v, 1.0);
++            case EAST -> new Vector3d(1.0, -v, -u);
++            case DOWN -> new Vector3d(u, -1.0, -v);
++            case UP -> new Vector3d(u, 1.0, v);
++        };
++        double x2 = cube.x * cube.x;
++        double y2 = cube.y * cube.y;
++        double z2 = cube.z * cube.z;
++        Vector3d direction = new Vector3d(
++                cube.x * Math.sqrt(Math.max(0.0, 1.0 - y2 * 0.5 - z2 * 0.5 + y2 * z2 / 3.0)),
++                cube.y * Math.sqrt(Math.max(0.0, 1.0 - z2 * 0.5 - x2 * 0.5 + z2 * x2 / 3.0)),
++                cube.z * Math.sqrt(Math.max(0.0, 1.0 - x2 * 0.5 - y2 * 0.5 + x2 * y2 / 3.0))
++        ).normalize();
++        int r = Mth.clamp((int) ((direction.x * 0.5 + 0.5) * 255.0), 0, 255);
++        int g = Mth.clamp((int) ((direction.y * 0.5 + 0.5) * 255.0), 0, 255);
++        int b = Mth.clamp((int) ((direction.z * 0.5 + 0.5) * 255.0), 0, 255);
++        buffer.addVertex(matrix, (float) direction.x * radius, (float) direction.y * radius,
++                (float) direction.z * radius).setColor(r, g, b, 255);
++    }
++
++    private static void addCubeFaceAtmosphere(Matrix4f matrix, VertexConsumer buffer, float x1, float y1, float z1, float x2, float y2, float z2,
++                                              float x3, float y3, float z3, float x4, float y4, float z4,float halfSize,float zFightingCorrection,float atmosphereThickness,float outFact) {
++
++        float size = 2 * halfSize;
++        float sclFct;
++
++        sclFct = zFightingCorrection;
++        buffer.addVertex(matrix, x1 * sclFct, y1 * sclFct, z1 * sclFct).setColor((int)(255 * (x1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z1 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x2 * sclFct, y2 * sclFct, z2 * sclFct).setColor((int)(255 * (x2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z2 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x3 * sclFct, y3 * sclFct, z3 * sclFct).setColor((int)(255 * (x3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z3 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x4 * sclFct, y4 * sclFct, z4 * sclFct).setColor((int)(255 * (x4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z4 * sclFct / atmosphereThickness + halfSize) / size), 255);
++
++        sclFct = -atmosphereThickness * outFact;
++        buffer.addVertex(matrix, x1 * sclFct, y1 * sclFct, z1 * sclFct).setColor((int)(255 * (x1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y1 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z1 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x2 * sclFct, y2 * sclFct, z2 * sclFct).setColor((int)(255 * (x2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y2 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z2 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x3 * sclFct, y3 * sclFct, z3 * sclFct).setColor((int)(255 * (x3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y3 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z3 * sclFct / atmosphereThickness + halfSize) / size), 255);
++        buffer.addVertex(matrix, x4 * sclFct, y4 * sclFct, z4 * sclFct).setColor((int)(255 * (x4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (y4 * sclFct / atmosphereThickness + halfSize) / size), (int)(255 * (z4 * sclFct / atmosphereThickness + halfSize) / size), 255);
++    }
++}
+--- a/src/main/resources/assets/genesis/shaders/core/planet_atmosphere.json
++++ b/src/main/resources/assets/genesis/shaders/core/planet_atmosphere.json
+@@ -1,106 +1,114 @@
+-{
+-  "blend": {
+-    "func": "add",
+-    "srcrgb": "srcalpha",
+-    "dstrgb": "1-srcalpha"
+-  },
+-  "vertex": "genesis:planet_atmosphere",
+-  "fragment": "genesis:planet_atmosphere",
+-  "attributes": [
+-    "Position",
+-    "Color"
+-  ],
+-  "samplers": [],
+-  "uniforms": [
+-    {
+-      "name": "ModelViewMat",
+-      "type": "matrix4x4",
+-      "count": 16,
+-      "values": [
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0
+-      ]
+-    },
+-    {
+-      "name": "ProjMat",
+-      "type": "matrix4x4",
+-      "count": 16,
+-      "values": [
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        0.0,
+-        1.0
+-      ]
+-    },
+-    {
+-      "name": "CameraPosition",
+-      "type": "float",
+-      "count": 3,
+-      "values": [
+-        0.0,
+-        0.0,
+-        0.0
+-      ]
+-    },
+-    {
+-      "name": "HalfSize",
+-      "type": "float",
+-      "count": 1,
+-      "values": [
+-        0.0
+-      ]
+-    },
+-    {
+-      "name": "LightDirection",
+-      "type": "float",
+-      "count": 3,
+-      "values": [
+-        0.0,
+-        0.0,
+-        0.0
+-      ]
+-    },
+-    {
+-      "name": "AtmosphereThickness",
+-      "type": "float",
+-      "count": 1,
+-      "values": [
+-        1.3
+-      ]
+-    },
+-    {
+-      "name": "Density",
+-      "type": "float",
+-      "count": 1,
+-      "values": [
+-        1.0
+-      ]
+-    }
+-  ]
+-}
++{
++  "blend": {
++    "func": "add",
++    "srcrgb": "srcalpha",
++    "dstrgb": "1-srcalpha"
++  },
++  "vertex": "genesis:planet_atmosphere",
++  "fragment": "genesis:planet_atmosphere",
++  "attributes": [
++    "Position",
++    "Color"
++  ],
++  "samplers": [],
++  "uniforms": [
++    {
++      "name": "ModelViewMat",
++      "type": "matrix4x4",
++      "count": 16,
++      "values": [
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0
++      ]
++    },
++    {
++      "name": "ProjMat",
++      "type": "matrix4x4",
++      "count": 16,
++      "values": [
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0,
++        0.0,
++        0.0,
++        0.0,
++        0.0,
++        1.0
++      ]
++    },
++    {
++      "name": "CameraPosition",
++      "type": "float",
++      "count": 3,
++      "values": [
++        0.0,
++        0.0,
++        0.0
++      ]
++    },
++    {
++      "name": "HalfSize",
++      "type": "float",
++      "count": 1,
++      "values": [
++        0.0
++      ]
++    },
++    {
++      "name": "LightDirection",
++      "type": "float",
++      "count": 3,
++      "values": [
++        0.0,
++        0.0,
++        0.0
++      ]
++    },
++    {
++      "name": "AtmosphereThickness",
++      "type": "float",
++      "count": 1,
++      "values": [
++        1.3
++      ]
++    },
++    {
++      "name": "Density",
++      "type": "float",
++      "count": 1,
++      "values": [
++        1.0
++      ]
++    },
++    {
++      "name": "Spherical",
++      "type": "float",
++      "count": 1,
++      "values": [
++        0.0
++      ]
++    }
++  ]
++}
+--- a/src/main/resources/assets/genesis/shaders/core/planet_atmosphere.fsh
++++ b/src/main/resources/assets/genesis/shaders/core/planet_atmosphere.fsh
+@@ -1,229 +1,276 @@
+-#version 150
+-
+-in vec3 v_camera_pos;
+-in vec3 v_entry_position;
+-in float v_half_size;
+-in vec3 lightDir;
+-
+-uniform float AtmosphereThickness;
+-uniform float Density;
+-
+-const vec4 dayCol = vec4(0.3,0.7,0.9,0.7);
+-const vec4 sunsetCol = vec4(0.7,0.3,0.1,0.5);
+-const vec4 nightCol = vec4(0.2,0.1,0.4,0.1);
+-
+-out vec4 frag_color;
+-
+-const vec3 v_cube_center = vec3(0);
+-
+-const vec3 cube_rotationXYZ = vec3(0, 0, 0);
+-const float euler = 2.718281828459;
+-
+-float smoothNormalize(float it) {
+-    return -log(1/euler + pow(euler, -4 * (it + 0.11467)));
+-}
+-
+-float smoothMax3(vec3 p, float roundness) {
+-    vec3 q = abs(p);
+-    float m = max(max(q.x, q.y), q.z);
+-
+-    return m;
+-}
+-
+-
+-vec3 temperatureToColor(float t) {
+-    t = clamp(t, 0.0, 1.0);
+-
+-    const vec3 red    = vec3(1.0, 0.0, 0.0);
+-    const vec3 orange = vec3(1.0, 0.0, 0.0);
+-    const vec3 yellow = vec3(1.0, 0.8, 0.15);
+-    const vec3 white  = vec3(1.0, 1.0, 1.0);
+-
+-    if (t < 0.33) {
+-        float k = smoothstep(0.0, 0.33, t);
+-        return mix(red, orange, k);
+-    } else if (t < 0.66) {
+-        float k = smoothstep(0.33, 0.66, t);
+-        return mix(orange, yellow, k);
+-    } else {
+-        float k = smoothstep(0.66, 1.0, t);
+-        return mix(yellow, white, k);
+-    }
+-}
+-
+-mat3 rotationMatrix(vec3 angles) {
+-    vec3 rad = radians(angles);
+-    float cx = cos(rad.x);
+-    float sx = sin(rad.x);
+-    float cy = cos(rad.y);
+-    float sy = sin(rad.y);
+-    float cz = cos(rad.z);
+-    float sz = sin(rad.z);
+-
+-    // Rotation order: X * Y * Z
+-    mat3 rotX = mat3(
+-    1.0, 0.0, 0.0,
+-    0.0, cx, -sx,
+-    0.0, sx, cx
+-    );
+-
+-    mat3 rotY = mat3(
+-    cy, 0.0, sy,
+-    0.0, 1.0, 0.0,
+-    -sy, 0.0, cy
+-    );
+-
+-    mat3 rotZ = mat3(
+-    cz, -sz, 0.0,
+-    sz, cz, 0.0,
+-    0.0, 0.0, 1.0
+-    );
+-
+-    return rotX * rotY * rotZ;
+-}
+-
+-vec2 rayBoxIntersection(vec3 rayStart, vec3 rayDir, vec3 boxCenter, float boxHalfSize, mat3 rotation) {
+-    mat3 invRotation = transpose(rotation);
+-    vec3 localRayStart = invRotation * (rayStart - boxCenter);
+-    vec3 localRayDir = invRotation * rayDir;
+-
+-    vec3 invDir = 1.0 / localRayDir;
+-    vec3 t1 = (-boxHalfSize - localRayStart) * invDir;
+-    vec3 t2 = (boxHalfSize - localRayStart) * invDir;
+-
+-    vec3 tMin = min(t1, t2);
+-    vec3 tMax = max(t1, t2);
+-
+-    float tEntry = max(max(tMin.x, tMin.y), tMin.z);
+-    float tExit = min(min(tMax.x, tMax.y), tMax.z);
+-
+-    if (tExit < tEntry || tExit < 0.0) {
+-        return vec2(-1.0);
+-    }
+-
+-    return vec2(tEntry,tExit);
+-}
+-
+-void main() {
+-    vec3 ray_direction = normalize(v_entry_position - v_camera_pos);
+-
+-    mat3 rot = rotationMatrix(cube_rotationXYZ);
+-
+-    float exit_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).y;
+-    float entry_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size, rot).x;
+-
+-    if(entry_distance < -0.1) {
+-        entry_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).y;
+-    }
+-
+-    vec3 enterPos = v_camera_pos + ray_direction * max(rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).x,0.0);
+-
+-    float thickness = 1000000000000.0;
+-
+-    if (thickness < 0.0) {
+-        thickness = 0.0;
+-    }
+-
+-    // Transform ray to local cube space
+-    mat3 invRot = transpose(rot);
+-    vec3 localRayStart = invRot * (v_camera_pos - v_cube_center);
+-    vec3 localRayDir = normalize(invRot * ray_direction);
+-    vec3 localCamPos = invRot * v_camera_pos;
+-    vec3 localIntPos = invRot * (v_camera_pos + entry_distance * ray_direction);
+-    vec3 localEnterPos = invRot * enterPos;
+-    vec3 localLightDir = normalize(invRot * lightDir);
+-
+-    // Check intersection with each of the 6 diagonal planes
+-    float roundness_factor = 0.5;
+-
+-    // Calculate minimum of distance components at intersections with 6 diagonal planes
+-    float minDist = smoothMax3(vec3(abs(localCamPos.x),abs(localCamPos.y),abs(localCamPos.z)),roundness_factor);
+-
+-    // Plane: y=x (normal: y-x=0)
+-    if (abs(localRayDir.y - localRayDir.x) > 0.0001) {
+-        float t = (localRayStart.x - localRayStart.y) / (localRayDir.y - localRayDir.x);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    // Plane: y=-x (normal: y+x=0)
+-    if (abs(localRayDir.y + localRayDir.x) > 0.0001) {
+-        float t = -(localRayStart.x + localRayStart.y) / (localRayDir.y + localRayDir.x);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    // Plane: y=z (normal: y-z=0)
+-    if (abs(localRayDir.y - localRayDir.z) > 0.0001) {
+-        float t = (localRayStart.z - localRayStart.y) / (localRayDir.y - localRayDir.z);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    // Plane: y=-z (normal: y+z=0)
+-    if (abs(localRayDir.y + localRayDir.z) > 0.0001) {
+-        float t = -(localRayStart.z + localRayStart.y) / (localRayDir.y + localRayDir.z);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    // Plane: x=z (normal: x-z=0)
+-    if (abs(localRayDir.x - localRayDir.z) > 0.0001) {
+-        float t = (localRayStart.z - localRayStart.x) / (localRayDir.x - localRayDir.z);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    // Plane: x=-z (normal: x+z=0)
+-    if (abs(localRayDir.x + localRayDir.z) > 0.0001) {
+-        float t = -(localRayStart.z + localRayStart.x) / (localRayDir.x + localRayDir.z);
+-        if (t >= 0.0 && t <= thickness) {
+-            vec3 intersection = localRayStart + localRayDir * t;
+-            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
+-            minDist = min(minDist, dist);
+-        }
+-    }
+-
+-    float distanceFromCenter = minDist / v_half_size;
+-
+-    float alpha;
+-
+-    if(distanceFromCenter < 1.0) {
+-        alpha = (1. - dot(normalize(localIntPos),-localRayDir));
+-        alpha *= alpha * 0.6;
+-    } else {
+-        alpha = clamp(1. - (distanceFromCenter - 1.) / (AtmosphereThickness - 1.), 0.0, 1.0);
+-        alpha *= alpha;
+-    }
+-
+-    vec3 hPos1 = localEnterPos / v_half_size;
+-    vec3 hPos2 = localIntPos / v_half_size;
+-
+-    float lightDot = (dot(hPos1,-localLightDir) + dot(hPos2,-localLightDir)) / 2. / length(hPos1 - hPos2);
+-
+-    float dayFact = clamp(lightDot * 3.0,0.0,1.0);
+-    float nightFact = clamp(lightDot * -4.0,0.0,1.0);
+-
+-    frag_color = mix(mix(sunsetCol,nightCol,nightFact),dayCol,dayFact);
+-    frag_color.a *= alpha;
+-    frag_color.a *= Density;
+-
+-    //frag_color = vec4(localRayDir * 0.5 + 0.5,0.3);
+-
+-    //frag_color = vec4((v_entry_position + v_half_size) / (v_half_size * 2.0),0.5);
++#version 150
++
++in vec3 v_camera_pos;
++in vec3 v_entry_position;
++in float v_half_size;
++in vec3 lightDir;
++
++uniform float AtmosphereThickness;
++uniform float Density;
++uniform float Spherical;
++
++const vec4 dayCol = vec4(0.3,0.7,0.9,0.7);
++const vec4 sunsetCol = vec4(0.7,0.3,0.1,0.5);
++const vec4 nightCol = vec4(0.2,0.1,0.4,0.1);
++
++out vec4 frag_color;
++
++const vec3 v_cube_center = vec3(0);
++
++const vec3 cube_rotationXYZ = vec3(0, 0, 0);
++const float euler = 2.718281828459;
++
++float smoothNormalize(float it) {
++    return -log(1/euler + pow(euler, -4 * (it + 0.11467)));
++}
++
++float smoothMax3(vec3 p, float roundness) {
++    vec3 q = abs(p);
++    float m = max(max(q.x, q.y), q.z);
++
++    return m;
++}
++
++
++vec3 temperatureToColor(float t) {
++    t = clamp(t, 0.0, 1.0);
++
++    const vec3 red    = vec3(1.0, 0.0, 0.0);
++    const vec3 orange = vec3(1.0, 0.0, 0.0);
++    const vec3 yellow = vec3(1.0, 0.8, 0.15);
++    const vec3 white  = vec3(1.0, 1.0, 1.0);
++
++    if (t < 0.33) {
++        float k = smoothstep(0.0, 0.33, t);
++        return mix(red, orange, k);
++    } else if (t < 0.66) {
++        float k = smoothstep(0.33, 0.66, t);
++        return mix(orange, yellow, k);
++    } else {
++        float k = smoothstep(0.66, 1.0, t);
++        return mix(yellow, white, k);
++    }
++}
++
++mat3 rotationMatrix(vec3 angles) {
++    vec3 rad = radians(angles);
++    float cx = cos(rad.x);
++    float sx = sin(rad.x);
++    float cy = cos(rad.y);
++    float sy = sin(rad.y);
++    float cz = cos(rad.z);
++    float sz = sin(rad.z);
++
++    // Rotation order: X * Y * Z
++    mat3 rotX = mat3(
++    1.0, 0.0, 0.0,
++    0.0, cx, -sx,
++    0.0, sx, cx
++    );
++
++    mat3 rotY = mat3(
++    cy, 0.0, sy,
++    0.0, 1.0, 0.0,
++    -sy, 0.0, cy
++    );
++
++    mat3 rotZ = mat3(
++    cz, -sz, 0.0,
++    sz, cz, 0.0,
++    0.0, 0.0, 1.0
++    );
++
++    return rotX * rotY * rotZ;
++}
++
++vec2 raySphereIntersection(vec3 rayStart, vec3 rayDir, float radius) {
++    float b = dot(rayStart, rayDir);
++    float c = dot(rayStart, rayStart) - radius * radius;
++    float h = b * b - c;
++    if (h < 0.0) {
++        return vec2(-1.0);
++    }
++    h = sqrt(h);
++    return vec2(-b - h, -b + h);
++}
++
++vec2 rayBoxIntersection(vec3 rayStart, vec3 rayDir, vec3 boxCenter, float boxHalfSize, mat3 rotation) {
++    mat3 invRotation = transpose(rotation);
++    vec3 localRayStart = invRotation * (rayStart - boxCenter);
++    vec3 localRayDir = invRotation * rayDir;
++
++    vec3 invDir = 1.0 / localRayDir;
++    vec3 t1 = (-boxHalfSize - localRayStart) * invDir;
++    vec3 t2 = (boxHalfSize - localRayStart) * invDir;
++
++    vec3 tMin = min(t1, t2);
++    vec3 tMax = max(t1, t2);
++
++    float tEntry = max(max(tMin.x, tMin.y), tMin.z);
++    float tExit = min(min(tMax.x, tMax.y), tMax.z);
++
++    if (tExit < tEntry || tExit < 0.0) {
++        return vec2(-1.0);
++    }
++
++    return vec2(tEntry,tExit);
++}
++
++void main() {
++    vec3 ray_direction = normalize(v_entry_position - v_camera_pos);
++
++    if (Spherical > 0.5) {
++        float innerRadius = v_half_size;
++        float outerRadius = v_half_size * AtmosphereThickness;
++        vec2 outerHit = raySphereIntersection(v_camera_pos, ray_direction, outerRadius);
++        if (outerHit.y < 0.0) {
++            discard;
++        }
++
++        float segmentStart = max(outerHit.x, 0.0);
++        float segmentEnd = outerHit.y;
++        vec2 groundHit = raySphereIntersection(v_camera_pos, ray_direction, innerRadius);
++        if (groundHit.x > segmentStart && groundHit.x < segmentEnd) {
++            segmentEnd = groundHit.x;
++        }
++
++        float pathLength = max(0.0, segmentEnd - segmentStart);
++        float shellDepth = max(outerRadius - innerRadius, 0.0001);
++        float opticalDepth = clamp(pathLength / shellDepth, 0.0, 8.0);
++        vec3 midPoint = v_camera_pos + ray_direction * (segmentStart + pathLength * 0.5);
++        vec3 radial = normalize(midPoint);
++        vec3 localLightDir = normalize(lightDir);
++
++        float sunFacing = dot(radial, -localLightDir);
++        float dayFact = smoothstep(-0.08, 0.30, sunFacing);
++        float nightFact = 1.0 - smoothstep(-0.35, -0.02, sunFacing);
++        float sunsetBand = 1.0 - smoothstep(0.02, 0.30, abs(sunFacing));
++
++        vec4 base = mix(nightCol, dayCol, dayFact);
++        base = mix(base, sunsetCol, sunsetBand * (1.0 - nightFact * 0.7));
++        float alpha = (1.0 - exp(-opticalDepth * 0.65 * Density));
++        base.a = alpha * 0.72;
++        frag_color = base;
++        return;
++    }
++
++    mat3 rot = rotationMatrix(cube_rotationXYZ);
++
++    float exit_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).y;
++    float entry_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size, rot).x;
++
++    if(entry_distance < -0.1) {
++        entry_distance = rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).y;
++    }
++
++    vec3 enterPos = v_camera_pos + ray_direction * max(rayBoxIntersection(v_camera_pos, ray_direction, v_cube_center, v_half_size * AtmosphereThickness, rot).x,0.0);
++
++    float thickness = 1000000000000.0;
++
++    if (thickness < 0.0) {
++        thickness = 0.0;
++    }
++
++    // Transform ray to local cube space
++    mat3 invRot = transpose(rot);
++    vec3 localRayStart = invRot * (v_camera_pos - v_cube_center);
++    vec3 localRayDir = normalize(invRot * ray_direction);
++    vec3 localCamPos = invRot * v_camera_pos;
++    vec3 localIntPos = invRot * (v_camera_pos + entry_distance * ray_direction);
++    vec3 localEnterPos = invRot * enterPos;
++    vec3 localLightDir = normalize(invRot * lightDir);
++
++    // Check intersection with each of the 6 diagonal planes
++    float roundness_factor = 0.5;
++
++    // Calculate minimum of distance components at intersections with 6 diagonal planes
++    float minDist = smoothMax3(vec3(abs(localCamPos.x),abs(localCamPos.y),abs(localCamPos.z)),roundness_factor);
++
++    // Plane: y=x (normal: y-x=0)
++    if (abs(localRayDir.y - localRayDir.x) > 0.0001) {
++        float t = (localRayStart.x - localRayStart.y) / (localRayDir.y - localRayDir.x);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    // Plane: y=-x (normal: y+x=0)
++    if (abs(localRayDir.y + localRayDir.x) > 0.0001) {
++        float t = -(localRayStart.x + localRayStart.y) / (localRayDir.y + localRayDir.x);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    // Plane: y=z (normal: y-z=0)
++    if (abs(localRayDir.y - localRayDir.z) > 0.0001) {
++        float t = (localRayStart.z - localRayStart.y) / (localRayDir.y - localRayDir.z);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    // Plane: y=-z (normal: y+z=0)
++    if (abs(localRayDir.y + localRayDir.z) > 0.0001) {
++        float t = -(localRayStart.z + localRayStart.y) / (localRayDir.y + localRayDir.z);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    // Plane: x=z (normal: x-z=0)
++    if (abs(localRayDir.x - localRayDir.z) > 0.0001) {
++        float t = (localRayStart.z - localRayStart.x) / (localRayDir.x - localRayDir.z);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    // Plane: x=-z (normal: x+z=0)
++    if (abs(localRayDir.x + localRayDir.z) > 0.0001) {
++        float t = -(localRayStart.z + localRayStart.x) / (localRayDir.x + localRayDir.z);
++        if (t >= 0.0 && t <= thickness) {
++            vec3 intersection = localRayStart + localRayDir * t;
++            float dist = smoothMax3(vec3(abs(intersection.x), abs(intersection.y), abs(intersection.z)), roundness_factor);
++            minDist = min(minDist, dist);
++        }
++    }
++
++    float distanceFromCenter = minDist / v_half_size;
++
++    float alpha;
++
++    if(distanceFromCenter < 1.0) {
++        alpha = (1. - dot(normalize(localIntPos),-localRayDir));
++        alpha *= alpha * 0.6;
++    } else {
++        alpha = clamp(1. - (distanceFromCenter - 1.) / (AtmosphereThickness - 1.), 0.0, 1.0);
++        alpha *= alpha;
++    }
++
++    vec3 hPos1 = localEnterPos / v_half_size;
++    vec3 hPos2 = localIntPos / v_half_size;
++
++    float lightDot = (dot(hPos1,-localLightDir) + dot(hPos2,-localLightDir)) / 2. / length(hPos1 - hPos2);
++
++    float dayFact = clamp(lightDot * 3.0,0.0,1.0);
++    float nightFact = clamp(lightDot * -4.0,0.0,1.0);
++
++    frag_color = mix(mix(sunsetCol,nightCol,nightFact),dayCol,dayFact);
++    frag_color.a *= alpha;
++    frag_color.a *= Density;
++
++    //frag_color = vec4(localRayDir * 0.5 + 0.5,0.3);
++
++    //frag_color = vec4((v_entry_position + v_half_size) / (v_half_size * 2.0),0.5);
+ }
+\ No newline at end of file

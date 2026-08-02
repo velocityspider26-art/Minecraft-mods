@@ -1,0 +1,33 @@
+{
+  "values": [
+    "genesis:voidstone",
+    "genesis:riftrock",
+    "genesis:nullstone",
+    "genesis:echostone",
+    "genesis:phaserock",
+    "genesis:warpstone",
+    "genesis:tulcite_ore",
+    "genesis:verdite_ore",
+    "genesis:lunar_dust",
+    "genesis:stellar_sand",
+    "genesis:nav_projector",
+    "genesis:void_engine_interface",
+    "genesis:void_engine_frame",
+    "genesis:void_core",
+    "genesis:void_engine_viewport",
+    "genesis:hyperdrive",
+    "genesis:tulcite_catalyzer_block",
+    "genesis:anorthite",
+    "genesis:moon_stone",
+    "genesis:hallow_moon_stone",
+    "genesis:hyperdrive_class_6",
+    "genesis:hyperdrive_class_5",
+    "genesis:hyperdrive_class_4",
+    "genesis:hyperdrive_class_3",
+    "genesis:hyperdrive_class_2",
+    "genesis:hyperdrive_class_1",
+    "genesis:hyperdrive_class_0_5",
+    "genesis:falken_hyperdrive",
+    "genesis:orbital_stabilizer"
+  ]
+}

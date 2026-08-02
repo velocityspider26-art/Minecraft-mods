@@ -1,0 +1,28 @@
+{
+  "type": "genesis:body",
+  "size": 512,
+  "gravity": 1.0,
+  "transformProvider": {
+    "type": "genesis:orbiting",
+    "parentID": "genesis:sun",
+    "seed": 2,
+    "orbitDistance": 15000,
+    "orbitTime": 4600000,
+    "dayLength": 24000,
+    "phaseDegrees": 65.8,
+    "eccentricity": 0.0167,
+    "argumentOfPeriapsisDegrees": 114.2,
+    "axialTiltDegrees": 23.44
+  },
+  "properties": {
+    "atmosphere": {
+      "density": 1.0,
+      "thickness": 1.0,
+      "precipitation": true,
+      "isBreathable": true,
+      "color": {
+        "type": "genesis:overworld"
+      }
+    }
+  }
+}

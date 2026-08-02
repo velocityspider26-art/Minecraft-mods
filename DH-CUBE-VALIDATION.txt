@@ -1,0 +1,25 @@
+DH cube-world LOD validation
+============================
+
+- Java compiler: OpenJDK javac 21.0.10
+- Replaced/generated class files: 7
+- Class-file major version: 65 (Java 21)
+- Distant Horizons API compile target: uploaded 3.2.0-b NeoForge/Fabric jar
+- Genesis baseline: 1.21.1-0.8.0-port-world-lod-cube1
+- JAR ZIP integrity: passed
+- Patched class byte hashes: all packaged classes exactly match direct compile
+- Runtime metadata: requires distanthorizons [3.2.0-b,) on CLIENT
+- Pure geometry test: current face unchanged during fold; maximum observed error 4.55e-13 blocks
+- Camera-relative compression test: ray direction preserved (floating-point error only)
+
+Not performed:
+- Full Minecraft client launch
+- GPU render verification
+- Live DH database timing measurement
+3917e6ab81041a0771c563fc1acaee5985e418bf71a15158bef1b7e46a809112  shipwrights/genesis/client/PlanetSurfaceLifecycle.class  MATCH=True
+3779dd4bed0f0635c3c99ef0ef19192b6da644afac16882f00368eca0d05872d  shipwrights/genesis/client/lod/DhCubeLodBridge$1.class  MATCH=True
+7ca1d690dda4713d958abe31349f22ebeec29f5367012edf3f4aa459fc5b8153  shipwrights/genesis/client/lod/DhCubeLodBridge$2.class  MATCH=True
+57e766928df451c745c1fa4c755772b1dbe6cc55008b6faddaff448943de06d1  shipwrights/genesis/client/lod/DhCubeLodBridge$Column.class  MATCH=True
+d3475394a7ed021b447307a4a1eb84f52b15a9af171d45aff16764859cbf7acc  shipwrights/genesis/client/lod/DhCubeLodBridge.class  MATCH=True
+fd1938a3c72ba34e2e51f46bbdda7dc7646e1a2fbaf1d62405fed7ce004dde44  shipwrights/genesis/client/lod/WorldLodEarthRenderer.class  MATCH=True
+6593ed018a5459700c2fc45aa86428015b3f5ca8509f481a38b195b93fd40451  shipwrights/genesis/config/GenesisClientConfig.class  MATCH=True

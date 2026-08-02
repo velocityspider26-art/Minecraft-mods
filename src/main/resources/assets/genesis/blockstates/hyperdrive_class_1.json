@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "genesis:block/hyperdrive"
+    },
+    "powered=true": {
+      "model": "genesis:block/hyperdrive_powered"
+    }
+  }
+}

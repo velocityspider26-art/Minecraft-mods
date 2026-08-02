@@ -1,0 +1,59 @@
+{
+  "has_precipitation": false,
+  "temperature": 2.0,
+  "downfall": 0.0,
+  "effects": {
+    "sky_color": 0,
+    "foliage_color": 10466504,
+    "grass_color": 10466504,
+    "fog_color": 1712176,
+    "water_color": 4159204,
+    "water_fog_color": 2046834
+  },
+  "carvers": {
+    "air": [
+      "genesis:mercury_lava_tube",
+      "genesis:mercury_scarp_rift",
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ]
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "genesis:mercury_iron",
+      "genesis:mercury_graphite",
+      "genesis:mercury_sulfur"
+    ],
+    [],
+    [
+      "genesis:mercury_ice_patch"
+    ],
+    []
+  ],
+  "spawners": {
+    "monster": [
+      {
+        "type": "genesis:cinder_crawler",
+        "weight": 12,
+        "minCount": 1,
+        "maxCount": 2
+      }
+    ],
+    "creature": [],
+    "ambient": [],
+    "axolotls": [],
+    "underground_water_creature": [],
+    "water_creature": [],
+    "water_ambient": [],
+    "misc": []
+  },
+  "spawn_costs": {}
+}

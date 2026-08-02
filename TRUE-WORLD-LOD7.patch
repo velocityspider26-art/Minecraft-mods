@@ -1,0 +1,471 @@
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/build.gradle /mnt/data/ProjectStarbound_lod7_work/build.gradle
+--- /mnt/data/ProjectStarbound_lod7_backup/build.gradle	2026-07-31 13:05:17.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/build.gradle	2026-07-31 19:27:01.189861387 +0000
+@@ -65,6 +65,9 @@
+     runs {
+         client {
+             client()
++            jvmArgument '-Xms2G'
++            jvmArgument '-Xmx10G'
++            jvmArgument '-XX:+UseZGC'
+             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+             // Opt-in: ./gradlew runClient -PquickWorld="TestWorld" boots straight into a save
+             if (project.hasProperty('quickWorld')) {
+@@ -79,6 +82,9 @@
+         }
+         server {
+             server()
++            jvmArgument '-Xms2G'
++            jvmArgument '-Xmx10G'
++            jvmArgument '-XX:+UseZGC'
+             programArgument '--nogui'
+             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+         }
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/gradle.properties /mnt/data/ProjectStarbound_lod7_work/gradle.properties
+--- /mnt/data/ProjectStarbound_lod7_backup/gradle.properties	2026-07-31 18:11:59.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/gradle.properties	2026-07-31 19:10:52.101829570 +0000
+@@ -1,5 +1,5 @@
+ # Done to increase the memory available to Gradle.
+-org.gradle.jvmargs=-Xmx2G
++org.gradle.jvmargs=-Xms1G -Xmx10G -XX:+UseZGC
+ org.gradle.daemon=true
+ org.gradle.parallel=true
+ org.gradle.caching=true
+@@ -8,7 +8,7 @@
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port-true-chunk-lod6
++mod_version=1.21.1-0.8.0-port-true-world-lod7
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 16:31:25.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 19:17:57.921843550 +0000
+@@ -64,11 +64,11 @@
+ 
+     private static final int FILE_MAGIC = 0x474C4F44; // GLOD
+     private static final int FILE_VERSION = 2;
+-    private static final int MAX_PATCHES = 8192;
+-    private static final int MAX_QUEUE_BATCH = 48;
++    private static final int MAX_PATCHES = 16384;
++    private static final int MAX_QUEUE_BATCH = 96;
+     private static final long SWEEP_INTERVAL_NANOS = 350_000_000L;
+     private static final long SAVE_INTERVAL_NANOS = 5_000_000_000L;
+-    private static final int SWEEP_RADIUS_CHUNKS = 24;
++    private static final int SWEEP_RADIUS_CHUNKS = 48;
+     private static final int[][] SWEEP_OFFSETS = buildSpiral(SWEEP_RADIUS_CHUNKS);
+ 
+     private static final ThreadFactory THREAD_FACTORY = runnable -> {
+@@ -355,7 +355,7 @@
+                         highest = Math.max(highest, point.topYBlockPos);
+                     }
+                     visible.sort((a, b) -> Integer.compare(b.topYBlockPos, a.topYBlockPos));
+-                    int cutoff = highest == Integer.MIN_VALUE ? Integer.MAX_VALUE : highest - 96;
++                    int cutoff = highest == Integer.MIN_VALUE ? Integer.MAX_VALUE : highest - 192;
+                     for (DhApiTerrainDataPoint point : visible) {
+                         if (segments.size() - offsets[columnIndex]
+                                 >= PlanetLodVolumeTile.MAX_SEGMENTS_PER_COLUMN) break;
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/EarthLodVisualFrame.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/EarthLodVisualFrame.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/EarthLodVisualFrame.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/EarthLodVisualFrame.java	2026-07-31 19:10:42.205829245 +0000
+@@ -0,0 +1,83 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.util.Mth;
++import net.minecraft.world.phys.Vec3;
++import org.joml.Vector3d;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
++
++/**
++ * Shared display frame for the overworld ascent and orbital Earth renderers.
++ *
++ * <p>The simulation keeps Genesis' existing 1:16 planet/space coordinates.
++ * The renderer does not. It displays one Minecraft surface block as one render
++ * block and compresses only the otherwise enormous empty altitude above the
++ * terrain. This is the important distinction between a tiny painted planet and
++ * a low-orbit view of the actual Minecraft LOD chunks.</p>
++ */
++public final class EarthLodVisualFrame {
++    private static final double LINEAR_ALTITUDE_LIMIT = 1024.0;
++    private static final double LOG_ALTITUDE_SCALE = 384.0;
++    private static final double LOG_ALTITUDE_DIVISOR = 1024.0;
++    private static final double FAR_ALTITUDE_START = 32768.0;
++    private static final double FAR_ALTITUDE_DIVISOR = 16.0;
++
++    private EarthLodVisualFrame() {
++    }
++
++    /**
++     * Keeps normal flight unchanged near terrain, then turns tens of thousands
++     * of empty vertical blocks into a low-orbit visual altitude. The mapping is
++     * continuous and monotonic, so ascent never reverses or snaps.
++     */
++    public static double visualAltitudeFromPlanetBlocks(double altitudeBlocks) {
++        double altitude = Math.max(0.0, altitudeBlocks);
++        if (altitude <= LINEAR_ALTITUDE_LIMIT) {
++            return altitude;
++        }
++        double logarithmic = LINEAR_ALTITUDE_LIMIT
++                + LOG_ALTITUDE_SCALE * Math.log1p(
++                (Math.min(altitude, FAR_ALTITUDE_START) - LINEAR_ALTITUDE_LIMIT)
++                        / LOG_ALTITUDE_DIVISOR);
++        if (altitude <= FAR_ALTITUDE_START) {
++            return logarithmic;
++        }
++        return logarithmic + (altitude - FAR_ALTITUDE_START) / FAR_ALTITUDE_DIVISOR;
++    }
++
++    /** Camera used only by the LOD renderer; gameplay/collision coordinates stay untouched. */
++    public static Vec3 overworldRenderCamera(Vec3 actualCamera, int seaLevel, float influence) {
++        double altitude = Math.max(0.0, actualCamera.y - seaLevel);
++        double visualY = seaLevel + visualAltitudeFromPlanetBlocks(altitude);
++        double y = Mth.lerp(Mth.clamp(influence, 0.0f, 1.0f), actualCamera.y, visualY);
++        return new Vec3(actualCamera.x, y, actualCamera.z);
++    }
++
++    /**
++     * Re-expresses the simulated 1:16 orbital location in a 1:1 surface-detail
++     * render frame. The direction to Earth is unchanged, while the cube edge
++     * becomes the real cube-net face span and the altitude uses the same curve
++     * as pre-crossing ascent.
++     */
++    public static OrbitFrame orbitFrame(Vector3d simulatedPlanetPosition,
++                                        double physicalHalfExtent,
++                                        CubeNetSurfaceTransform transform) {
++        double distance = simulatedPlanetPosition.length();
++        Vector3d direction = distance > 1.0E-9
++                ? new Vector3d(simulatedPlanetPosition).div(distance)
++                : new Vector3d(0.0, -1.0, 0.0);
++        double simulatedAltitude = Math.max(0.0, distance - physicalHalfExtent);
++        double altitudePlanetBlocks = simulatedAltitude
++                / SpaceTravelManager.SPACE_BLOCKS_PER_PLANET_BLOCK;
++        double visualHalfExtent = transform.faceHalfSpan();
++        double visualAltitude = visualAltitudeFromPlanetBlocks(altitudePlanetBlocks);
++        Vector3d visualPosition = direction.mul(visualHalfExtent + visualAltitude);
++        return new OrbitFrame(visualPosition, visualHalfExtent, 1.0, visualAltitude);
++    }
++
++    public record OrbitFrame(Vector3d planetPosition,
++                             double halfExtent,
++                             double worldToRendered,
++                             double altitude) {
++    }
++}
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 18:10:54.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 19:11:27.997830749 +0000
+@@ -95,21 +95,32 @@
+                 CelestialRenderCoordinates.getRenderTransform(
+                         earth, vantage, camera, ticks, partialTick, registry);
+ 
+-        Vector3d planetPosition = new Vector3d(renderTransform.position());
++        Vector3d simulatedPlanetPosition = new Vector3d(renderTransform.position());
+         Quaterniond planetRotation = new Quaterniond(renderTransform.rotation());
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++
++        // Display the cube in the same 1:1 Minecraft-block frame used during
++        // ascent. Genesis' physics remains 1:16; only the render coordinates
++        // are expanded and the empty orbital altitude is compressed.
++        EarthLodVisualFrame.OrbitFrame visualFrame = EarthLodVisualFrame.orbitFrame(
++                simulatedPlanetPosition, earth.getActualSize() * 0.5, transform);
++        Vector3d planetPosition = new Vector3d(visualFrame.planetPosition());
++        double renderedHalfExtent = visualFrame.halfExtent();
++        double worldToRendered = visualFrame.worldToRendered();
++
++        // Generic far-plane protection may still scale the complete visual
++        // frame. It scales planet distance, cube size and block geometry by the
++        // same factor, so apparent detail is preserved.
+         double renderDistanceScale =
+                 CelestialRenderCoordinates.getPlanetRenderDistanceScale(planetPosition);
+         if (renderDistanceScale != 1.0) {
+             planetPosition = CelestialRenderCoordinates.scaleRenderPosition(
+                     planetPosition, renderDistanceScale);
++            renderedHalfExtent *= renderDistanceScale;
++            worldToRendered *= renderDistanceScale;
+         }
+ 
+-        double renderedHalfExtent = earth.getActualSize() * 0.5 * renderDistanceScale;
+-        double worldToRendered = renderDistanceScale
+-                / CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
+-        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+-                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
+-
+         Quaterniond inverseRotation = new Quaterniond(planetRotation).conjugate();
+         Vector3d localCamera = new Vector3d(planetPosition).negate().rotate(inverseRotation);
+         Vector3d localToCamera = new Vector3d(localCamera).normalize();
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java	2026-07-31 16:27:43.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java	2026-07-31 19:17:57.921843550 +0000
+@@ -9,7 +9,7 @@
+ 
+ /** Client cache for exact 3D chunk-volume LOD tiles. */
+ public final class PlanetLodVolumeClientCache {
+-    private static final int MAX_TILES_PER_PLANET = 8192;
++    private static final int MAX_TILES_PER_PLANET = 16384;
+     private static final Object LOCK = new Object();
+     private static final Map<ResourceLocation,
+             LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile>> TILES = new LinkedHashMap<>();
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java	2026-07-31 18:12:49.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java	2026-07-31 19:18:22.577844360 +0000
+@@ -38,8 +38,17 @@
+             RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS);
+     private static final RenderType TRANSLUCENT_TYPE =
+             RenderType.entityTranslucent(TextureAtlas.LOCATION_BLOCKS);
+-    private static final int SOLID_BUFFER_BYTES = 8 * 1024 * 1024;
+-    private static final int TRANSLUCENT_BUFFER_BYTES = 2 * 1024 * 1024;
++    private static final int SOLID_BUFFER_BYTES = 16 * 1024 * 1024;
++    private static final int TRANSLUCENT_BUFFER_BYTES = 4 * 1024 * 1024;
++    private static final Object BUFFER_LOCK = new Object();
++    /**
++     * Persistent native builders. Reallocating tens of megabytes every render
++     * frame caused avoidable GC/native-memory pressure exactly while climbing
++     * through the LOD transition. ByteBufferBuilder grows when needed and is
++     * cleared after each completed draw without losing its capacity.
++     */
++    private static final ByteBufferBuilder SOLID_MEMORY = new ByteBufferBuilder(SOLID_BUFFER_BYTES);
++    private static final ByteBufferBuilder TRANSLUCENT_MEMORY = new ByteBufferBuilder(TRANSLUCENT_BUFFER_BYTES);
+     private static volatile boolean loggedOverworld;
+     private static volatile boolean loggedOrbit;
+     private static volatile boolean renderDisabled;
+@@ -61,8 +70,8 @@
+         if (tiles.length == 0) return;
+ 
+         int quality = GenesisClientConfig.getWorldLodQuality();
+-        int maximum = quality >= 3 ? 256 : quality == 2 ? 128 : 64;
+-        double radius = quality >= 3 ? 2304.0 : quality == 2 ? 1536.0 : 1024.0;
++        int maximum = quality >= 3 ? 1024 : quality == 2 ? 512 : 192;
++        double radius = quality >= 3 ? 4096.0 : quality == 2 ? 2560.0 : 1536.0;
+         List<PlanetLodVolumeTile> candidates = new ArrayList<>();
+         for (PlanetLodVolumeTile tile : tiles) {
+             if (tile.face() != currentFace) continue;
+@@ -125,9 +134,9 @@
+         PlanetLodVolumeTile[] tiles = PlanetLodVolumeClientCache.snapshot(EARTH_ID);
+         if (tiles.length == 0) return;
+         boolean survey = OrbitalSurveyController.isActive();
+-        double radius = survey ? OrbitalSurveyController.detailRadius()
+-                : Math.max(256.0, Math.min(768.0, 256.0 + apparentHalf * 4096.0));
+-        int maximum = survey ? 384 : 128;
++        double radius = survey ? Math.max(OrbitalSurveyController.detailRadius(), 4096.0)
++                : Math.max(1024.0, Math.min(4096.0, 1024.0 + apparentHalf * 4096.0));
++        int maximum = survey ? 1536 : 1024;
+         List<PlanetLodVolumeTile> candidates = new ArrayList<>();
+         for (PlanetLodVolumeTile tile : tiles) {
+             if (tile.face() != focusFace) continue;
+@@ -173,23 +182,28 @@
+      * {@code BufferBuilder: Not building!} crash during ascent.
+      */
+     private static int renderWithDedicatedBuffers(VolumePass pass) {
+-        try (ByteBufferBuilder solidMemory = new ByteBufferBuilder(SOLID_BUFFER_BYTES);
+-             ByteBufferBuilder translucentMemory = new ByteBufferBuilder(TRANSLUCENT_BUFFER_BYTES)) {
+-            BufferBuilder solid = new BufferBuilder(
+-                    solidMemory, SOLID_TYPE.mode(), SOLID_TYPE.format());
+-            BufferBuilder translucent = new BufferBuilder(
+-                    translucentMemory, TRANSLUCENT_TYPE.mode(), TRANSLUCENT_TYPE.format());
+-            int rendered = pass.render(solid, translucent);
+-            drawBuilt(SOLID_TYPE, solid);
+-            drawBuilt(TRANSLUCENT_TYPE, translucent);
+-            return rendered;
+-        } catch (Throwable error) {
+-            renderDisabled = true;
+-            GenesisMod.LOGGER.error(
+-                    "[VOLUME-LOD] disabled for this level after a render failure; "
+-                            + "the coarse world LOD remains active instead of crashing the client",
+-                    error);
+-            return 0;
++        synchronized (BUFFER_LOCK) {
++            try {
++                RenderSystem.assertOnRenderThread();
++                BufferBuilder solid = new BufferBuilder(
++                        SOLID_MEMORY, SOLID_TYPE.mode(), SOLID_TYPE.format());
++                BufferBuilder translucent = new BufferBuilder(
++                        TRANSLUCENT_MEMORY, TRANSLUCENT_TYPE.mode(), TRANSLUCENT_TYPE.format());
++                int rendered = pass.render(solid, translucent);
++                drawBuilt(SOLID_TYPE, solid);
++                drawBuilt(TRANSLUCENT_TYPE, translucent);
++                return rendered;
++            } catch (Throwable error) {
++                renderDisabled = true;
++                GenesisMod.LOGGER.error(
++                        "[VOLUME-LOD] disabled for this level after a render failure; "
++                                + "the coarse world LOD remains active instead of crashing the client",
++                        error);
++                return 0;
++            } finally {
++                SOLID_MEMORY.clear();
++                TRANSLUCENT_MEMORY.clear();
++            }
+         }
+     }
+ 
+@@ -246,7 +260,7 @@
+                                         PlanetSurfaceData surface, float foldAlpha,
+                                         double currentCenterX, double cubeCenterY, double currentCenterZ,
+                                         double renderScale, float alpha) {
+-        int unit = (side.flags() & PlanetLodVolumeTile.FLAG_STRUCTURE) != 0 ? 1 : 4;
++        int unit = 1;
+         int minX = tile.worldMinX();
+         int minZ = tile.worldMinZ();
+         for (int h = side.horizontal0(); h < side.horizontal1(); h += unit) {
+@@ -333,7 +347,7 @@
+                                           CubeNetSurfaceTransform transform,
+                                           Vector3d planetPosition, Quaterniondc rotation,
+                                           double renderedHalfExtent, double worldToRendered) {
+-        int unit = (side.flags() & PlanetLodVolumeTile.FLAG_STRUCTURE) != 0 ? 1 : 4;
++        int unit = 1;
+         int minX = tile.worldMinX();
+         int minZ = tile.worldMinZ();
+         CubeFaceFrame.Axes axes = CubeFaceFrame.axes(tile.face());
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java	2026-07-31 16:28:39.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java	2026-07-31 19:17:57.921843550 +0000
+@@ -47,7 +47,7 @@
+     private record CacheKey(ResourceLocation planet, PlanetLodVolumeTile.Key tile) {
+     }
+ 
+-    private static final int MAX_MESHES = 4096;
++    private static final int MAX_MESHES = 8192;
+     private static final Object LOCK = new Object();
+     private static final LinkedHashMap<CacheKey, Entry> ENTRIES =
+             new LinkedHashMap<>(256, 0.75f, true) {
+@@ -62,7 +62,7 @@
+         thread.setPriority(Thread.MIN_PRIORITY);
+         return thread;
+     };
+-    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(THREAD_FACTORY);
++    private static final ExecutorService WORKER = Executors.newFixedThreadPool(2, THREAD_FACTORY);
+ 
+     private PlanetVolumeMeshCache() {
+     }
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 18:10:52.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 19:11:10.049830159 +0000
+@@ -124,20 +124,28 @@
+                 && DhCubeLodBridge.hasFace(currentFace)
+                 && DhCubeLodBridge.hasAnyDhTerrain();
+ 
++        // Rendering at the literal Y=16k..21k camera distance makes a house
++        // physically smaller than a pixel even when its geometry is exact.
++        // Compress only the empty altitude, never the terrain/chunk geometry.
++        // The same mapping is used by the orbital renderer after crossing.
++        float visualFrameInfluence = Math.max(lodAlpha, foldAlpha);
++        Vec3 renderCamera = EarthLodVisualFrame.overworldRenderCamera(
++                camera, surface.seaLevel(), visualFrameInfluence);
++
+         MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
+         VertexConsumer buffer = source.getBuffer(LOD_RENDER_TYPE);
+         Matrix4f view = event.getModelViewMatrix();
+ 
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+-        renderCubeNet(buffer, view, camera, transform, currentFace, surface,
++        renderCubeNet(buffer, view, renderCamera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+-        renderSparseLodTiles(buffer, view, camera, transform, currentFace, surface,
++        renderSparseLodTiles(buffer, view, renderCamera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+-        renderLiveChunkPatches(buffer, view, camera, transform, currentFace, surface,
++        renderLiveChunkPatches(buffer, view, renderCamera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         source.endBatch(LOD_RENDER_TYPE);
+-        PlanetVolumeLodRenderer.renderOverworld(view, camera, transform, currentFace, surface,
++        PlanetVolumeLodRenderer.renderOverworld(view, renderCamera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java	2026-07-31 09:39:16.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java	2026-07-31 19:12:04.733831955 +0000
+@@ -18,6 +18,7 @@
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.client.PlanetDimensionEffects;
+ import shipwrights.genesis.client.PlanetSurfaceTextures;
++import shipwrights.genesis.client.lod.EarthLodVisualFrame;
+ import shipwrights.genesis.client.ShaderRegistry;
+ import shipwrights.genesis.client.shading.FaceShadow;
+ import shipwrights.genesis.client.shading.ShadowProjection;
+@@ -141,6 +142,16 @@
+                 CelestialRenderCoordinates.getRenderTransform(toRender, vantagePoint, event.getCamera().getPosition(), ticks, partialTick, registry);
+         position = renderTransform.position();
+         rotation = renderTransform.rotation();
++
++        if (OVERWORLD_ID.equals(planetID) && GenesisMod.isSpaceDimension(level)) {
++            CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                    toRender.getActualSize(), shipwrights.genesis.teleportation.SpaceTravelManager.entryPadding(toRender.getActualSize()));
++            EarthLodVisualFrame.OrbitFrame visualFrame = EarthLodVisualFrame.orbitFrame(
++                    new Vector3d(position), toRender.getActualSize() * 0.5, transform);
++            position = visualFrame.planetPosition();
++            halfExtent = visualFrame.halfExtent();
++        }
++
+         double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(position);
+         if (renderDistanceScale != 1.0) {
+             position = CelestialRenderCoordinates.scaleRenderPosition(position, renderDistanceScale);
+@@ -256,7 +267,7 @@
+     private static void addTerrainCube(Matrix4f matrix, VertexConsumer buffer, float halfSize,
+                                        double physicalHalfExtent, PlanetSurfaceData surface,
+                                        int meshResolution, Quaternionf rotation, float alpha) {
+-        double reliefScale = halfSize / physicalHalfExtent / PLANET_BLOCKS_PER_SPACE_BLOCK;
++        double reliefScale = halfSize * PLANET_BLOCKS_PER_SPACE_BLOCK / physicalHalfExtent;
+         for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
+             for (int row = 0; row < meshResolution; row++) {
+                 double t0 = row / (double) meshResolution;
+@@ -299,7 +310,7 @@
+                                         int meshResolution, Quaternionf rotation, float alpha) {
+         // One planet block is 1/16 of a celestial-space block. Anchor the
+         // sphere at sea level; only terrain above/below sea level changes radius.
+-        double reliefScale = halfSize / physicalHalfExtent / PLANET_BLOCKS_PER_SPACE_BLOCK;
++        double reliefScale = halfSize * PLANET_BLOCKS_PER_SPACE_BLOCK / physicalHalfExtent;
+ 
+         for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
+             for (int row = 0; row < meshResolution; row++) {
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java	2026-07-31 16:27:43.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java	2026-07-31 19:17:57.921843550 +0000
+@@ -29,8 +29,8 @@
+     public static final int RESOLUTION = 16;
+     public static final int COLUMN_COUNT = RESOLUTION * RESOLUTION;
+     public static final int OFFSET_COUNT = COLUMN_COUNT + 1;
+-    public static final int MAX_SEGMENTS = 4096;
+-    public static final int MAX_SEGMENTS_PER_COLUMN = 12;
++    public static final int MAX_SEGMENTS = 8192;
++    public static final int MAX_SEGMENTS_PER_COLUMN = 24;
+ 
+     public static final byte FLAG_LIQUID = 1;
+     public static final byte FLAG_TRANSLUCENT = 1 << 1;
+diff -ruN /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java
+--- /mnt/data/ProjectStarbound_lod7_backup/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 16:30:13.000000000 +0000
++++ /mnt/data/ProjectStarbound_lod7_work/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 19:17:57.921843550 +0000
+@@ -82,13 +82,13 @@
+             * GLOBAL_TILES_PER_AXIS * GLOBAL_TILES_PER_AXIS;
+     private static final int[] PROCEDURAL_RADII = {8, 10, 6};
+     private static final int MAX_SERVER_TILES = 24_576;
+-    private static final int MAX_VOLUME_TILES = 8_192;
+-    private static final int MAX_VOLUME_SCAN_DEPTH = 96;
++    private static final int MAX_VOLUME_TILES = 16_384;
++    private static final int MAX_VOLUME_SCAN_DEPTH = 192;
+     private static final int MAX_QUEUED = 4096;
+-    private static final int COMPLETED_PER_TICK = 3;
+-    private static final int DIRTY_PER_TICK = 1;
+-    private static final int REPLAY_PER_TICK = 3;
+-    private static final int VOLUME_REPLAY_PER_TICK = 1;
++    private static final int COMPLETED_PER_TICK = 6;
++    private static final int DIRTY_PER_TICK = 4;
++    private static final int REPLAY_PER_TICK = 6;
++    private static final int VOLUME_REPLAY_PER_TICK = 4;
+ 
+     private static final ThreadFactory THREAD_FACTORY = runnable -> {
+         Thread thread = new Thread(runnable, "Genesis-Sparse-Planet-LOD");
+@@ -375,7 +375,7 @@
+ 
+     /**
+      * Captures the real vertical surface shell of an already-loaded chunk.
+-     * The scan is capped to the top 96 blocks and twelve material runs per
++     * The scan is capped to the top 192 blocks and twenty-four material runs per
+      * column, which preserves roofs, walls, trees and towers without shipping
+      * caves or the entire underground volume to orbital clients.
+      */

@@ -1,0 +1,20 @@
+Orbital detail LOD 4 validation
+===============================
+
+Uploaded log diagnosis:
+- Seamless room handoff completed before the fatal exception.
+- Fatal cause: unregistered client-to-server genesis:transition_ready payload.
+- Watchdog stacks identified WorldLodEarthRenderer and OrbitalDhLivePatchRenderer render-thread work.
+
+Java target: 21
+Compile base: previous validated Genesis JAR + NeoForge/Minecraft 1.21.1 merged classes + DH 3.2.0-b
+Fresh direct javac compile of changed production sources: PASS
+Compiled production class files: 19
+Compile-only signature stubs packaged: NO
+Packaged class hashes against fresh compile: PASS (19/19)
+SeamlessTransitionScreen PacketDistributor/transition_ready bytecode reference: ABSENT
+Complete fallback geometry: 96 unique aligned tiles (6 faces x 4 x 4): PASS
+Final JAR ZIP integrity: PASS
+Bundled Distant Horizons entry retained: PASS
+Full Minecraft client launch: NOT PERFORMED
+Runtime GPU/FPS/survey visibility: REQUIRES IN-GAME TEST
