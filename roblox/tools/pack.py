@@ -20,6 +20,7 @@ ROOT = os.path.dirname(HERE)
 # Order matters only for readability in the explorer.
 NEW_MODULES = ['SoldierRigData', 'KSVRMesh', 'HumanRig', 'HumanPose',
                'HumanArms', 'WeaponGrips', 'OperatorShell']
+NEW_LOCALSCRIPTS = ['FeelPanel']
 
 
 def collect(srcdir):
@@ -52,6 +53,13 @@ def main():
         added = place.add_modules(args.place, 'Modules', fresh)
         print('added   %s' % ', '.join(added))
 
+    fresh = [(n, sources[n]) for n in NEW_LOCALSCRIPTS
+             if n in sources and n not in existing]
+    if fresh:
+        added = place.add_modules(args.place, 'StarterPlayerScripts', fresh,
+                                  cls='LocalScript')
+        print('added   %s (LocalScript)' % ', '.join(added))
+
     replaced = place.repack(args.place, sources)
     print('updated %d script(s)' % len(replaced))
 
@@ -59,7 +67,7 @@ def main():
     after = {p.rsplit('/', 1)[-1]: s for _c, p, s in place.scripts(args.place)}
     bad = [n for n, text in sources.items()
            if n in after and after[n] != text]
-    missing = [n for n in NEW_MODULES if n not in after]
+    missing = [n for n in NEW_MODULES + NEW_LOCALSCRIPTS if n not in after]
     if bad:
         print('MISMATCH after repack: %s' % ', '.join(bad))
         return 1

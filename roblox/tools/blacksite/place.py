@@ -99,11 +99,13 @@ def repack(place, sources, out=None):
     return replaced
 
 
-def add_modules(place, parent_name, modules, out=None):
-    """Insert new ModuleScripts as children of the folder named `parent_name`.
+def add_modules(place, parent_name, modules, out=None, cls='ModuleScript'):
+    """Insert new scripts as children of the instance named `parent_name`.
 
-    `modules` is an ordered list of (name, source). Existing modules with the
-    same name are replaced by `repack` instead of being duplicated.
+    `modules` is an ordered list of (name, source). Existing scripts with the
+    same name are replaced by `repack` instead of being duplicated. `cls` is the
+    Roblox class to create -- ModuleScript for ReplicatedStorage.Modules,
+    LocalScript for anything under StarterPlayerScripts.
     """
     raw = open(place, encoding='utf-8').read()
     existing = {name for _, p, _ in scripts(place) for name in [p.rsplit('/', 1)[-1]]}
@@ -140,12 +142,12 @@ def add_modules(place, parent_name, modules, out=None):
     chunks = []
     for n, (name, src) in enumerate(fresh):
         chunks.append(
-            '\t\t\t<Item class="ModuleScript" referent="%d">\n'
+            '\t\t\t<Item class="%s" referent="%d">\n'
             '\t\t\t\t<Properties>\n'
             '\t\t\t\t\t<string name="Name">%s</string>\n'
             '\t\t\t\t\t<string name="Source">%s</string>\n'
             '\t\t\t\t</Properties>\n'
-            '\t\t\t</Item>\n' % (nxt + n, escape(name), escape(src)))
+            '\t\t\t</Item>\n' % (cls, nxt + n, escape(name), escape(src)))
     new = raw[:insert_at] + ''.join(chunks) + raw[insert_at:]
     with open(out or place, 'w', encoding='utf-8') as fh:
         fh.write(new)
