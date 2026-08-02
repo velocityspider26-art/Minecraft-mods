@@ -71,6 +71,14 @@ public final class PlanetVoxelMeshCache {
         return existing.future.getNow(null);
     }
 
+    /** A finished mesh if one exists, without starting work for a missing one. */
+    public static PlanetVoxelGreedyMesher.Mesh peek(ResourceLocation planet,
+                                                     PlanetVoxelBrick brick) {
+        Entry entry = CACHE.get(new CacheKey(planet, brick.key()));
+        if (entry == null || entry.revision != brick.revision()) return null;
+        return entry.future.getNow(null);
+    }
+
     public static void invalidate(ResourceLocation planet, PlanetVoxelBrickKey key) {
         CACHE.remove(new CacheKey(planet, key));
         PlanetVoxelRenderer.invalidateGpu(planet, key);
@@ -97,35 +105,67 @@ public final class PlanetVoxelMeshCache {
     private static PlanetVoxelGreedyMesher.Mesh mesh(ResourceLocation planet,
                                                        PlanetVoxelBrick brick) {
         PlanetVoxelBrickKey key = brick.key();
+        // Fetch the six neighbours once instead of per boundary voxel. The
+        // client cache is guarded by one lock, and the mesher asks about every
+        // voxel on every face, so the naive version took that lock on the order
+        // of a thousand times per brick -- on three worker threads, against a
+        // render thread that needs the same lock to snapshot and to size the
+        // cache. That contention is felt as frame stutter, not as slow meshing.
+        PlanetVoxelBrick[] neighbours = new PlanetVoxelBrick[OFFSETS.length];
+        for (int index = 0; index < OFFSETS.length; index++) {
+            int[] offset = OFFSETS[index];
+            neighbours[index] = PlanetVoxelClientCache.get(planet, new PlanetVoxelBrickKey(
+                    key.face(), key.lod(), key.brickU() + offset[0],
+                    key.brickY() + offset[1], key.brickV() + offset[2]));
+        }
+
         return PlanetVoxelGreedyMesher.mesh(brick, new PlanetVoxelGreedyMesher.NeighbourLookup() {
             @Override
             public long material(int x, int y, int z) {
-                Sample sample = sample(key, x, y, z);
-                PlanetVoxelBrick neighbour = PlanetVoxelClientCache.get(planet, sample.key);
-                return neighbour == null ? PlanetVoxelMaterial.AIR
-                        : neighbour.material(sample.x, sample.y, sample.z);
+                Resolved resolved = resolve(x, y, z);
+                return resolved == null ? PlanetVoxelMaterial.AIR
+                        : resolved.brick.material(resolved.x, resolved.y, resolved.z);
             }
 
             @Override
             public int coverage(int x, int y, int z) {
-                Sample sample = sample(key, x, y, z);
-                PlanetVoxelBrick neighbour = PlanetVoxelClientCache.get(planet, sample.key);
-                return neighbour == null ? 0
-                        : neighbour.coverage(sample.x, sample.y, sample.z);
+                Resolved resolved = resolve(x, y, z);
+                return resolved == null ? 0
+                        : resolved.brick.coverage(resolved.x, resolved.y, resolved.z);
+            }
+
+            private Resolved resolve(int x, int y, int z) {
+                int dx = Math.floorDiv(x, PlanetVoxelBrick.EDGE);
+                int dy = Math.floorDiv(y, PlanetVoxelBrick.EDGE);
+                int dz = Math.floorDiv(z, PlanetVoxelBrick.EDGE);
+                PlanetVoxelBrick target;
+                if (dx == 0 && dy == 0 && dz == 0) {
+                    target = brick;
+                } else {
+                    int index = neighbourIndex(dx, dy, dz);
+                    // Diagonals are never sampled by face meshing; if one ever
+                    // is, treating it as absent hides a face rather than
+                    // reintroducing a per-voxel cache lookup.
+                    target = index < 0 ? null : neighbours[index];
+                }
+                if (target == null) return null;
+                return new Resolved(target,
+                        Math.floorMod(x, PlanetVoxelBrick.EDGE),
+                        Math.floorMod(y, PlanetVoxelBrick.EDGE),
+                        Math.floorMod(z, PlanetVoxelBrick.EDGE));
             }
         });
     }
 
-    private static Sample sample(PlanetVoxelBrickKey key, int x, int y, int z) {
-        int dx = Math.floorDiv(x, PlanetVoxelBrick.EDGE);
-        int dy = Math.floorDiv(y, PlanetVoxelBrick.EDGE);
-        int dz = Math.floorDiv(z, PlanetVoxelBrick.EDGE);
-        PlanetVoxelBrickKey target = new PlanetVoxelBrickKey(key.face(), key.lod(),
-                key.brickU() + dx, key.brickY() + dy, key.brickV() + dz);
-        return new Sample(target,
-                Math.floorMod(x, PlanetVoxelBrick.EDGE),
-                Math.floorMod(y, PlanetVoxelBrick.EDGE),
-                Math.floorMod(z, PlanetVoxelBrick.EDGE));
+    private static int neighbourIndex(int dx, int dy, int dz) {
+        for (int index = 0; index < OFFSETS.length; index++) {
+            int[] offset = OFFSETS[index];
+            if (offset[0] == dx && offset[1] == dy && offset[2] == dz) return index;
+        }
+        return -1;
+    }
+
+    private record Resolved(PlanetVoxelBrick brick, int x, int y, int z) {
     }
 
     private static void trimIfNeeded() {
@@ -149,6 +189,4 @@ public final class PlanetVoxelMeshCache {
                          CompletableFuture<PlanetVoxelGreedyMesher.Mesh> future) {
     }
 
-    private record Sample(PlanetVoxelBrickKey key, int x, int y, int z) {
-    }
 }

@@ -89,6 +89,12 @@ public final class PlanetVoxelRenderer {
     private static final double OUTWARD_NUDGE = 0.72;
     private static final int MAX_PENDING_GPU_UPLOADS = 2048;
     private static final int MAX_RESIDENT_SNAPSHOT = 100_000;
+    /** Mesh jobs started per frame. Scheduling a whole selection at once floods
+     *  the workers with thousands of jobs the camera has already moved past. */
+    private static final int MAX_MESH_SCHEDULES_PER_FRAME = 24;
+    /** Minimum gap between full re-snapshots of the client cache. */
+    private static final long RESIDENT_REFRESH_NANOS = 250_000_000L;
+    private static long residentRefreshedNanos;
 
     private static final Object GPU_LOCK = new Object();
     private static final LinkedHashMap<GpuKey, GpuEntry> GPU_CACHE =
@@ -294,9 +300,16 @@ public final class PlanetVoxelRenderer {
 
     private static int draw(List<PlanetVoxelLodSelector.Selection> selected,
                             ModelMatrix models, Matrix4f view, double cameraY) {
+        // Ask for finished meshes for everything, but only start new work for a
+        // bounded number of bricks per frame -- nearest first, since that is
+        // what the player is looking at.
+        int scheduled = 0;
         for (PlanetVoxelLodSelector.Selection selection : selected) {
-            PlanetVoxelGreedyMesher.Mesh mesh = PlanetVoxelMeshCache.getOrSchedule(
-                    EARTH_ID, selection.brick());
+            boolean maySchedule = scheduled < MAX_MESH_SCHEDULES_PER_FRAME;
+            PlanetVoxelGreedyMesher.Mesh mesh = maySchedule
+                    ? PlanetVoxelMeshCache.getOrSchedule(EARTH_ID, selection.brick())
+                    : PlanetVoxelMeshCache.peek(EARTH_ID, selection.brick());
+            if (maySchedule && mesh == null) scheduled++;
             if (mesh != null) queueGpuUpload(selection.brick(), mesh);
         }
         drainGpuDisposals();
@@ -486,7 +499,15 @@ public final class PlanetVoxelRenderer {
 
     private static List<PlanetVoxelBrick> resident() {
         long generation = PlanetVoxelClientCache.generation();
-        if (generation != residentGeneration) {
+        long now = System.nanoTime();
+        // The generation bumps on every brick that arrives, and bricks arrive
+        // continuously while streaming. Re-copying the whole cache and re-running
+        // the pyramid walk on every one of those was a full rebuild per frame.
+        boolean stale = generation != residentGeneration
+                && (residentBricks.isEmpty()
+                || now - residentRefreshedNanos >= RESIDENT_REFRESH_NANOS);
+        if (stale) {
+            residentRefreshedNanos = now;
             residentBricks = PlanetVoxelClientCache.snapshot(EARTH_ID, key -> true,
                     MAX_RESIDENT_SNAPSHOT);
             residentGeneration = generation;
@@ -740,6 +761,7 @@ public final class PlanetVoxelRenderer {
         loggedOverworld = false;
         loggedOrbit = false;
         residentGeneration = Long.MIN_VALUE;
+        residentRefreshedNanos = 0L;
         residentBricks = List.of();
         ASCENT.reset();
         ORBIT.reset();
