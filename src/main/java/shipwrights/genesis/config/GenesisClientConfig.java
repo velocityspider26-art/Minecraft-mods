@@ -115,6 +115,100 @@ public class GenesisClientConfig {
         return Math.max(0.25, Math.min(8.0, result));
     }
 
+    // ------------------------------------------------------------------
+    // Planet voxel engine
+    // ------------------------------------------------------------------
+
+    private static ModConfigSpec.ConfigValue<Boolean> planetVoxelRenderer;
+    private static final boolean defaultPlanetVoxelRenderer = true;
+
+    private static ModConfigSpec.ConfigValue<Integer> worldCubeFoldFullHeight;
+    private static final int defaultWorldCubeFoldFullHeight = 20480;
+
+    private static ModConfigSpec.ConfigValue<Integer> planetVoxelCacheMegabytes;
+    private static final int defaultPlanetVoxelCacheMegabytes = 1024;
+
+    private static ModConfigSpec.ConfigValue<Integer> planetGpuCacheMegabytes;
+    private static final int defaultPlanetGpuCacheMegabytes = 384;
+
+    private static ModConfigSpec.ConfigValue<Integer> planetMeshWorkers;
+    private static final int defaultPlanetMeshWorkers = 3;
+
+    private static ModConfigSpec.ConfigValue<Integer> planetGpuUploadsPerFrame;
+    private static final int defaultPlanetGpuUploadsPerFrame = 8;
+
+    private static ModConfigSpec.ConfigValue<Boolean> planetDebugOverlay;
+    private static final boolean defaultPlanetDebugOverlay = false;
+
+    private static ModConfigSpec.ConfigValue<String> planetDebugMode;
+    private static final String defaultPlanetDebugMode = "OFF";
+
+    /** Master switch for the sparse voxel Earth. Disabling leaves only vanilla chunks. */
+    public static boolean isPlanetVoxelRendererEnabled() {
+        try {
+            return planetVoxelRenderer.get();
+        } catch (Exception ignored) {
+            return defaultPlanetVoxelRenderer;
+        }
+    }
+
+    /** Altitude at which the five remote faces have fully folded into a cube. */
+    public static int getWorldCubeFoldFullHeight() {
+        int result = defaultWorldCubeFoldFullHeight;
+        try {
+            result = worldCubeFoldFullHeight.get();
+        } catch (Exception ignored) { }
+        return Math.max(getWorldCubeFoldStartHeight() + 1, result);
+    }
+
+    public static long getPlanetVoxelCacheBytes() {
+        int megabytes = defaultPlanetVoxelCacheMegabytes;
+        try {
+            megabytes = planetVoxelCacheMegabytes.get();
+        } catch (Exception ignored) { }
+        return Math.max(128L, Math.min(4096L, megabytes)) * 1024L * 1024L;
+    }
+
+    public static long getPlanetGpuCacheBytes() {
+        int megabytes = defaultPlanetGpuCacheMegabytes;
+        try {
+            megabytes = planetGpuCacheMegabytes.get();
+        } catch (Exception ignored) { }
+        return Math.max(64L, Math.min(2048L, megabytes)) * 1024L * 1024L;
+    }
+
+    public static int getPlanetMeshWorkers() {
+        int result = defaultPlanetMeshWorkers;
+        try {
+            result = planetMeshWorkers.get();
+        } catch (Exception ignored) { }
+        return Math.max(1, Math.min(4, result));
+    }
+
+    public static int getPlanetGpuUploadsPerFrame() {
+        int result = defaultPlanetGpuUploadsPerFrame;
+        try {
+            result = planetGpuUploadsPerFrame.get();
+        } catch (Exception ignored) { }
+        return Math.max(1, Math.min(64, result));
+    }
+
+    public static boolean isPlanetDebugOverlayEnabled() {
+        try {
+            return planetDebugOverlay.get();
+        } catch (Exception ignored) {
+            return defaultPlanetDebugOverlay;
+        }
+    }
+
+    public static String getPlanetDebugMode() {
+        try {
+            return planetDebugMode.get();
+        } catch (Exception ignored) {
+            return defaultPlanetDebugMode;
+        }
+    }
+
     public static final ModConfigSpec CONFIG_SPEC = buildConfig();
 
     private static ModConfigSpec buildConfig() {
@@ -143,6 +237,34 @@ public class GenesisClientConfig {
         worldLodQuality = builder
                 .comment("World-to-planet LOD quality: 1=fast, 2=balanced, 3=high.")
                 .defineInRange("WorldLodQuality", defaultWorldLodQuality, 1, 3);
+
+        builder.comment("Genesis planet voxel engine — the world's own 3D LOD chunks, reprojected onto six cube faces.")
+                .push("PlanetVoxelEngine");
+        planetVoxelRenderer = builder
+                .comment("Render the orbital Earth from the sparse voxel pyramid. Disabling leaves only vanilla chunks.")
+                .define("EnablePlanetVoxelRenderer", defaultPlanetVoxelRenderer);
+        worldCubeFoldFullHeight = builder
+                .comment("Altitude where the five remote cube-net regions have fully folded into a cube.")
+                .defineInRange("WorldCubeFoldFullHeight", defaultWorldCubeFoldFullHeight, 1025, 100000);
+        planetVoxelCacheMegabytes = builder
+                .comment("Client voxel brick cache budget, in MiB.")
+                .defineInRange("VoxelCacheMegabytes", defaultPlanetVoxelCacheMegabytes, 128, 4096);
+        planetGpuCacheMegabytes = builder
+                .comment("Client GPU mesh cache budget, in MiB.")
+                .defineInRange("GpuCacheMegabytes", defaultPlanetGpuCacheMegabytes, 64, 2048);
+        planetMeshWorkers = builder
+                .comment("Background CPU meshing threads.")
+                .defineInRange("MeshWorkerThreads", defaultPlanetMeshWorkers, 1, 4);
+        planetGpuUploadsPerFrame = builder
+                .comment("Maximum brick meshes uploaded to the GPU per frame.")
+                .defineInRange("GpuUploadsPerFrame", defaultPlanetGpuUploadsPerFrame, 1, 64);
+        planetDebugOverlay = builder
+                .comment("Show the planet voxel engine diagnostics overlay.")
+                .define("DebugOverlay", defaultPlanetDebugOverlay);
+        planetDebugMode = builder
+                .comment("Debug rendering: OFF, LOD, AUTHORITY, BRICK_BOUNDS, SEAMS, FOLD, MISSING.")
+                .define("DebugRenderMode", defaultPlanetDebugMode);
+        builder.pop();
         return builder.build();
     }
 }

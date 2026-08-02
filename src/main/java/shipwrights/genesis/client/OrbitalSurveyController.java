@@ -11,10 +11,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import shipwrights.genesis.GenesisMod;
-import shipwrights.genesis.client.lod.DhLiveChunkPatchCache;
-import shipwrights.genesis.client.lod.PlanetLodVolumeClientCache;
-import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
-import shipwrights.genesis.space.surface.SparsePlanetLodService;
+import shipwrights.genesis.client.lod.PlanetVoxelClientCache;
 import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
 
 /**
@@ -71,13 +68,11 @@ public final class OrbitalSurveyController {
     public static void updateTarget(CubeNetSurfaceTransform.Face face,
                                     double worldX, double worldZ,
                                     boolean crosshairHit) {
-        int best = SparsePlanetLodClientCache.bestCellSizeAt(
-                SparsePlanetLodService.EARTH_ID, face, worldX, worldZ);
-        if (PlanetLodVolumeClientCache.hasTileAt(SparsePlanetLodService.EARTH_ID, face, worldX, worldZ)
-                || DhLiveChunkPatchCache.hasPatchAt(face, worldX, worldZ)) {
-            best = 0;
-        }
-        focus = new Focus(face, worldX, worldZ, crosshairHit, best);
+        // Reported detail is now the finest voxel LOD the client actually holds
+        // for that column, so the readout cannot claim a resolution the renderer
+        // has no data for.
+        focus = new Focus(face, worldX, worldZ, crosshairHit,
+                PlanetVoxelClientCache.finestCellSizeAt(face, worldX, worldZ));
     }
 
     /** Radius, in planet blocks, that receives exact/high-detail rendering. */
@@ -177,9 +172,8 @@ public final class OrbitalSurveyController {
     }
 
     private static String qualityLabel(int cellSize) {
-        if (cellSize == Integer.MAX_VALUE) return "NO CACHED TERRAIN — global fallback";
-        if (cellSize <= 0) return "TEXTURED 3D BLOCK VOLUME — roofs, walls and structures";
-        if (cellSize <= 1) return "EXACT 1-BLOCK SURFACE — structure targeting ready";
+        if (cellSize == Integer.MAX_VALUE) return "NO VOXEL TERRAIN STREAMED YET";
+        if (cellSize <= 1) return "EXACT 1-BLOCK VOXELS — roofs, walls and structures";
         if (cellSize <= 4) return "HIGH DETAIL — 4 blocks per sample";
         if (cellSize <= 16) return "REGIONAL DETAIL — 16 blocks per sample";
         if (cellSize <= 64) return "COARSE DETAIL — 64 blocks per sample";

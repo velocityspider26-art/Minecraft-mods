@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 /** Client-side memory-budgeted cache for streamed planet voxel bricks. */
 public final class PlanetVoxelClientCache {
+    private static final ResourceLocation EARTH_ID =
+            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
     private static final long DEFAULT_BYTES_PER_PLANET = 1024L * 1024L * 1024L;
     private static final int MAX_REVISION_ENTRIES_PER_PLANET = 262_144;
     private static final Object LOCK = new Object();
@@ -107,6 +109,32 @@ public final class PlanetVoxelClientCache {
         synchronized (LOCK) {
             return generation;
         }
+    }
+
+    /**
+     * Finest resident voxel size covering a surface column, or
+     * {@link Integer#MAX_VALUE} when nothing has streamed there yet.
+     *
+     * <p>Backs the survey readout, which must never promise a resolution the
+     * renderer does not actually hold.</p>
+     */
+    public static int finestCellSizeAt(shipwrights.genesis.teleportation.CubeNetSurfaceTransform.Face face,
+                                       double surfaceX, double surfaceZ) {
+        int best = Integer.MAX_VALUE;
+        synchronized (LOCK) {
+            PlanetVoxelStore store = STORES.get(EARTH_ID);
+            if (store == null) return best;
+            for (PlanetVoxelBrick brick : store.snapshot(key -> key.face() == face, 200_000)) {
+                PlanetVoxelBrickKey key = brick.key();
+                long span = key.brickSpan();
+                if (surfaceX < key.minU() || surfaceX >= key.minU() + span
+                        || surfaceZ < key.minV() || surfaceZ >= key.minV() + span) {
+                    continue;
+                }
+                best = Math.min(best, key.cellSize());
+            }
+        }
+        return best;
     }
 
     public static void clear() {

@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class PlanetVoxelMeshCache {
     private static final int MAX_ENTRIES = 16_384;
-    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2,
+    private static final AtomicInteger IN_FLIGHT = new AtomicInteger();
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(
+            shipwrights.genesis.config.GenesisClientConfig.getPlanetMeshWorkers(),
             new ThreadFactory() {
                 private final AtomicInteger counter = new AtomicInteger();
 
@@ -47,12 +49,19 @@ public final class PlanetVoxelMeshCache {
         CacheKey cacheKey = new CacheKey(planet, brick.key());
         Entry existing = CACHE.get(cacheKey);
         if (existing == null || existing.revision != brick.revision()) {
+            IN_FLIGHT.incrementAndGet();
+            shipwrights.genesis.space.planet.PlanetRenderDiagnostics.onMeshJobQueued();
             CompletableFuture<PlanetVoxelGreedyMesher.Mesh> future =
                     CompletableFuture.supplyAsync(() -> mesh(planet, brick), EXECUTOR)
                             .exceptionally(error -> {
                                 GenesisMod.LOGGER.warn("[PLANET-VOXEL] failed to mesh {}",
                                         brick.key(), error);
                                 return null;
+                            })
+                            .whenComplete((mesh, error) -> {
+                                IN_FLIGHT.decrementAndGet();
+                                shipwrights.genesis.space.planet.PlanetRenderDiagnostics
+                                        .onMeshJobCompleted();
                             });
             Entry replacement = new Entry(brick.revision(), future);
             CACHE.put(cacheKey, replacement);
@@ -78,6 +87,11 @@ public final class PlanetVoxelMeshCache {
 
     public static void clear() {
         CACHE.clear();
+    }
+
+    /** Mesh jobs submitted but not yet finished. Reported by the debug overlay. */
+    public static int queuedJobs() {
+        return Math.max(0, IN_FLIGHT.get());
     }
 
     private static PlanetVoxelGreedyMesher.Mesh mesh(ResourceLocation planet,

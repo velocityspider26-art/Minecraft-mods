@@ -18,15 +18,20 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4d;
 import org.joml.Matrix4f;
+import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
-import org.joml.Quaternionf;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 import org.joml.Vector3f;
 import shipwrights.genesis.GenesisMod;
 import shipwrights.genesis.client.OrbitalSurveyController;
 import shipwrights.genesis.config.GenesisClientConfig;
-import shipwrights.genesis.space.surface.PlanetSurfaceData;
+import shipwrights.genesis.space.planet.CubeSurfaceProjection;
+import shipwrights.genesis.space.planet.FlatToCubeFoldController;
+import shipwrights.genesis.space.planet.PlanetRenderDiagnostics;
+import shipwrights.genesis.space.voxel.PlanetVoxelAuthority;
 import shipwrights.genesis.space.voxel.PlanetVoxelBrick;
 import shipwrights.genesis.space.voxel.PlanetVoxelBrickKey;
 import shipwrights.genesis.space.voxel.PlanetVoxelGreedyMesher;
@@ -43,12 +48,34 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Clean-room 3D voxel-clipmap renderer for Earth.
+ * The Earth renderer. There is no other one.
  *
- * <p>Unlike the legacy height/color layer, every rendered item is a real
- * palette-compressed 16^3 voxel brick. LOD0 keeps actual blocks and structures;
- * coarser bricks are occupancy-aware 3D mip levels. The same bricks are drawn
- * flat during ascent, folded onto the cube, and then continued in orbit.</p>
+ * <p>Every pixel of the planet — from a hillside beyond the render distance
+ * during take-off to the complete six-face cube seen from orbit — is drawn from
+ * the same sparse voxel pyramid, which holds the actual block states of the
+ * actual Minecraft world. No painted texture, no height-field shell and no
+ * separate planet model participates. That is the whole point: the ground the
+ * player launched from <em>is</em> the Earth they see from space.</p>
+ *
+ * <h2>One buffer, two frames</h2>
+ * <p>A brick's geometry is meshed once, in face-local coordinates, and uploaded
+ * to an immutable {@link VertexBuffer}. Where that geometry appears is decided
+ * entirely by a 4x4 matrix:</p>
+ * <ul>
+ *   <li>during ascent, {@link CubeSurfaceProjection#foldMatrix} — the exact
+ *       affine equivalent of a per-vertex {@code mix(flat, cube, fold)};</li>
+ *   <li>in orbit, {@link CubeSurfaceProjection#orbitMatrix}.</li>
+ * </ul>
+ * <p>So the fold costs one matrix per face per frame instead of a CPU pass over
+ * every vertex, the buffers survive the whole flight, and the geometry crossing
+ * the dimension boundary is bit-for-bit the same geometry.</p>
+ *
+ * <h2>Detail</h2>
+ * <p>{@link PlanetVoxelLodSelector} refines by projected screen size across the
+ * entire viewport, not by distance from the crosshair, and only descends into a
+ * brick when every occupied child octant is resident. Missing fine data
+ * therefore shows coarser <em>3D</em> terrain — never a hole and never a flat
+ * coloured tile.</p>
  */
 public final class PlanetVoxelRenderer {
     private static final ResourceLocation EARTH_ID =
@@ -57,34 +84,26 @@ public final class PlanetVoxelRenderer {
             RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS);
     private static final RenderType TRANSLUCENT_TYPE =
             RenderType.entityTranslucent(TextureAtlas.LOCATION_BLOCKS);
-    private static final ByteBufferBuilder SOLID_MEMORY = new ByteBufferBuilder(64 * 1024 * 1024);
-    private static final ByteBufferBuilder TRANSLUCENT_MEMORY = new ByteBufferBuilder(16 * 1024 * 1024);
-    private static final Object BUFFER_LOCK = new Object();
-    private static final Object GPU_LOCK = new Object();
-    private static final int MAX_GPU_UPLOADS_PER_FRAME = 8;
+
+    /** Lifts LOD geometry a fraction of a block clear of the vanilla surface it overlaps. */
+    private static final double OUTWARD_NUDGE = 0.72;
     private static final int MAX_PENDING_GPU_UPLOADS = 2048;
-    private static final long GPU_BUDGET_BYTES = 384L * 1024L * 1024L;
+    private static final int MAX_RESIDENT_SNAPSHOT = 100_000;
+
+    private static final Object GPU_LOCK = new Object();
     private static final LinkedHashMap<GpuKey, GpuEntry> GPU_CACHE =
             new LinkedHashMap<>(1024, 0.75f, true);
     private static final LinkedHashMap<GpuKey, PendingGpuUpload> GPU_UPLOADS =
             new LinkedHashMap<>();
     private static final List<GpuEntry> GPU_DISPOSALS = new ArrayList<>();
     private static long gpuBytes;
-    private static long orbitResidentGeneration = Long.MIN_VALUE;
-    private static List<PlanetVoxelBrick> orbitResidentBricks = List.of();
-    private static List<PlanetVoxelLodSelector.Selection> orbitViewportSelection = List.of();
-    private static Set<PlanetVoxelBrickKey> orbitPreviousSelection = Set.of();
-    private static final Vector3d orbitLastCamera = new Vector3d(Double.NaN);
-    private static final Vector3d orbitLastLook = new Vector3d(Double.NaN);
-    private static double orbitLastWorldToRendered = Double.NaN;
-    private static double orbitLastFov = Double.NaN;
-    private static int orbitLastViewportHeight = -1;
-    private static int orbitLastMaximumBricks = -1;
-    private static int orbitSelectionAge = Integer.MAX_VALUE;
-    private static long coverageGeneration = Long.MIN_VALUE;
-    private static double coverageHalfExtent = Double.NaN;
-    private static boolean completeCoarseCoverage;
-    private static boolean loggedCompleteCoverage;
+
+    private static long residentGeneration = Long.MIN_VALUE;
+    private static List<PlanetVoxelBrick> residentBricks = List.of();
+
+    private static final SelectionCache ASCENT = new SelectionCache();
+    private static final SelectionCache ORBIT = new SelectionCache();
+
     private static volatile boolean disabled;
     private static volatile boolean loggedOverworld;
     private static volatile boolean loggedOrbit;
@@ -96,209 +115,491 @@ public final class PlanetVoxelRenderer {
         return PlanetVoxelClientCache.hasAny(EARTH_ID);
     }
 
+    private static boolean enabled() {
+        return !disabled && GenesisClientConfig.isPlanetVoxelRendererEnabled();
+    }
+
+    /**
+     * Whether the voxel pyramid is carrying the planet on its own.
+     *
+     * <p>Kept as a diagnostic, and consulted by the celestial renderer so it
+     * never draws a second Earth. It is deliberately <em>not</em> a gate on
+     * rendering: the voxel path is the only path, and gating it on a coverage
+     * ratio is exactly how a blurry painted cube used to stay on screen
+     * forever.</p>
+     */
     public static boolean hasCompleteCoarseCoverage(CubeNetSurfaceTransform transform) {
-        if (!hasVoxelData()) return false;
-        long generation = PlanetVoxelClientCache.generation();
-        double halfExtent = transform.faceHalfSpan();
-        if (generation != coverageGeneration || coverageHalfExtent != halfExtent) {
-            PlanetVoxelCoverage.Result result = PlanetVoxelCoverage.analyze(
-                    PlanetVoxelClientCache.snapshot(EARTH_ID, key -> true, 100_000),
-                    halfExtent);
-            completeCoarseCoverage = result.complete();
-            coverageGeneration = generation;
-            coverageHalfExtent = halfExtent;
-            if (completeCoarseCoverage && !loggedCompleteCoverage) {
-                loggedCompleteCoverage = true;
-                GenesisMod.LOGGER.info("[PLANET-VOXEL] all six Earth faces have coarse 3D occupancy "
-                        + "coverage at LOD {}; retiring temporary legacy fallback", result.lod());
-            }
-        }
-        return completeCoarseCoverage;
+        return enabled() && hasVoxelData();
     }
 
-    public static void requestOverworldInterest(Vec3 camera, Vector3f surfaceLook,
-                                                CubeNetSurfaceTransform transform,
-                                                CubeNetSurfaceTransform.Face currentFace,
-                                                int seaLevel) {
-        int quality = GenesisClientConfig.getWorldLodQuality();
-        int maximumBricks = quality >= 3 ? 4096 : quality == 2 ? 2300 : 1200;
-        double targetVoxelPixels = quality >= 3 ? 1.10 : quality == 2 ? 1.75 : 2.75;
-        OrbitProjection projection = orbitProjection();
-        Vector3d localCamera = CubeFaceFrame.cubePoint(currentFace,
-                camera.x - transform.faceCenterX(currentFace),
-                camera.z - transform.faceCenterZ(currentFace),
-                transform.faceHalfSpan(), camera.y - seaLevel);
-        Vector3d localLook = new Vector3d(surfaceLook.x, surfaceLook.y, surfaceLook.z)
-                .rotate(CubeFaceFrame.surfaceToCelestial(currentFace));
-        PlanetVoxelInterestClient.update(localCamera, localLook,
-                projection.viewportHeight(), projection.aspectRatio(),
-                projection.verticalFovRadians(), targetVoxelPixels, maximumBricks);
-    }
+    // ------------------------------------------------------------------
+    // Ascent
+    // ------------------------------------------------------------------
 
-    public static void renderOverworld(Matrix4f view, Vec3 camera,
-                                       CubeNetSurfaceTransform transform,
+    /**
+     * Draws the world beyond vanilla's chunks while climbing out, folding the
+     * five remote faces around the one the player is standing on.
+     *
+     * @param view          the frame's camera-relative model-view matrix
+     * @param camera        render camera position in planet-dimension world space
+     * @param fold          0 = flat world, 1 = complete cube
+     * @param vanillaRadius vanilla render distance in blocks
+     */
+    public static void renderOverworld(Matrix4f view, Vec3 camera, Vector3f cameraLook,
+                                       CubeSurfaceProjection projection,
                                        CubeNetSurfaceTransform.Face currentFace,
-                                       PlanetSurfaceData surface,
-                                       float lodAlpha, float foldAlpha,
-                                       float centerFillAlpha, int vanillaRadius,
-                                       double vanillaGroundRadius) {
-        if (disabled || lodAlpha < 0.04f || !hasVoxelData()) return;
-        int quality = GenesisClientConfig.getWorldLodQuality();
-        int maxLod = quality >= 3 ? 7 : quality == 2 ? 6 : 5;
-        int maxBricks = quality >= 3 ? 1400 : quality == 2 ? 800 : 420;
-        double exactRadius = quality >= 3 ? 1024.0 : quality == 2 ? 640.0 : 384.0;
+                                       float fold, int vanillaRadius) {
+        if (!enabled() || !hasVoxelData()) return;
+        Quality quality = Quality.current();
+        Projection screen = screenProjection();
 
-        List<PlanetVoxelBrick> bricks = PlanetVoxelClientCache.snapshot(EARTH_ID,
-                key -> key.lod() <= maxLod
-                        && (key.face() == currentFace || foldAlpha > 0.15f),
-                20_000);
-        if (bricks.isEmpty()) return;
-        List<Selection> selected = select(bricks, transform, currentFace,
-                camera.x, camera.z, exactRadius, maxLod, maxBricks, false);
+        Vector3d cameraWorld = new Vector3d(camera.x, camera.y, camera.z);
+        Vector3d look = new Vector3d(cameraLook.x, cameraLook.y, cameraLook.z);
+
+        // Anything the vanilla chunk renderer already draws is skipped outright
+        // rather than cross-faded. Overlapping the two would z-fight on exactly
+        // the surfaces the player is closest to.
+        double nearCull = Math.max(48.0, vanillaRadius * 0.92);
+
+        PlanetVoxelLodSelector.OrbitView selectorView = new PlanetVoxelLodSelector.OrbitView(
+                cameraWorld, look, projection.faceHalfSpan(), 1.0, projection.seaLevel(),
+                screen.viewportHeight(), screen.aspectRatio(), screen.verticalFovRadians(),
+                quality.targetVoxelPixels(), PlanetVoxelBrickKey.MAX_LOD,
+                quality.maximumBricks(), false);
+        AscentPlacement placement = new AscentPlacement(projection, currentFace, fold, nearCull,
+                cameraWorld);
+
+        List<PlanetVoxelLodSelector.Selection> selected = dropVanillaCovered(
+                ASCENT.select(selectorView, placement, screen, quality, fold), nearCull);
         if (selected.isEmpty()) return;
 
-        double currentCenterX = transform.faceCenterX(currentFace);
-        double currentCenterZ = transform.faceCenterZ(currentFace);
-        double cubeCenterY = surface.seaLevel() - transform.faceHalfSpan();
-        double renderScale = renderDistanceCompression(camera, currentCenterX, cubeCenterY,
-                currentCenterZ, vanillaRadius);
+        requestInterest(projection, currentFace, camera, cameraLook, screen, quality);
 
-        int rendered = renderWithBuffers((solid, translucent) -> {
-            int count = 0;
-            for (Selection selection : selected) {
-                PlanetVoxelGreedyMesher.Mesh mesh = PlanetVoxelMeshCache.getOrSchedule(
-                        EARTH_ID, selection.brick);
-                if (mesh == null) continue;
-                float faceAlpha = selection.brick.key().face() == currentFace
-                        ? Math.max(lodAlpha, centerFillAlpha) : foldAlpha;
-                if (faceAlpha < 0.03f) continue;
-                renderMesh(view, solid, translucent, selection.brick, mesh,
-                        point -> livePoint(selection.brick.key().face(), currentFace,
-                                transform, surface, point.u, point.y, point.v,
-                                foldAlpha, currentCenterX, cubeCenterY, currentCenterZ),
-                        camera, renderScale, faceAlpha);
-                count++;
-            }
-            return count;
-        });
-        if (rendered > 0 && !loggedOverworld) {
+        double centerDistance = cameraWorld.distance(
+                projection.transform().faceCenterX(currentFace),
+                projection.seaLevel(),
+                projection.transform().faceCenterZ(currentFace));
+        double compression = FlatToCubeFoldController.distanceCompression(
+                centerDistance, camera.y, vanillaRadius);
+
+        int drawn = draw(selected, key -> {
+            Matrix4d model = new Matrix4d()
+                    .translation(-compression * cameraWorld.x,
+                            -compression * cameraWorld.y,
+                            -compression * cameraWorld.z)
+                    .scale(compression)
+                    .mul(projection.foldMatrix(key.face(), currentFace, fold));
+            return applyBrickOrigin(model, projection, key);
+        }, view, camera.y);
+
+        if (drawn > 0 && !loggedOverworld) {
             loggedOverworld = true;
-            GenesisMod.LOGGER.info("[PLANET-VOXEL] real 3D voxel bricks visible during ascent; "
-                    + "{} bricks selected from {} MiB client cache", rendered,
-                    PlanetVoxelClientCache.usedBytes(EARTH_ID) / (1024L * 1024L));
+            GenesisMod.LOGGER.info("[PLANET-VOXEL] the world's own 3D LOD chunks are extending past "
+                    + "the vanilla render distance; {} bricks drawn from a {} MiB client cache",
+                    drawn, PlanetVoxelClientCache.usedBytes(EARTH_ID) / (1024L * 1024L));
         }
     }
 
-    public static void renderOrbit(Matrix4f view,
-                                   CubeNetSurfaceTransform transform,
+    // ------------------------------------------------------------------
+    // Orbit
+    // ------------------------------------------------------------------
+
+    /** Draws the complete cube Earth from space, out of the same brick pyramid. */
+    public static void renderOrbit(Matrix4f view, CubeSurfaceProjection projection,
                                    Vector3d planetPosition, Quaterniondc rotation,
                                    double renderedHalfExtent, double worldToRendered,
                                    Vector3d localCamera, Vector3d localLook,
-                                   CubeNetSurfaceTransform.Face focusFace,
-                                   double apparentHalf, int seaLevel) {
-        if (disabled) return;
-        boolean survey = OrbitalSurveyController.isActive();
-        int quality = GenesisClientConfig.getWorldLodQuality();
-        int maximumBricks = survey ? 6144 : quality >= 3 ? 4096 : quality == 2 ? 2300 : 1200;
-        double targetVoxelPixels = survey ? 0.72 : quality >= 3 ? 1.10 : quality == 2 ? 1.75 : 2.75;
-        OrbitProjection projection = orbitProjection();
+                                   CubeNetSurfaceTransform.Face focusFace) {
+        if (!enabled()) return;
+        Quality quality = Quality.current();
+        Projection screen = screenProjection();
+
+        // Interest is requested in unscaled cube-space units so the server's
+        // selector and the client's agree on what "one voxel" subtends.
         PlanetVoxelInterestClient.update(new Vector3d(localCamera).div(worldToRendered), localLook,
-                projection.viewportHeight(), projection.aspectRatio(),
-                projection.verticalFovRadians(), targetVoxelPixels, maximumBricks);
+                screen.viewportHeight(), screen.aspectRatio(), screen.verticalFovRadians(),
+                quality.targetVoxelPixels(), quality.maximumBricks());
         if (!hasVoxelData()) return;
-        long generation = PlanetVoxelClientCache.generation();
-        if (generation != orbitResidentGeneration) {
-            orbitResidentBricks = PlanetVoxelClientCache.snapshot(EARTH_ID,
-                    key -> true, 100_000);
-            orbitResidentGeneration = generation;
-            orbitSelectionAge = Integer.MAX_VALUE;
-        }
-        if (orbitResidentBricks.isEmpty()) return;
 
-        boolean viewChanged = orbitViewportSelection.isEmpty()
-                || orbitLastCamera.distanceSquared(localCamera) > 0.25
-                || orbitLastLook.dot(localLook) < 0.9995
-                || relativeDifference(orbitLastWorldToRendered, worldToRendered) > 0.001
-                || Math.abs(orbitLastFov - projection.verticalFovRadians()) > 0.001
-                || orbitLastViewportHeight != projection.viewportHeight()
-                || orbitLastMaximumBricks != maximumBricks;
-        if ((orbitSelectionAge >= 2 && viewChanged)
-                || orbitSelectionAge == Integer.MAX_VALUE) {
-            PlanetVoxelLodSelector.OrbitView orbitView = new PlanetVoxelLodSelector.OrbitView(
-                    localCamera, localLook, transform.faceHalfSpan(), worldToRendered,
-                    seaLevel, projection.viewportHeight(), projection.aspectRatio(),
-                    projection.verticalFovRadians(), targetVoxelPixels,
-                    PlanetVoxelBrickKey.MAX_LOD, maximumBricks, true);
-            orbitViewportSelection = PlanetVoxelLodSelector.selectOrbit(
-                    orbitResidentBricks, orbitView, orbitPreviousSelection);
-            orbitPreviousSelection = orbitViewportSelection.stream()
-                    .map(selection -> selection.brick().key())
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
-            orbitLastCamera.set(localCamera);
-            orbitLastLook.set(localLook);
-            orbitLastWorldToRendered = worldToRendered;
-            orbitLastFov = projection.verticalFovRadians();
-            orbitLastViewportHeight = projection.viewportHeight();
-            orbitLastMaximumBricks = maximumBricks;
-            orbitSelectionAge = 0;
-        } else {
-            orbitSelectionAge++;
-        }
-
-        List<Selection> selected = orbitViewportSelection.stream()
-                .map(selection -> new Selection(selection.brick(), selection.distance()))
-                .toList();
+        PlanetVoxelLodSelector.OrbitView selectorView = new PlanetVoxelLodSelector.OrbitView(
+                localCamera, localLook, projection.faceHalfSpan(), worldToRendered,
+                projection.seaLevel(), screen.viewportHeight(), screen.aspectRatio(),
+                screen.verticalFovRadians(), quality.targetVoxelPixels(),
+                PlanetVoxelBrickKey.MAX_LOD, quality.maximumBricks(), true);
+        List<PlanetVoxelLodSelector.Selection> selected = ORBIT.select(selectorView,
+                PlanetVoxelLodSelector.cubePlacement(selectorView), screen, quality, 1.0f);
         if (selected.isEmpty()) return;
 
-        for (Selection selection : selected) {
-            PlanetVoxelGreedyMesher.Mesh mesh = PlanetVoxelMeshCache.getOrSchedule(
-                    EARTH_ID, selection.brick);
-            if (mesh != null) queueGpuUpload(selection.brick, mesh);
-        }
-        drainGpuDisposals();
-        drainGpuUploads(transform, seaLevel);
-        double renderScale = renderedHalfExtent / Math.max(1.0, transform.faceHalfSpan());
-        int rendered = drawGpuOrbit(view, planetPosition, rotation, renderScale, selected);
-        if (rendered > 0 && !loggedOrbit) {
+        double renderScale = renderedHalfExtent / Math.max(1.0, projection.faceHalfSpan());
+        Quaterniond localRotation = new Quaterniond(rotation);
+        int drawn = draw(selected, key -> applyBrickOrigin(
+                projection.orbitMatrix(key.face(), planetPosition, localRotation, renderScale),
+                projection, key), view, Double.MAX_VALUE);
+
+        if (drawn > 0 && !loggedOrbit) {
             loggedOrbit = true;
-            GenesisMod.LOGGER.info("[PLANET-VOXEL] real 3D voxel clipmap visible in orbit; "
-                    + "{} bricks on/around {}", rendered, focusFace);
+            GenesisMod.LOGGER.info("[PLANET-VOXEL] the cube Earth in orbit is the world's own voxel "
+                    + "terrain; {} bricks around {}", drawn, focusFace);
         }
     }
 
-    public static void reset() {
-        disabled = false;
-        loggedOverworld = false;
-        loggedOrbit = false;
-        orbitResidentGeneration = Long.MIN_VALUE;
-        orbitResidentBricks = List.of();
-        orbitViewportSelection = List.of();
-        orbitPreviousSelection = Set.of();
-        orbitLastCamera.set(Double.NaN);
-        orbitLastLook.set(Double.NaN);
-        orbitLastWorldToRendered = Double.NaN;
-        orbitLastFov = Double.NaN;
-        orbitLastViewportHeight = -1;
-        orbitLastMaximumBricks = -1;
-        orbitSelectionAge = Integer.MAX_VALUE;
-        coverageGeneration = Long.MIN_VALUE;
-        coverageHalfExtent = Double.NaN;
-        completeCoarseCoverage = false;
-        loggedCompleteCoverage = false;
-        PlanetVoxelInterestClient.reset();
-        PlanetVoxelMeshCache.clear();
-        synchronized (GPU_LOCK) {
-            GPU_DISPOSALS.addAll(GPU_CACHE.values());
-            GPU_CACHE.clear();
-            GPU_UPLOADS.clear();
-            gpuBytes = 0L;
+    /**
+     * Drops bricks the vanilla chunk renderer is already drawing.
+     *
+     * <p>Cross-fading the two representations of the same hillside makes them
+     * z-fight at exactly the distance the player is looking hardest. Handing the
+     * near field to vanilla outright is both cleaner and cheaper — and the
+     * geometry is identical either way, because the bricks hold that hillside's
+     * real block states.</p>
+     */
+    private static List<PlanetVoxelLodSelector.Selection> dropVanillaCovered(
+            List<PlanetVoxelLodSelector.Selection> selected, double nearCull) {
+        List<PlanetVoxelLodSelector.Selection> kept = new ArrayList<>(selected.size());
+        for (PlanetVoxelLodSelector.Selection selection : selected) {
+            double radius = selection.brick().key().brickSpan() * 0.88;
+            if (selection.distance() + radius < nearCull) continue;
+            kept.add(selection);
         }
-        if (RenderSystem.isOnRenderThread()) {
-            drainGpuDisposals();
-        } else {
-            RenderSystem.recordRenderCall(PlanetVoxelRenderer::drainGpuDisposals);
+        return kept;
+    }
+
+    /**
+     * Shifts a placement matrix onto a specific brick.
+     *
+     * <p>Vertices are stored relative to their brick, so the brick's own origin
+     * in face-local space is folded into the matrix. Composing in double keeps
+     * the +/-8192 block face offsets exact right up until the final
+     * camera-relative float, where they have already cancelled.</p>
+     */
+    private static Matrix4f applyBrickOrigin(Matrix4d placement, CubeSurfaceProjection projection,
+                                             PlanetVoxelBrickKey key) {
+        Vector3d origin = brickOrigin(projection, key);
+        return new Matrix4f().set(placement.translate(origin.x, origin.y, origin.z));
+    }
+
+    /** A brick's own corner, expressed in the local vector space the matrices consume. */
+    private static Vector3d brickOrigin(CubeSurfaceProjection projection, PlanetVoxelBrickKey key) {
+        // minY is already a world Y, so this is localVector() with the brick's
+        // corner substituted for a terrain sample.
+        return projection.localVector(key.minU(), key.minY(), key.minV(), OUTWARD_NUDGE);
+    }
+
+    // ------------------------------------------------------------------
+    // Drawing
+    // ------------------------------------------------------------------
+
+    @FunctionalInterface
+    private interface ModelMatrix {
+        Matrix4f of(PlanetVoxelBrickKey key);
+    }
+
+    private static int draw(List<PlanetVoxelLodSelector.Selection> selected,
+                            ModelMatrix models, Matrix4f view, double cameraY) {
+        for (PlanetVoxelLodSelector.Selection selection : selected) {
+            PlanetVoxelGreedyMesher.Mesh mesh = PlanetVoxelMeshCache.getOrSchedule(
+                    EARTH_ID, selection.brick());
+            if (mesh != null) queueGpuUpload(selection.brick(), mesh);
+        }
+        drainGpuDisposals();
+        drainGpuUploads();
+
+        List<GpuDraw> draws = new ArrayList<>(selected.size());
+        int[] lodCounts = new int[PlanetVoxelBrickKey.MAX_LOD + 1];
+        int exact = 0;
+        int predicted = 0;
+        int fallback = 0;
+        synchronized (GPU_LOCK) {
+            for (PlanetVoxelLodSelector.Selection selection : selected) {
+                PlanetVoxelBrickKey key = selection.brick().key();
+                GpuEntry entry = GPU_CACHE.get(new GpuKey(EARTH_ID, key));
+                if (entry == null || entry.revision != selection.brick().revision()) {
+                    fallback++;
+                    continue;
+                }
+                draws.add(new GpuDraw(entry, key, selection.distance(), models.of(key)));
+                lodCounts[key.lod()]++;
+                if (entry.authority == PlanetVoxelAuthority.GENERATED_EXACT
+                        || entry.authority == PlanetVoxelAuthority.PLAYER_MODIFIED) {
+                    exact++;
+                } else {
+                    predicted++;
+                }
+            }
+        }
+        publishDiagnostics(draws.size(), lodCounts, exact, predicted, fallback);
+        if (draws.isEmpty()) return 0;
+
+        draws.sort(Comparator.comparingDouble(GpuDraw::distance));
+        try {
+            drawLayer(SOLID_TYPE, view, draws, false);
+            drawLayer(TRANSLUCENT_TYPE, view, draws, true);
+            if (PlanetRenderDiagnostics.debugMode() == PlanetRenderDiagnostics.DebugMode.BRICK_BOUNDS
+                    || PlanetRenderDiagnostics.debugMode()
+                    == PlanetRenderDiagnostics.DebugMode.SEAMS) {
+                drawDebugBounds(view, draws);
+            }
+        } catch (Throwable error) {
+            // A renderer failure must be loud. Silently degrading to nothing is
+            // how a black planet ends up looking like a content bug.
+            disabled = true;
+            GenesisMod.LOGGER.error("[PLANET-VOXEL] planet renderer disabled after a draw failure; "
+                    + "the orbital Earth will not be drawn until the world is reloaded", error);
+            return 0;
+        }
+        return draws.size();
+    }
+
+    private static void drawLayer(RenderType type, Matrix4f view, List<GpuDraw> draws,
+                                  boolean translucent) {
+        type.setupRenderState();
+        // Vanilla fog is tied to the render distance. Terrain eight kilometres
+        // away is the entire point of this renderer, so it draws with fog pushed
+        // beyond any distance it can reach and restores the world's fog after.
+        float fogStart = RenderSystem.getShaderFogStart();
+        float fogEnd = RenderSystem.getShaderFogEnd();
+        RenderSystem.setShaderFogStart(1.0E7f);
+        RenderSystem.setShaderFogEnd(1.0E7f + 1.0f);
+        try {
+            ShaderInstance shader = RenderSystem.getShader();
+            if (shader == null) return;
+            Matrix4f projection = RenderSystem.getProjectionMatrix();
+            if (translucent) {
+                for (int index = draws.size() - 1; index >= 0; index--) {
+                    drawOne(draws.get(index), view, projection, shader, true);
+                }
+            } else {
+                for (GpuDraw draw : draws) {
+                    drawOne(draw, view, projection, shader, false);
+                }
+            }
+        } finally {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            RenderSystem.setShaderFogStart(fogStart);
+            RenderSystem.setShaderFogEnd(fogEnd);
+            VertexBuffer.unbind();
+            type.clearRenderState();
         }
     }
+
+    private static void drawOne(GpuDraw draw, Matrix4f view, Matrix4f projection,
+                                ShaderInstance shader, boolean translucent) {
+        VertexBuffer buffer = translucent ? draw.entry.translucent : draw.entry.solid;
+        if (buffer == null) return;
+        applyDebugTint(draw);
+        Matrix4f modelView = new Matrix4f(view).mul(draw.model);
+        buffer.bind();
+        buffer.drawWithShader(modelView, projection, shader);
+    }
+
+    private static void applyDebugTint(GpuDraw draw) {
+        switch (PlanetRenderDiagnostics.debugMode()) {
+            case LOD -> {
+                float hue = (draw.key.lod() % 8) / 8.0f;
+                int rgb = Mth.hsvToRgb(hue, 0.85f, 1.0f);
+                RenderSystem.setShaderColor(((rgb >> 16) & 0xFF) / 255.0f,
+                        ((rgb >> 8) & 0xFF) / 255.0f, (rgb & 0xFF) / 255.0f, 1.0f);
+            }
+            case AUTHORITY -> {
+                switch (draw.entry.authority) {
+                    case PLAYER_MODIFIED -> RenderSystem.setShaderColor(1.0f, 0.35f, 0.35f, 1.0f);
+                    case GENERATED_EXACT -> RenderSystem.setShaderColor(0.35f, 1.0f, 0.45f, 1.0f);
+                    case STRUCTURE_PREDICTED -> RenderSystem.setShaderColor(1.0f, 0.9f, 0.35f, 1.0f);
+                    case TERRAIN_PREDICTED -> RenderSystem.setShaderColor(0.45f, 0.6f, 1.0f, 1.0f);
+                    default -> RenderSystem.setShaderColor(0.4f, 0.4f, 0.4f, 1.0f);
+                }
+            }
+            case MISSING -> {
+                boolean coarse = draw.key.lod() > 0;
+                RenderSystem.setShaderColor(coarse ? 1.0f : 0.4f, coarse ? 0.4f : 1.0f, 0.4f, 1.0f);
+            }
+            case FOLD -> RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            default -> RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+
+    /** Wireframe brick bounds / face seams. Debug only, off unless explicitly configured. */
+    private static void drawDebugBounds(Matrix4f view, List<GpuDraw> draws) {
+        boolean seamsOnly = PlanetRenderDiagnostics.debugMode()
+                == PlanetRenderDiagnostics.DebugMode.SEAMS;
+        RenderType lines = RenderType.lines();
+        com.mojang.blaze3d.vertex.Tesselator tesselator = com.mojang.blaze3d.vertex.Tesselator.getInstance();
+        BufferBuilder builder = tesselator.begin(lines.mode(), lines.format());
+        for (GpuDraw draw : draws) {
+            if (seamsOnly && !touchesFaceEdge(draw.key)) continue;
+            float span = draw.key.brickSpan();
+            float hue = (draw.key.lod() % 8) / 8.0f;
+            int rgb = Mth.hsvToRgb(hue, 0.9f, 1.0f);
+            addBox(builder, new Matrix4f(view).mul(draw.model), span,
+                    ((rgb >> 16) & 0xFF) / 255.0f, ((rgb >> 8) & 0xFF) / 255.0f,
+                    (rgb & 0xFF) / 255.0f);
+        }
+        MeshData mesh = builder.build();
+        if (mesh != null) lines.draw(mesh);
+    }
+
+    private static boolean touchesFaceEdge(PlanetVoxelBrickKey key) {
+        return key.brickU() == 0 || key.brickV() == 0
+                || key.brickU() == -1 || key.brickV() == -1;
+    }
+
+    private static void addBox(BufferBuilder builder, Matrix4f matrix, float span,
+                               float r, float g, float b) {
+        float[][] corners = {
+                {0, 0, 0}, {span, 0, 0}, {span, 0, span}, {0, 0, span},
+                {0, span, 0}, {span, span, 0}, {span, span, span}, {0, span, span}
+        };
+        int[][] edges = {
+                {0, 1}, {1, 2}, {2, 3}, {3, 0},
+                {4, 5}, {5, 6}, {6, 7}, {7, 4},
+                {0, 4}, {1, 5}, {2, 6}, {3, 7}
+        };
+        for (int[] edge : edges) {
+            float[] a = corners[edge[0]];
+            float[] c = corners[edge[1]];
+            float nx = c[0] - a[0];
+            float ny = c[1] - a[1];
+            float nz = c[2] - a[2];
+            float length = Math.max(1.0E-4f, (float) Math.sqrt(nx * nx + ny * ny + nz * nz));
+            builder.addVertex(matrix, a[0], a[1], a[2]).setColor(r, g, b, 1.0f)
+                    .setNormal(nx / length, ny / length, nz / length);
+            builder.addVertex(matrix, c[0], c[1], c[2]).setColor(r, g, b, 1.0f)
+                    .setNormal(nx / length, ny / length, nz / length);
+        }
+    }
+
+    private static void publishDiagnostics(int visible, int[] lodCounts,
+                                           int exact, int predicted, int fallback) {
+        int pending;
+        long bytes;
+        synchronized (GPU_LOCK) {
+            pending = GPU_UPLOADS.size();
+            bytes = gpuBytes;
+        }
+        PlanetRenderDiagnostics.setFrame(visible, residentBricks.size(), pending,
+                PlanetVoxelMeshCache.queuedJobs(),
+                PlanetVoxelClientCache.usedBytes(EARTH_ID), bytes,
+                predicted, exact, fallback, lodCounts);
+    }
+
+    // ------------------------------------------------------------------
+    // Resident data and selection caching
+    // ------------------------------------------------------------------
+
+    private static List<PlanetVoxelBrick> resident() {
+        long generation = PlanetVoxelClientCache.generation();
+        if (generation != residentGeneration) {
+            residentBricks = PlanetVoxelClientCache.snapshot(EARTH_ID, key -> true,
+                    MAX_RESIDENT_SNAPSHOT);
+            residentGeneration = generation;
+            ASCENT.invalidate();
+            ORBIT.invalidate();
+        }
+        return residentBricks;
+    }
+
+    /**
+     * Re-runs the LOD selection only when the view has actually moved.
+     *
+     * <p>Selection walks the whole pyramid; doing it every frame while parked in
+     * orbit is pure waste, and doing it never makes detail lag behind the
+     * camera. Two frames of staleness is invisible and cheap.</p>
+     */
+    private static final class SelectionCache {
+        private List<PlanetVoxelLodSelector.Selection> selection = List.of();
+        private Set<PlanetVoxelBrickKey> previousKeys = Set.of();
+        private final Vector3d lastCamera = new Vector3d(Double.NaN);
+        private final Vector3d lastLook = new Vector3d(Double.NaN);
+        private double lastFov = Double.NaN;
+        private double lastFold = Double.NaN;
+        private int lastViewportHeight = -1;
+        private int lastMaximumBricks = -1;
+        private int age = Integer.MAX_VALUE;
+
+        void invalidate() {
+            age = Integer.MAX_VALUE;
+        }
+
+        List<PlanetVoxelLodSelector.Selection> select(PlanetVoxelLodSelector.OrbitView view,
+                                                      PlanetVoxelLodSelector.BrickPlacement placement,
+                                                      Projection screen, Quality quality,
+                                                      double fold) {
+            List<PlanetVoxelBrick> bricks = resident();
+            if (bricks.isEmpty()) return List.of();
+            boolean moved = selection.isEmpty()
+                    || lastCamera.distanceSquared(view.camera()) > 0.25
+                    || lastLook.dot(view.look()) < 0.9995
+                    || Math.abs(lastFov - screen.verticalFovRadians()) > 0.001
+                    || Math.abs(lastFold - fold) > 0.002
+                    || lastViewportHeight != screen.viewportHeight()
+                    || lastMaximumBricks != quality.maximumBricks();
+            if (age != Integer.MAX_VALUE && (!moved || age < 2)) {
+                age++;
+                return selection;
+            }
+            selection = PlanetVoxelLodSelector.select(bricks, view, previousKeys, placement);
+            previousKeys = selection.stream()
+                    .map(entry -> entry.brick().key())
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            lastCamera.set(view.camera());
+            lastLook.set(view.look());
+            lastFov = screen.verticalFovRadians();
+            lastFold = fold;
+            lastViewportHeight = screen.viewportHeight();
+            lastMaximumBricks = quality.maximumBricks();
+            age = 0;
+            return selection;
+        }
+
+        void reset() {
+            selection = List.of();
+            previousKeys = Set.of();
+            lastCamera.set(Double.NaN);
+            lastLook.set(Double.NaN);
+            lastFov = Double.NaN;
+            lastFold = Double.NaN;
+            lastViewportHeight = -1;
+            lastMaximumBricks = -1;
+            age = Integer.MAX_VALUE;
+        }
+    }
+
+    /** Ascent placement: bricks sit at their folded world positions. */
+    private record AscentPlacement(CubeSurfaceProjection projection,
+                                   CubeNetSurfaceTransform.Face currentFace,
+                                   float fold, double nearCull,
+                                   Vector3d camera)
+            implements PlanetVoxelLodSelector.BrickPlacement {
+
+        @Override
+        public Vector3d center(PlanetVoxelBrickKey key) {
+            double span = key.brickSpan();
+            Vector3d local = projection.localVector(key.minU() + span * 0.5,
+                    key.minY() + span * 0.5, key.minV() + span * 0.5, OUTWARD_NUDGE);
+            return projection.foldMatrix(key.face(), currentFace, fold)
+                    .transformPosition(local);
+        }
+
+        @Override
+        public double radius(PlanetVoxelBrickKey key) {
+            return key.brickSpan() * 0.88;
+        }
+
+        @Override
+        public double voxelSize(PlanetVoxelBrickKey key) {
+            return key.cellSize();
+        }
+
+        @Override
+        public Vector3dc outwardNormal(PlanetVoxelBrickKey key) {
+            // A partly folded world has no consistent "far side" to cull, and
+            // the camera is inside the shell rather than outside it.
+            return fold >= 0.999f ? CubeFaceFrame.axes(key.face()).up() : null;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // GPU cache
+    // ------------------------------------------------------------------
 
     static void invalidateGpu(ResourceLocation planet, PlanetVoxelBrickKey key) {
         synchronized (GPU_LOCK) {
@@ -312,21 +613,14 @@ public final class PlanetVoxelRenderer {
         }
     }
 
-    private static void queueGpuUpload(PlanetVoxelBrick brick,
-                                       PlanetVoxelGreedyMesher.Mesh mesh) {
+    private static void queueGpuUpload(PlanetVoxelBrick brick, PlanetVoxelGreedyMesher.Mesh mesh) {
         GpuKey key = new GpuKey(EARTH_ID, brick.key());
         synchronized (GPU_LOCK) {
             GpuEntry resident = GPU_CACHE.get(key);
             if (resident != null && resident.revision == brick.revision()) return;
-            if (resident != null) {
-                GPU_CACHE.remove(key);
-                gpuBytes -= resident.estimatedBytes;
-                GPU_DISPOSALS.add(resident);
-            }
             PendingGpuUpload pending = GPU_UPLOADS.get(key);
-            if (pending == null || pending.brick.revision() < brick.revision()) {
-                GPU_UPLOADS.put(key, new PendingGpuUpload(brick, mesh));
-            }
+            if (pending != null && pending.brick.revision() >= brick.revision()) return;
+            GPU_UPLOADS.put(key, new PendingGpuUpload(brick, mesh));
             while (GPU_UPLOADS.size() > MAX_PENDING_GPU_UPLOADS) {
                 GpuKey eldest = GPU_UPLOADS.keySet().iterator().next();
                 GPU_UPLOADS.remove(eldest);
@@ -334,15 +628,15 @@ public final class PlanetVoxelRenderer {
         }
     }
 
-    private static void drainGpuUploads(CubeNetSurfaceTransform transform, int seaLevel) {
+    private static void drainGpuUploads() {
         RenderSystem.assertOnRenderThread();
-        for (int uploaded = 0; uploaded < MAX_GPU_UPLOADS_PER_FRAME; uploaded++) {
+        int budget = GenesisClientConfig.getPlanetGpuUploadsPerFrame();
+        for (int uploaded = 0; uploaded < budget; uploaded++) {
             GpuKey key;
             PendingGpuUpload pending;
             synchronized (GPU_LOCK) {
                 if (GPU_UPLOADS.isEmpty()) break;
-                Map.Entry<GpuKey, PendingGpuUpload> first =
-                        GPU_UPLOADS.entrySet().iterator().next();
+                Map.Entry<GpuKey, PendingGpuUpload> first = GPU_UPLOADS.entrySet().iterator().next();
                 key = first.getKey();
                 pending = first.getValue();
                 GPU_UPLOADS.remove(key);
@@ -351,12 +645,12 @@ public final class PlanetVoxelRenderer {
             if (current == null || current.revision() != pending.brick.revision()) continue;
             GpuEntry entry;
             try {
-                entry = uploadGpuMesh(pending, transform, seaLevel);
+                entry = uploadGpuMesh(pending);
             } catch (Throwable error) {
-                GenesisMod.LOGGER.warn("[PLANET-VOXEL] failed to upload GPU mesh {}",
-                        key.key, error);
+                GenesisMod.LOGGER.warn("[PLANET-VOXEL] failed to upload GPU mesh {}", key.key, error);
                 continue;
             }
+            PlanetRenderDiagnostics.onGpuUpload();
             synchronized (GPU_LOCK) {
                 GpuEntry previous = GPU_CACHE.put(key, entry);
                 if (previous != null) {
@@ -369,34 +663,39 @@ public final class PlanetVoxelRenderer {
         }
     }
 
-    private static GpuEntry uploadGpuMesh(PendingGpuUpload pending,
-                                          CubeNetSurfaceTransform transform,
-                                          int seaLevel) {
+    private static GpuEntry uploadGpuMesh(PendingGpuUpload pending) {
         int vertexBytes = DefaultVertexFormat.NEW_ENTITY.getVertexSize();
-        int estimated = Math.max(1024,
-                pending.mesh.quadCount() * 4 * vertexBytes);
+        int estimated = Math.max(4096, pending.mesh.quadCount() * 4 * vertexBytes);
         ByteBufferBuilder solidMemory = new ByteBufferBuilder(estimated);
-        ByteBufferBuilder translucentMemory = new ByteBufferBuilder(
-                Math.max(1024, estimated / 4));
+        ByteBufferBuilder translucentMemory = new ByteBufferBuilder(Math.max(4096, estimated / 4));
         try {
             BufferBuilder solid = new BufferBuilder(
                     solidMemory, SOLID_TYPE.mode(), SOLID_TYPE.format());
             BufferBuilder translucent = new BufferBuilder(
                     translucentMemory, TRANSLUCENT_TYPE.mode(), TRANSLUCENT_TYPE.format());
-            PlanetVoxelBrickKey key = pending.brick.key();
-            renderMesh(new Matrix4f(), solid, translucent, pending.brick, pending.mesh,
-                    point -> CubeFaceFrame.cubePoint(key.face(), point.u, point.v,
-                            transform.faceHalfSpan(), point.y - seaLevel + 0.72),
-                    null, 1.0, 1.0f);
+            emit(solid, translucent, pending.brick.key(), pending.mesh);
             VertexBuffer solidBuffer = uploadBuffer(solid);
             VertexBuffer translucentBuffer = uploadBuffer(translucent);
             long bytes = (long) pending.mesh.quadCount() * 4L * vertexBytes;
-            return new GpuEntry(pending.brick.revision(), solidBuffer,
-                    translucentBuffer, bytes);
+            return new GpuEntry(pending.brick.revision(), solidBuffer, translucentBuffer, bytes,
+                    dominantAuthority(pending.brick));
         } finally {
             solidMemory.close();
             translucentMemory.close();
         }
+    }
+
+    private static PlanetVoxelAuthority dominantAuthority(PlanetVoxelBrick brick) {
+        PlanetVoxelAuthority best = PlanetVoxelAuthority.EMPTY;
+        for (int y = 0; y < PlanetVoxelBrick.EDGE; y += 4) {
+            for (int z = 0; z < PlanetVoxelBrick.EDGE; z += 4) {
+                for (int x = 0; x < PlanetVoxelBrick.EDGE; x += 4) {
+                    PlanetVoxelAuthority authority = brick.authority(x, y, z);
+                    if (authority.ordinal() > best.ordinal()) best = authority;
+                }
+            }
+        }
+        return best;
     }
 
     private static VertexBuffer uploadBuffer(BufferBuilder builder) {
@@ -409,86 +708,17 @@ public final class PlanetVoxelRenderer {
             return buffer;
         } catch (RuntimeException | Error error) {
             buffer.close();
+            mesh.close();
             throw error;
         } finally {
             VertexBuffer.unbind();
-            mesh.close();
         }
-    }
-
-    private static int drawGpuOrbit(Matrix4f view, Vector3d planetPosition,
-                                    Quaterniondc rotation, double scale,
-                                    List<Selection> selected) {
-        RenderSystem.assertOnRenderThread();
-        List<GpuDraw> draws = new ArrayList<>(selected.size());
-        synchronized (GPU_LOCK) {
-            for (Selection selection : selected) {
-                GpuEntry entry = GPU_CACHE.get(new GpuKey(EARTH_ID, selection.brick.key()));
-                if (entry != null && entry.revision == selection.brick.revision()) {
-                    draws.add(new GpuDraw(entry, selection.distance));
-                }
-            }
-        }
-        if (draws.isEmpty()) return 0;
-        Matrix4f modelView = new Matrix4f(view)
-                .translate((float) planetPosition.x, (float) planetPosition.y,
-                        (float) planetPosition.z)
-                .rotate(new Quaternionf(rotation))
-                .scale((float) scale);
-        drawGpuLayer(SOLID_TYPE, modelView, draws, false);
-        drawGpuLayer(TRANSLUCENT_TYPE, modelView, draws, true);
-        return draws.size();
-    }
-
-    private static OrbitProjection orbitProjection() {
-        Minecraft minecraft = Minecraft.getInstance();
-        int width = Math.max(1, minecraft.getWindow().getWidth());
-        int height = Math.max(1, minecraft.getWindow().getHeight());
-        double projectionScale = Math.abs(RenderSystem.getProjectionMatrix().m11());
-        double verticalFov = projectionScale > 1.0E-6
-                ? 2.0 * Math.atan(1.0 / projectionScale)
-                : Math.toRadians(70.0);
-        return new OrbitProjection(height, (double) width / height, verticalFov);
-    }
-
-    private static double relativeDifference(double a, double b) {
-        if (!Double.isFinite(a) || !Double.isFinite(b)) return Double.POSITIVE_INFINITY;
-        return Math.abs(a - b) / Math.max(1.0E-9, Math.max(Math.abs(a), Math.abs(b)));
-    }
-
-    private static void drawGpuLayer(RenderType type, Matrix4f modelView,
-                                     List<GpuDraw> draws, boolean translucent) {
-        type.setupRenderState();
-        try {
-            ShaderInstance shader = RenderSystem.getShader();
-            if (shader == null) return;
-            Matrix4f projection = RenderSystem.getProjectionMatrix();
-            if (translucent) {
-                for (int index = draws.size() - 1; index >= 0; index--) {
-                    drawGpuBuffer(draws.get(index).entry.translucent, modelView,
-                            projection, shader);
-                }
-            } else {
-                for (GpuDraw draw : draws) {
-                    drawGpuBuffer(draw.entry.solid, modelView, projection, shader);
-                }
-            }
-        } finally {
-            VertexBuffer.unbind();
-            type.clearRenderState();
-        }
-    }
-
-    private static void drawGpuBuffer(VertexBuffer buffer, Matrix4f modelView,
-                                      Matrix4f projection, ShaderInstance shader) {
-        if (buffer == null) return;
-        buffer.bind();
-        buffer.drawWithShader(modelView, projection, shader);
     }
 
     private static void trimGpuCache() {
+        long budget = GenesisClientConfig.getPlanetGpuCacheBytes();
         var iterator = GPU_CACHE.entrySet().iterator();
-        while (gpuBytes > GPU_BUDGET_BYTES && iterator.hasNext()) {
+        while (gpuBytes > budget && iterator.hasNext()) {
             GpuEntry removed = iterator.next().getValue();
             iterator.remove();
             gpuBytes -= removed.estimatedBytes;
@@ -507,99 +737,50 @@ public final class PlanetVoxelRenderer {
         for (GpuEntry entry : disposals) entry.close();
     }
 
-    private static List<Selection> select(List<PlanetVoxelBrick> bricks,
-                                          CubeNetSurfaceTransform transform,
-                                          CubeNetSurfaceTransform.Face focusFace,
-                                          double focusX, double focusZ,
-                                          double exactRadius, int maxLod,
-                                          int maximum, boolean orbit) {
-        List<Selection> selected = new ArrayList<>();
-        for (PlanetVoxelBrick brick : bricks) {
-            PlanetVoxelBrickKey key = brick.key();
-            double centerX = transform.faceCenterX(key.face())
-                    + key.minU() + key.brickSpan() * 0.5;
-            double centerZ = transform.faceCenterZ(key.face())
-                    + key.minV() + key.brickSpan() * 0.5;
-            double distance;
-            if (key.face() == focusFace) {
-                distance = Math.hypot(centerX - focusX, centerZ - focusZ);
-            } else {
-                // Remote faces never spend exact geometry unless the camera is
-                // targeting them. Their coarser mips still preserve large bases,
-                // mountains and city silhouettes on the complete cube.
-                distance = exactRadius * (orbit ? 16.0 : 12.0)
-                        + Math.hypot(centerX - transform.faceCenterX(key.face()),
-                        centerZ - transform.faceCenterZ(key.face()));
-            }
-            int desired = desiredLod(distance, exactRadius, maxLod);
-            if (key.face() != focusFace) desired = Math.max(desired, 4);
-            if (key.lod() != desired) continue;
-            selected.add(new Selection(brick, distance));
+    public static void reset() {
+        disabled = false;
+        loggedOverworld = false;
+        loggedOrbit = false;
+        residentGeneration = Long.MIN_VALUE;
+        residentBricks = List.of();
+        ASCENT.reset();
+        ORBIT.reset();
+        PlanetVoxelInterestClient.reset();
+        PlanetVoxelMeshCache.clear();
+        PlanetRenderDiagnostics.reset();
+        synchronized (GPU_LOCK) {
+            GPU_DISPOSALS.addAll(GPU_CACHE.values());
+            GPU_CACHE.clear();
+            GPU_UPLOADS.clear();
+            gpuBytes = 0L;
         }
-        selected.sort(Comparator.comparingDouble(Selection::distance)
-                .thenComparingInt(selection -> selection.brick.key().lod()));
-        if (selected.size() > maximum) {
-            return new ArrayList<>(selected.subList(0, maximum));
-        }
-        return selected;
-    }
-
-    private static int desiredLod(double distance, double exactRadius, int maxLod) {
-        if (distance <= exactRadius) return 0;
-        double ratio = distance / Math.max(1.0, exactRadius);
-        int lod = 1 + (int) Math.floor(Math.log(ratio) / Math.log(2.0));
-        return Mth.clamp(lod, 1, maxLod);
-    }
-
-    private static int renderWithBuffers(RenderPass pass) {
-        synchronized (BUFFER_LOCK) {
-            try {
-                RenderSystem.assertOnRenderThread();
-                BufferBuilder solid = new BufferBuilder(
-                        SOLID_MEMORY, SOLID_TYPE.mode(), SOLID_TYPE.format());
-                BufferBuilder translucent = new BufferBuilder(
-                        TRANSLUCENT_MEMORY, TRANSLUCENT_TYPE.mode(), TRANSLUCENT_TYPE.format());
-                int rendered = pass.render(solid, translucent);
-                drawBuilt(SOLID_TYPE, solid);
-                drawBuilt(TRANSLUCENT_TYPE, translucent);
-                return rendered;
-            } catch (Throwable error) {
-                disabled = true;
-                GenesisMod.LOGGER.error("[PLANET-VOXEL] renderer disabled after failure; "
-                        + "legacy coarse LOD remains available", error);
-                return 0;
-            } finally {
-                SOLID_MEMORY.clear();
-                TRANSLUCENT_MEMORY.clear();
-            }
+        if (RenderSystem.isOnRenderThread()) {
+            drainGpuDisposals();
+        } else {
+            RenderSystem.recordRenderCall(PlanetVoxelRenderer::drainGpuDisposals);
         }
     }
 
-    private static void drawBuilt(RenderType type, BufferBuilder builder) {
-        MeshData mesh = builder.build();
-        if (mesh != null) type.draw(mesh);
-    }
+    // ------------------------------------------------------------------
+    // Geometry emission (brick-local, uploaded once)
+    // ------------------------------------------------------------------
 
-    private static void renderMesh(Matrix4f view,
-                                   VertexConsumer solid, VertexConsumer translucent,
-                                   PlanetVoxelBrick brick,
-                                   PlanetVoxelGreedyMesher.Mesh mesh,
-                                   PointTransform transform,
-                                   Vec3 camera, double renderScale, float alpha) {
+    private static void emit(VertexConsumer solid, VertexConsumer translucent,
+                             PlanetVoxelBrickKey key, PlanetVoxelGreedyMesher.Mesh mesh) {
         for (PlanetVoxelGreedyMesher.Quad quad : mesh.solid()) {
-            renderQuad(view, solid, brick.key(), quad, transform, camera, renderScale, alpha);
+            emitQuad(solid, key, quad);
         }
         for (PlanetVoxelGreedyMesher.Quad quad : mesh.translucent()) {
-            renderQuad(view, translucent, brick.key(), quad, transform, camera, renderScale, alpha);
+            emitQuad(translucent, key, quad);
         }
     }
 
-    private static void renderQuad(Matrix4f view, VertexConsumer buffer,
-                                   PlanetVoxelBrickKey key,
-                                   PlanetVoxelGreedyMesher.Quad quad,
-                                   PointTransform transform,
-                                   Vec3 camera, double renderScale, float alpha) {
+    private static void emitQuad(VertexConsumer buffer, PlanetVoxelBrickKey key,
+                                 PlanetVoxelGreedyMesher.Quad quad) {
         int flags = PlanetVoxelMaterial.flags(quad.material());
+        // Structures keep one block per texture repeat so a village roof still
+        // reads as shingles; open natural terrain may stride to halve the
+        // vertex count without any visible change at that distance.
         int step = key.lod() == 0 && (flags & PlanetVoxelMaterial.FLAG_STRUCTURE) != 0 ? 1
                 : key.lod() == 0 ? 2 : 1;
         for (int b = quad.b0(); b < quad.b1(); b += step) {
@@ -607,14 +788,9 @@ public final class PlanetVoxelRenderer {
             for (int a = quad.a0(); a < quad.a1(); a += step) {
                 int a1 = Math.min(quad.a1(), a + step);
                 FacePoints local = facePoints(key, quad.direction(), quad.plane(), a, b, a1, b1);
-                Vector3d p0 = transform.apply(local.p0);
-                Vector3d p1 = transform.apply(local.p1);
-                Vector3d p2 = transform.apply(local.p2);
-                Vector3d p3 = transform.apply(local.p3);
-                Vector3f normal = normal(p0, p1, p3);
-                drawTexturedQuad(view, buffer, camera, p0, p1, p2, p3,
-                        renderScale, quad.material(), textureDirection(quad.direction()),
-                        quad.coverage(), alpha, normal);
+                Vector3f normal = normalOf(quad.direction());
+                writeQuad(buffer, local, quad.material(), textureDirection(quad.direction()),
+                        quad.coverage(), normal);
             }
         }
     }
@@ -622,51 +798,37 @@ public final class PlanetVoxelRenderer {
     private static FacePoints facePoints(PlanetVoxelBrickKey key,
                                          PlanetVoxelGreedyMesher.FaceDirection direction,
                                          int plane, int a0, int b0, int a1, int b1) {
+        // Brick-local block offsets only: the brick's own origin lives in the
+        // model matrix so one buffer works for the flat, folded and orbital
+        // placements alike.
         double cell = key.cellSize();
-        double uBase = key.minU();
-        double yBase = key.minY();
-        double vBase = key.minV();
         double fixed = plane * cell;
         double aa0 = a0 * cell, aa1 = a1 * cell;
         double bb0 = b0 * cell, bb1 = b1 * cell;
         return switch (direction) {
             case UP -> new FacePoints(
-                    new SurfacePoint(uBase + aa0, yBase + fixed, vBase + bb1),
-                    new SurfacePoint(uBase + aa1, yBase + fixed, vBase + bb1),
-                    new SurfacePoint(uBase + aa1, yBase + fixed, vBase + bb0),
-                    new SurfacePoint(uBase + aa0, yBase + fixed, vBase + bb0));
+                    new LocalPoint(aa0, fixed, bb1), new LocalPoint(aa1, fixed, bb1),
+                    new LocalPoint(aa1, fixed, bb0), new LocalPoint(aa0, fixed, bb0));
             case DOWN -> new FacePoints(
-                    new SurfacePoint(uBase + aa0, yBase + fixed, vBase + bb0),
-                    new SurfacePoint(uBase + aa1, yBase + fixed, vBase + bb0),
-                    new SurfacePoint(uBase + aa1, yBase + fixed, vBase + bb1),
-                    new SurfacePoint(uBase + aa0, yBase + fixed, vBase + bb1));
+                    new LocalPoint(aa0, fixed, bb0), new LocalPoint(aa1, fixed, bb0),
+                    new LocalPoint(aa1, fixed, bb1), new LocalPoint(aa0, fixed, bb1));
             case NORTH -> new FacePoints(
-                    new SurfacePoint(uBase + aa1, yBase + bb0, vBase + fixed),
-                    new SurfacePoint(uBase + aa0, yBase + bb0, vBase + fixed),
-                    new SurfacePoint(uBase + aa0, yBase + bb1, vBase + fixed),
-                    new SurfacePoint(uBase + aa1, yBase + bb1, vBase + fixed));
+                    new LocalPoint(aa1, bb0, fixed), new LocalPoint(aa0, bb0, fixed),
+                    new LocalPoint(aa0, bb1, fixed), new LocalPoint(aa1, bb1, fixed));
             case SOUTH -> new FacePoints(
-                    new SurfacePoint(uBase + aa0, yBase + bb0, vBase + fixed),
-                    new SurfacePoint(uBase + aa1, yBase + bb0, vBase + fixed),
-                    new SurfacePoint(uBase + aa1, yBase + bb1, vBase + fixed),
-                    new SurfacePoint(uBase + aa0, yBase + bb1, vBase + fixed));
+                    new LocalPoint(aa0, bb0, fixed), new LocalPoint(aa1, bb0, fixed),
+                    new LocalPoint(aa1, bb1, fixed), new LocalPoint(aa0, bb1, fixed));
             case WEST -> new FacePoints(
-                    new SurfacePoint(uBase + fixed, yBase + bb0, vBase + aa0),
-                    new SurfacePoint(uBase + fixed, yBase + bb0, vBase + aa1),
-                    new SurfacePoint(uBase + fixed, yBase + bb1, vBase + aa1),
-                    new SurfacePoint(uBase + fixed, yBase + bb1, vBase + aa0));
+                    new LocalPoint(fixed, bb0, aa0), new LocalPoint(fixed, bb0, aa1),
+                    new LocalPoint(fixed, bb1, aa1), new LocalPoint(fixed, bb1, aa0));
             case EAST -> new FacePoints(
-                    new SurfacePoint(uBase + fixed, yBase + bb0, vBase + aa1),
-                    new SurfacePoint(uBase + fixed, yBase + bb0, vBase + aa0),
-                    new SurfacePoint(uBase + fixed, yBase + bb1, vBase + aa0),
-                    new SurfacePoint(uBase + fixed, yBase + bb1, vBase + aa1));
+                    new LocalPoint(fixed, bb0, aa1), new LocalPoint(fixed, bb0, aa0),
+                    new LocalPoint(fixed, bb1, aa0), new LocalPoint(fixed, bb1, aa1));
         };
     }
 
-    private static void drawTexturedQuad(Matrix4f view, VertexConsumer buffer, Vec3 camera,
-                                         Vector3d p0, Vector3d p1, Vector3d p2, Vector3d p3,
-                                         double renderScale, long material, Direction direction,
-                                         int coverage, float alpha, Vector3f normal) {
+    private static void writeQuad(VertexConsumer buffer, FacePoints points, long material,
+                                  Direction direction, int coverage, Vector3f normal) {
         int stateId = PlanetVoxelMaterial.blockStateId(material);
         PlanetVolumeTextureCache.Sprite resolved = PlanetVolumeTextureCache.sprite(stateId, direction);
         TextureAtlasSprite sprite = resolved.texture();
@@ -683,75 +845,43 @@ public final class PlanetVoxelRenderer {
         int r = Mth.clamp((int) (((tint >> 16) & 0xFF) * shade), 0, 255);
         int g = Mth.clamp((int) (((tint >> 8) & 0xFF) * shade), 0, 255);
         int b = Mth.clamp((int) ((tint & 0xFF) * shade), 0, 255);
-        float coverageFactor = 0.50f + 0.50f * (coverage / 255.0f);
-        int a = Mth.clamp((int) (alpha * coverageFactor * 255.0f), 0, 255);
+        // Coverage is the fraction of a reduced voxel that was really solid; it
+        // darkens rather than fades, so a half-full mip cell reads as thinner
+        // geometry instead of ghosting.
+        float coverageFactor = 0.55f + 0.45f * (coverage / 255.0f);
+        r = Mth.clamp((int) (r * coverageFactor), 0, 255);
+        g = Mth.clamp((int) (g * coverageFactor), 0, 255);
+        b = Mth.clamp((int) (b * coverageFactor), 0, 255);
         int light = (flags & PlanetVoxelMaterial.FLAG_EMISSIVE) != 0
                 ? LightTexture.FULL_BRIGHT
                 : LightTexture.pack(PlanetVoxelMaterial.blockLight(material),
                 Math.max(10, PlanetVoxelMaterial.skyLight(material)));
-        addVertex(view, buffer, camera, p0, renderScale, sprite.getU0(), sprite.getV1(),
-                r, g, b, a, light, normal);
-        addVertex(view, buffer, camera, p1, renderScale, sprite.getU1(), sprite.getV1(),
-                r, g, b, a, light, normal);
-        addVertex(view, buffer, camera, p2, renderScale, sprite.getU1(), sprite.getV0(),
-                r, g, b, a, light, normal);
-        addVertex(view, buffer, camera, p3, renderScale, sprite.getU0(), sprite.getV0(),
-                r, g, b, a, light, normal);
+        writeVertex(buffer, points.p0(), sprite.getU0(), sprite.getV1(), r, g, b, light, normal);
+        writeVertex(buffer, points.p1(), sprite.getU1(), sprite.getV1(), r, g, b, light, normal);
+        writeVertex(buffer, points.p2(), sprite.getU1(), sprite.getV0(), r, g, b, light, normal);
+        writeVertex(buffer, points.p3(), sprite.getU0(), sprite.getV0(), r, g, b, light, normal);
     }
 
-    private static void addVertex(Matrix4f view, VertexConsumer buffer, Vec3 camera,
-                                  Vector3d point, double scale, float u, float v,
-                                  int r, int g, int b, int a, int light, Vector3f normal) {
-        double x = camera == null ? point.x : (point.x - camera.x) * scale;
-        double y = camera == null ? point.y : (point.y - camera.y) * scale;
-        double z = camera == null ? point.z : (point.z - camera.z) * scale;
-        buffer.addVertex(view, (float) x, (float) y, (float) z)
-                .setColor(r, g, b, a)
+    private static void writeVertex(VertexConsumer buffer, LocalPoint point,
+                                    float u, float v, int r, int g, int b,
+                                    int light, Vector3f normal) {
+        buffer.addVertex((float) point.x(), (float) point.y(), (float) point.z())
+                .setColor(r, g, b, 255)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(light)
                 .setNormal(normal.x, normal.y, normal.z);
     }
 
-    private static Vector3d livePoint(CubeNetSurfaceTransform.Face face,
-                                      CubeNetSurfaceTransform.Face currentFace,
-                                      CubeNetSurfaceTransform transform,
-                                      PlanetSurfaceData surface,
-                                      double localU, double worldY, double localV,
-                                      float foldAlpha,
-                                      double currentCenterX, double cubeCenterY,
-                                      double currentCenterZ) {
-        double worldX = transform.faceCenterX(face) + localU;
-        double worldZ = transform.faceCenterZ(face) + localV;
-        double elevation = worldY - surface.seaLevel() + 0.70;
-        Vector3d celestial = CubeFaceFrame.cubePoint(face, localU, localV,
-                transform.faceHalfSpan(), elevation);
-        Vector3d folded = CubeFaceFrame.celestialToSurface(currentFace, celestial)
-                .add(currentCenterX, cubeCenterY, currentCenterZ);
-        return new Vector3d(
-                Mth.lerp(foldAlpha, worldX, folded.x),
-                Mth.lerp(foldAlpha, worldY + 0.70, folded.y),
-                Mth.lerp(foldAlpha, worldZ, folded.z));
-    }
-
-    private static Vector3d orbitalPoint(CubeNetSurfaceTransform.Face face,
-                                         CubeNetSurfaceTransform transform,
-                                         Vector3d planetPosition, Quaterniondc rotation,
-                                         double renderedHalfExtent, double worldToRendered,
-                                         double localU, double worldY, double localV) {
-        double elevation = (worldY - DhLiveChunkPatchCache.seaLevel()) * worldToRendered + 0.72;
-        return CubeFaceFrame.cubePoint(face, localU * worldToRendered,
-                        localV * worldToRendered, renderedHalfExtent, elevation)
-                .rotate(rotation).add(planetPosition);
-    }
-
-    private static Vector3f normal(Vector3d p0, Vector3d p1, Vector3d p3) {
-        Vector3d a = new Vector3d(p1).sub(p0);
-        Vector3d b = new Vector3d(p3).sub(p0);
-        Vector3d normal = a.cross(b);
-        if (normal.lengthSquared() < 1.0E-12) return new Vector3f(0, 1, 0);
-        normal.normalize();
-        return new Vector3f((float) normal.x, (float) normal.y, (float) normal.z);
+    private static Vector3f normalOf(PlanetVoxelGreedyMesher.FaceDirection direction) {
+        return switch (direction) {
+            case UP -> new Vector3f(0, 1, 0);
+            case DOWN -> new Vector3f(0, -1, 0);
+            case NORTH -> new Vector3f(0, 0, -1);
+            case SOUTH -> new Vector3f(0, 0, 1);
+            case WEST -> new Vector3f(-1, 0, 0);
+            case EAST -> new Vector3f(1, 0, 0);
+        };
     }
 
     private static Direction textureDirection(PlanetVoxelGreedyMesher.FaceDirection direction) {
@@ -765,47 +895,71 @@ public final class PlanetVoxelRenderer {
         };
     }
 
-    private static double renderDistanceCompression(Vec3 camera,
-                                                     double centerX, double centerY,
-                                                     double centerZ, int vanillaRadius) {
-        double distance = Math.sqrt(square(centerX - camera.x)
-                + square(centerY - camera.y) + square(centerZ - camera.z));
-        double target = Math.max(768.0, vanillaRadius * 3.5);
-        double fullScale = distance <= target ? 1.0 : target / distance;
-        double start = Math.max(512.0, GenesisClientConfig.getWorldLodStartHeight());
-        double full = Math.max(start + 1.0,
-                GenesisClientConfig.getWorldCubeCompressionFullHeight());
-        float influence = smoothstep((float) ((camera.y - start) / (full - start)));
-        return Mth.lerp(influence, 1.0, fullScale);
+    // ------------------------------------------------------------------
+    // View helpers
+    // ------------------------------------------------------------------
+
+    private static void requestInterest(CubeSurfaceProjection projection,
+                                        CubeNetSurfaceTransform.Face currentFace,
+                                        Vec3 camera, Vector3f cameraLook,
+                                        Projection screen, Quality quality) {
+        Vector3d localCamera = projection.faceLocalToCubeAtHeight(currentFace,
+                camera.x - projection.transform().faceCenterX(currentFace),
+                camera.z - projection.transform().faceCenterZ(currentFace),
+                camera.y);
+        Vector3d localLook = new Vector3d(cameraLook.x, cameraLook.y, cameraLook.z)
+                .rotate(projection.faceOrientation(currentFace));
+        PlanetVoxelInterestClient.update(localCamera, localLook,
+                screen.viewportHeight(), screen.aspectRatio(), screen.verticalFovRadians(),
+                quality.targetVoxelPixels(), quality.maximumBricks());
     }
 
-    private static float smoothstep(float value) {
-        float clamped = Mth.clamp(value, 0.0f, 1.0f);
-        return clamped * clamped * (3.0f - 2.0f * clamped);
+    private static Projection screenProjection() {
+        Minecraft minecraft = Minecraft.getInstance();
+        int width = Math.max(1, minecraft.getWindow().getWidth());
+        int height = Math.max(1, minecraft.getWindow().getHeight());
+        double projectionScale = Math.abs(RenderSystem.getProjectionMatrix().m11());
+        double verticalFov = projectionScale > 1.0E-6
+                ? 2.0 * Math.atan(1.0 / projectionScale)
+                : Math.toRadians(70.0);
+        return new Projection(height, (double) width / height, verticalFov);
     }
 
-    private static double square(double value) {
-        return value * value;
+    /**
+     * Screen-space refinement targets.
+     *
+     * <p>{@code targetVoxelPixels} is the pixel size a voxel is allowed to reach
+     * before its brick is refined. Roughly one voxel per pixel at high quality
+     * means a 16-block brick refines once it covers about 16 px — the same rule
+     * across the whole viewport, not just where the player is aiming.</p>
+     */
+    private record Quality(int maximumBricks, double targetVoxelPixels) {
+        static Quality current() {
+            boolean survey = OrbitalSurveyController.isActive();
+            int level = GenesisClientConfig.getWorldLodQuality();
+            int bricks = survey ? 6144 : level >= 3 ? 4096 : level == 2 ? 2300 : 1200;
+            double pixels = survey ? 0.72 : level >= 3 ? 1.10 : level == 2 ? 1.75 : 2.75;
+            return new Quality(bricks, pixels);
+        }
     }
 
-    @FunctionalInterface
-    private interface RenderPass {
-        int render(VertexConsumer solid, VertexConsumer translucent);
-    }
-
-    @FunctionalInterface
-    private interface PointTransform {
-        Vector3d apply(SurfacePoint point);
-    }
-
-    private record Selection(PlanetVoxelBrick brick, double distance) {
+    private record Projection(int viewportHeight, double aspectRatio, double verticalFovRadians) {
     }
 
     private record GpuKey(ResourceLocation planet, PlanetVoxelBrickKey key) {
     }
 
-    private record PendingGpuUpload(PlanetVoxelBrick brick,
-                                    PlanetVoxelGreedyMesher.Mesh mesh) {
+    private record PendingGpuUpload(PlanetVoxelBrick brick, PlanetVoxelGreedyMesher.Mesh mesh) {
+    }
+
+    private record GpuDraw(GpuEntry entry, PlanetVoxelBrickKey key,
+                           double distance, Matrix4f model) {
+    }
+
+    private record LocalPoint(double x, double y, double z) {
+    }
+
+    private record FacePoints(LocalPoint p0, LocalPoint p1, LocalPoint p2, LocalPoint p3) {
     }
 
     private static final class GpuEntry {
@@ -813,32 +967,23 @@ public final class PlanetVoxelRenderer {
         private final VertexBuffer solid;
         private final VertexBuffer translucent;
         private final long estimatedBytes;
+        private final PlanetVoxelAuthority authority;
+        private boolean closed;
 
-        private GpuEntry(long revision, VertexBuffer solid,
-                         VertexBuffer translucent, long estimatedBytes) {
+        private GpuEntry(long revision, VertexBuffer solid, VertexBuffer translucent,
+                         long estimatedBytes, PlanetVoxelAuthority authority) {
             this.revision = revision;
             this.solid = solid;
             this.translucent = translucent;
             this.estimatedBytes = estimatedBytes;
+            this.authority = authority;
         }
 
         private void close() {
+            if (closed) return;
+            closed = true;
             if (solid != null) solid.close();
             if (translucent != null) translucent.close();
         }
-    }
-
-    private record GpuDraw(GpuEntry entry, double distance) {
-    }
-
-    private record OrbitProjection(int viewportHeight, double aspectRatio,
-                                   double verticalFovRadians) {
-    }
-
-    private record SurfacePoint(double u, double y, double v) {
-    }
-
-    private record FacePoints(SurfacePoint p0, SurfacePoint p1,
-                              SurfacePoint p2, SurfacePoint p3) {
     }
 }

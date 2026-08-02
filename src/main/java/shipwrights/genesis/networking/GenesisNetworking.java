@@ -22,8 +22,6 @@ public class GenesisNetworking {
         registrar.playToClient(HyperspaceStatePacket.TYPE, HyperspaceStatePacket.STREAM_CODEC, HyperspaceStatePacket::handle);
         registrar.playToClient(SyncTimeOffsetPacket.TYPE, SyncTimeOffsetPacket.STREAM_CODEC, SyncTimeOffsetPacket::handle);
         registrar.playToClient(PlanetSurfacePacket.TYPE, PlanetSurfacePacket.STREAM_CODEC, PlanetSurfacePacket::handle);
-        registrar.playToClient(SparsePlanetLodTilePacket.TYPE, SparsePlanetLodTilePacket.STREAM_CODEC, SparsePlanetLodTilePacket::handle);
-        registrar.playToClient(PlanetLodVolumeTilePacket.TYPE, PlanetLodVolumeTilePacket.STREAM_CODEC, PlanetLodVolumeTilePacket::handle);
         registrar.playToClient(PlanetVoxelBrickPacket.TYPE, PlanetVoxelBrickPacket.STREAM_CODEC, PlanetVoxelBrickPacket::handle);
         registrar.playToServer(PlanetVoxelInterestPacket.TYPE, PlanetVoxelInterestPacket.STREAM_CODEC, PlanetVoxelInterestPacket::handle);
     }

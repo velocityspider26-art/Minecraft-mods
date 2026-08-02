@@ -181,15 +181,75 @@ public class PlanetRenderer implements CelestialRenderer {
         // and at a rate that does not change with the planet's day length.
         shader.safeGetUniform("CloudTime").set((float) ((System.currentTimeMillis() % 100_000_000L) / 1000.0));
 
-        boolean voxelEarth = OVERWORLD_ID.equals(planetID) && inSpace
-                && earthTransform != null
-                && PlanetVoxelRenderer.hasCompleteCoarseCoverage(earthTransform);
-        if (!voxelEarth) {
+        // Earth is never a model. Whenever it is on screen from space it is
+        // drawn as the save's own voxel terrain folded onto six cube faces, so
+        // the village the player took off from is the village they can see and
+        // fly back down to. Only genuinely painted bodies take the textured
+        // path below.
+        boolean voxelEarth = OVERWORLD_ID.equals(planetID) && inSpace && earthTransform != null;
+        if (voxelEarth) {
+            renderVoxelEarth(event, toRender, vantagePoint, earthTransform, level,
+                    position, rotation, halfExtent);
+        } else {
             renderPlanetAt(planetID, shadows, event.getPoseStack(), position.x(), position.y(),
                     position.z(), halfExtent, toRender.getActualSize() * 0.5, rotation, alpha);
         }
 
         new PlanetAtmosphereRenderer().invoke(event, toRender, vantagePoint);
+    }
+
+    /**
+     * Draws Earth from space as the actual world's voxel terrain.
+     *
+     * <p>The camera is expressed in the planet's own rotating cube frame so the
+     * renderer, the LOD selector and the streaming interest manager all measure
+     * distance to the same terrain. The survey crosshair is resolved against the
+     * same cube by an exact ray intersection, which is what lets the player pick
+     * a real village out of orbit and descend to it.</p>
+     */
+    private void renderVoxelEarth(RenderLevelStageEvent event, Celestial toRender,
+                                  VantagePoint vantagePoint,
+                                  CubeNetSurfaceTransform earthTransform,
+                                  ClientLevel level,
+                                  Vector3dc renderedPosition, Quaterniondc rotation,
+                                  double renderedHalfExtent) {
+        shipwrights.genesis.space.planet.CubeSurfaceProjection projection =
+                new shipwrights.genesis.space.planet.CubeSurfaceProjection(
+                        earthTransform, level.getSeaLevel());
+
+        // Camera in the planet's rotating frame: undo the draw translation, then
+        // the planet's own rotation.
+        Quaterniond inverseRotation = new Quaterniond(rotation).conjugate();
+        Vector3d localCamera = new Vector3d(renderedPosition).negate().rotate(inverseRotation);
+        Vector3d localLook = new Vector3d(
+                event.getCamera().getLookVector().x(),
+                event.getCamera().getLookVector().y(),
+                event.getCamera().getLookVector().z())
+                .rotate(CelestialRenderCoordinates.getObserverCelestialRotation(vantagePoint))
+                .rotate(inverseRotation);
+        if (localLook.lengthSquared() < 1.0E-12) localLook.set(0.0, 0.0, -1.0);
+
+        double worldToRendered = renderedHalfExtent / Math.max(1.0, projection.faceHalfSpan());
+        Vector3d cubeCamera = new Vector3d(localCamera);
+
+        shipwrights.genesis.space.planet.CubeSurfaceProjection.CubeSurfaceHit hit =
+                projection.cubeRayIntersection(
+                        new Vector3d(cubeCamera).div(Math.max(1.0E-9, worldToRendered)),
+                        localLook, 0.0);
+        CubeNetSurfaceTransform.Face focusFace = hit != null ? hit.face()
+                : projection.cubeToFaceLocal(new Vector3d(cubeCamera).negate()).face();
+        if (hit != null) {
+            shipwrights.genesis.client.OrbitalSurveyController.updateTarget(hit.face(),
+                    projection.faceToWorldX(hit.face(), hit.surfaceX()),
+                    projection.faceToWorldZ(hit.face(), hit.surfaceZ()), true);
+            shipwrights.genesis.space.planet.PlanetRenderDiagnostics.setLocation(hit.face(),
+                    hit.surfaceX(), hit.surfaceZ(), hit.distance(), hit.distance());
+        }
+        shipwrights.genesis.space.planet.PlanetRenderDiagnostics.setFold(1.0f);
+
+        PlanetVoxelRenderer.renderOrbit(event.getModelViewMatrix(), projection,
+                new Vector3d(renderedPosition), rotation, renderedHalfExtent, worldToRendered,
+                cubeCamera, localLook, focusFace);
     }
 
     private void renderPlanetAt(ResourceLocation planetID, List<FaceShadow> shadows, PoseStack poseStack, double x, double y, double z, double halfExtent, double physicalHalfExtent, Quaterniondc localRotation, float alpha) {

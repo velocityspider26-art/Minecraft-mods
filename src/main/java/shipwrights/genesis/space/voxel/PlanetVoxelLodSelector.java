@@ -80,9 +80,74 @@ public final class PlanetVoxelLodSelector {
                             double projectedVoxelPixels) {
     }
 
+    /**
+     * Where a brick ends up on screen.
+     *
+     * <p>The same pyramid is drawn in two very different frames — folded around
+     * the player during ascent, and as a distant cube in orbit — but the LOD
+     * rule is identical in both: refine while the brick covers enough pixels.
+     * Supplying the placement instead of hard-coding cube space is what lets one
+     * selector serve both, so ascent and orbit can never disagree about which
+     * bricks are wanted.</p>
+     */
+    public interface BrickPlacement {
+        /** Rendered centre of the brick, in the frame the view camera lives in. */
+        Vector3d center(PlanetVoxelBrickKey key);
+
+        /** Rendered radius of the brick's bounding sphere. */
+        double radius(PlanetVoxelBrickKey key);
+
+        /** Rendered edge length of one voxel in this brick. */
+        double voxelSize(PlanetVoxelBrickKey key);
+
+        /**
+         * Outward face normal used for whole-cube backface rejection, or null
+         * where that test does not apply (an unfolded world has no far side).
+         */
+        Vector3dc outwardNormal(PlanetVoxelBrickKey key);
+    }
+
+    /** Cube-space placement: the planet as a cube of {@code cubeHalfExtent}. */
+    public static BrickPlacement cubePlacement(OrbitView view) {
+        return new BrickPlacement() {
+            @Override
+            public Vector3d center(PlanetVoxelBrickKey key) {
+                double span = key.brickSpan();
+                return CubeFaceFrame.cubePoint(key.face(),
+                                key.minU() + span * 0.5,
+                                key.minV() + span * 0.5,
+                                view.cubeHalfExtent(),
+                                key.minY() + span * 0.5 - view.seaLevel() + 0.72)
+                        .mul(view.worldToRendered());
+            }
+
+            @Override
+            public double radius(PlanetVoxelBrickKey key) {
+                return key.brickSpan() * view.worldToRendered() * 0.88;
+            }
+
+            @Override
+            public double voxelSize(PlanetVoxelBrickKey key) {
+                return key.cellSize() * view.worldToRendered();
+            }
+
+            @Override
+            public Vector3dc outwardNormal(PlanetVoxelBrickKey key) {
+                return view.cullBackFaces() ? CubeFaceFrame.axes(key.face()).up() : null;
+            }
+        };
+    }
+
     public static List<Selection> selectOrbit(List<PlanetVoxelBrick> resident,
                                                OrbitView view,
                                                Set<PlanetVoxelBrickKey> previousSelection) {
+        return select(resident, view, previousSelection, cubePlacement(view));
+    }
+
+    public static List<Selection> select(List<PlanetVoxelBrick> resident,
+                                         OrbitView view,
+                                         Set<PlanetVoxelBrickKey> previousSelection,
+                                         BrickPlacement placement) {
         if (resident == null || resident.isEmpty()) return List.of();
         Map<PlanetVoxelBrickKey, PlanetVoxelBrick> bricks = new HashMap<>(resident.size() * 2);
         for (PlanetVoxelBrick brick : resident) {
@@ -113,7 +178,7 @@ public final class PlanetVoxelLodSelector {
         for (PlanetVoxelBrickKey key : roots) {
             PlanetVoxelBrick brick = bricks.get(key);
             if (brick == null) continue;
-            Metrics metrics = metrics(brick, view);
+            Metrics metrics = metrics(brick, view, placement);
             if (metrics.visible) orderedRoots.add(new Root(brick, metrics.distance));
         }
         orderedRoots.sort(Comparator.comparingDouble(Root::distance));
@@ -122,11 +187,11 @@ public final class PlanetVoxelLodSelector {
         PriorityQueue<Refinement> refinements = new PriorityQueue<>(
                 Comparator.comparingDouble(Refinement::priority).reversed());
         for (Root root : orderedRoots) {
-            Selection selection = selection(root.brick, view);
+            Selection selection = selection(root.brick, view, placement);
             if (selection == null) continue;
             selected.put(root.brick.key(), selection);
             Refinement refinement = refinement(root.brick, bricks, view,
-                    previous, previouslyRefined);
+                    previous, previouslyRefined, placement);
             if (refinement != null) refinements.add(refinement);
         }
 
@@ -144,7 +209,7 @@ public final class PlanetVoxelLodSelector {
             for (Selection child : refinement.children()) {
                 selected.put(child.brick().key(), child);
                 Refinement childRefinement = refinement(child.brick(), bricks, view,
-                        previous, previouslyRefined);
+                        previous, previouslyRefined, placement);
                 if (childRefinement != null) refinements.add(childRefinement);
             }
         }
@@ -159,8 +224,9 @@ public final class PlanetVoxelLodSelector {
                                          Map<PlanetVoxelBrickKey, PlanetVoxelBrick> bricks,
                                          OrbitView view,
                                          Set<PlanetVoxelBrickKey> previous,
-                                         Set<PlanetVoxelBrickKey> previouslyRefined) {
-        Metrics metrics = metrics(brick, view);
+                                         Set<PlanetVoxelBrickKey> previouslyRefined,
+                                         BrickPlacement placement) {
+        Metrics metrics = metrics(brick, view, placement);
         if (!metrics.visible) return null;
 
         PlanetVoxelBrickKey key = brick.key();
@@ -177,35 +243,32 @@ public final class PlanetVoxelLodSelector {
             if ((occupiedMask & (1 << slot)) == 0) continue;
             PlanetVoxelBrick child = bricks.get(childKey(key, slot));
             if (child == null) return null;
-            Selection selection = selection(child, view);
+            Selection selection = selection(child, view, placement);
             if (selection != null) children.add(selection);
         }
         return new Refinement(brick, List.copyOf(children),
                 metrics.projectedVoxelPixels / threshold);
     }
 
-    private static Selection selection(PlanetVoxelBrick brick, OrbitView view) {
-        Metrics metrics = metrics(brick, view);
+    private static Selection selection(PlanetVoxelBrick brick, OrbitView view,
+                                       BrickPlacement placement) {
+        Metrics metrics = metrics(brick, view, placement);
         return metrics.visible
                 ? new Selection(brick, metrics.distance, metrics.projectedVoxelPixels)
                 : null;
     }
 
-    private static Metrics metrics(PlanetVoxelBrick brick, OrbitView view) {
+    private static Metrics metrics(PlanetVoxelBrick brick, OrbitView view,
+                                   BrickPlacement placement) {
         PlanetVoxelBrickKey key = brick.key();
-        double span = key.brickSpan();
-        double u = key.minU() + span * 0.5;
-        double v = key.minV() + span * 0.5;
-        double elevation = key.minY() + span * 0.5 - view.seaLevel() + 0.72;
-        Vector3d center = CubeFaceFrame.cubePoint(key.face(), u, v,
-                        view.cubeHalfExtent(), elevation)
-                .mul(view.worldToRendered());
+        Vector3d center = placement.center(key);
+        double radius = placement.radius(key);
+        double voxelSize = placement.voxelSize(key);
         Vector3d toCenter = center.sub(view.camera(), new Vector3d());
         double distance = Math.max(1.0E-6, toCenter.length());
-        double radius = span * view.worldToRendered() * 0.88;
 
-        if (view.cullBackFaces()) {
-            Vector3dc normal = CubeFaceFrame.axes(key.face()).up();
+        Vector3dc normal = placement.outwardNormal(key);
+        if (normal != null) {
             double renderedHalf = view.cubeHalfExtent() * view.worldToRendered();
             double cameraReach = Math.max(Math.abs(view.camera().x()),
                     Math.max(Math.abs(view.camera().y()), Math.abs(view.camera().z())));
@@ -226,9 +289,8 @@ public final class PlanetVoxelLodSelector {
         }
 
         double focalPixels = view.viewportHeight() / (2.0 * tanVertical);
-        double nearDistance = Math.max(key.cellSize() * view.worldToRendered(), distance - radius);
-        double projected = key.cellSize() * view.worldToRendered()
-                * focalPixels / nearDistance;
+        double nearDistance = Math.max(voxelSize, distance - radius);
+        double projected = voxelSize * focalPixels / nearDistance;
         return new Metrics(true, distance, projected);
     }
 

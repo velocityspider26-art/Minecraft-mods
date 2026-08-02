@@ -46,6 +46,10 @@ repositories {
         url = "https://maven.theillusivec4.top/"
     }
     maven { url = "https://maven.blamejared.com/" }
+    // Registrate for 1.21 is published here, not on tterrag's own maven (which
+    // stops at MC1.20). Without it a clean checkout cannot resolve
+    // com.tterrag.registrate:Registrate:MC1.21-1.3.0+67.
+    maven { url = "https://mvn.devos.one/snapshots" }
     maven { url = "https://maven.ithundxr.dev/mirror" }
     maven { url = "https://maven.bawnorton.com/releases" }
     maven { url = "https://maven.enjarai.dev/mirrors" }
@@ -112,12 +116,12 @@ configurations {
 }
 
 dependencies {
-    // Genesis reads DH's public terrain repository and render events. Keep the
-    // jar on the development classpath, and ship the unmodified LGPL jar as a
-    // NeoForge Jar-in-Jar dependency so players install one Genesis file.
-    compileOnly(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
-    localRuntime(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
-    jarJar(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
+    // Distant Horizons is NOT a dependency of the planet renderer any more.
+    // Genesis' own sparse voxel pyramid is the sole source of orbital terrain,
+    // so DH is neither compiled against nor shipped. If the player installs it
+    // separately the two simply coexist; drop a jar into libs/ only if you want
+    // it on the development runtime classpath.
+    fileTree(dir: 'libs', include: '*.jar').each { localRuntime(files(it)) }
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.0"))
     implementation("io.github.llamalad7:mixinextras-neoforge:0.5.0")

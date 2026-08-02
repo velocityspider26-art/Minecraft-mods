@@ -55,9 +55,13 @@ versionRange="[1.8.2,)"
 ordering="AFTER"
 side="CLIENT"
 
+# Distant Horizons is optional. The Genesis planet voxel engine renders the
+# orbital Earth from its own server-authoritative brick pyramid and never reads
+# DH's terrain repository, so the game boots and the cube Earth renders in full
+# whether or not DH is installed.
 [[dependencies.${mod_id}]]
 modId="distanthorizons"
-type="required"
+type="optional"
 versionRange="[3.2.0-b,)"
 ordering="AFTER"
 side="CLIENT"
