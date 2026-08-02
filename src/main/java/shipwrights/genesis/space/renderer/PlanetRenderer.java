@@ -217,15 +217,17 @@ public class PlanetRenderer implements CelestialRenderer {
                 new shipwrights.genesis.space.planet.CubeSurfaceProjection(
                         earthTransform, level.getSeaLevel());
 
-        // Camera in the planet's rotating frame: undo the draw translation, then
-        // the planet's own rotation.
+        // Camera in the planet's rotating frame. getRenderTransform already
+        // folded the observer's rotation into this rotation, so undoing it once
+        // is the whole conversion — applying the observer rotation again here
+        // would rotate the frustum away from where the player is looking and
+        // cull visible bricks.
         Quaterniond inverseRotation = new Quaterniond(rotation).conjugate();
         Vector3d localCamera = new Vector3d(renderedPosition).negate().rotate(inverseRotation);
         Vector3d localLook = new Vector3d(
                 event.getCamera().getLookVector().x(),
                 event.getCamera().getLookVector().y(),
                 event.getCamera().getLookVector().z())
-                .rotate(CelestialRenderCoordinates.getObserverCelestialRotation(vantagePoint))
                 .rotate(inverseRotation);
         if (localLook.lengthSquared() < 1.0E-12) localLook.set(0.0, 0.0, -1.0);
 

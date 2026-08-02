@@ -166,8 +166,7 @@ public final class PlanetVoxelRenderer {
                 screen.viewportHeight(), screen.aspectRatio(), screen.verticalFovRadians(),
                 quality.targetVoxelPixels(), PlanetVoxelBrickKey.MAX_LOD,
                 quality.maximumBricks(), false);
-        AscentPlacement placement = new AscentPlacement(projection, currentFace, fold, nearCull,
-                cameraWorld);
+        AscentPlacement placement = new AscentPlacement(projection, currentFace, fold);
 
         List<PlanetVoxelLodSelector.Selection> selected = dropVanillaCovered(
                 ASCENT.select(selectorView, placement, screen, quality, fold), nearCull);
@@ -566,8 +565,7 @@ public final class PlanetVoxelRenderer {
     /** Ascent placement: bricks sit at their folded world positions. */
     private record AscentPlacement(CubeSurfaceProjection projection,
                                    CubeNetSurfaceTransform.Face currentFace,
-                                   float fold, double nearCull,
-                                   Vector3d camera)
+                                   float fold)
             implements PlanetVoxelLodSelector.BrickPlacement {
 
         @Override
