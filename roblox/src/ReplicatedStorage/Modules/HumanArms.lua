@@ -65,12 +65,9 @@ end
 HumanArms.swing = swing
 HumanArms.solveElbow = solveElbow
 
-local LEN = nil
-
 -- `wristTarget` is a world CFrame. Returns the wrist CFrame actually reached,
 -- which differs from the target only when the grip is out of reach.
 function HumanArms.solveTo(rig: any, side: string, wristTarget: CFrame, poleLocal: Vector3?): CFrame
-	LEN = LEN or HumanRig.lengths()
 	local armName = side .. "Arm"
 	local foreName = side .. "ForeArm"
 	local handName = side .. "Hand"
@@ -79,9 +76,14 @@ function HumanArms.solveTo(rig: any, side: string, wristTarget: CFrame, poleLoca
 	if not arm then return wristTarget end
 
 	local rootRot = rig.root.Rotation
-	local bindArm = HumanRig.bindOf(armName)
-	local bindFore = HumanRig.bindOf(foreName)
-	local bindHand = HumanRig.bindOf(handName)
+	-- This rig's own bind, not the shared one: it carries the fit-to-R15 scale,
+	-- so the reach clamp and the elbow solve use the arm's real length.
+	local fore = rig.bones[foreName]
+	local hand = rig.bones[handName]
+	if not fore or not hand then return wristTarget end
+	local bindArm = arm.bind
+	local bindFore = fore.bind
+	local bindHand = hand.bind
 
 	local l1 = (bindFore.Position - bindArm.Position).Magnitude
 	local l2 = (bindHand.Position - bindFore.Position).Magnitude

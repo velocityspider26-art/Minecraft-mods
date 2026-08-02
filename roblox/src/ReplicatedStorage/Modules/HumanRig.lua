@@ -116,7 +116,14 @@ local function buildMeshPart(entry: any): BasePart?
 				end
 			end
 		end
-		return AssetService:CreateMeshPartAsync(Content.fromObject(editable))
+		-- CreateMeshPartAsync took the EditableMesh directly before Content
+		-- existed. Accept either, because which one a place gets depends on its
+		-- client version, and getting this wrong silently costs the whole body.
+		local content = (Content :: any)
+		if content and content.fromObject then
+			return AssetService:CreateMeshPartAsync(content.fromObject(editable))
+		end
+		return (AssetService :: any):CreateMeshPartAsync(editable)
 	end)
 	if not ok or not result then return nil end
 	return result :: BasePart
@@ -222,9 +229,31 @@ end
 -- RIG
 --------------------------------------------------------------------------------
 
+local function rescale(c: CFrame, s: number): CFrame
+	if s == 1 then return c end
+	return CFrame.new(c.Position * s) * c.Rotation
+end
+
 -- `source` is an optional imported Model (ReplicatedStorage.CharacterModels.*).
-function HumanRig.new(parent: Instance, source: Model?): any
+--
+-- `scales` fits the operator to the invisible R15 rig rather than the other way
+-- round. The R15 rig is what the whole game is tuned against -- camera height,
+-- weapon placement, hit detection -- so growing it to match the model moves the
+-- gun. Sizing the model to match it costs nothing.
+--
+-- It is a number or a per-bone table, because one number cannot do the job: R15
+-- carries its hips at about 60% of its standing height and a human carries them
+-- at about 52%. Fit the legs and the head is half a stud too high; fit the head
+-- and the feet leave the floor. Scaling the leg chain and the spine chain by
+-- different factors lands both, and a few percent of mismatch at the waist is
+-- invisible next to either of those failures.
+function HumanRig.new(parent: Instance, source: Model?, scales: any?): any
 	local bind = bindTable()
+	local function scaleOf(name: string): number
+		if type(scales) == "number" then return scales end
+		if type(scales) == "table" then return tonumber(scales[name]) or 1 end
+		return 1
+	end
 	local rig = {
 		bones = {},
 		order = Data.ORDER,
@@ -233,16 +262,25 @@ function HumanRig.new(parent: Instance, source: Model?): any
 		root = CFrame.identity,
 		model = nil,
 		skinned = nil,
+		scaleOf = scaleOf,
 	}
-	for name, entry in bind do
-		rig.bones[name] = {
-			parent = entry.parent,
-			bind = entry.bind,
-			offset = entry.offset,
-			pose = entry.offset,   -- local, parent-relative
-			world = entry.bind,
-			delta = CFrame.identity,
-		}
+	-- Compose the scaled bind pose down the hierarchy so it stays consistent
+	-- with the offsets the solver actually walks.
+	for _, name in ipairs(Data.ORDER) do
+		local entry = bind[name]
+		if entry then
+			local off = rescale(entry.offset, scaleOf(name))
+			local parent0 = entry.parent and rig.bones[entry.parent]
+			local b = parent0 and (parent0.bind * off) or off
+			rig.bones[name] = {
+				parent = entry.parent,
+				bind = b,
+				offset = off,
+				pose = off,   -- local, parent-relative
+				world = b,
+				delta = CFrame.identity,
+			}
+		end
 	end
 
 	if source then
@@ -262,6 +300,12 @@ function HumanRig.new(parent: Instance, source: Model?): any
 				end
 			end
 			rig.model = model
+			-- One mesh, so it can only take one number; the spine chain is the
+			-- one that decides where the head ends up.
+			local whole = scaleOf("Spine")
+			if math.abs(whole - 1) > 1e-3 then
+				pcall(function() model:ScaleTo(whole) end)
+			end
 			model.Parent = parent
 			-- The whole skinned model rides one part; find something to drive.
 			rig.anchorPart = model:FindFirstChildWhichIsA("BasePart", true)
@@ -279,10 +323,12 @@ function HumanRig.new(parent: Instance, source: Model?): any
 			local boneName = d:GetAttribute("HumanBone")
 			local entry = Data[d.Name]
 			if boneName and entry then
+				local s = scaleOf(boneName)
+				if math.abs(s - 1) > 1e-3 then d.Size = d.Size * s end
 				rig.parts[#rig.parts + 1] = {
 					part = d,
 					bone = boneName,
-					offset = CFrame.new(entry.centre[1], entry.centre[2], entry.centre[3]),
+					offset = CFrame.new(entry.centre[1] * s, entry.centre[2] * s, entry.centre[3] * s),
 					group = d.Name,
 				}
 			end

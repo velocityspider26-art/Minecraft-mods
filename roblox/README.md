@@ -7,11 +7,25 @@ an R15 character holding a rifle reads as a doll holding a prop — the shoulder
 can't roll into the gun, the back can't round over it, and the feet can't roll
 through a step.
 
-The invisible R15 rig is still there. Roblox needs it to move, replicate and
-collide, and the anatomy system raycasts against it — but it is now a *shadow*,
-driven to follow the human skeleton rather than being the source of the pose.
-Crouch behind cover and the hitboxes crouch with the body, which they did not do
-when the two skeletons were posed independently.
+The invisible R15 rig is still there and still comes first: it is posed, then
+evaluated forward into `rig.poseWorld`, and the camera and the weapon are placed
+from that. The operator body reads that finished pose and retargets it onto its
+own skeleton. It is a *consumer* of the pose, never the producer.
+
+That direction matters, and getting it backwards is what broke V36. Two things
+go wrong the moment the human rig drives and R15 follows:
+
+- `getChestCF` has to answer with **this** frame's pose. Roblox does not
+  guarantee `Part.CFrame` reflects a `Motor6D.Transform` written earlier in the
+  same render step — which is the whole reason `poseWorld` exists. The weapon is
+  placed from `chestCF`, so a stale chest is a moved gun.
+- the slaving pass laid `UpperTorso` along `Spine1 → Neck` measured *downward*,
+  so the chest frame came back inverted even once it did settle.
+
+Both are fixed by leaving the R15 path exactly as it was and hanging the body off
+the end of it. Every hook into it is `pcall`-guarded and falls back to the old
+procedural shell, so a fault in the new body can never take the camera or the
+weapon down with it.
 
 Open `place/Blacksite.rbxlx` in Studio and press play. It works with no setup —
 but read *Getting the real body in* below, because one import makes it much
@@ -26,22 +40,40 @@ better.
 ### 1. A realistic human body instead of R15
 
 `HumanRig.lua` drives the real skeleton, measured out of your FBX by
-`tools/convert_soldier.py`. The soldier is 5.27 studs (1.84 m at this project's
-0.35 m/stud) with real bone lengths — 0.68 stud humerus, 0.61 forearm, 1.24
-femur — rather than R15 proportions.
+`tools/convert_soldier.py`, with real bone lengths — 0.68 stud humerus, 0.61
+forearm, 1.24 femur — rather than R15 proportions.
 
-The invisible R15 rig is scaled to match (`HumanBody.createDescription` now
-derives `HeightScale` from the measured height), so hitboxes line up with what
-you see instead of sitting a quarter of a stud low.
+The body is **fitted to the R15 rig, not the other way round**. Growing the rig
+to match the model moves the camera and the weapon with it, because every
+constant in `GameConfig` — eye height, `CHEST_TO_SHOULDER`, the free-aim pivot —
+is tuned against the rig as it is. So `HeightScale` stays at 1.00 and the model
+is sized to it, measured at spawn from the actual character.
+
+Two scales, not one: R15 carries its hips at about 60% of standing height and a
+human carries them at 52%. Fit the legs with a single number and the head lands
+half a stud above the camera; fit the head and the feet leave the floor. The leg
+chain is fitted to the rig's pelvis height and the spine chain to its
+pelvis-to-head span, which lands both — hips exactly on the R15 pelvis, head
+within 0.015 studs, feet on the ground.
 
 ### 2. Animations
 
-`HumanPose.lua`, tuned from `GameConfig.HUMAN_ANIM`. Everything is authored in
-character space (+X right, +Y up, +Z back) and converted per bone by
-`HumanRig.anatomical`, because Mixamo bones each carry their own roll and
-`CFrame.Angles(x,0,0)` means something different on every one of them.
+The gait itself still comes from where it always did — the R15 solve in
+`SoldierVisual.poseBody` — and `OperatorShell` retargets it onto the operator
+using joint **positions** only: for each bone, the direction from one R15 part to
+the next, with the bind direction swung onto it. Positions carry no convention,
+so it does not matter that R15 limb parts point +Y back up toward their parent
+while Mixamo bones point +Y down toward their child. Bone lengths stay the
+operator's own, so the body keeps human proportions instead of being stretched
+onto R15's.
 
-What the new joints buy:
+The bones R15 **doesn't have** — both clavicles, the second spine segment, the
+toes — have nothing to retarget from, so they keep the procedural values
+`HumanPose.lua` gives them, tuned from `GameConfig.HUMAN_ANIM` and authored in
+character space (+X right, +Y up, +Z back) via `HumanRig.anatomical`. That is the
+whole reason those bones are worth having, and it costs nothing:
+
+What they buy:
 
 - **Clavicles** — both shoulders roll forward and shrug up as the rifle comes to
   the eye; the firing side pulls back to seat the stock.
@@ -52,8 +84,9 @@ What the new joints buy:
   walk look weighted rather than skated.
 
 The gait is phase-driven rather than baked, so it stays continuous while you
-change speed, direction and stance mid-step, and stays in sync with the
-weapon animation, which is also phase-driven.
+change speed, direction and stance mid-step, and stays in sync with the weapon
+animation, which is also phase-driven. `OperatorShell` shares the R15 body's gait
+clock, so the toes roll on the step the legs are actually taking.
 
 ### 3. Arms that actually hold the gun
 
@@ -104,10 +137,23 @@ same grips.
 
 Modes, best first: `skinned` (imported) → `mesh` (runtime-built) → `primitive`
 (mesh APIs unavailable; sized blocks, still this soldier's proportions). The
-current mode is on the character as the `BlacksiteVisualBody` attribute.
+current mode is on the character as the `BlacksiteVisualBody` attribute, and the
+client prints it once on spawn:
+
+```
+[BLACKSITE] operator body: mode=mesh pieces=19
+```
 
 If you get `primitive` unexpectedly, turn on
 **Experience Settings → Security → Allow Mesh & Image APIs**.
+
+If you see no line at all, the operator body did not build and the old
+procedural shell is running instead — that is the designed fallback, not a
+crash. Any fault inside the new body warns once with what failed:
+
+```
+[BLACKSITE] operator body: pose failed -- ...
+```
 
 ---
 
@@ -127,14 +173,16 @@ tools/                    the FBX → Luau pipeline
 |---|---|
 | `SoldierRigData` | *generated* — bind pose + per-bone geometry |
 | `KSVRMesh` | *generated* — the FBX's rifle + measured grip frames |
-| `HumanRig` | builds and drives the skeleton; three draw modes |
+| `HumanRig` | builds and drives the skeleton; three draw modes; fit-to-R15 scaling |
 | `HumanPose` | locomotion and stance |
 | `HumanArms` | two-bone IK onto the grips |
 | `WeaponGrips` | derives grip frames for the procedural weapons |
+| `OperatorShell` | retargets the R15 pose onto the operator, and draws it |
 
-`SoldierVisual` was rewritten on top of these. Its public API is unchanged, so
-`FPSClient` and `CharacterVisuals` needed only one line each — passing the weapon
-CFrame that `VM.update` was already returning and discarding.
+`SoldierVisual` keeps its V31 R15 pipeline unchanged and calls into
+`OperatorShell` at four points, each `pcall`-guarded. Its public API is the same,
+so `FPSClient` and `CharacterVisuals` needed only one line each — passing the
+weapon CFrame that `VM.update` was already returning and discarding.
 
 `CustomSoldierBuilder` / `CustomSoldierMesh` (the old procedural capsule body)
 are left in place but nothing requires them any more. Safe to delete once you're

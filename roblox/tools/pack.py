@@ -19,7 +19,7 @@ ROOT = os.path.dirname(HERE)
 
 # Order matters only for readability in the explorer.
 NEW_MODULES = ['SoldierRigData', 'KSVRMesh', 'HumanRig', 'HumanPose',
-               'HumanArms', 'WeaponGrips']
+               'HumanArms', 'WeaponGrips', 'OperatorShell']
 
 
 def collect(srcdir):
