@@ -155,10 +155,11 @@ public record PlanetVoxelBrickPacket(
             if (packet.remove) {
                 PlanetVoxelClientCache.remove(packet.planet, packet.key, packet.revision);
             } else {
-                PlanetVoxelClientCache.accept(packet.planet,
-                        new PlanetVoxelBrick(packet.key, packet.revision,
-                                packet.palette, packet.indices, packet.coverage,
-                                packet.authority));
+                PlanetVoxelBrick brick = new PlanetVoxelBrick(packet.key, packet.revision,
+                        packet.palette, packet.indices, packet.coverage, packet.authority);
+                PlanetVoxelClientCache.accept(packet.planet, brick);
+                shipwrights.genesis.space.planet.PlanetRenderDiagnostics
+                        .onBrickReceived(brick.estimatedBytes());
             }
         });
     }

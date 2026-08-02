@@ -11,8 +11,12 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import shipwrights.genesis.GenesisMod;
+import shipwrights.genesis.space.planet.CubeSurfaceProjection;
+import shipwrights.genesis.space.planet.SeamlessPlanetHandoffController;
+import shipwrights.genesis.space.Celestial;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -170,8 +174,12 @@ public final class ArrivalGate {
                 continue;
             }
 
-            boolean ready = ready(level, held.arrival());
+            SeamlessPlanetHandoffController.Readiness readiness =
+                    readiness(level, held.arrival());
+            boolean ready = readiness.ready();
             boolean expired = now >= held.deadline();
+            shipwrights.genesis.space.planet.PlanetRenderDiagnostics.setTransition(
+                    ready ? "CROSSING" : "HOLDING", readiness.face(), readiness.describe());
             if (!ready && !expired) {
                 prepare(level, held.arrival()); // keep the claim alive while we wait
                 continue;
@@ -184,8 +192,9 @@ public final class ArrivalGate {
                 GenesisMod.LOGGER.info("[GATE] {} ready for {}; crossing now",
                         level.dimension().location(), entry.getKey());
             } else {
-                GenesisMod.LOGGER.warn("[GATE] {} still generating after {} ticks; letting {} cross anyway",
-                        level.dimension().location(), MAX_HOLD_TICKS, entry.getKey());
+                GenesisMod.LOGGER.warn("[GATE] {} not ready after {} ticks ({}); letting {} cross anyway",
+                        level.dimension().location(), MAX_HOLD_TICKS, readiness.describe(),
+                        entry.getKey());
             }
             try {
                 markCrossed();
@@ -218,17 +227,45 @@ public final class ArrivalGate {
      * it has actually reached FULL.</p>
      */
     public static boolean ready(ServerLevel target, Vec3 arrival) {
+        return readiness(target, arrival).ready();
+    }
+
+    /**
+     * The full handoff readiness breakdown, not just a yes/no.
+     *
+     * <p>Chunks reaching FULL is necessary but not sufficient: the orbital
+     * renderer must also be holding the same terrain as voxel bricks, or the
+     * swap from voxel Earth to vanilla chunks shows as a one-frame flicker at
+     * exactly the moment the player is watching for it.</p>
+     */
+    public static SeamlessPlanetHandoffController.Readiness readiness(ServerLevel target,
+                                                                      Vec3 arrival) {
         if (target == null || arrival == null) {
-            return true;
+            return new SeamlessPlanetHandoffController.Readiness(true, null, 0.0, 0.0,
+                    true, true, true, true, List.of());
         }
         ChunkPos centre = new ChunkPos(BlockPos.containing(arrival.x, arrival.y, arrival.z));
-        for (int dx = -READY_RADIUS; dx <= READY_RADIUS; dx++) {
+        boolean chunksReady = true;
+        for (int dx = -READY_RADIUS; dx <= READY_RADIUS && chunksReady; dx++) {
             for (int dz = -READY_RADIUS; dz <= READY_RADIUS; dz++) {
                 if (target.getChunkSource().getChunkNow(centre.x + dx, centre.z + dz) == null) {
-                    return false;
+                    chunksReady = false;
+                    break;
                 }
             }
         }
-        return true;
+
+        Celestial celestial = GenesisMod.getCelestialForLevel(target);
+        if (celestial == null) {
+            // Not a Genesis planet, so there is no cube mapping to satisfy and
+            // the chunk gate is the whole answer.
+            return new SeamlessPlanetHandoffController.Readiness(chunksReady, null, 0.0, 0.0,
+                    true, true, chunksReady, true,
+                    chunksReady ? List.of() : List.of("destination chunks still generating"));
+        }
+        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+                celestial.getActualSize(), SpaceTravelManager.entryPadding(celestial.getActualSize()));
+        CubeSurfaceProjection projection = new CubeSurfaceProjection(transform, target.getSeaLevel());
+        return SeamlessPlanetHandoffController.evaluate(target, arrival, projection, chunksReady);
     }
 }

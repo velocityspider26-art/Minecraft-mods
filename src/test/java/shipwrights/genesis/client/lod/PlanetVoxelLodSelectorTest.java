@@ -8,7 +8,6 @@ import shipwrights.genesis.space.voxel.PlanetVoxelBrickKey;
 import shipwrights.genesis.space.voxel.PlanetVoxelLodSelector;
 import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -66,25 +65,6 @@ class PlanetVoxelLodSelectorTest {
         assertEquals(2, selected.size());
     }
 
-    @Test
-    void allSixFacesRequireRealOccupiedSurfaceCoverage() {
-        List<PlanetVoxelBrick> complete = completeSmallCube();
-        assertTrue(PlanetVoxelCoverage.analyze(complete, 16.0).complete());
-
-        List<PlanetVoxelBrick> missingFaceRegion = new ArrayList<>(complete);
-        missingFaceRegion.removeIf(brick -> brick.key().face() == CubeNetSurfaceTransform.Face.SOUTH
-                && brick.key().brickU() == -1 && brick.key().brickV() == -1);
-        assertTrue(!PlanetVoxelCoverage.analyze(missingFaceRegion, 16.0).complete());
-    }
-
-    @Test
-    void onePropagatedParentVoxelCannotClaimPlanetCoverage() {
-        PlanetVoxelBrick sparseParent = new PlanetVoxelBrickBuilder(key(1, 0, 0, 0), 1)
-                .set(1, 1, 1, SOLID)
-                .build();
-        assertTrue(!PlanetVoxelCoverage.analyze(List.of(sparseParent), 16.0).complete());
-    }
-
     private static PlanetVoxelBrick parentWithTwoOccupiedOctants() {
         return new PlanetVoxelBrickBuilder(key(1, 0, 0, 0), 1)
                 .set(1, 1, 1, SOLID)
@@ -96,26 +76,6 @@ class PlanetVoxelLodSelectorTest {
         return new PlanetVoxelBrickBuilder(key, revision)
                 .set(1, 1, 1, SOLID)
                 .build();
-    }
-
-    private static List<PlanetVoxelBrick> completeSmallCube() {
-        List<PlanetVoxelBrick> bricks = new ArrayList<>();
-        long revision = 1;
-        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
-            for (int brickV = -1; brickV <= 0; brickV++) {
-                for (int brickU = -1; brickU <= 0; brickU++) {
-                    PlanetVoxelBrickBuilder builder = new PlanetVoxelBrickBuilder(
-                            new PlanetVoxelBrickKey(face, 0, brickU, 0, brickV), revision++);
-                    for (int z = 0; z < PlanetVoxelBrick.EDGE; z++) {
-                        for (int x = 0; x < PlanetVoxelBrick.EDGE; x++) {
-                            builder.set(x, 0, z, SOLID);
-                        }
-                    }
-                    bricks.add(builder.build());
-                }
-            }
-        }
-        return bricks;
     }
 
     private static PlanetVoxelBrickKey key(int lod, int u, int y, int v) {

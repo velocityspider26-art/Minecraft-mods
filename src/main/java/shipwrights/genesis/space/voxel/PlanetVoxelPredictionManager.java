@@ -36,7 +36,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * on the single PlanetVoxelService worker.
  */
 final class PlanetVoxelPredictionManager implements AutoCloseable {
-    static final int COMPLETE_COVERAGE_LOD = 6;
+    /** Coarsest level at which the whole cube is guaranteed to exist. */
+    static int completeCoverageLod() {
+        return shipwrights.genesis.config.GenesisCommonConfig
+                .getPlanetPreparationQuality().coverageLod();
+    }
 
     private static final int WORKER_COUNT = 2;
     private static final int WORK_QUEUE_CAPACITY = 8;
@@ -90,7 +94,7 @@ final class PlanetVoxelPredictionManager implements AutoCloseable {
     void requestViewport(Set<PlanetVoxelBrickKey> keys) {
         if (closed || keys == null) return;
         for (PlanetVoxelBrickKey key : keys) {
-            enqueue(key, VIEWPORT_PRIORITY + (COMPLETE_COVERAGE_LOD - key.lod()) * 100);
+            enqueue(key, VIEWPORT_PRIORITY + (completeCoverageLod() - key.lod()) * 100);
         }
     }
 
@@ -140,14 +144,16 @@ final class PlanetVoxelPredictionManager implements AutoCloseable {
     }
 
     private void queueCompleteCoverage() {
+        int coverageLod = completeCoverageLod();
         int halfSpan = exactInt(transform.faceHalfSpan(), "faceHalfSpan");
-        int brickSpan = PlanetVoxelBrick.EDGE << COMPLETE_COVERAGE_LOD;
+        int brickSpan = PlanetVoxelBrick.EDGE << coverageLod;
         int minimumHorizontal = Math.floorDiv(-halfSpan, brickSpan);
         int maximumHorizontal = ceilDiv(halfSpan, brickSpan) - 1;
         int minimumY = Math.floorDiv(minimumBuildHeight, brickSpan);
         int maximumY = Math.floorDiv(maximumBuildHeight - 1, brickSpan);
         int maximumRadius = Math.max(Math.abs(minimumHorizontal),
                 Math.abs(maximumHorizontal));
+        queueSpawnDetail(coverageLod);
         for (int radius = 0; radius <= maximumRadius; radius++) {
             for (int y = minimumY; y <= maximumY; y++) {
                 for (int v = minimumHorizontal; v <= maximumHorizontal; v++) {
@@ -156,11 +162,39 @@ final class PlanetVoxelPredictionManager implements AutoCloseable {
                         for (CubeNetSurfaceTransform.Face face
                                 : CubeNetSurfaceTransform.Face.values()) {
                             PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(face,
-                                    COMPLETE_COVERAGE_LOD, u, y, v);
+                                    coverageLod, u, y, v);
                             globalKeys.add(key);
+                            // Nearer the middle of a face first, so a partly
+                            // streamed planet is complete around the player
+                            // rather than complete along one edge.
                             enqueue(key, GLOBAL_PRIORITY - radius);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Pre-generates finer detail around the world spawn so the very first
+     * take-off already has block-scale terrain beneath it, instead of refining
+     * only once the player has climbed high enough to look at it.
+     */
+    private void queueSpawnDetail(int coverageLod) {
+        int radius = shipwrights.genesis.config.GenesisCommonConfig.getPlanetPreparationRadius();
+        if (radius <= 0 || coverageLod <= 0) return;
+        int detailLod = Math.max(0, coverageLod - 3);
+        int brickSpan = PlanetVoxelBrick.EDGE << detailLod;
+        int extent = Math.floorDiv(radius, brickSpan);
+        int minimumY = Math.floorDiv(minimumBuildHeight, brickSpan);
+        int maximumY = Math.floorDiv(maximumBuildHeight - 1, brickSpan);
+        for (int y = minimumY; y <= maximumY; y++) {
+            for (int v = -extent; v <= extent; v++) {
+                for (int u = -extent; u <= extent; u++) {
+                    PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(
+                            CubeNetSurfaceTransform.Face.UP, detailLod, u, y, v);
+                    globalKeys.add(key);
+                    enqueue(key, GLOBAL_PRIORITY + 500 - Math.max(Math.abs(u), Math.abs(v)));
                 }
             }
         }

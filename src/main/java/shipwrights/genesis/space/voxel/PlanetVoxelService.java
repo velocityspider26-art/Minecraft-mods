@@ -3,6 +3,7 @@ package shipwrights.genesis.space.voxel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -15,6 +16,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import shipwrights.genesis.GenesisMod;
+import shipwrights.genesis.config.GenesisCommonConfig;
 import shipwrights.genesis.networking.PlanetVoxelInterestPacket;
 import shipwrights.genesis.space.Celestial;
 import shipwrights.genesis.teleportation.ArrivalGate;
@@ -48,8 +50,7 @@ public final class PlanetVoxelService {
             ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
 
     private static final int MAX_CHUNKS_PER_TICK = 1;
-    private static final int MAX_PREDICTIONS_PER_TICK = 2;
-    private static final int MAX_PENDING_JOBS = 4;
+    private static final int MAX_PENDING_JOBS = 6;
     private static final int MAX_RESTORED_BRICKS = 100_000;
     private static final int MAX_LOD = 9;
     private static final long MEMORY_BUDGET = 2L * 1024L * 1024L * 1024L;
@@ -143,7 +144,9 @@ public final class PlanetVoxelService {
             PlanetVoxelPredictionManager targetPredictions = predictions;
             if (targetPredictions != null) {
                 targetPredictions.tick();
-                for (int processed = 0; processed < MAX_PREDICTIONS_PER_TICK
+                int predictionBudget = GenesisCommonConfig.getPlanetPreparationQuality()
+                        .predictionsPerTick();
+                for (int processed = 0; processed < predictionBudget
                         && PENDING_JOBS.get() < MAX_PENDING_JOBS; processed++) {
                     PlanetVoxelPredictionManager.Result result =
                             targetPredictions.pollCompleted();
@@ -295,6 +298,53 @@ public final class PlanetVoxelService {
     }
 
     /** Receives a validated, throttled camera request from one client. */
+    /**
+     * Whether exact voxel bricks covering a landing column are already in the
+     * pyramid.
+     *
+     * <p>Consulted by the handoff gate: crossing before the destination terrain
+     * has been captured is what produces a one-frame flicker as the voxel Earth
+     * is replaced by vanilla chunks. Waiting until both hold the same geometry
+     * makes the swap invisible.</p>
+     *
+     * @param brickRadius how many 16-block bricks around the column must exist
+     */
+    public static boolean hasExactColumnCoverage(ServerLevel level, double worldX, double worldZ,
+                                                 int brickRadius) {
+        PlanetVoxelStore store = memory;
+        if (store == null || level == null) return false;
+        Celestial earth = GenesisMod.getCelestialForLevel(level);
+        if (earth == null) return false;
+        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
+        CubeNetSurfaceTransform.Face face = transform.faceContaining(worldX, worldZ);
+        if (face == null) return false;
+
+        int centerX = (int) Math.rint(transform.faceCenterX(face));
+        int centerZ = (int) Math.rint(transform.faceCenterZ(face));
+        int brickU = Math.floorDiv(Mth.floor(worldX) - centerX, PlanetVoxelBrick.EDGE);
+        int brickV = Math.floorDiv(Mth.floor(worldZ) - centerZ, PlanetVoxelBrick.EDGE);
+        int minSection = Math.floorDiv(level.getMinBuildHeight(), PlanetVoxelBrick.EDGE);
+        int maxSection = Math.floorDiv(level.getMaxBuildHeight() - 1, PlanetVoxelBrick.EDGE);
+
+        for (int dv = -brickRadius; dv <= brickRadius; dv++) {
+            for (int du = -brickRadius; du <= brickRadius; du++) {
+                // A column counts as captured when any of its vertical sections
+                // holds exact data. Air sections above the surface are removed
+                // by the ingestor rather than stored, so requiring all of them
+                // would never be satisfied.
+                boolean captured = false;
+                for (int sectionY = minSection; sectionY <= maxSection && !captured; sectionY++) {
+                    PlanetVoxelBrick brick = store.get(new PlanetVoxelBrickKey(face, 0,
+                            brickU + du, sectionY, brickV + dv));
+                    captured = brick != null && brick.hasData();
+                }
+                if (!captured) return false;
+            }
+        }
+        return true;
+    }
+
     public static void updateInterest(ServerPlayer player, PlanetVoxelInterestPacket packet) {
         if (player == null || packet == null || !EARTH_ID.equals(packet.planet())) return;
         MinecraftServer server = player.getServer();
@@ -375,7 +425,7 @@ public final class PlanetVoxelService {
         if (interests != null) interests.refreshAll();
         GenesisMod.LOGGER.info("[PLANET-VOXEL] deterministic 3D terrain prediction active; "
                 + "complete LOD {} cube coverage queued with bounded workers",
-                PlanetVoxelPredictionManager.COMPLETE_COVERAGE_LOD);
+                PlanetVoxelPredictionManager.completeCoverageLod());
     }
 
     private static void queuePersistentRestore(MinecraftServer server,
