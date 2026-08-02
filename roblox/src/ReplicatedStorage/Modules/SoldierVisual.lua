@@ -262,6 +262,7 @@ local function buildOperatorRig(character: Model): any?
 	local rig = commonRig(character, visualModel, "operator")
 	rig.shell = shell
 	rig.customSource = shell.mode
+	rig.born = os.clock()
 	for _, d in character:GetDescendants() do rememberInstance(rig, d) end
 	return rig
 end
@@ -532,8 +533,19 @@ function SoldierVisual.updateBody(rig: any, cameraCF: CFrame, isLocal: boolean)
 	local legsVis = math.clamp((down + .19) / .22, 0, 1) ^ .62
 
 	if rig.mode == "operator" then
-		local ok, err = pcall(OperatorShell.draw, rig.shell, cameraCF, isLocal, torsoVis, legsVis)
+		local ok, err = pcall(OperatorShell.draw, rig.shell, rig, cameraCF, isLocal, torsoVis, legsVis)
 		if not ok then report("draw", err) end
+		-- Report once, a second in, where the body actually IS and how much of
+		-- it is on screen. "It built" and "you can see it" are different claims
+		-- and three rounds were lost to only ever checking the first.
+		if isLocal and not rig.told and os.clock() - (rig.born or 0) > 1 then
+			rig.told = true
+			local at, shown = OperatorShell.where(rig.shell)
+			local head = rig.poseWorld and rig.poseWorld.Head
+			print(("[BLACKSITE] operator body: at %s | %d/%d pieces visible | head %s | solve=%s")
+				:format(at and tostring(at) or "nowhere", shown, rig.shell.pieces,
+					head and tostring(head.Position) or "?", tostring(rig.shell.posed)))
+		end
 		-- Re-hide the R15 shell EVERY frame. LocalTransparencyModifier is not a
 		-- setting, it is a per-frame value: Roblox's own first-person handling
 		-- rewrites it on the local character, so hiding the shell once at build

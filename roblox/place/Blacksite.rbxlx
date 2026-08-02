@@ -14716,6 +14716,7 @@ local function buildOperatorRig(character: Model): any?
 	local rig = commonRig(character, visualModel, "operator")
 	rig.shell = shell
 	rig.customSource = shell.mode
+	rig.born = os.clock()
 	for _, d in character:GetDescendants() do rememberInstance(rig, d) end
 	return rig
 end
@@ -14986,8 +14987,19 @@ function SoldierVisual.updateBody(rig: any, cameraCF: CFrame, isLocal: boolean)
 	local legsVis = math.clamp((down + .19) / .22, 0, 1) ^ .62
 
 	if rig.mode == "operator" then
-		local ok, err = pcall(OperatorShell.draw, rig.shell, cameraCF, isLocal, torsoVis, legsVis)
+		local ok, err = pcall(OperatorShell.draw, rig.shell, rig, cameraCF, isLocal, torsoVis, legsVis)
 		if not ok then report("draw", err) end
+		-- Report once, a second in, where the body actually IS and how much of
+		-- it is on screen. "It built" and "you can see it" are different claims
+		-- and three rounds were lost to only ever checking the first.
+		if isLocal and not rig.told and os.clock() - (rig.born or 0) &gt; 1 then
+			rig.told = true
+			local at, shown = OperatorShell.where(rig.shell)
+			local head = rig.poseWorld and rig.poseWorld.Head
+			print(("[BLACKSITE] operator body: at %s | %d/%d pieces visible | head %s | solve=%s")
+				:format(at and tostring(at) or "nowhere", shown, rig.shell.pieces,
+					head and tostring(head.Position) or "?", tostring(rig.shell.posed)))
+		end
 		-- Re-hide the R15 shell EVERY frame. LocalTransparencyModifier is not a
 		-- setting, it is a per-frame value: Roblox's own first-person handling
 		-- rewrites it on the local character, so hiding the shell once at build
@@ -23653,29 +23665,26 @@ return WeaponGrips
 --
 -- So the R15 chain stays exactly what it was: posed first, evaluated into
 -- poseWorld, and read by the camera and the weapon. This module runs afterwards
--- and retargets that finished pose onto the operator's own skeleton, which is
--- then what gets drawn.
+-- and retargets that finished pose onto the operator's own skeleton.
 --
--- The retarget uses joint POSITIONS only -- for each bone, the direction from
--- one R15 part to the next -- and swings the bind direction onto it. Positions
--- carry no convention: it does not matter that R15 limb parts point +Y back up
--- toward their parent while Mixamo bones point +Y down toward their child, nor
--- that SoldierVisual's arm solver builds its own frames. Bone lengths come from
--- the operator, so the body keeps human proportions rather than being stretched
--- onto R15's.
+-- EVERY PART HAS TWO WAYS TO BE PLACED, AND THE SECOND ONE CANNOT FAIL
 --
--- Bones R15 does not have -- both clavicles, the second spine segment, the toes
--- -- have nothing to retarget from, so they keep the procedural values HumanPose
--- gives them. That is the whole reason those bones are worth having, and it
--- costs nothing: the shoulders roll into the gun and the feet roll through a
--- step underneath a gait that still comes from the same place it always did.
+-- Primary: the human skeleton, which gives real clavicles, a two-segment spine
+-- and toes. Fallback: an offset from the R15 part the segment belongs to,
+-- measured once at build, which is exactly how the old body was drawn and is
+-- therefore known to work.
+--
+-- The fallback is not decoration. Three rounds were lost to a body that built
+-- correctly, reported correctly and rendered nothing, because a fault anywhere
+-- in the solve left every part sitting at the world origin -- present, correct,
+-- and a hundred studs from the player. A part that cannot reach its bone now
+-- falls back to its R15 anchor instead of going home to 0,0,0.
 
 local HumanRig = require(script.Parent:WaitForChild("HumanRig"))
 local HumanPose = require(script.Parent:WaitForChild("HumanPose"))
 local HumanArms = require(script.Parent:WaitForChild("HumanArms"))
 local WeaponGrips = require(script.Parent:WaitForChild("WeaponGrips"))
 local Data = require(script.Parent:WaitForChild("SoldierRigData"))
-local Cfg = require(script.Parent:WaitForChild("GameConfig"))
 
 local OperatorShell = {}
 
@@ -23698,25 +23707,30 @@ local DIR = {
 }
 
 -- The head is the one bone a direction cannot describe: looking up and down
--- barely moves the neck joint, it rotates about it. This part comes straight
--- out of evaluateJoint, so it is in R15's own convention and composing it onto
--- the bind rotation is exact.
+-- barely moves the neck joint, it rotates about it.
 local ROT = {Head = "Head"}
 
 -- Which bone each direction is measured to in the bind pose.
 local CHILD = {
-	Hips = "Spine",
-	Spine = "Spine1",
-	Spine1 = "Neck",
-	Neck = "Head",
-	LeftArm = "LeftForeArm",
-	LeftForeArm = "LeftHand",
-	RightArm = "RightForeArm",
-	RightForeArm = "RightHand",
-	LeftUpLeg = "LeftLeg",
-	LeftLeg = "LeftFoot",
-	RightUpLeg = "RightLeg",
-	RightLeg = "RightFoot",
+	Hips = "Spine", Spine = "Spine1", Spine1 = "Neck", Neck = "Head",
+	LeftArm = "LeftForeArm", LeftForeArm = "LeftHand",
+	RightArm = "RightForeArm", RightForeArm = "RightHand",
+	LeftUpLeg = "LeftLeg", LeftLeg = "LeftFoot",
+	RightUpLeg = "RightLeg", RightLeg = "RightFoot",
+}
+
+-- Which R15 part each bone rides on when the skeleton cannot be trusted.
+local SOURCE = {
+	Hips = "LowerTorso", Spine = "LowerTorso", Spine1 = "UpperTorso",
+	Neck = "UpperTorso", Head = "Head",
+	LeftShoulder = "UpperTorso", LeftArm = "LeftUpperArm",
+	LeftForeArm = "LeftLowerArm", LeftHand = "LeftHand",
+	RightShoulder = "UpperTorso", RightArm = "RightUpperArm",
+	RightForeArm = "RightLowerArm", RightHand = "RightHand",
+	LeftUpLeg = "LeftUpperLeg", LeftLeg = "LeftLowerLeg",
+	LeftFoot = "LeftFoot", LeftToeBase = "LeftFoot",
+	RightUpLeg = "RightUpperLeg", RightLeg = "RightLowerLeg",
+	RightFoot = "RightFoot", RightToeBase = "RightFoot",
 }
 
 local GROUP = {
@@ -23738,11 +23752,34 @@ local SPINE_CHAIN = {"Spine", "Spine1", "Neck", "Head",
 	"LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
 	"RightShoulder", "RightArm", "RightForeArm", "RightHand"}
 
+local BINDDIR = nil
+local function bindDirs()
+	if BINDDIR then return BINDDIR end
+	BINDDIR = {}
+	for bone, child in CHILD do
+		local a = HumanRig.bindOf(bone).Position
+		local b = HumanRig.bindOf(child).Position
+		local d = b - a
+		if d.Magnitude &gt; 1e-5 then BINDDIR[bone] = d.Unit end
+	end
+	return BINDDIR
+end
+
+local function groundOf(character: Model): (CFrame?, number)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not hrp:IsA("BasePart") then return nil, 0 end
+	local hum = character:FindFirstChildOfClass("Humanoid")
+	local drop = (hum and hum.HipHeight or 2) + hrp.Size.Y * 0.5
+	return hrp.CFrame * CFrame.new(0, -drop, 0), drop
+end
+
+--------------------------------------------------------------------------------
+-- BUILD
+--------------------------------------------------------------------------------
+
 -- Fit the operator to the invisible R15 rig. The rig is what the camera, the
 -- weapon and the hit detection are all tuned against, so it is the thing that
--- must not move; the body is what gets sized to it. Measuring the rig at build
--- time rather than assuming a number keeps this right whatever
--- HumanoidDescription the server hands out.
+-- must not move; the body is what gets sized to it.
 --
 -- Two factors, not one. R15 carries its hips at roughly 60% of standing height
 -- and a human carries them at 52%, so a single scale that puts the feet on the
@@ -23773,23 +23810,6 @@ local function fitScales(character: Model): (any, number)
 	return out, legs
 end
 
-local BINDDIR = nil
-local function bindDirs()
-	if BINDDIR then return BINDDIR end
-	BINDDIR = {}
-	for bone, child in CHILD do
-		local a = HumanRig.bindOf(bone).Position
-		local b = HumanRig.bindOf(child).Position
-		local d = b - a
-		if d.Magnitude &gt; 1e-5 then BINDDIR[bone] = d.Unit end
-	end
-	return BINDDIR
-end
-
---------------------------------------------------------------------------------
--- BUILD
---------------------------------------------------------------------------------
-
 function OperatorShell.build(character: Model, holder: Instance): any?
 	local models = game:GetService("ReplicatedStorage"):FindFirstChild("CharacterModels")
 	local imported = models and (models:FindFirstChild("SwatOperator")
@@ -23805,18 +23825,38 @@ function OperatorShell.build(character: Model, holder: Instance): any?
 		return nil
 	end
 
-	return {
+	local shell = {
 		rig = hr,
 		mode = hr.mode,
 		scale = legScale,
-		-- Read back off the built rig so they already carry the fitted scale.
 		hipY = hr.bones.Hips.bind.Position.Y,
 		footY = hr.bones.LeftFoot.bind.Position.Y,
 		character = character,
 		motion = HumanPose.newState(),
 		base = {},
 		pieces = #hr.parts,
+		posed = false,
 	}
+
+	-- Measure each piece's offset from the R15 part it belongs to, with the
+	-- character in the pose it spawned in. This is the placement that cannot
+	-- fail, and it is what puts the body on screen on frame one -- before any
+	-- solve has run.
+	local ground = groundOf(character)
+	if ground then
+		for _, p in ipairs(hr.parts) do
+			local srcName = SOURCE[p.bone]
+			local src = srcName and character:FindFirstChild(srcName)
+			local bone = hr.bones[p.bone]
+			if src and src:IsA("BasePart") and bone then
+				p.source = srcName
+				p.anchor = src.CFrame:Inverse() * (ground * bone.bind * p.offset)
+				p.part.CFrame = src.CFrame * p.anchor
+			end
+		end
+	end
+
+	return shell
 end
 
 function OperatorShell.destroy(shell: any)
@@ -23896,6 +23936,7 @@ local function groundError(character: Model, hr: any, footY: number): number
 end
 
 function OperatorShell.pose(shell: any, rig: any, state: any)
+	shell.posed = false
 	local hr = shell.rig
 	local pw = rig.poseWorld
 	if not pw or not pw.LowerTorso then return end
@@ -23918,6 +23959,10 @@ function OperatorShell.pose(shell: any, rig: any, state: any)
 	if math.abs(dy) &gt; 0.002 then
 		walk(hr, root + Vector3.new(0, dy, 0), pw, base)
 	end
+
+	-- Only now is the skeleton trusted. A pose that threw before this line
+	-- leaves `posed` false and every piece falls back to its R15 anchor, which
+	-- is a slightly stiffer body rather than no body at all.
 	shell.posed = true
 end
 
@@ -23935,10 +23980,9 @@ function OperatorShell.arms(shell: any, rig: any, weaponCF: CFrame?, def: any?, 
 	if not shell.posed or not weaponCF then return end
 	local grips = WeaponGrips.forDef(def)
 	if not grips then return end
-	local hr = shell.rig
 	local ads = (pose and pose.adsAlpha) or shell.motion.ads or 0
 
-	HumanArms.holdWeapon(hr, weaponCF, grips, Data.HANDS, {
+	HumanArms.holdWeapon(shell.rig, weaponCF, grips, Data.HANDS, {
 		ads = ads,
 		leftTrim = def and def.gripTrimLeft,
 		rightTrim = def and def.gripTrimRight,
@@ -23958,18 +24002,19 @@ local function nearPlane(part: BasePart, cameraCF: CFrame): number
 	return math.clamp(((-localCF.Position.Z - extent) - 0.055) / 0.17, 0, 1)
 end
 
-function OperatorShell.draw(shell: any, cameraCF: CFrame, isLocal: boolean,
+function OperatorShell.draw(shell: any, rig: any, cameraCF: CFrame, isLocal: boolean,
 	torsoVis: number, legsVis: number)
 	local hr = shell.rig
-	HumanRig.apply(hr)
+	local pw = rig and rig.poseWorld
 
 	if hr.mode == "skinned" then
-		-- One mesh, so it cannot be split by body part. In first person the near
-		-- plane is what removes the head: it is the only thing close enough to
-		-- the camera to be culled by it.
+		if shell.posed then HumanRig.apply(hr) end
 		if hr.model then
 			for _, d in hr.model:GetDescendants() do
 				if d:IsA("BasePart") then
+					-- One mesh, so it cannot be split by body part. In first
+					-- person the near plane is what removes the head: it is the
+					-- only thing close enough to the camera to be culled by it.
 					d.LocalTransparencyModifier = isLocal and (1 - nearPlane(d, cameraCF)) or 0
 				end
 			end
@@ -23979,6 +24024,13 @@ function OperatorShell.draw(shell: any, cameraCF: CFrame, isLocal: boolean,
 
 	for _, p in ipairs(hr.parts) do
 		if p.part.Parent then
+			local bone = shell.posed and hr.bones[p.bone]
+			if bone then
+				p.part.CFrame = bone.world * p.offset
+			elseif p.anchor and pw and pw[p.source] then
+				p.part.CFrame = pw[p.source] * p.anchor
+			end
+
 			local group = GROUP[p.group] or "torso"
 			local vis
 			if not isLocal then
@@ -23996,6 +24048,27 @@ function OperatorShell.draw(shell: any, cameraCF: CFrame, isLocal: boolean,
 			p.part.LocalTransparencyModifier = 1 - math.clamp(vis, 0, 1)
 		end
 	end
+end
+
+-- Where the body actually ended up, for the startup diagnostic. "It built" and
+-- "you can see it" are different claims and only the second one matters.
+function OperatorShell.where(shell: any): (Vector3?, number)
+	local hr = shell and shell.rig
+	if not hr then return nil, 0 end
+	if hr.mode == "skinned" then
+		local part = hr.anchorPart
+		return part and part.Position or nil, part and 1 or 0
+	end
+	local shown = 0
+	local sum, n = Vector3.zero, 0
+	for _, p in ipairs(hr.parts) do
+		if p.part.Parent then
+			sum += p.part.Position
+			n += 1
+			if p.part.LocalTransparencyModifier &lt; 0.95 then shown += 1 end
+		end
+	end
+	return n &gt; 0 and (sum / n) or nil, shown
 end
 
 return OperatorShell
