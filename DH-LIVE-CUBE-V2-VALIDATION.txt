@@ -1,0 +1,12 @@
+VS Genesis DH live cube v2 validation
+Generated: 2026-07-31
+
+PASS Java 21 compilation: 10 generated/replaced class files
+PASS Cube-net geometry: 120000 randomized face + exact round-trip checks
+PASS Packaged class hash comparison: 10/10
+PASS Nested DH byte comparison: exact match
+PASS Jar-in-Jar metadata JSON parse
+PASS Outer JAR ZIP integrity
+PASS Shader descriptor JSON parse
+
+Not executed: full NeoForge client launch / GPU render / multiplayer session.

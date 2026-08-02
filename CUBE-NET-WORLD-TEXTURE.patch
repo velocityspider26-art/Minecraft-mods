@@ -1,0 +1,1436 @@
+--- a/src/main/java/shipwrights/genesis/teleportation/SpaceTravelManager.java
++++ b/src/main/java/shipwrights/genesis/teleportation/SpaceTravelManager.java
+@@ -133,44 +133,6 @@
+      */
+     public static double entryPadding(double celestialSize) {
+         return celestialSize >= LARGE_BODY_SIZE ? PLANET_ENTRY_PADDING : SMALL_BODY_ENTRY_PADDING;
+-    }
+-
+-    /**
+-     * The side of a planet each traveller entered through, as a unit direction
+-     * in the planet's own rotating frame.
+-     *
+-     * <p>Leaving has to come back out where you went in. Reconstructing that
+-     * from surface coordinates cannot work: entry through the top face lands
+-     * you near the planet's origin, from which no direction can be recovered,
+-     * and the result was surfacing on the far side. Remembering the entry
+-     * direction makes the round trip exact, and because it is stored in the
+-     * planet's rotating frame it stays correct as the planet turns and moves
+-     * along its orbit.</p>
+-     */
+-    private static final java.util.Map<UUID, Vector3d> ENTRY_DIRECTIONS =
+-            new java.util.concurrent.ConcurrentHashMap<>();
+-
+-    /** Records which side of a planet a traveller went in through. */
+-    public static void recordEntryDirection(UUID id, Vector3dc localEntryPoint) {
+-        if (id == null || localEntryPoint == null) {
+-            return;
+-        }
+-        Vector3d direction = new Vector3d(localEntryPoint);
+-        if (direction.lengthSquared() < 1.0E-9) {
+-            return;
+-        }
+-        ENTRY_DIRECTIONS.put(id, direction.normalize());
+-        LAST_SEEN.put(id, System.currentTimeMillis());
+-    }
+-
+-    /**
+-     * The side to leave a planet from: where the traveller came in, or the top
+-     * if they never flew in (a command teleport, say), so an exit is always
+-     * somewhere predictable rather than an arbitrary point on the equator.
+-     */
+-    public static Vector3d exitDirection(UUID id) {
+-        Vector3d recorded = id == null ? null : ENTRY_DIRECTIONS.get(id);
+-        return recorded != null ? new Vector3d(recorded) : new Vector3d(0.0, 1.0, 0.0);
+     }
+ 
+     /** Where each traveler last arrived in space, for the entry-suppression buffer. */
+--- a/src/main/java/shipwrights/genesis/teleportation/integration/SpaceToPlanetTeleporter.java
++++ b/src/main/java/shipwrights/genesis/teleportation/integration/SpaceToPlanetTeleporter.java
+@@ -27,6 +27,7 @@
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.SpaceLevel;
+ import shipwrights.genesis.teleportation.ArrivalGate;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ import shipwrights.genesis.teleportation.impl.EntityTeleporter;
+ 
+@@ -42,7 +43,6 @@
+  * players standing on or seated in a ship are left to travel with it.
+  */
+ public class SpaceToPlanetTeleporter {
+-	private static final double PLANET_ENTRY_SCALE = 16.0;
+ 	/** Widest entry band any body uses, for the approach pre-generation radius. */
+ 	private static final double MAX_ENTRY_PADDING = SpaceTravelManager.PLANET_ENTRY_PADDING;
+ 	/** How far out (relative to the planet's half-extent) terrain pre-generation starts. */
+@@ -113,10 +113,6 @@
+ 					ServerLevel planetLevel = destinationLevel(level, registry, shipEntered);
+ 					if (planetLevel != null) {
+ 						Vec3 target = computePlanetTarget(shipEntered.localPoint(), shipEntered.celestial(), planetLevel);
+-						// Remember which side we went in through, so leaving comes
+-						// back out there instead of somewhere across the planet.
+-						SpaceTravelManager.recordEntryDirection(player.getUUID(), shipEntered.localPoint());
+-						SpaceTravelManager.recordEntryDirection(ship.getUniqueId(), shipEntered.localPoint());
+ 						GenesisMod.LOGGER.info("[ENTRY] Ship {} aboard {} entering {}",
+ 								ship.getUniqueId(), player.getGameProfile().getName(),
+ 								planetLevel.dimension().location());
+@@ -176,7 +172,6 @@
+ 					planetLevel.dimension().location());
+ 			SpaceTravelManager.logShips(level, player.position(), "ENTRY-SOLO");
+ 
+-			SpaceTravelManager.recordEntryDirection(player.getUUID(), entered.localPoint());
+ 			holdPlayerCrossing(level, player, planetLevel, target);
+ 		}
+ 	}
+@@ -309,8 +304,8 @@
+ 			if (reach > 1.0E-6) {
+ 				local.mul(cubeHalf / reach);
+ 			}
+-			Vec3 column = surfaceColumn(celestial, local);
+-			ChunkPos center = new ChunkPos(BlockPos.containing(column.x, 0.0, column.z));
++			CubeNetSurfaceTransform.SurfacePoint column = surfaceColumn(celestial, local);
++			ChunkPos center = new ChunkPos(BlockPos.containing(column.worldX(), 0.0, column.worldZ()));
+ 			planetLevel.getChunkSource().addRegionTicket(APPROACH_TICKET, center, ticketRadius, center.getWorldPosition());
+ 		}
+ 	}
+@@ -322,36 +317,31 @@
+ 	}
+ 
+ 	/**
+-	 * Where a point in a planet's local frame lands on its surface, in planet
+-	 * blocks (y is left at zero — this identifies the column, not the height).
++	 * Maps a point in the celestial's rotating local frame into one of the six
++	 * cube-net regions in the planet world.
+ 	 *
+-	 * <p>The point sits on the PADDED cube (surface + entry band), so it is
+-	 * scaled back onto the surface cube before the 1:16 map is applied —
+-	 * otherwise a spot visually next to the planet in space lands thousands of
+-	 * blocks out on the ground.</p>
+-	 *
+-	 * <p>Entry and approach pre-generation both go through here, and they must:
+-	 * while pre-generation applied the 1:16 map <em>without</em> this scaling,
+-	 * every ticket it placed was about five times further from the origin than
+-	 * the column actually landed in. The approach warmed real chunks, just never
+-	 * the right ones, so the arrival still had to generate its terrain from
+-	 * cold — with the loading screen up for exactly as long as that took.</p>
++	 * <p>The ray is projected onto the padded entry cube, the dominant axis
++	 * selects the face, and the face's texture-oriented axes become the region's
++	 * world X/Z. The up face remains centred on the origin, preserving the old
++	 * mapping for existing saves, while side and bottom approaches now retain the
++	 * dimension that the old X/Z-only projection discarded.</p>
+ 	 */
+-	private static Vec3 surfaceColumn(Celestial celestial, Vector3dc localPoint) {
+-		double halfExtent = celestial.getActualSize() / 2.0;
+-		double scale = halfExtent
+-				/ (halfExtent + SpaceTravelManager.entryPadding(celestial.getActualSize()))
+-				* PLANET_ENTRY_SCALE;
+-		return new Vec3(localPoint.x() * scale, 0.0, localPoint.z() * scale);
++	private static CubeNetSurfaceTransform.SurfacePoint surfaceColumn(
++			Celestial celestial, Vector3dc localPoint) {
++		CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++				celestial.getActualSize(), SpaceTravelManager.entryPadding(celestial.getActualSize()));
++		return transform.localToWorld(localPoint.x(), localPoint.y(), localPoint.z());
+ 	}
+ 
+ 	private static Vec3 computePlanetTarget(Vector3dc localEntryPoint, Celestial celestial, ServerLevel planetLevel) {
+-		Vec3 column = surfaceColumn(celestial, localEntryPoint);
++		CubeNetSurfaceTransform.SurfacePoint column = surfaceColumn(celestial, localEntryPoint);
+ 		// High above the build cap on purpose: reentry is a real fall through
+ 		// the planet's upper atmosphere. Scaled to the world's own atmosphere, so
+ 		// you drop in low over an airless world instead of falling 19k blocks.
+ 		double y = AtmosphereHeights.arrivalHeight(celestial);
+-		return new Vec3(column.x, y, column.z);
++		GenesisMod.LOGGER.info("[CUBENET] entry through {} -> surface ({}, {})",
++				column.face(), Math.round(column.worldX()), Math.round(column.worldZ()));
++		return new Vec3(column.worldX(), y, column.worldZ());
+ 	}
+ 
+ 	/**
+@@ -440,7 +430,8 @@
+ 			}
+ 
+ 			Vector3d local = toLocalCelestialPoint(celestial, registry, ticks, position);
+-			double halfExtent = celestial.getActualSize() / 2.0 + padding;
++			double halfExtent = celestial.getActualSize() / 2.0
++					+ SpaceTravelManager.entryPadding(celestial.getActualSize()) + padding;
+ 			if (
+ 					Math.abs(local.x) <= halfExtent &&
+ 					Math.abs(local.y) <= halfExtent &&
+--- a/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java
++++ b/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java
+@@ -29,6 +29,7 @@
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
+ import shipwrights.genesis.teleportation.ArrivalGate;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ import shipwrights.genesis.teleportation.impl.EntityTeleporter;
+ 
+@@ -44,14 +45,8 @@
+  * players aboard a ship are left to travel with it.
+  */
+ public class PlanetToSpaceTeleporter {
+-	private static final double PLANET_TO_SPACE_SCALE = 1.0 / 16.0;
+ 	/** "Near space" buffer above the atmosphere ceiling before the dimension swap. */
+ 	private static final double SPACE_TELEPORT_BUFFER = 1000.0;
+-	/**
+-	 * Arrive near the celestial's upper rim rather than level with its middle,
+-	 * so leaving a planet reads as "climbed off the top", not "appeared beside".
+-	 */
+-	private static final double SPACE_ENTRY_Y = 224.0;
+ 	/** Blocks below the exit ceiling where space chunks start pre-generating. */
+ 	private static final double PRE_EXIT_BAND = 60.0;
+ 	private static final int PREGEN_INTERVAL_TICKS = 100;
+@@ -118,7 +113,7 @@
+ 				Vector3dc shipPos = ship.logicalPose().position();
+ 				double referenceY = Math.max(shipPos.y(), player.getY());
+ 				if (referenceY >= exitHeight) {
+-					Vec3 target = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z(), ship.getUniqueId());
++					Vec3 target = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z());
+ 					GenesisMod.LOGGER.info("[LAUNCH] Ship {} aboard {} crossing to space at y={}",
+ 							ship.getUniqueId(), player.getGameProfile().getName(), (long) referenceY);
+ 					holdShipCrossing(level, ship, spaceLevel, target);
+@@ -126,7 +121,7 @@
+ 					// The ship is what crosses, so warm the chunks IT will arrive
+ 					// in — a player standing off-centre on a large deck names a
+ 					// different column, and that is not where anyone lands.
+-					pregenAscent(level, spaceLevel, celestial, shipPos.x(), shipPos.z(), ship.getUniqueId());
++					pregenAscent(level, spaceLevel, celestial, shipPos.x(), shipPos.z());
+ 				}
+ 				continue;
+ 			}
+@@ -137,7 +132,7 @@
+ 
+ 			if (player.getY() < exitHeight) {
+ 				if (player.getY() > exitHeight - PRE_EXIT_BAND) {
+-					pregenAscent(level, spaceLevel, celestial, player.getX(), player.getZ(), player.getUUID());
++					pregenAscent(level, spaceLevel, celestial, player.getX(), player.getZ());
+ 				}
+ 				continue;
+ 			}
+@@ -153,14 +148,14 @@
+ 					continue;
+ 				}
+ 				Vector3dc shipPos = nearbyShip.logicalPose().position();
+-				Vec3 shipTarget = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z(), nearbyShip.getUniqueId());
++				Vec3 shipTarget = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z());
+ 				GenesisMod.LOGGER.info("[LAUNCH] Solo player {} was on ship {} (radius net) -> carrying whole ship",
+ 						player.getGameProfile().getName(), nearbyShip.getUniqueId());
+ 				holdShipCrossing(level, nearbyShip, spaceLevel, shipTarget);
+ 				continue;
+ 			}
+ 
+-			Vec3 target = computeSpaceTarget(level, celestial, player.getX(), player.getZ(), player.getUUID());
++			Vec3 target = computeSpaceTarget(level, celestial, player.getX(), player.getZ());
+ 			GenesisMod.LOGGER.info("[LAUNCH] Player {} crossed to space solo at y={}",
+ 					player.getGameProfile().getName(), (long) player.getY());
+ 			SpaceTravelManager.logShips(level, player.position(), "LAUNCH-SOLO");
+@@ -232,12 +227,12 @@
+ 
+ 			if (shipPos.y() < exitHeight) {
+ 				if (shipPos.y() > exitHeight - PRE_EXIT_BAND) {
+-					pregenAscent(level, spaceLevel, celestial, shipPos.x(), shipPos.z(), ship.getUniqueId());
+-				}
+-				continue;
+-			}
+-
+-			Vec3 target = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z(), ship.getUniqueId());
++					pregenAscent(level, spaceLevel, celestial, shipPos.x(), shipPos.z());
++				}
++				continue;
++			}
++
++			Vec3 target = computeSpaceTarget(level, celestial, shipPos.x(), shipPos.z());
+ 			holdShipCrossing(level, ship, spaceLevel, target);
+ 		}
+ 	}
+@@ -246,22 +241,18 @@
+ 	 * Pre-generates the space-side entry chunks while a traveler climbs the last
+ 	 * stretch.
+ 	 *
+-	 * <p>The traveler's id is not optional. An exit leaves from the side the
+-	 * traveler <em>entered</em> through (see {@link #computeSpaceTarget}), and
+-	 * without the id this reconstructed a direction from surface coordinates
+-	 * instead — so it warmed a point somewhere else on the body's shell, and the
+-	 * arrival still generated from cold with the loading screen up throughout.
+-	 * The height matters too: the arrival sits at a real y in space, and a
+-	 * region ticket around y=0 claims a different column of chunks than the one
+-	 * the traveler lands in.</p>
++	 * <p>The target comes from the same cube-net inverse as the real launch, so
++	 * pre-generation and transfer cannot disagree about which face of the body
++	 * receives the traveler. The height matters too: the arrival sits at a real
++	 * y in space, and a region ticket around y=0 claims a different column of
++	 * chunks than the one the traveler lands in.</p>
+ 	 */
+-	private void pregenAscent(ServerLevel level, ServerLevel spaceLevel, Celestial celestial, double x, double z,
+-			java.util.UUID traveller) {
++	private void pregenAscent(ServerLevel level, ServerLevel spaceLevel, Celestial celestial, double x, double z) {
+ 		if (pregenClock % PREGEN_INTERVAL_TICKS != 0) {
+ 			return;
+ 		}
+ 
+-		Vec3 target = computeSpaceTarget(level, celestial, x, z, traveller);
++		Vec3 target = computeSpaceTarget(level, celestial, x, z);
+ 		ArrivalGate.prepare(spaceLevel, target);
+ 		ChunkPos center = new ChunkPos(BlockPos.containing(target.x, target.y, target.z));
+ 		spaceLevel.getChunkSource().addRegionTicket(ASCENT_TICKET, center, 3, center.getWorldPosition());
+@@ -281,56 +272,36 @@
+     }
+ 
+ 	/**
+-	 * @param traveller whose remembered entry side to leave from; null falls back
+-	 *                  to reconstructing a direction from surface coordinates
++	 * Inverts the cube-net surface transform and places the traveler just off
++	 * the matching face of the rotating celestial.
++	 *
++	 * <p>No per-player memory participates. The planet-world X/Z identifies a
++	 * face region and texture-oriented coordinates inside it; those reconstruct
++	 * the exact point on the padded entry cube. Normalising that direction to the
++	 * exit standoff gives an exact entry/exit round trip even after relogging or
++	 * changing ships.</p>
+ 	 */
+-	private static Vec3 computeSpaceTarget(ServerLevel level, Celestial celestial, double x, double z,
+-			java.util.UUID traveller) {
++	private static Vec3 computeSpaceTarget(ServerLevel level, Celestial celestial, double x, double z) {
+ 		Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+ 		long ticks = GenesisMod.getTicks(level);
+ 
+-		// Leaving must be the INVERSE of arriving, or you surface somewhere else
+-		// entirely — land on the sunward side and pop out behind the planet.
+-		// Entry maps a point on the padded entry cube onto the surface with
+-		// `local * surfaceProjection * 16`, so undo exactly that to recover which
+-		// side of the planet you are standing on.
+-		double half = celestial.getActualSize() / 2.0;
+-		double surfaceProjection = half / (half + SpaceTravelManager.PLANET_ENTRY_PADDING);
+-		Vector3d local = new Vector3d(
+-				x * PLANET_TO_SPACE_SCALE / surfaceProjection,
+-				0.0,
+-				z * PLANET_TO_SPACE_SCALE / surfaceProjection);
+-
+-		// Prefer the side actually entered through: surface coordinates alone
+-		// cannot express it (a top-face entry lands near the origin, where no
+-		// direction survives), which is how leaving could put you across the
+-		// planet. Falling back to straight up keeps a command teleport, which
+-		// has no entry to remember, somewhere predictable.
+-		Vector3d remembered = traveller == null ? null : SpaceTravelManager.exitDirection(traveller);
+-		if (remembered != null) {
+-			local.set(remembered);
+-		}
+-		if (local.lengthSquared() < 1.0E-6) {
++		CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++				celestial.getActualSize(), SpaceTravelManager.entryPadding(celestial.getActualSize()));
++		CubeNetSurfaceTransform.LocalPoint shell = transform.worldToLocal(x, z);
++		Vector3d local = new Vector3d(shell.x(), shell.y(), shell.z());
++		if (local.lengthSquared() < 1.0E-9) {
+ 			local.set(0.0, 1.0, 0.0);
+ 		}
+ 
+-		// Sit just off the surface so the planet fills the view below you. The
+-		// arrival ring (1.5x the padded entry cube) was tried here and put you
+-		// over a thousand blocks out, leaving the planet a speck. Re-entry is
+-		// already prevented by crossing detection — you arrive INSIDE the entry
+-		// zone, so you were never outside it to cross in from — which is what
+-		// makes this close standoff safe.
+-		local.normalize(half + SpaceTravelManager.ATMOSPHERE_EXIT_CLEARANCE);
++		local.normalize(transform.halfExtent() + SpaceTravelManager.ATMOSPHERE_EXIT_CLEARANCE);
+ 		celestial.getRotation(ticks, 0.0f, registry).transform(local);
+ 
+-		// Use the WHOLE offset. Taking only x/z and substituting a fixed height
+-		// put you inside the planet whenever the exit direction was vertical —
+-		// straight up leaves x and z at zero, so the result was the body's own
+-		// centre raised by a couple of hundred blocks, which for anything
+-		// Earth-sized is under the surface. That is why the planet vanished from
+-		// below you on leaving.
+ 		Vector3d center = new Vector3d(celestial.getPosition(ticks, registry));
+-		return new Vec3(center.x + local.x, center.y + local.y, center.z + local.z);
+-	}
+-
++		Vec3 target = new Vec3(center.x + local.x, center.y + local.y, center.z + local.z);
++		GenesisMod.LOGGER.info("[CUBENET] launch from {}{} surface ({}, {}) -> local ({}, {}, {})",
++				shell.face(), shell.outsideNetFallback() ? " [legacy fallback]" : "",
++				Math.round(x), Math.round(z),
++				Math.round(shell.x()), Math.round(shell.y()), Math.round(shell.z()));
++		return target;
++	}
+ }
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
+@@ -1,31 +1,48 @@
+ package shipwrights.genesis.space.surface;
+ 
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
+ /**
+- * One planet's surface as sampled from its own world: what it looks like, and
+- * what shape it is.
++ * One planet's six cube-net surface regions as sampled from its own world:
++ * what each face looks like, and what shape it is.
+  *
+- * <p>Colour alone can only ever produce a painted ball — relief has to be faked
+- * by shading, and from orbit that reads as a flat sticker on a cube. Carrying
+- * the real column heights as well is what lets the planet be built as
+- * geometry, so a mountain range has a silhouette against the sky and the
+- * terminator falls across it the way it would on a real body.</p>
++ * <p>Arrays are face-major in the exact atlas order declared by
++ * {@link CubeNetSurfaceTransform.Face}: north, west, south, east, down, up.
++ * Each face contributes {@link PlanetSurfaceSampler#RESOLUTION} squared
++ * row-major values. Keeping this order identical from world sampling through
++ * the network packet to the GPU texture is what makes a visible point on the
++ * orbital cube name the same coordinates used for atmosphere entry.</p>
+  *
+- * <p>Heights are raw world Y, not normalised. The range travels with them so
+- * the client can scale relief without a second pass, and so a body whose
+- * terrain spans forty blocks does not get stretched into the same dramatic
+- * landscape as one that spans three hundred.</p>
++ * <p>Heights are raw world Y, not normalised. The range travels with them so a
++ * later geometry pass can scale relief without a second scan.</p>
+  *
+- * @param colours {@link PlanetSurfaceSampler#RESOLUTION}² ARGB texels, row-major
+- * @param heights the same grid, as world Y of each column's surface
+- * @param minHeight lowest sampled column
+- * @param maxHeight highest sampled column
++ * @param colours six face grids of ARGB texels, face-major
++ * @param heights the same six grids, as world Y of each column's surface
++ * @param minHeight lowest sampled column across all six regions
++ * @param maxHeight highest sampled column across all six regions
+  */
+ public record PlanetSurfaceData(int[] colours, short[] heights, int minHeight, int maxHeight) {
+-    public static int expectedLength() {
++    public static int faceLength() {
+         return PlanetSurfaceSampler.RESOLUTION * PlanetSurfaceSampler.RESOLUTION;
+     }
+ 
+-    /** Whether this is a complete, self-consistent grid. */
++    public static int expectedLength() {
++        return CubeNetSurfaceTransform.Face.values().length * faceLength();
++    }
++
++    public static int faceOffset(CubeNetSurfaceTransform.Face face) {
++        return face.ordinal() * faceLength();
++    }
++
++    public static int index(CubeNetSurfaceTransform.Face face, int x, int y) {
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++        if (x < 0 || x >= resolution || y < 0 || y >= resolution) {
++            throw new IndexOutOfBoundsException("surface texel " + x + "," + y);
++        }
++        return faceOffset(face) + y * resolution + x;
++    }
++
++    /** Whether this is a complete, self-consistent six-face atlas. */
+     public boolean isValid() {
+         return colours != null && heights != null
+                 && colours.length == expectedLength()
+@@ -33,8 +50,8 @@
+     }
+ 
+     /**
+-     * How far above the lowest point a column stands, 0 to 1. Flat worlds
+-     * report zero throughout rather than dividing by nothing.
++     * How far above the lowest sampled point a column stands, 0 to 1. Flat
++     * worlds report zero throughout rather than dividing by nothing.
+      */
+     public float relief(int index) {
+         int span = maxHeight - minHeight;
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
+@@ -3,9 +3,9 @@
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.QuartPos;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.util.Mth;
+ import net.minecraft.server.level.ServerChunkCache;
+ import net.minecraft.server.level.ServerLevel;
++import net.minecraft.util.Mth;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.LevelHeightAccessor;
+ import net.minecraft.world.level.biome.Biome;
+@@ -15,91 +15,44 @@
+ import net.minecraft.world.level.levelgen.Heightmap;
+ import net.minecraft.world.level.levelgen.RandomState;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ /**
+- * Turns a planet's actual world into the picture of it seen from orbit.
++ * Turns a planet's six cube-net world regions into the six faces seen from
++ * orbit.
+  *
+- * <p>The planet in space used to be a painted texture, which meant orbit showed
+- * an artist's idea of the world rather than the world. This reads the real
+- * thing: the terrain height and biome that the dimension's generator produces,
+- * sampled on a coarse grid and written out as pixels.</p>
+- *
+- * <p>Nothing is loaded to do it. Asking the generator directly for a column's
+- * height, and the biome source directly for its biome, gives the same answer a
+- * generated chunk would without generating one — so a whole planet can be
+- * mapped without forcing tens of thousands of chunks into memory.</p>
+- *
+- * <p>This sees generated terrain only. Player-built structures live in saved
+- * chunks and are not reflected: reading those meant a chunk lookup per texel,
+- * which cost more than the rest of the sample put together.</p>
++ * <p>Nothing is loaded to do it. The generator is asked directly for each
++ * column's height and biome, so the atlas represents generated terrain without
++ * forcing tens of thousands of chunks into memory. Player-built structures are
++ * deliberately not included; reflecting those would require saved-chunk reads
++ * and a continuously changing texture stream.</p>
+  */
+ public final class PlanetSurfaceSampler {
+-    /**
+-     * Grid resolution per side. One texel covers many blocks.
+-     *
+-     * <p>64, on measured evidence rather than taste. At 128 the overworld
+-     * sampled in 1.1 seconds but Mercury and the Moon had not finished a
+-     * minute later — their noise settings cost dramatically more per column,
+-     * and 128² is 16384 columns. Sixteen times the work of a cube face being
+-     * drawn at a few hundred pixels on screen was never worth it; a quarter of
+-     * that is.</p>
+-     */
++    /** Grid resolution of each individual cube face. */
+     public static final int RESOLUTION = 64;
+ 
+     /**
+-     * How long a single planet may take before it is given up on. Reaching this
+-     * means a generator is pathologically slow per column, and no amount of
+-     * waiting produces a better outcome than the painted texture.
++     * Six faces are now sampled rather than one repeated square. The old
++     * 30-second total deadline was shorter than a healthy throttled overworld
++     * pass, so the budget scales with the actual work while still abandoning a
++     * pathological generator instead of running forever.
+      */
+-    private static final long DEADLINE_NANOS = 30_000_000_000L; // 30 s
+-    /** Texels between deadline checks. Coarse; this runs on its own thread. */
++    private static final long DEADLINE_NANOS = 90_000_000_000L; // 90 s
+     private static final int DEADLINE_CHECK_INTERVAL = 256;
+ 
+-    /**
+-     * Fraction of one core the sampler is allowed to use.
+-     *
+-     * <p>Its own thread at minimum priority is not enough, and the logs said so:
+-     * Mercury's generator managed 12% of its grid in thirty seconds, about
+-     * 60 ms per column, each one building a whole noise column and throwing it
+-     * away. That is a flat-out core and an enormous allocation rate, and it ran
+-     * straight through a dimension crossing — which is already the most
+-     * allocation-heavy moment in the game. Thread priority does not help with
+-     * that, because the cost is garbage collection, and a collection stops
+-     * every thread including the ones the player can feel.</p>
+-     *
+-     * <p>So it is throttled by duty cycle instead: work a slice, then sleep
+-     * long enough that the average stays here. A cosmetic background job can
+-     * take as long as it likes; what it must never do is compete.</p>
+-     */
++    /** Fraction of one core the cosmetic sampler may use. */
+     private static final double CPU_SHARE = 0.15;
+-    /** Work slice between sleeps. Short enough that no single slice is felt. */
+     private static final long WORK_SLICE_NANOS = 2_000_000L; // 2 ms
+ 
+     private PlanetSurfaceSampler() {
+     }
+ 
+-    /**
+-     * A whole planet's sample, run off the server thread.
+-     *
+-     * <p>Sampling a planet costs tens of thousands of noise lookups, and each
+-     * one builds a noise column from scratch. Every attempt to fit that into
+-     * the tick has been a choice between two bad outcomes: run enough per tick
+-     * to finish in reasonable time and the tick stutters; run few enough not to
+-     * stutter and a planet takes minutes. There is no setting that is both,
+-     * because the work simply does not belong on the tick.</p>
+-     *
+-     * <p>So it does not go there. {@code getBaseHeight} and
+-     * {@code BiomeSource.getNoiseBiome} are what Minecraft's own worldgen
+-     * threads call, and everything this touches is either immutable or a
+-     * generator that is already required to be safe for concurrent use. The
+-     * server thread submits the job and later picks up a finished array; in
+-     * between it pays nothing at all.</p>
+-     */
++    /** A whole six-face planet sample, run off the server thread. */
+     public static final class Job {
+         private final ResourceKey<Level> dimension;
+         private final LevelHeightAccessor heightAccessor;
+-        private final int step;
+-        private final int origin;
++        private final int blockSpan;
++        private final double texelStep;
+         private final int seaLevel;
+         private final RandomState randomState;
+         private final ChunkGenerator generator;
+@@ -107,21 +60,17 @@
+         private final Climate.Sampler climateSampler;
+ 
+         /**
+-         * Must be constructed on the server thread — it reads the level's chunk
+-         * source. Everything it captures is then safe to use from
+-         * {@link #sample()} on a worker.
+-         *
+-         * @param blockSpan how many blocks across the sampled square is. This
+-         *                  has to match the span that atmosphere entry maps a
+-         *                  planet's surface onto, or the picture in orbit is of
+-         *                  the right world at the wrong zoom — and the mountain
+-         *                  you aim for is not the one you land on.
++         * @param blockSpan width in planet blocks of one cube-net face. This must
++         *                  match the atmosphere transform's celestial size ×16.
+          */
+         public Job(ServerLevel level, int blockSpan) {
++            if (blockSpan <= 0) {
++                throw new IllegalArgumentException("blockSpan must be positive");
++            }
+             this.dimension = level.dimension();
+             this.heightAccessor = level;
+-            this.step = Math.max(1, blockSpan / RESOLUTION);
+-            this.origin = -blockSpan / 2;
++            this.blockSpan = blockSpan;
++            this.texelStep = blockSpan / (double) RESOLUTION;
+             ServerChunkCache cache = level.getChunkSource();
+             this.randomState = cache.randomState();
+             this.generator = cache.getGenerator();
+@@ -134,33 +83,29 @@
+             return dimension;
+         }
+ 
+-        /**
+-         * Samples the whole grid. Returns null if the generator refused, or if
+-         * it is slow enough that finishing would not be worth what it costs.
+-         */
++        /** Samples all six regions. Returns null when the generator is too slow. */
+         public PlanetSurfaceData sample() {
+             try {
+                 long deadline = System.nanoTime() + DEADLINE_NANOS;
+-                int texels = RESOLUTION * RESOLUTION;
++                int faceTexels = PlanetSurfaceData.faceLength();
++                int texels = PlanetSurfaceData.expectedLength();
+                 int[] colours = new int[texels];
+                 short[] heights = new short[texels];
+                 int minHeight = Integer.MAX_VALUE;
+                 int maxHeight = Integer.MIN_VALUE;
+ 
+                 long sliceEnd = System.nanoTime() + WORK_SLICE_NANOS;
++                CubeNetSurfaceTransform.Face[] faces = CubeNetSurfaceTransform.Face.values();
+                 for (int index = 0; index < texels; index++) {
+                     if (index % DEADLINE_CHECK_INTERVAL == 0 && System.nanoTime() > deadline) {
++                        CubeNetSurfaceTransform.Face face = faces[Math.min(faces.length - 1, index / faceTexels)];
+                         GenesisMod.LOGGER.warn(
+-                                "[SURFACE] {} is generating too slowly to sample ({}% in {}s); keeping its painted texture",
+-                                dimension.location(), index * 100 / texels, DEADLINE_NANOS / 1_000_000_000L);
++                                "[SURFACE] {} is generating too slowly to sample six faces ({}%, on {} after {}s); keeping its painted texture",
++                                dimension.location(), index * 100 / texels, face,
++                                DEADLINE_NANOS / 1_000_000_000L);
+                         return null;
+                     }
+-                    // Stand down for a crossing already under way, not just for
+-                    // one about to start. Gating only the START was not enough
+-                    // and the log said so: Mercury began sampling 40 seconds
+-                    // before a launch and was still going 60 seconds after it,
+-                    // straight through the transition the guard was meant to
+-                    // protect.
++
+                     while (shipwrights.genesis.teleportation.ArrivalGate.crossingInProgress()) {
+                         Thread.sleep(50L);
+                         if (System.nanoTime() > deadline) {
+@@ -172,23 +117,30 @@
+ 
+                     long now = System.nanoTime();
+                     if (now >= sliceEnd) {
+-                        // Give back more than we took, so the average stays at
+-                        // CPU_SHARE however expensive a single column turns out
+-                        // to be on this world.
+                         long worked = WORK_SLICE_NANOS + (now - sliceEnd);
+                         long rest = (long) (worked * (1.0 / CPU_SHARE - 1.0));
+                         Thread.sleep(rest / 1_000_000L, (int) (rest % 1_000_000L));
+                         sliceEnd = System.nanoTime() + WORK_SLICE_NANOS;
+                     }
+-                    int worldX = origin + (index % RESOLUTION) * step;
+-                    int worldZ = origin + (index / RESOLUTION) * step;
++
++                    int faceIndex = index / faceTexels;
++                    int localIndex = index % faceTexels;
++                    int texelX = localIndex % RESOLUTION;
++                    int texelY = localIndex / RESOLUTION;
++                    CubeNetSurfaceTransform.Face face = faces[faceIndex];
++
++                    // Sample texel centres. Face centres use the same whole-span
++                    // offsets as CubeNetSurfaceTransform, so the texture and
++                    // atmosphere travel identify identical world regions.
++                    double faceCenterX = face.netColumnOffset() * (double) blockSpan;
++                    double faceCenterZ = face.netRowOffset() * (double) blockSpan;
++                    int worldX = Mth.floor(faceCenterX - blockSpan * 0.5
++                            + (texelX + 0.5) * texelStep);
++                    int worldZ = Mth.floor(faceCenterZ - blockSpan * 0.5
++                            + (texelY + 0.5) * texelStep);
++
+                     int height = generator.getBaseHeight(
+                             worldX, worldZ, Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
+-                    // Straight to the biome source, in quart coordinates. Going
+-                    // through the level's biome manager costs a chunk-map lookup
+-                    // per texel to find the chunk that (by design) is not
+-                    // loaded, only to fall back to this exact call anyway — and
+-                    // that lookup is not safe off the server thread.
+                     Holder<Biome> biome = biomeSource.getNoiseBiome(
+                             QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
+                             QuartPos.fromBlock(worldZ), climateSampler);
+@@ -205,14 +157,6 @@
+         }
+     }
+ 
+-    /**
+-     * A plausible colour for a column, from its biome and how high it stands.
+-     *
+-     * <p>Biome colour alone makes a planet look flat, because the thing that
+-     * reads as terrain from orbit is relief. Height is folded in as shading:
+-     * below sea level goes to water, and peaks lighten toward bare rock and
+-     * snow, which is what puts mountain ranges on the globe.</p>
+-     */
+     private static int colorFor(Holder<Biome> biome, int height, int seaLevel) {
+         if (height < seaLevel) {
+             int depth = Math.max(0, seaLevel - height);
+@@ -225,8 +169,6 @@
+                 ? biome.value().getFoliageColor()
+                 : biome.value().getGrassColor(0.0, 0.0);
+ 
+-        // Lighten with altitude so relief is visible, tipping to near-white at
+-        // the heights where snow and bare stone would actually be.
+         float above = Math.min(1.0f, Math.max(0, height - seaLevel) / 96.0f);
+         int r = (base >> 16) & 0xFF;
+         int g = (base >> 8) & 0xFF;
+--- a/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
++++ b/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
+@@ -7,6 +7,7 @@
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.space.surface.PlanetSurfaceData;
+ import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -53,30 +54,24 @@
+         SURFACES.put(planet, data);
+         int[] pixels = data.colours();
+         try {
+-            // A planet is drawn as a cube whose texture is a 3x2 atlas of faces
+-            // (north/west/south over east/down/up), so the sampled square has to
+-            // be laid out as one — uploading it as a bare square instead made
+-            // every face show a different sixth of the world, cropped and
+-            // stretched, which is not something you could look at and call
+-            // working. The same square goes in every cell: entry maps a body's
+-            // whole surface onto one flat plane by dropping the vertical axis,
+-            // so there is exactly one surface here, and the up face is the one
+-            // it is geometrically true for.
++            // The packet is already face-major in atlas order. Copy each real
++            // cube-net region into its matching 3x2 cell instead of repeating a
++            // single origin-centred square over every side of the planet.
+             NativeImage image = new NativeImage(
+                     resolution * ATLAS_COLUMNS, resolution * ATLAS_ROWS, false);
+-            for (int y = 0; y < resolution; y++) {
+-                for (int x = 0; x < resolution; x++) {
+-                    int argb = pixels[y * resolution + x];
+-                    // NativeImage is ABGR; the sample grid is ARGB.
+-                    int r = (argb >> 16) & 0xFF;
+-                    int g = (argb >> 8) & 0xFF;
+-                    int b = argb & 0xFF;
+-                    int abgr = 0xFF000000 | (b << 16) | (g << 8) | r;
+-                    for (int cell = 0; cell < ATLAS_COLUMNS * ATLAS_ROWS; cell++) {
+-                        image.setPixelRGBA(
+-                                (cell % ATLAS_COLUMNS) * resolution + x,
+-                                (cell / ATLAS_COLUMNS) * resolution + y,
+-                                abgr);
++            for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++                int offset = PlanetSurfaceData.faceOffset(face);
++                int atlasX = face.atlasColumn() * resolution;
++                int atlasY = face.atlasRow() * resolution;
++                for (int y = 0; y < resolution; y++) {
++                    for (int x = 0; x < resolution; x++) {
++                        int argb = pixels[offset + y * resolution + x];
++                        // NativeImage is ABGR; the sample grid is ARGB.
++                        int r = (argb >> 16) & 0xFF;
++                        int g = (argb >> 8) & 0xFF;
++                        int b = argb & 0xFF;
++                        int abgr = 0xFF000000 | (b << 16) | (g << 8) | r;
++                        image.setPixelRGBA(atlasX + x, atlasY + y, abgr);
+                     }
+                 }
+             }
+@@ -94,7 +89,7 @@
+                     "textures/" + shortName.getPath() + ".png");
+             Minecraft.getInstance().getTextureManager().register(textureFile, new DynamicTexture(image));
+             UPLOADED.put(planet, shortName);
+-            GenesisMod.LOGGER.info("[SURFACE] {} is now drawn from its real terrain", planet);
++            GenesisMod.LOGGER.info("[SURFACE] {} is now drawn from six real cube-net regions", planet);
+         } catch (Throwable error) {
+             GenesisMod.LOGGER.warn("[SURFACE] could not upload {}", planet, error);
+         }
+--- a/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
+@@ -9,6 +9,7 @@
+ import net.minecraft.client.renderer.MultiBufferSource;
+ import net.minecraft.client.renderer.ShaderInstance;
+ import net.minecraft.resources.ResourceLocation;
++import net.minecraft.util.Mth;
+ import net.minecraft.world.phys.Vec3;
+ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+ import org.jetbrains.annotations.NotNull;
+@@ -16,6 +17,7 @@
+ import org.lwjgl.opengl.GL11;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.client.PlanetDimensionEffects;
++import shipwrights.genesis.client.PlanetSurfaceTextures;
+ import shipwrights.genesis.client.ShaderRegistry;
+ import shipwrights.genesis.client.shading.FaceShadow;
+ import shipwrights.genesis.client.shading.ShadowProjection;
+@@ -28,6 +30,9 @@
+ import net.minecraft.core.Registry;
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
++import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ import java.lang.Math;
+ import java.util.ArrayList;
+@@ -37,6 +42,16 @@
+ import static shipwrights.genesis.client.ShaderRegistry.getTexturedPlanetRenderType;
+ 
+ public class PlanetRenderer implements CelestialRenderer {
++
++    /**
++     * Relief mesh LODs. The sampled atlas remains 64x64 per face; distant
++     * planets use fewer quads while close approaches expose every sample.
++     */
++    private static final int TERRAIN_MESH_LOW = 16;
++    private static final int TERRAIN_MESH_MEDIUM = 32;
++    private static final int TERRAIN_MESH_HIGH = PlanetSurfaceSampler.RESOLUTION;
++    private static final double PLANET_BLOCKS_PER_SPACE_BLOCK =
++            CubeNetSurfaceTransform.PLANET_BLOCKS_PER_SPACE_BLOCK;
+ 
+     private static final boolean USE_TEST_SHADOWS = false; // Set to false to use real shadows
+ 
+@@ -136,12 +151,12 @@
+         // and at a rate that does not change with the planet's day length.
+         shader.safeGetUniform("CloudTime").set((float) ((System.currentTimeMillis() % 100_000_000L) / 1000.0));
+ 
+-        renderPlanetAt(registry.getResourceKey(toRender).orElseThrow().location(), shadows, event.getPoseStack(), position.x(), position.y(), position.z(), halfExtent, rotation, alpha);
++        renderPlanetAt(registry.getResourceKey(toRender).orElseThrow().location(), shadows, event.getPoseStack(), position.x(), position.y(), position.z(), halfExtent, toRender.getActualSize() * 0.5, rotation, alpha);
+ 
+         new PlanetAtmosphereRenderer().invoke(event, toRender, vantagePoint);
+     }
+ 
+-    private void renderPlanetAt(ResourceLocation planetID, List<FaceShadow> shadows, PoseStack poseStack, double x, double y, double z, double halfExtent, Quaterniondc localRotation, float alpha) {
++    private void renderPlanetAt(ResourceLocation planetID, List<FaceShadow> shadows, PoseStack poseStack, double x, double y, double z, double halfExtent, double physicalHalfExtent, Quaterniondc localRotation, float alpha) {
+         // Prefer the planet's real terrain, sampled from its own dimension, over
+         // the painted texture. Bodies that have not been sampled — and any that
+         // are pure set dressing with no world behind them — keep the painting.
+@@ -177,12 +192,19 @@
+         float third = 1.0f / 3.0f;
+         float twoThirds = 2.0f / 3.0f;
+ 
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, 1.0f), rotation, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, twoThirds, 0.0f, 1.0f, 0.5f, alpha);        // South face (+Z)
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, -1.0f), rotation, halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, 0.0f, 0.0f, third, 0.5f, alpha);        // North face (-Z)
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(-1.0f, 0.0f, 0.0f), rotation, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize, third, 0.0f, twoThirds, 0.5f, alpha);       // West face (-X)
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(1.0f, 0.0f, 0.0f), rotation, halfSize, -halfSize, halfSize, halfSize, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, 0.0f, 0.5f, third, 1.0f, alpha);            // East face (+X)
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, -1.0f, 0.0f), rotation, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, third, 0.5f, twoThirds, 1.0f, alpha);       // Down face (-Y)
+-        addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 1.0f, 0.0f), rotation, -halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, twoThirds, 0.5f, 1.0f, 1.0f, alpha);        // Up face (+Y)
++        PlanetSurfaceData liveSurface = PlanetSurfaceTextures.surface(planetID);
++        if (live != null && liveSurface != null && liveSurface.isValid() && physicalHalfExtent > 0.0) {
++            int meshResolution = terrainMeshResolution(x, y, z, halfExtent);
++            addTerrainCube(matrix, buffer, halfSize, physicalHalfExtent, liveSurface,
++                    meshResolution, rotation, alpha);
++        } else {
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, 1.0f), rotation, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, twoThirds, 0.0f, 1.0f, 0.5f, alpha);        // South face (+Z)
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, -1.0f), rotation, halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, 0.0f, 0.0f, third, 0.5f, alpha);        // North face (-Z)
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(-1.0f, 0.0f, 0.0f), rotation, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, -halfSize, third, 0.0f, twoThirds, 0.5f, alpha);       // West face (-X)
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(1.0f, 0.0f, 0.0f), rotation, halfSize, -halfSize, halfSize, halfSize, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, 0.0f, 0.5f, third, 1.0f, alpha);            // East face (+X)
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, -1.0f, 0.0f), rotation, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize, third, 0.5f, twoThirds, 1.0f, alpha);       // Down face (-Y)
++            addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 1.0f, 0.0f), rotation, -halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, -halfSize, halfSize, -halfSize, twoThirds, 0.5f, 1.0f, 1.0f, alpha);        // Up face (+Y)
++        }
+ 
+         // End batch to flush planet rendering
+         bufferSource.endBatch(renderType);
+@@ -192,6 +214,113 @@
+         // Render shadows on planet faces
+         renderShadows(shadows, poseStack, x, y, z, halfExtent, localRotation);
+         bufferSource1.endBatch();
++    }
++
++
++    /**
++     * Chooses geometry detail from apparent size. A close planet gets one quad
++     * per sampled texel; distant bodies retain the same texture and silhouette
++     * at a fraction of the vertex cost.
++     */
++    private static int terrainMeshResolution(double x, double y, double z, double halfExtent) {
++        double distance = Math.sqrt(x * x + y * y + z * z);
++        double apparentHalfSize = halfExtent / Math.max(halfExtent, distance);
++        if (apparentHalfSize >= 0.20) {
++            return TERRAIN_MESH_HIGH;
++        }
++        if (apparentHalfSize >= 0.06) {
++            return TERRAIN_MESH_MEDIUM;
++        }
++        return TERRAIN_MESH_LOW;
++    }
++
++    /** Draws all six sampled regions as an actually displaced cube surface. */
++    private static void addTerrainCube(Matrix4f matrix, VertexConsumer buffer, float halfSize,
++                                       double physicalHalfExtent, PlanetSurfaceData surface,
++                                       int meshResolution, Quaternionf rotation, float alpha) {
++        // halfSize may include the visual-scale setting and far-distance clamp.
++        // Scale terrain height by the identical ratio so one planet block keeps
++        // representing 1/16 of a celestial-space block at every render distance.
++        double reliefScale = halfSize / physicalHalfExtent / PLANET_BLOCKS_PER_SPACE_BLOCK;
++
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            Vector3f normal = faceNormal(face);
++            for (int row = 0; row < meshResolution; row++) {
++                double t0 = row / (double) meshResolution;
++                double t1 = (row + 1) / (double) meshResolution;
++                for (int column = 0; column < meshResolution; column++) {
++                    double s0 = column / (double) meshResolution;
++                    double s1 = (column + 1) / (double) meshResolution;
++
++                    addTerrainVertex(matrix, buffer, face, s0, t1, halfSize, reliefScale,
++                            surface, normal, rotation, alpha);
++                    addTerrainVertex(matrix, buffer, face, s1, t1, halfSize, reliefScale,
++                            surface, normal, rotation, alpha);
++                    addTerrainVertex(matrix, buffer, face, s1, t0, halfSize, reliefScale,
++                            surface, normal, rotation, alpha);
++                    addTerrainVertex(matrix, buffer, face, s0, t0, halfSize, reliefScale,
++                            surface, normal, rotation, alpha);
++                }
++            }
++        }
++    }
++
++    private static void addTerrainVertex(Matrix4f matrix, VertexConsumer buffer,
++                                         CubeNetSurfaceTransform.Face face, double s, double t,
++                                         float halfSize, double reliefScale, PlanetSurfaceData surface,
++                                         Vector3f normal, Quaternionf rotation, float alpha) {
++        double faceU = (s * 2.0 - 1.0) * halfSize;
++        double faceV = (t * 2.0 - 1.0) * halfSize;
++        double radius = halfSize + sampleHeight(surface, face, s, t) * reliefScale;
++        Vector3f point = facePoint(face, faceU, faceV, radius);
++        float textureU = (float) ((face.atlasColumn() + s) / 3.0);
++        float textureV = (float) ((face.atlasRow() + t) / 2.0);
++        addTexturedVertexWithLighting(matrix, buffer, point.x, point.y, point.z,
++                textureU, textureV, normal, rotation, alpha);
++    }
++
++    /** Bilinear height lookup; samples are texel-centred, so edges extend cleanly. */
++    private static double sampleHeight(PlanetSurfaceData surface, CubeNetSurfaceTransform.Face face,
++                                       double s, double t) {
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++        double sampleX = Mth.clamp(s * resolution - 0.5, 0.0, resolution - 1.0);
++        double sampleY = Mth.clamp(t * resolution - 0.5, 0.0, resolution - 1.0);
++        int x0 = (int) Math.floor(sampleX);
++        int y0 = (int) Math.floor(sampleY);
++        int x1 = Math.min(x0 + 1, resolution - 1);
++        int y1 = Math.min(y0 + 1, resolution - 1);
++        double fx = sampleX - x0;
++        double fy = sampleY - y0;
++        short[] heights = surface.heights();
++        double h00 = heights[PlanetSurfaceData.index(face, x0, y0)];
++        double h10 = heights[PlanetSurfaceData.index(face, x1, y0)];
++        double h01 = heights[PlanetSurfaceData.index(face, x0, y1)];
++        double h11 = heights[PlanetSurfaceData.index(face, x1, y1)];
++        double top = Mth.lerp(fx, h00, h10);
++        double bottom = Mth.lerp(fx, h01, h11);
++        return Mth.lerp(fy, top, bottom);
++    }
++
++    private static Vector3f facePoint(CubeNetSurfaceTransform.Face face, double u, double v, double radius) {
++        return switch (face) {
++            case NORTH -> new Vector3f((float) -u, (float) -v, (float) -radius);
++            case WEST -> new Vector3f((float) -radius, (float) -v, (float) u);
++            case SOUTH -> new Vector3f((float) u, (float) -v, (float) radius);
++            case EAST -> new Vector3f((float) radius, (float) -v, (float) -u);
++            case DOWN -> new Vector3f((float) u, (float) -radius, (float) -v);
++            case UP -> new Vector3f((float) u, (float) radius, (float) v);
++        };
++    }
++
++    private static Vector3f faceNormal(CubeNetSurfaceTransform.Face face) {
++        return switch (face) {
++            case NORTH -> new Vector3f(0.0f, 0.0f, -1.0f);
++            case WEST -> new Vector3f(-1.0f, 0.0f, 0.0f);
++            case SOUTH -> new Vector3f(0.0f, 0.0f, 1.0f);
++            case EAST -> new Vector3f(1.0f, 0.0f, 0.0f);
++            case DOWN -> new Vector3f(0.0f, -1.0f, 0.0f);
++            case UP -> new Vector3f(0.0f, 1.0f, 0.0f);
++        };
+     }
+ 
+     private static void addTexturedCubeFace(Matrix4f matrix, VertexConsumer buffer, float halfSize,
+--- /dev/null
++++ b/src/main/java/shipwrights/genesis/teleportation/CubeNetSurfaceTransform.java
+@@ -0,0 +1,312 @@
++package shipwrights.genesis.teleportation;
++
++import java.util.Objects;
++
++/**
++ * The single invertible transform between a celestial's rotating local frame
++ * and the six surface regions in its planet dimension.
++ *
++ * <p>The surface world is a 3x2 cube net using the exact same face order as the
++ * planet texture atlas:</p>
++ *
++ * <pre>
++ * north | west | south
++ * east  | down | up
++ * </pre>
++ *
++ * <p>The up-face region is centred on world {@code (0, 0)}. This deliberately
++ * preserves Genesis' old top-face mapping: a point entering through +Y lands at
++ * the same X/Z it did before this transform existed. The other five regions are
++ * offset by whole face spans into the rest of the net.</p>
++ *
++ * <p>Coordinates named {@code u}/{@code v} follow texture orientation, not an
++ * arbitrary mathematical convention. Increasing {@code u} moves right in the
++ * face texture and increasing {@code v} moves down. That is what makes a world
++ * column, its atlas texel, and the point visible on the rendered cube all name
++ * the same physical place.</p>
++ */
++public final class CubeNetSurfaceTransform {
++    /** One space block represents sixteen planet blocks. */
++    public static final double PLANET_BLOCKS_PER_SPACE_BLOCK = 16.0;
++
++    private static final double ZERO_EPSILON = 1.0E-12;
++    private static final double EDGE_EPSILON = 1.0E-9;
++
++    /**
++     * Atlas order is intentional. Face ordinal is also the face-array order used
++     * by planet surface packets and textures.
++     */
++    public enum Face {
++        NORTH(0, 0),
++        WEST(1, 0),
++        SOUTH(2, 0),
++        EAST(0, 1),
++        DOWN(1, 1),
++        UP(2, 1);
++
++        private final int atlasColumn;
++        private final int atlasRow;
++
++        Face(int atlasColumn, int atlasRow) {
++            this.atlasColumn = atlasColumn;
++            this.atlasRow = atlasRow;
++        }
++
++        public int atlasColumn() {
++            return atlasColumn;
++        }
++
++        public int atlasRow() {
++            return atlasRow;
++        }
++
++        /** Whole-face offset from the up-face centre. */
++        public int netColumnOffset() {
++            return atlasColumn - UP.atlasColumn;
++        }
++
++        /** Whole-face offset from the up-face centre. */
++        public int netRowOffset() {
++            return atlasRow - UP.atlasRow;
++        }
++
++        private static Face atAtlasCell(int column, int row) {
++            for (Face face : values()) {
++                if (face.atlasColumn == column && face.atlasRow == row) {
++                    return face;
++                }
++            }
++            throw new IllegalArgumentException("No cube face at atlas cell " + column + "," + row);
++        }
++    }
++
++    /** A point in the planet world and the face-local coordinates it came from. */
++    public record SurfacePoint(Face face, double worldX, double worldZ, double u, double v) {
++        public SurfacePoint {
++            Objects.requireNonNull(face, "face");
++        }
++    }
++
++    /**
++     * A point on the padded entry cube in the celestial's rotating local frame.
++     * {@code outsideNetFallback} is true only for legacy/command positions that
++     * are not inside any of the six cube-net regions.
++     */
++    public record LocalPoint(Face face, double x, double y, double z,
++                             double u, double v, boolean outsideNetFallback) {
++        public LocalPoint {
++            Objects.requireNonNull(face, "face");
++        }
++    }
++
++    private final double celestialSize;
++    private final double halfExtent;
++    private final double entryPadding;
++    private final double entryRadius;
++    private final double surfaceScale;
++    private final double faceSpan;
++    private final double faceHalfSpan;
++
++    public CubeNetSurfaceTransform(double celestialSize, double entryPadding) {
++        if (!Double.isFinite(celestialSize) || celestialSize <= 0.0) {
++            throw new IllegalArgumentException("celestialSize must be finite and positive");
++        }
++        if (!Double.isFinite(entryPadding) || entryPadding < 0.0) {
++            throw new IllegalArgumentException("entryPadding must be finite and non-negative");
++        }
++        this.celestialSize = celestialSize;
++        this.halfExtent = celestialSize * 0.5;
++        this.entryPadding = entryPadding;
++        this.entryRadius = halfExtent + entryPadding;
++        this.surfaceScale = halfExtent / entryRadius * PLANET_BLOCKS_PER_SPACE_BLOCK;
++        this.faceSpan = celestialSize * PLANET_BLOCKS_PER_SPACE_BLOCK;
++        this.faceHalfSpan = faceSpan * 0.5;
++    }
++
++    public double celestialSize() {
++        return celestialSize;
++    }
++
++    public double halfExtent() {
++        return halfExtent;
++    }
++
++    public double entryPadding() {
++        return entryPadding;
++    }
++
++    public double entryRadius() {
++        return entryRadius;
++    }
++
++    public double surfaceScale() {
++        return surfaceScale;
++    }
++
++    public double faceSpan() {
++        return faceSpan;
++    }
++
++    public double faceHalfSpan() {
++        return faceHalfSpan;
++    }
++
++    public double faceCenterX(Face face) {
++        return face.netColumnOffset() * faceSpan;
++    }
++
++    public double faceCenterZ(Face face) {
++        return face.netRowOffset() * faceSpan;
++    }
++
++    /**
++     * Projects any non-zero local-space point radially onto the padded entry
++     * cube, selects the face it actually crosses, and maps it into the matching
++     * world region. The origin has no direction and therefore maps to the centre
++     * of the up face as the safe legacy default.
++     */
++    public SurfacePoint localToWorld(double localX, double localY, double localZ) {
++        requireFinite(localX, "localX");
++        requireFinite(localY, "localY");
++        requireFinite(localZ, "localZ");
++
++        double reach = Math.max(Math.abs(localX), Math.max(Math.abs(localY), Math.abs(localZ)));
++        if (reach < ZERO_EPSILON) {
++            return faceToWorld(Face.UP, 0.0, 0.0);
++        }
++
++        double shellScale = entryRadius / reach;
++        double x = localX * shellScale;
++        double y = localY * shellScale;
++        double z = localZ * shellScale;
++        Face face = dominantFace(x, y, z);
++        double[] uv = faceCoordinates(face, x, y, z);
++        return faceToWorld(face, uv[0], uv[1]);
++    }
++
++    /** Maps known face-local entry-cube coordinates into the planet world. */
++    public SurfacePoint faceToWorld(Face face, double u, double v) {
++        Objects.requireNonNull(face, "face");
++        requireFinite(u, "u");
++        requireFinite(v, "v");
++        double worldX = faceCenterX(face) + u * surfaceScale;
++        double worldZ = faceCenterZ(face) + v * surfaceScale;
++        return new SurfacePoint(face, worldX, worldZ, u, v);
++    }
++
++    /**
++     * Inverts a planet-world position back to the padded entry cube.
++     *
++     * <p>Positions inside the 3x2 net are exact. A position outside the net can
++     * only have come from a command, an old save explored beyond the original
++     * reachable square, or another mod. Those positions safely leave through
++     * the up face, clamped to its edge, instead of producing an impossible local
++     * point whose in-face component is larger than the face normal.</p>
++     */
++    public LocalPoint worldToLocal(double worldX, double worldZ) {
++        requireFinite(worldX, "worldX");
++        requireFinite(worldZ, "worldZ");
++
++        Face face = faceContaining(worldX, worldZ);
++        boolean fallback = face == null;
++        if (fallback) {
++            face = Face.UP;
++        }
++
++        double surfaceU = worldX - faceCenterX(face);
++        double surfaceV = worldZ - faceCenterZ(face);
++        if (fallback) {
++            surfaceU = clamp(surfaceU, -faceHalfSpan, faceHalfSpan);
++            surfaceV = clamp(surfaceV, -faceHalfSpan, faceHalfSpan);
++        }
++
++        double u = surfaceU / surfaceScale;
++        double v = surfaceV / surfaceScale;
++        // Shared edges are valid on two faces. Keep numerical noise from
++        // making an in-face component exceed the entry cube's normal.
++        u = clamp(u, -entryRadius, entryRadius);
++        v = clamp(v, -entryRadius, entryRadius);
++        return faceToLocal(face, u, v, fallback);
++    }
++
++    /** Builds the exact padded-cube point represented by a face and texture axes. */
++    public LocalPoint faceToLocal(Face face, double u, double v) {
++        return faceToLocal(face, u, v, false);
++    }
++
++    private LocalPoint faceToLocal(Face face, double u, double v, boolean fallback) {
++        Objects.requireNonNull(face, "face");
++        requireFinite(u, "u");
++        requireFinite(v, "v");
++        return switch (face) {
++            // u right, v down, matching PlanetRenderer's UV orientation.
++            case NORTH -> new LocalPoint(face, -u, -v, -entryRadius, u, v, fallback);
++            case WEST -> new LocalPoint(face, -entryRadius, -v, u, u, v, fallback);
++            case SOUTH -> new LocalPoint(face, u, -v, entryRadius, u, v, fallback);
++            case EAST -> new LocalPoint(face, entryRadius, -v, -u, u, v, fallback);
++            case DOWN -> new LocalPoint(face, u, -entryRadius, -v, u, v, fallback);
++            case UP -> new LocalPoint(face, u, entryRadius, v, u, v, fallback);
++        };
++    }
++
++    /** Which net region contains this world position, or null outside the 3x2 rectangle. */
++    public Face faceContaining(double worldX, double worldZ) {
++        double minimumX = -2.5 * faceSpan;
++        double maximumX = 0.5 * faceSpan;
++        double minimumZ = -1.5 * faceSpan;
++        double maximumZ = 0.5 * faceSpan;
++
++        if (worldX < minimumX - EDGE_EPSILON || worldX > maximumX + EDGE_EPSILON
++                || worldZ < minimumZ - EDGE_EPSILON || worldZ > maximumZ + EDGE_EPSILON) {
++            return null;
++        }
++
++        double boundedX = worldX >= maximumX ? Math.nextDown(maximumX) : Math.max(worldX, minimumX);
++        double boundedZ = worldZ >= maximumZ ? Math.nextDown(maximumZ) : Math.max(worldZ, minimumZ);
++        int column = (int) Math.floor((boundedX - minimumX) / faceSpan);
++        int row = (int) Math.floor((boundedZ - minimumZ) / faceSpan);
++        if (column < 0 || column >= 3 || row < 0 || row >= 2) {
++            return null;
++        }
++        return Face.atAtlasCell(column, row);
++    }
++
++    private static Face dominantFace(double x, double y, double z) {
++        double ax = Math.abs(x);
++        double ay = Math.abs(y);
++        double az = Math.abs(z);
++
++        // Y owns exact ties to preserve the old up-face projection along the
++        // top/bottom rim. Z then owns ties against X. The choice only matters on
++        // mathematically zero-width seams; it is deterministic so round trips do
++        // not jitter from floating-point noise.
++        if (ay >= ax && ay >= az) {
++            return y >= 0.0 ? Face.UP : Face.DOWN;
++        }
++        if (az >= ax) {
++            return z >= 0.0 ? Face.SOUTH : Face.NORTH;
++        }
++        return x >= 0.0 ? Face.EAST : Face.WEST;
++    }
++
++    private static double[] faceCoordinates(Face face, double x, double y, double z) {
++        return switch (face) {
++            case NORTH -> new double[]{-x, -y};
++            case WEST -> new double[]{z, -y};
++            case SOUTH -> new double[]{x, -y};
++            case EAST -> new double[]{-z, -y};
++            case DOWN -> new double[]{x, -z};
++            case UP -> new double[]{x, z};
++        };
++    }
++
++    private static double clamp(double value, double minimum, double maximum) {
++        return Math.max(minimum, Math.min(maximum, value));
++    }
++
++    private static void requireFinite(double value, String name) {
++        if (!Double.isFinite(value)) {
++            throw new IllegalArgumentException(name + " must be finite");
++        }
++    }
++}
+--- /dev/null
++++ b/src/test/java/shipwrights/genesis/teleportation/CubeNetSurfaceTransformTest.java
+@@ -0,0 +1,158 @@
++package shipwrights.genesis.teleportation;
++
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++
++import java.util.Random;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNull;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++class CubeNetSurfaceTransformTest {
++    private static final double EARTH_SIZE = 512.0;
++    private static final double EARTH_PADDING = 1000.0;
++    private static final double EPS = 1.0E-8;
++
++    private final CubeNetSurfaceTransform transform =
++            new CubeNetSurfaceTransform(EARTH_SIZE, EARTH_PADDING);
++
++    @Test
++    @DisplayName("Earth keeps the old 8192-block up-face square centred on the origin")
++    void upFacePreservesLegacyCoordinates() {
++        double radius = transform.entryRadius();
++        double x = 700.25;
++        double z = -333.5;
++        CubeNetSurfaceTransform.SurfacePoint point = transform.localToWorld(x, radius, z);
++
++        double oldScale = (EARTH_SIZE * 0.5) / (EARTH_SIZE * 0.5 + EARTH_PADDING) * 16.0;
++        assertEquals(CubeNetSurfaceTransform.Face.UP, point.face());
++        assertEquals(x * oldScale, point.worldX(), EPS);
++        assertEquals(z * oldScale, point.worldZ(), EPS);
++        assertEquals(8192.0, transform.faceSpan(), EPS);
++        assertEquals(0.0, transform.faceCenterX(CubeNetSurfaceTransform.Face.UP), EPS);
++        assertEquals(0.0, transform.faceCenterZ(CubeNetSurfaceTransform.Face.UP), EPS);
++    }
++
++    @Test
++    @DisplayName("Face centres use the rendered atlas' north-west-south/east-down-up layout")
++    void faceCentresMatchAtlas() {
++        double span = transform.faceSpan();
++        assertCentre(CubeNetSurfaceTransform.Face.NORTH, -2.0 * span, -span);
++        assertCentre(CubeNetSurfaceTransform.Face.WEST, -span, -span);
++        assertCentre(CubeNetSurfaceTransform.Face.SOUTH, 0.0, -span);
++        assertCentre(CubeNetSurfaceTransform.Face.EAST, -2.0 * span, 0.0);
++        assertCentre(CubeNetSurfaceTransform.Face.DOWN, -span, 0.0);
++        assertCentre(CubeNetSurfaceTransform.Face.UP, 0.0, 0.0);
++    }
++
++    @Test
++    @DisplayName("All six cardinal entry directions land in six distinct regions")
++    void cardinalDirectionsUseAllFaces() {
++        double r = transform.entryRadius();
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.NORTH, 0, 0, -r);
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.WEST, -r, 0, 0);
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.SOUTH, 0, 0, r);
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.EAST, r, 0, 0);
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.DOWN, 0, -r, 0);
++        assertFaceAndCentre(CubeNetSurfaceTransform.Face.UP, 0, r, 0);
++    }
++
++    @Test
++    @DisplayName("Face UV orientation matches PlanetRenderer's cube atlas")
++    void faceOrientationMatchesRenderer() {
++        double r = transform.entryRadius();
++        double u = r * 0.37;
++        double v = -r * 0.22;
++
++        assertLocal(CubeNetSurfaceTransform.Face.NORTH, -u, -v, -r, u, v);
++        assertLocal(CubeNetSurfaceTransform.Face.WEST, -r, -v, u, u, v);
++        assertLocal(CubeNetSurfaceTransform.Face.SOUTH, u, -v, r, u, v);
++        assertLocal(CubeNetSurfaceTransform.Face.EAST, r, -v, -u, u, v);
++        assertLocal(CubeNetSurfaceTransform.Face.DOWN, u, -r, -v, u, v);
++        assertLocal(CubeNetSurfaceTransform.Face.UP, u, r, v, u, v);
++    }
++
++    @Test
++    @DisplayName("World and padded-cube coordinates round-trip on every face")
++    void randomRoundTripsAreExact() {
++        Random random = new Random(0xC0B3_6E7L);
++        double r = transform.entryRadius();
++
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            for (int i = 0; i < 1000; i++) {
++                // Stay off the mathematically shared edge, where two face names
++                // are both valid and the net intentionally canonicalises one.
++                double u = (random.nextDouble() * 1.98 - 0.99) * r;
++                double v = (random.nextDouble() * 1.98 - 0.99) * r;
++                CubeNetSurfaceTransform.SurfacePoint world = transform.faceToWorld(face, u, v);
++                CubeNetSurfaceTransform.LocalPoint local =
++                        transform.worldToLocal(world.worldX(), world.worldZ());
++                CubeNetSurfaceTransform.SurfacePoint again =
++                        transform.localToWorld(local.x(), local.y(), local.z());
++
++                assertEquals(face, local.face());
++                assertFalse(local.outsideNetFallback());
++                assertEquals(u, local.u(), EPS);
++                assertEquals(v, local.v(), EPS);
++                assertEquals(face, again.face());
++                assertEquals(world.worldX(), again.worldX(), EPS);
++                assertEquals(world.worldZ(), again.worldZ(), EPS);
++            }
++        }
++    }
++
++    @Test
++    @DisplayName("Arbitrary local points are projected along their ray before mapping")
++    void localPointIsProjectedToEntryCube() {
++        double x = 4.0;
++        double y = 10.0;
++        double z = -2.0;
++        CubeNetSurfaceTransform.SurfacePoint world = transform.localToWorld(x, y, z);
++        CubeNetSurfaceTransform.LocalPoint shell = transform.worldToLocal(world.worldX(), world.worldZ());
++
++        double factor = transform.entryRadius() / 10.0;
++        assertEquals(CubeNetSurfaceTransform.Face.UP, shell.face());
++        assertEquals(x * factor, shell.x(), EPS);
++        assertEquals(y * factor, shell.y(), EPS);
++        assertEquals(z * factor, shell.z(), EPS);
++    }
++
++    @Test
++    @DisplayName("Positions outside the net use a bounded up-face legacy fallback")
++    void outsideNetFallsBackSafely() {
++        double far = transform.faceSpan() * 20.0;
++        assertNull(transform.faceContaining(far, far));
++
++        CubeNetSurfaceTransform.LocalPoint local = transform.worldToLocal(far, far);
++        assertEquals(CubeNetSurfaceTransform.Face.UP, local.face());
++        assertTrue(local.outsideNetFallback());
++        assertEquals(transform.entryRadius(), local.x(), EPS);
++        assertEquals(transform.entryRadius(), local.y(), EPS);
++        assertEquals(transform.entryRadius(), local.z(), EPS);
++    }
++
++    private void assertCentre(CubeNetSurfaceTransform.Face face, double x, double z) {
++        assertEquals(x, transform.faceCenterX(face), EPS);
++        assertEquals(z, transform.faceCenterZ(face), EPS);
++    }
++
++    private void assertFaceAndCentre(CubeNetSurfaceTransform.Face face, double x, double y, double z) {
++        CubeNetSurfaceTransform.SurfacePoint point = transform.localToWorld(x, y, z);
++        assertEquals(face, point.face());
++        assertEquals(transform.faceCenterX(face), point.worldX(), EPS);
++        assertEquals(transform.faceCenterZ(face), point.worldZ(), EPS);
++    }
++
++    private void assertLocal(CubeNetSurfaceTransform.Face face,
++                             double expectedX, double expectedY, double expectedZ,
++                             double u, double v) {
++        CubeNetSurfaceTransform.LocalPoint point = transform.faceToLocal(face, u, v);
++        assertEquals(expectedX, point.x(), EPS);
++        assertEquals(expectedY, point.y(), EPS);
++        assertEquals(expectedZ, point.z(), EPS);
++        CubeNetSurfaceTransform.SurfacePoint world = transform.faceToWorld(face, u, v);
++        assertEquals(face, transform.faceContaining(world.worldX(), world.worldZ()));
++    }
++}

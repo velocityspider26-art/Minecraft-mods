@@ -1,0 +1,15 @@
+Sparse world-to-cube LOD V3 validation
+======================================
+
+Java target: 21
+Compile target: Minecraft 1.21.1 / NeoForge 21.1.234 merged classes
+Changed/generated production classes: 21
+Fresh direct javac compile: PASS
+Sparse tile randomized alignment test: PASS (30,000 tiles)
+Invalid tile alignment rejection: PASS
+Mixin injection descriptor: inspected; setBlockState RETURN, require=0
+Packaged class hashes against fresh compile: PASS (21/21)
+Packaged JAR ZIP integrity: PASS
+Bundled Distant Horizons SHA-256: byte-identical to supplied 3.2.0-b JAR
+Temporary compile stubs included in final JAR: NO
+Full Minecraft client launch: NOT PERFORMED in this environment

@@ -1,0 +1,17 @@
+Open this whole folder in IntelliJ, not just the src folder.
+
+Use IntelliJ's Gradle import when it asks.
+Set the Gradle JVM / Project SDK to Java 21.
+
+Useful Gradle tasks:
+- build
+- compileJava
+- runClient
+
+The loader dependencies point at Sable (`sable`) and Create Aeronautics (`aeronautics`).
+This cut no longer depends on Valkyrien Skies.
+
+The port targets:
+- Minecraft 1.21.1
+- NeoForge 21.1.233
+- Java 21

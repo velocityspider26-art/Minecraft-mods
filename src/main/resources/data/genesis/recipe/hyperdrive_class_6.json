@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "functional",
+  "key": {
+    "C": {
+      "item": "genesis:void_core"
+    },
+    "E": {
+      "item": "minecraft:ender_eye"
+    },
+    "I": {
+      "tag": "c:ingots/space_metal"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "V": {
+      "item": "genesis:void_shard"
+    }
+  },
+  "pattern": [
+    "VEV",
+    "OCO",
+    "III"
+  ],
+  "result": {
+    "id": "genesis:hyperdrive_class_6",
+    "count": 1
+  },
+  "show_notification": true
+}

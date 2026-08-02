@@ -1,0 +1,1619 @@
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/gradle.properties /mnt/data/ProjectStarbound_high_detail_lod5/gradle.properties
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/gradle.properties	2026-07-31 15:27:46.073260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/gradle.properties	2026-07-31 16:41:25.725260576 +0000
+@@ -8,7 +8,7 @@
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port-orbital-detail-lod4
++mod_version=1.21.1-0.8.0-port-high-detail-volume-lod5
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java	2026-07-31 15:45:42.541260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/OrbitalSurveyController.java	2026-07-31 16:34:40.941260576 +0000
+@@ -12,6 +12,7 @@
+ import net.neoforged.neoforge.client.event.ViewportEvent;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.client.lod.DhLiveChunkPatchCache;
++import shipwrights.genesis.client.lod.PlanetLodVolumeClientCache;
+ import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
+ import shipwrights.genesis.space.surface.SparsePlanetLodService;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+@@ -72,8 +73,9 @@
+                                     boolean crosshairHit) {
+         int best = SparsePlanetLodClientCache.bestCellSizeAt(
+                 SparsePlanetLodService.EARTH_ID, face, worldX, worldZ);
+-        if (DhLiveChunkPatchCache.hasPatchAt(face, worldX, worldZ)) {
+-            best = 1;
++        if (PlanetLodVolumeClientCache.hasTileAt(SparsePlanetLodService.EARTH_ID, face, worldX, worldZ)
++                || DhLiveChunkPatchCache.hasPatchAt(face, worldX, worldZ)) {
++            best = 0;
+         }
+         focus = new Focus(face, worldX, worldZ, crosshairHit, best);
+     }
+@@ -176,6 +178,7 @@
+ 
+     private static String qualityLabel(int cellSize) {
+         if (cellSize == Integer.MAX_VALUE) return "NO CACHED TERRAIN — global fallback";
++        if (cellSize <= 0) return "TEXTURED 3D BLOCK VOLUME — roofs, walls and structures";
+         if (cellSize <= 1) return "EXACT 1-BLOCK SURFACE — structure targeting ready";
+         if (cellSize <= 4) return "HIGH DETAIL — 4 blocks per sample";
+         if (cellSize <= 16) return "REGIONAL DETAIL — 16 blocks per sample";
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 15:35:03.329260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 16:41:25.725260576 +0000
+@@ -6,6 +6,9 @@
+ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+ import shipwrights.genesis.GenesisMod;
+ import shipwrights.genesis.client.lod.DhCubeLodBridge;
++import shipwrights.genesis.client.lod.PlanetLodVolumeClientCache;
++import shipwrights.genesis.client.lod.PlanetVolumeLodRenderer;
++import shipwrights.genesis.client.lod.PlanetVolumeTextureCache;
+ import shipwrights.genesis.client.lod.SparsePlanetLodClientCache;
+ 
+ /**
+@@ -30,5 +33,8 @@
+         DhCubeLodBridge.clear();
+         PlanetSurfaceTextures.clear();
+         SparsePlanetLodClientCache.clear();
++        PlanetLodVolumeClientCache.clear();
++        PlanetVolumeTextureCache.clear();
++        PlanetVolumeLodRenderer.resetLogging();
+     }
+ }
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 15:45:42.541260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/DhLiveChunkPatchCache.java	2026-07-31 16:31:25.461260576 +0000
+@@ -8,7 +8,13 @@
+ import com.seibel.distanthorizons.api.objects.DhApiResult;
+ import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
+ import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.core.registries.BuiltInRegistries;
++import net.minecraft.resources.ResourceLocation;
++import net.minecraft.world.level.block.Block;
++import net.minecraft.world.level.block.state.BlockState;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.space.surface.PlanetLodVolumeTile;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ import java.awt.Color;
+@@ -305,6 +311,10 @@
+                 return;
+             }
+             long nextRevision = ++revision;
++            PlanetLodVolumeTile volume = buildVolumeTile(chunkX, chunkZ, face, result.payload, nextRevision);
++            if (volume != null && volume.segmentCount() > 0) {
++                PlanetLodVolumeClientCache.accept(SparsePlanetLodService.EARTH_ID, volume);
++            }
+             Patch patch = new Patch(chunkX, chunkZ, face, heights, colours,
+                     min == Integer.MAX_VALUE ? seaLevel : min,
+                     max == Integer.MIN_VALUE ? seaLevel : max,
+@@ -322,6 +332,93 @@
+         }
+     }
+ 
++    private static PlanetLodVolumeTile buildVolumeTile(int chunkX, int chunkZ,
++                                                            CubeNetSurfaceTransform.Face face,
++                                                            DhApiTerrainDataPoint[][][] area,
++                                                            long tileRevision) {
++        int[] offsets = new int[PlanetLodVolumeTile.OFFSET_COUNT];
++        List<DhVolumeSegment> segments = new ArrayList<>(768);
++        int originX = chunkX << 4;
++        int originZ = chunkZ << 4;
++        for (int z = 0; z < PlanetLodVolumeTile.RESOLUTION; z++) {
++            for (int x = 0; x < PlanetLodVolumeTile.RESOLUTION; x++) {
++                int columnIndex = z * 16 + x;
++                offsets[columnIndex] = segments.size();
++                DhApiTerrainDataPoint[] column = columnAt(area, x, z);
++                if (column != null) {
++                    List<DhApiTerrainDataPoint> visible = new ArrayList<>();
++                    int highest = Integer.MIN_VALUE;
++                    for (DhApiTerrainDataPoint point : column) {
++                        if (point == null || point.blockStateWrapper == null
++                                || point.blockStateWrapper.isAir()) continue;
++                        visible.add(point);
++                        highest = Math.max(highest, point.topYBlockPos);
++                    }
++                    visible.sort((a, b) -> Integer.compare(b.topYBlockPos, a.topYBlockPos));
++                    int cutoff = highest == Integer.MIN_VALUE ? Integer.MAX_VALUE : highest - 96;
++                    for (DhApiTerrainDataPoint point : visible) {
++                        if (segments.size() - offsets[columnIndex]
++                                >= PlanetLodVolumeTile.MAX_SEGMENTS_PER_COLUMN) break;
++                        int top = point.topYBlockPos;
++                        int bottom = Math.max(point.bottomYBlockPos, cutoff);
++                        if (top <= bottom) continue;
++                        Object wrapped = point.blockStateWrapper.getWrappedMcObject();
++                        if (!(wrapped instanceof BlockState state)) continue;
++                        int stateId = Block.getId(state);
++                        int colour = colourFor(point, originX + x, top - 1, originZ + z);
++                        int sky = Math.max(0, Math.min(15, point.skyLightLevel));
++                        int block = Math.max(0, Math.min(15, point.blockLightLevel));
++                        byte light = (byte) ((sky << 4) | block);
++                        segments.add(new DhVolumeSegment(bottom, top, stateId, colour, light,
++                                flagsFor(state, point.blockStateWrapper)));
++                    }
++                }
++                offsets[columnIndex + 1] = segments.size();
++            }
++        }
++        if (segments.isEmpty() || segments.size() > PlanetLodVolumeTile.MAX_SEGMENTS) return null;
++        short[] bottoms = new short[segments.size()];
++        short[] tops = new short[segments.size()];
++        int[] stateIds = new int[segments.size()];
++        int[] colours = new int[segments.size()];
++        byte[] lights = new byte[segments.size()];
++        byte[] flags = new byte[segments.size()];
++        for (int i = 0; i < segments.size(); i++) {
++            DhVolumeSegment segment = segments.get(i);
++            bottoms[i] = (short) segment.bottom();
++            tops[i] = (short) segment.top();
++            stateIds[i] = segment.stateId();
++            colours[i] = segment.colour();
++            lights[i] = segment.light();
++            flags[i] = segment.flags();
++        }
++        return new PlanetLodVolumeTile(face, chunkX, chunkZ, tileRevision, offsets,
++                bottoms, tops, stateIds, colours, lights, flags);
++    }
++
++    private static byte flagsFor(BlockState state, IDhApiBlockStateWrapper wrapper) {
++        byte flags = 0;
++        if (wrapper.isLiquid() || !state.getFluidState().isEmpty()) flags |= PlanetLodVolumeTile.FLAG_LIQUID;
++        if (!wrapper.isSolid() || !state.canOcclude()) flags |= PlanetLodVolumeTile.FLAG_TRANSLUCENT;
++        if (state.getLightEmission() > 0) flags |= PlanetLodVolumeTile.FLAG_EMISSIVE;
++        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
++        String path = id == null ? "" : id.getPath();
++        boolean foliage = path.contains("leaves") || path.contains("grass") || path.contains("flower")
++                || path.contains("vine") || path.contains("crop") || path.contains("sapling");
++        if (foliage) flags |= PlanetLodVolumeTile.FLAG_FOLIAGE;
++        boolean natural = path.contains("stone") || path.contains("deepslate") || path.contains("dirt")
++                || path.contains("grass_block") || path.contains("sand") || path.contains("gravel")
++                || path.contains("clay") || path.contains("terracotta") || path.contains("snow")
++                || path.contains("ice") || path.contains("ore") || path.contains("mud");
++        if (natural) flags |= PlanetLodVolumeTile.FLAG_NATURAL;
++        else flags |= PlanetLodVolumeTile.FLAG_STRUCTURE;
++        return flags;
++    }
++
++    private record DhVolumeSegment(int bottom, int top, int stateId, int colour,
++                                   byte light, byte flags) {
++    }
++
+     private static DhApiTerrainDataPoint[] columnAt(DhApiTerrainDataPoint[][][] area, int x, int z) {
+         if (x < area.length && area[x] != null && z < area[x].length) {
+             return area[x][z];
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 15:45:42.541260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/OrbitalDhLivePatchRenderer.java	2026-07-31 16:34:26.217260576 +0000
+@@ -141,6 +141,9 @@
+                 localToCamera, apparentHalf, focus);
+ 
+         source.endBatch(RENDER_TYPE);
++        PlanetVolumeLodRenderer.renderOrbit(view, transform, planetPosition, planetRotation,
++                renderedHalfExtent, worldToRendered, focus.face(), focus.worldX(), focus.worldZ(),
++                apparentHalf);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+     }
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetLodVolumeClientCache.java	2026-07-31 16:27:43.601260576 +0000
+@@ -0,0 +1,71 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.resources.ResourceLocation;
++import shipwrights.genesis.space.surface.PlanetLodVolumeTile;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.util.LinkedHashMap;
++import java.util.Map;
++
++/** Client cache for exact 3D chunk-volume LOD tiles. */
++public final class PlanetLodVolumeClientCache {
++    private static final int MAX_TILES_PER_PLANET = 8192;
++    private static final Object LOCK = new Object();
++    private static final Map<ResourceLocation,
++            LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile>> TILES = new LinkedHashMap<>();
++
++    private PlanetLodVolumeClientCache() {
++    }
++
++    public static void accept(ResourceLocation planet, PlanetLodVolumeTile tile) {
++        synchronized (LOCK) {
++            LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> planetTiles =
++                    TILES.computeIfAbsent(planet, ignored -> new LinkedHashMap<>(256, 0.75f, true));
++            PlanetLodVolumeTile previous = planetTiles.get(tile.key());
++            if (previous != null && previous.revision() > tile.revision()) {
++                return;
++            }
++            planetTiles.put(tile.key(), tile);
++            PlanetVolumeMeshCache.invalidate(planet, tile.key());
++            while (planetTiles.size() > MAX_TILES_PER_PLANET) {
++                PlanetLodVolumeTile.Key eldest = planetTiles.keySet().iterator().next();
++                planetTiles.remove(eldest);
++                PlanetVolumeMeshCache.invalidate(planet, eldest);
++            }
++        }
++    }
++
++    public static PlanetLodVolumeTile[] snapshot(ResourceLocation planet) {
++        synchronized (LOCK) {
++            LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> planetTiles = TILES.get(planet);
++            return planetTiles == null || planetTiles.isEmpty()
++                    ? new PlanetLodVolumeTile[0]
++                    : planetTiles.values().toArray(PlanetLodVolumeTile[]::new);
++        }
++    }
++
++    public static boolean hasTileAt(ResourceLocation planet, CubeNetSurfaceTransform.Face face,
++                                    double worldX, double worldZ) {
++        int chunkX = Math.floorDiv((int) Math.floor(worldX), 16);
++        int chunkZ = Math.floorDiv((int) Math.floor(worldZ), 16);
++        synchronized (LOCK) {
++            LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> planetTiles = TILES.get(planet);
++            return planetTiles != null
++                    && planetTiles.containsKey(new PlanetLodVolumeTile.Key(face, chunkX, chunkZ));
++        }
++    }
++
++    public static int tileCount(ResourceLocation planet) {
++        synchronized (LOCK) {
++            LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> planetTiles = TILES.get(planet);
++            return planetTiles == null ? 0 : planetTiles.size();
++        }
++    }
++
++    public static void clear() {
++        synchronized (LOCK) {
++            TILES.clear();
++        }
++        PlanetVolumeMeshCache.clear();
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeLodRenderer.java	2026-07-31 16:41:25.721260576 +0000
+@@ -0,0 +1,440 @@
++package shipwrights.genesis.client.lod;
++
++import com.mojang.blaze3d.systems.RenderSystem;
++import com.mojang.blaze3d.vertex.VertexConsumer;
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.renderer.LightTexture;
++import net.minecraft.client.renderer.MultiBufferSource;
++import net.minecraft.client.renderer.RenderType;
++import net.minecraft.client.renderer.texture.OverlayTexture;
++import net.minecraft.client.renderer.texture.TextureAtlas;
++import net.minecraft.client.renderer.texture.TextureAtlasSprite;
++import net.minecraft.core.Direction;
++import net.minecraft.resources.ResourceLocation;
++import net.minecraft.util.Mth;
++import net.minecraft.world.phys.Vec3;
++import org.joml.Matrix4f;
++import org.joml.Quaterniondc;
++import org.joml.Vector3d;
++import org.joml.Vector3f;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.OrbitalSurveyController;
++import shipwrights.genesis.config.GenesisClientConfig;
++import shipwrights.genesis.space.surface.PlanetLodVolumeTile;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
++import shipwrights.genesis.space.surface.SparsePlanetLodService;
++import shipwrights.genesis.teleportation.CubeFaceFrame;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.List;
++
++/** High-quality textured 3D structure/terrain shell shared by ascent and orbit. */
++public final class PlanetVolumeLodRenderer {
++    private static final ResourceLocation EARTH_ID = SparsePlanetLodService.EARTH_ID;
++    private static final RenderType SOLID_TYPE =
++            RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS);
++    private static final RenderType TRANSLUCENT_TYPE =
++            RenderType.entityTranslucent(TextureAtlas.LOCATION_BLOCKS);
++    private static volatile boolean loggedOverworld;
++    private static volatile boolean loggedOrbit;
++
++    private PlanetVolumeLodRenderer() {
++    }
++
++    public static void renderOverworld(Matrix4f view, Vec3 camera,
++                                       CubeNetSurfaceTransform transform,
++                                       CubeNetSurfaceTransform.Face currentFace,
++                                       PlanetSurfaceData surface,
++                                       float lodAlpha, float foldAlpha,
++                                       float centerFillAlpha, int vanillaRadius,
++                                       double vanillaGroundRadius) {
++        if (lodAlpha < 0.12f) return;
++        PlanetLodVolumeTile[] tiles = PlanetLodVolumeClientCache.snapshot(EARTH_ID);
++        if (tiles.length == 0) return;
++
++        int quality = GenesisClientConfig.getWorldLodQuality();
++        int maximum = quality >= 3 ? 256 : quality == 2 ? 128 : 64;
++        double radius = quality >= 3 ? 2304.0 : quality == 2 ? 1536.0 : 1024.0;
++        List<PlanetLodVolumeTile> candidates = new ArrayList<>();
++        for (PlanetLodVolumeTile tile : tiles) {
++            if (tile.face() != currentFace) continue;
++            double dx = tile.worldMinX() + 8.0 - camera.x;
++            double dz = tile.worldMinZ() + 8.0 - camera.z;
++            if (dx * dx + dz * dz <= radius * radius) candidates.add(tile);
++        }
++        candidates.sort(Comparator.comparingDouble(tile -> {
++            double dx = tile.worldMinX() + 8.0 - camera.x;
++            double dz = tile.worldMinZ() + 8.0 - camera.z;
++            return dx * dx + dz * dz;
++        }));
++        if (candidates.isEmpty()) return;
++
++        double currentCenterX = transform.faceCenterX(currentFace);
++        double currentCenterZ = transform.faceCenterZ(currentFace);
++        double cubeCenterY = surface.seaLevel() - transform.faceHalfSpan();
++        double renderScale = renderDistanceCompression(camera, currentCenterX, cubeCenterY,
++                currentCenterZ, vanillaRadius);
++
++        Minecraft minecraft = Minecraft.getInstance();
++        MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
++        VertexConsumer solid = source.getBuffer(SOLID_TYPE);
++        VertexConsumer translucent = source.getBuffer(TRANSLUCENT_TYPE);
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++
++        int rendered = 0;
++        for (PlanetLodVolumeTile tile : candidates) {
++            if (rendered >= maximum) break;
++            double centerX = tile.worldMinX() + 8.0;
++            double centerZ = tile.worldMinZ() + 8.0;
++            double distance = Math.sqrt(square(centerX - camera.x) + square(centerZ - camera.z));
++            double near0 = Math.max(0.0, vanillaGroundRadius * 0.65 - 48.0);
++            double near1 = Math.max(32.0, vanillaGroundRadius * 1.05 + 24.0);
++            float visible = Math.max(foldAlpha, centerFillAlpha);
++            visible = Math.max(visible, smoothstep((float) ((distance - near0)
++                    / Math.max(1.0, near1 - near0))));
++            if (visible < 0.08f) continue;
++
++            PlanetVolumeMeshCache.Mesh mesh = PlanetVolumeMeshCache.getOrSchedule(EARTH_ID, tile);
++            if (mesh == null) continue;
++            renderWorldMesh(view, camera, solid, translucent, tile, mesh, transform,
++                    currentFace, surface, foldAlpha, currentCenterX, cubeCenterY,
++                    currentCenterZ, renderScale, visible);
++            rendered++;
++        }
++        source.endBatch(SOLID_TYPE);
++        source.endBatch(TRANSLUCENT_TYPE);
++        if (rendered > 0 && !loggedOverworld) {
++            loggedOverworld = true;
++            GenesisMod.LOGGER.info("[VOLUME-LOD] textured 3D block-volume terrain active during ascent; {} exact chunks rendered", rendered);
++        }
++    }
++
++    public static void renderOrbit(Matrix4f view,
++                                   CubeNetSurfaceTransform transform,
++                                   Vector3d planetPosition, Quaterniondc rotation,
++                                   double renderedHalfExtent, double worldToRendered,
++                                   CubeNetSurfaceTransform.Face focusFace,
++                                   double focusX, double focusZ,
++                                   double apparentHalf) {
++        PlanetLodVolumeTile[] tiles = PlanetLodVolumeClientCache.snapshot(EARTH_ID);
++        if (tiles.length == 0) return;
++        boolean survey = OrbitalSurveyController.isActive();
++        double radius = survey ? OrbitalSurveyController.detailRadius()
++                : Math.max(256.0, Math.min(768.0, 256.0 + apparentHalf * 4096.0));
++        int maximum = survey ? 384 : 128;
++        List<PlanetLodVolumeTile> candidates = new ArrayList<>();
++        for (PlanetLodVolumeTile tile : tiles) {
++            if (tile.face() != focusFace) continue;
++            double dx = tile.worldMinX() + 8.0 - focusX;
++            double dz = tile.worldMinZ() + 8.0 - focusZ;
++            if (dx * dx + dz * dz <= radius * radius) candidates.add(tile);
++        }
++        candidates.sort(Comparator.comparingDouble(tile ->
++                square(tile.worldMinX() + 8.0 - focusX) + square(tile.worldMinZ() + 8.0 - focusZ)));
++        if (candidates.isEmpty()) return;
++
++        Minecraft minecraft = Minecraft.getInstance();
++        MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
++        VertexConsumer solid = source.getBuffer(SOLID_TYPE);
++        VertexConsumer translucent = source.getBuffer(TRANSLUCENT_TYPE);
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++
++        int rendered = 0;
++        for (PlanetLodVolumeTile tile : candidates) {
++            if (rendered >= maximum) break;
++            PlanetVolumeMeshCache.Mesh mesh = PlanetVolumeMeshCache.getOrSchedule(EARTH_ID, tile);
++            if (mesh == null) continue;
++            renderOrbitalMesh(view, solid, translucent, tile, mesh, transform,
++                    planetPosition, rotation, renderedHalfExtent, worldToRendered);
++            rendered++;
++        }
++        source.endBatch(SOLID_TYPE);
++        source.endBatch(TRANSLUCENT_TYPE);
++        if (rendered > 0 && !loggedOrbit) {
++            loggedOrbit = true;
++            GenesisMod.LOGGER.info("[VOLUME-LOD] textured 3D block-volume terrain active in orbit; {} exact chunks rendered on {}", rendered, focusFace);
++        }
++    }
++
++    public static void resetLogging() {
++        loggedOverworld = false;
++        loggedOrbit = false;
++    }
++
++    private static void renderWorldMesh(Matrix4f view, Vec3 camera,
++                                        VertexConsumer solid, VertexConsumer translucent,
++                                        PlanetLodVolumeTile tile, PlanetVolumeMeshCache.Mesh mesh,
++                                        CubeNetSurfaceTransform transform,
++                                        CubeNetSurfaceTransform.Face currentFace,
++                                        PlanetSurfaceData surface, float foldAlpha,
++                                        double currentCenterX, double cubeCenterY, double currentCenterZ,
++                                        double renderScale, float alpha) {
++        int worldMinX = tile.worldMinX();
++        int worldMinZ = tile.worldMinZ();
++        for (PlanetVolumeMeshCache.TopFace top : mesh.tops()) {
++            double x0 = worldMinX + top.x();
++            double z0 = worldMinZ + top.z();
++            Vector3d p00 = livePoint(tile.face(), currentFace, transform, surface,
++                    x0, z0, top.y(), foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.34);
++            Vector3d p10 = livePoint(tile.face(), currentFace, transform, surface,
++                    x0 + 1.0, z0, top.y(), foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.34);
++            Vector3d p11 = livePoint(tile.face(), currentFace, transform, surface,
++                    x0 + 1.0, z0 + 1.0, top.y(), foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.34);
++            Vector3d p01 = livePoint(tile.face(), currentFace, transform, surface,
++                    x0, z0 + 1.0, top.y(), foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.34);
++            drawTexturedQuad(view, chooseBuffer(solid, translucent, top.flags()), camera,
++                    p01, p11, p10, p00, renderScale,
++                    top.stateId(), Direction.UP, top.colour(), top.packedLight(), top.flags(),
++                    alpha, new Vector3f(0, 1, 0));
++        }
++        for (PlanetVolumeMeshCache.SideFace side : mesh.sides()) {
++            renderWorldSide(view, camera, solid, translucent, tile, side, transform,
++                    currentFace, surface, foldAlpha, currentCenterX, cubeCenterY,
++                    currentCenterZ, renderScale, alpha);
++        }
++    }
++
++    private static void renderWorldSide(Matrix4f view, Vec3 camera,
++                                        VertexConsumer solid, VertexConsumer translucent,
++                                        PlanetLodVolumeTile tile, PlanetVolumeMeshCache.SideFace side,
++                                        CubeNetSurfaceTransform transform,
++                                        CubeNetSurfaceTransform.Face currentFace,
++                                        PlanetSurfaceData surface, float foldAlpha,
++                                        double currentCenterX, double cubeCenterY, double currentCenterZ,
++                                        double renderScale, float alpha) {
++        int unit = (side.flags() & PlanetLodVolumeTile.FLAG_STRUCTURE) != 0 ? 1 : 4;
++        int minX = tile.worldMinX();
++        int minZ = tile.worldMinZ();
++        for (int h = side.horizontal0(); h < side.horizontal1(); h += unit) {
++            int h1 = Math.min(side.horizontal1(), h + unit);
++            for (int y = side.y0(); y < side.y1(); y += unit) {
++                int y1 = Math.min(side.y1(), y + unit);
++                double x0, z0, x1, z1;
++                Direction textureDirection;
++                Vector3f normal;
++                switch (side.side()) {
++                    case WEST -> {
++                        x0 = x1 = minX + side.fixed(); z0 = minZ + h; z1 = minZ + h1;
++                        textureDirection = Direction.WEST; normal = new Vector3f(-1, 0, 0);
++                    }
++                    case EAST -> {
++                        x0 = x1 = minX + side.fixed(); z0 = minZ + h1; z1 = minZ + h;
++                        textureDirection = Direction.EAST; normal = new Vector3f(1, 0, 0);
++                    }
++                    case NORTH -> {
++                        z0 = z1 = minZ + side.fixed(); x0 = minX + h1; x1 = minX + h;
++                        textureDirection = Direction.NORTH; normal = new Vector3f(0, 0, -1);
++                    }
++                    default -> {
++                        z0 = z1 = minZ + side.fixed(); x0 = minX + h; x1 = minX + h1;
++                        textureDirection = Direction.SOUTH; normal = new Vector3f(0, 0, 1);
++                    }
++                }
++                Vector3d p0l = livePoint(tile.face(), currentFace, transform, surface,
++                        x0, z0, y, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.35);
++                Vector3d p1l = livePoint(tile.face(), currentFace, transform, surface,
++                        x1, z1, y, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.35);
++                Vector3d p1h = livePoint(tile.face(), currentFace, transform, surface,
++                        x1, z1, y1, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.35);
++                Vector3d p0h = livePoint(tile.face(), currentFace, transform, surface,
++                        x0, z0, y1, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ, 0.35);
++                drawTexturedQuad(view, chooseBuffer(solid, translucent, side.flags()), camera,
++                        p0l, p1l, p1h, p0h, renderScale,
++                        side.stateId(), textureDirection, side.colour(), side.packedLight(), side.flags(),
++                        alpha, normal);
++            }
++        }
++    }
++
++    private static void renderOrbitalMesh(Matrix4f view,
++                                          VertexConsumer solid, VertexConsumer translucent,
++                                          PlanetLodVolumeTile tile, PlanetVolumeMeshCache.Mesh mesh,
++                                          CubeNetSurfaceTransform transform,
++                                          Vector3d planetPosition, Quaterniondc rotation,
++                                          double renderedHalfExtent, double worldToRendered) {
++        int worldMinX = tile.worldMinX();
++        int worldMinZ = tile.worldMinZ();
++        Vector3f topNormal = new Vector3f(CubeFaceFrame.axes(tile.face()).up()).rotate(rotation);
++        for (PlanetVolumeMeshCache.TopFace top : mesh.tops()) {
++            double x0 = worldMinX + top.x();
++            double z0 = worldMinZ + top.z();
++            Vector3d p00 = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                    renderedHalfExtent, worldToRendered, x0, z0, top.y(), 0.36);
++            Vector3d p10 = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                    renderedHalfExtent, worldToRendered, x0 + 1.0, z0, top.y(), 0.36);
++            Vector3d p11 = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                    renderedHalfExtent, worldToRendered, x0 + 1.0, z0 + 1.0, top.y(), 0.36);
++            Vector3d p01 = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                    renderedHalfExtent, worldToRendered, x0, z0 + 1.0, top.y(), 0.36);
++            drawTexturedQuad(view, chooseBuffer(solid, translucent, top.flags()), null,
++                    p01, p11, p10, p00, 1.0,
++                    top.stateId(), Direction.UP, top.colour(), top.packedLight(), top.flags(),
++                    1.0f, topNormal);
++        }
++        for (PlanetVolumeMeshCache.SideFace side : mesh.sides()) {
++            renderOrbitalSide(view, solid, translucent, tile, side, transform,
++                    planetPosition, rotation, renderedHalfExtent, worldToRendered);
++        }
++    }
++
++    private static void renderOrbitalSide(Matrix4f view,
++                                          VertexConsumer solid, VertexConsumer translucent,
++                                          PlanetLodVolumeTile tile, PlanetVolumeMeshCache.SideFace side,
++                                          CubeNetSurfaceTransform transform,
++                                          Vector3d planetPosition, Quaterniondc rotation,
++                                          double renderedHalfExtent, double worldToRendered) {
++        int unit = (side.flags() & PlanetLodVolumeTile.FLAG_STRUCTURE) != 0 ? 1 : 4;
++        int minX = tile.worldMinX();
++        int minZ = tile.worldMinZ();
++        CubeFaceFrame.Axes axes = CubeFaceFrame.axes(tile.face());
++        for (int h = side.horizontal0(); h < side.horizontal1(); h += unit) {
++            int h1 = Math.min(side.horizontal1(), h + unit);
++            for (int y = side.y0(); y < side.y1(); y += unit) {
++                int y1 = Math.min(side.y1(), y + unit);
++                double x0, z0, x1, z1;
++                Direction textureDirection;
++                Vector3d localNormal;
++                switch (side.side()) {
++                    case WEST -> {
++                        x0 = x1 = minX + side.fixed(); z0 = minZ + h; z1 = minZ + h1;
++                        textureDirection = Direction.WEST; localNormal = new Vector3d(axes.right()).negate();
++                    }
++                    case EAST -> {
++                        x0 = x1 = minX + side.fixed(); z0 = minZ + h1; z1 = minZ + h;
++                        textureDirection = Direction.EAST; localNormal = new Vector3d(axes.right());
++                    }
++                    case NORTH -> {
++                        z0 = z1 = minZ + side.fixed(); x0 = minX + h1; x1 = minX + h;
++                        textureDirection = Direction.NORTH; localNormal = new Vector3d(axes.south()).negate();
++                    }
++                    default -> {
++                        z0 = z1 = minZ + side.fixed(); x0 = minX + h; x1 = minX + h1;
++                        textureDirection = Direction.SOUTH; localNormal = new Vector3d(axes.south());
++                    }
++                }
++                Vector3d p0l = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, x0, z0, y, 0.37);
++                Vector3d p1l = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, x1, z1, y, 0.37);
++                Vector3d p1h = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, x1, z1, y1, 0.37);
++                Vector3d p0h = orbitalPoint(tile.face(), transform, planetPosition, rotation,
++                        renderedHalfExtent, worldToRendered, x0, z0, y1, 0.37);
++                Vector3f normal = new Vector3f(localNormal).rotate(rotation);
++                drawTexturedQuad(view, chooseBuffer(solid, translucent, side.flags()), null,
++                        p0l, p1l, p1h, p0h, 1.0,
++                        side.stateId(), textureDirection, side.colour(), side.packedLight(), side.flags(),
++                        1.0f, normal);
++            }
++        }
++    }
++
++    private static VertexConsumer chooseBuffer(VertexConsumer solid, VertexConsumer translucent, byte flags) {
++        return (flags & (PlanetLodVolumeTile.FLAG_TRANSLUCENT | PlanetLodVolumeTile.FLAG_LIQUID)) != 0
++                ? translucent : solid;
++    }
++
++    private static void drawTexturedQuad(Matrix4f view, VertexConsumer buffer, Vec3 camera,
++                                         Vector3d p0, Vector3d p1, Vector3d p2, Vector3d p3,
++                                         double renderScale, int stateId, Direction direction,
++                                         int colour, byte packedLight, byte flags, float alpha,
++                                         Vector3f normal) {
++        PlanetVolumeTextureCache.Sprite resolved = PlanetVolumeTextureCache.sprite(stateId, direction);
++        TextureAtlasSprite sprite = resolved.texture();
++        float shade = direction == Direction.UP ? 1.0f
++                : direction == Direction.NORTH ? 0.72f
++                : direction == Direction.SOUTH ? 0.88f : 0.80f;
++        if ((flags & PlanetLodVolumeTile.FLAG_EMISSIVE) != 0) shade = 1.0f;
++        int tint = resolved.tinted() ? colour : 0xFFFFFFFF;
++        int r = Mth.clamp((int) (((tint >> 16) & 0xFF) * shade), 0, 255);
++        int g = Mth.clamp((int) (((tint >> 8) & 0xFF) * shade), 0, 255);
++        int b = Mth.clamp((int) ((tint & 0xFF) * shade), 0, 255);
++        int a = Mth.clamp((int) (alpha * 255.0f), 0, 255);
++        int light = (flags & PlanetLodVolumeTile.FLAG_EMISSIVE) != 0
++                ? LightTexture.FULL_BRIGHT
++                : LightTexture.pack(Byte.toUnsignedInt(packedLight) & 15,
++                Math.max(10, (Byte.toUnsignedInt(packedLight) >>> 4) & 15));
++        addTexturedVertex(view, buffer, camera, p0, renderScale, sprite.getU0(), sprite.getV1(),
++                r, g, b, a, light, normal);
++        addTexturedVertex(view, buffer, camera, p1, renderScale, sprite.getU1(), sprite.getV1(),
++                r, g, b, a, light, normal);
++        addTexturedVertex(view, buffer, camera, p2, renderScale, sprite.getU1(), sprite.getV0(),
++                r, g, b, a, light, normal);
++        addTexturedVertex(view, buffer, camera, p3, renderScale, sprite.getU0(), sprite.getV0(),
++                r, g, b, a, light, normal);
++    }
++
++    private static void addTexturedVertex(Matrix4f view, VertexConsumer buffer, Vec3 camera,
++                                          Vector3d point, double scale, float u, float v,
++                                          int r, int g, int b, int a, int light, Vector3f normal) {
++        double x = camera == null ? point.x : (point.x - camera.x) * scale;
++        double y = camera == null ? point.y : (point.y - camera.y) * scale;
++        double z = camera == null ? point.z : (point.z - camera.z) * scale;
++        buffer.addVertex(view, (float) x, (float) y, (float) z)
++                .setColor(r, g, b, a)
++                .setUv(u, v)
++                .setOverlay(OverlayTexture.NO_OVERLAY)
++                .setLight(light)
++                .setNormal(normal.x, normal.y, normal.z);
++    }
++
++    private static Vector3d livePoint(CubeNetSurfaceTransform.Face face,
++                                      CubeNetSurfaceTransform.Face currentFace,
++                                      CubeNetSurfaceTransform transform, PlanetSurfaceData surface,
++                                      double worldX, double worldZ, double height,
++                                      float foldAlpha,
++                                      double currentCenterX, double cubeCenterY, double currentCenterZ,
++                                      double outwardNudge) {
++        double u = worldX - transform.faceCenterX(face);
++        double v = worldZ - transform.faceCenterZ(face);
++        double elevation = height - surface.seaLevel() + outwardNudge;
++        Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v,
++                transform.faceHalfSpan(), elevation);
++        Vector3d folded = CubeFaceFrame.celestialToSurface(currentFace, celestial)
++                .add(currentCenterX, cubeCenterY, currentCenterZ);
++        return new Vector3d(
++                Mth.lerp(foldAlpha, worldX, folded.x),
++                Mth.lerp(foldAlpha, height + outwardNudge, folded.y),
++                Mth.lerp(foldAlpha, worldZ, folded.z));
++    }
++
++    private static Vector3d orbitalPoint(CubeNetSurfaceTransform.Face face,
++                                         CubeNetSurfaceTransform transform,
++                                         Vector3d planetPosition, Quaterniondc rotation,
++                                         double renderedHalfExtent, double worldToRendered,
++                                         double worldX, double worldZ, double height,
++                                         double outwardNudge) {
++        double u = (worldX - transform.faceCenterX(face)) * worldToRendered;
++        double v = (worldZ - transform.faceCenterZ(face)) * worldToRendered;
++        double elevation = (height - DhLiveChunkPatchCache.seaLevel()) * worldToRendered
++                + outwardNudge;
++        return CubeFaceFrame.cubePoint(face, u, v, renderedHalfExtent, elevation)
++                .rotate(rotation).add(planetPosition);
++    }
++
++    private static double renderDistanceCompression(Vec3 camera,
++                                                     double centerX, double centerY, double centerZ,
++                                                     int vanillaRadius) {
++        double distance = Math.sqrt(square(centerX - camera.x)
++                + square(centerY - camera.y) + square(centerZ - camera.z));
++        double target = Math.max(640.0, vanillaRadius * 3.25);
++        double fullScale = distance <= target ? 1.0 : target / distance;
++        double start = Math.max(512.0, GenesisClientConfig.getWorldLodStartHeight());
++        double full = Math.max(start + 1.0, GenesisClientConfig.getWorldCubeCompressionFullHeight());
++        float influence = smoothstep((float) ((camera.y - start) / (full - start)));
++        return Mth.lerp(influence, 1.0, fullScale);
++    }
++
++    private static double square(double value) {
++        return value * value;
++    }
++
++    private static float smoothstep(float value) {
++        float clamped = Mth.clamp(value, 0.0f, 1.0f);
++        return clamped * clamped * (3.0f - 2.0f * clamped);
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeMeshCache.java	2026-07-31 16:28:39.585260576 +0000
+@@ -0,0 +1,257 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.resources.ResourceLocation;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.space.surface.PlanetLodVolumeTile;
++
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Objects;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.ThreadFactory;
++import java.util.concurrent.atomic.AtomicBoolean;
++
++/**
++ * Asynchronous logical mesh cache for exact volume tiles.
++ *
++ * <p>The worker performs interval subtraction and side-strip merging once per
++ * tile revision. Render frames only transform/upload the finished quads; they
++ * no longer rediscover walls and air gaps from thousands of columns every
++ * frame.</p>
++ */
++public final class PlanetVolumeMeshCache {
++    public enum Side {
++        WEST, EAST, NORTH, SOUTH
++    }
++
++    public record TopFace(int x, int z, int y, int stateId, int colour,
++                          byte packedLight, byte flags) {
++    }
++
++    public record SideFace(Side side, int fixed, int horizontal0, int horizontal1,
++                           int y0, int y1, int stateId, int colour,
++                           byte packedLight, byte flags) {
++    }
++
++    public record Mesh(PlanetLodVolumeTile.Key key, long revision,
++                       TopFace[] tops, SideFace[] sides) {
++        public int quadCount() {
++            return tops.length + sides.length;
++        }
++    }
++
++    private record CacheKey(ResourceLocation planet, PlanetLodVolumeTile.Key tile) {
++    }
++
++    private static final int MAX_MESHES = 4096;
++    private static final Object LOCK = new Object();
++    private static final LinkedHashMap<CacheKey, Entry> ENTRIES =
++            new LinkedHashMap<>(256, 0.75f, true) {
++                @Override
++                protected boolean removeEldestEntry(Map.Entry<CacheKey, Entry> eldest) {
++                    return size() > MAX_MESHES;
++                }
++            };
++    private static final ThreadFactory THREAD_FACTORY = runnable -> {
++        Thread thread = new Thread(runnable, "Genesis-Planet-Volume-Mesher");
++        thread.setDaemon(true);
++        thread.setPriority(Thread.MIN_PRIORITY);
++        return thread;
++    };
++    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(THREAD_FACTORY);
++
++    private PlanetVolumeMeshCache() {
++    }
++
++    /** Returns a ready mesh, or schedules it and returns {@code null}. */
++    public static Mesh getOrSchedule(ResourceLocation planet, PlanetLodVolumeTile tile) {
++        CacheKey key = new CacheKey(planet, tile.key());
++        Entry entry;
++        synchronized (LOCK) {
++            entry = ENTRIES.get(key);
++            if (entry != null && entry.revision == tile.revision()) {
++                if (entry.mesh != null) {
++                    return entry.mesh;
++                }
++                if (entry.building.get()) {
++                    return null;
++                }
++            } else {
++                entry = new Entry(tile.revision());
++                ENTRIES.put(key, entry);
++            }
++            if (!entry.building.compareAndSet(false, true)) {
++                return null;
++            }
++        }
++
++        Entry target = entry;
++        WORKER.execute(() -> {
++            Mesh built = null;
++            try {
++                built = build(tile);
++            } catch (Throwable error) {
++                GenesisMod.LOGGER.warn("[VOLUME-LOD] mesh build failed for {} {},{}",
++                        tile.face(), tile.chunkX(), tile.chunkZ(), error);
++            }
++            synchronized (LOCK) {
++                Entry current = ENTRIES.get(key);
++                if (current == target && current.revision == tile.revision()) {
++                    current.mesh = built;
++                    current.building.set(false);
++                }
++            }
++        });
++        return null;
++    }
++
++    public static void invalidate(ResourceLocation planet, PlanetLodVolumeTile.Key tile) {
++        synchronized (LOCK) {
++            ENTRIES.remove(new CacheKey(planet, tile));
++        }
++    }
++
++    public static void clear() {
++        synchronized (LOCK) {
++            ENTRIES.clear();
++        }
++    }
++
++    private static Mesh build(PlanetLodVolumeTile tile) {
++        List<TopFace> tops = new ArrayList<>(512);
++        List<SideFace> rawSides = new ArrayList<>(2048);
++
++        for (int z = 0; z < PlanetLodVolumeTile.RESOLUTION; z++) {
++            for (int x = 0; x < PlanetLodVolumeTile.RESOLUTION; x++) {
++                int start = tile.firstSegment(x, z);
++                int end = tile.endSegment(x, z);
++                for (int segment = start; segment < end; segment++) {
++                    int bottom = tile.bottomY()[segment];
++                    int top = tile.topY()[segment];
++                    if (!occupiedAt(tile, x, z, top)) {
++                        tops.add(new TopFace(x, z, top, tile.blockStateIds()[segment],
++                                tile.colours()[segment], tile.packedLight()[segment], tile.flags()[segment]));
++                    }
++                    addExposedSides(tile, rawSides, x, z, segment, bottom, top);
++                }
++            }
++        }
++
++        rawSides.sort(Comparator
++                .comparing((SideFace side) -> side.side().ordinal())
++                .thenComparingInt(SideFace::fixed)
++                .thenComparingInt(SideFace::y0)
++                .thenComparingInt(SideFace::y1)
++                .thenComparingInt(SideFace::stateId)
++                .thenComparingInt(SideFace::colour)
++                .thenComparingInt(side -> Byte.toUnsignedInt(side.packedLight()))
++                .thenComparingInt(side -> Byte.toUnsignedInt(side.flags()))
++                .thenComparingInt(SideFace::horizontal0));
++
++        List<SideFace> merged = new ArrayList<>(rawSides.size());
++        for (SideFace side : rawSides) {
++            if (!merged.isEmpty()) {
++                SideFace previous = merged.get(merged.size() - 1);
++                if (canMerge(previous, side)) {
++                    merged.set(merged.size() - 1, new SideFace(previous.side(), previous.fixed(),
++                            previous.horizontal0(), side.horizontal1(), previous.y0(), previous.y1(),
++                            previous.stateId(), previous.colour(), previous.packedLight(), previous.flags()));
++                    continue;
++                }
++            }
++            merged.add(side);
++        }
++
++        return new Mesh(tile.key(), tile.revision(),
++                tops.toArray(TopFace[]::new), merged.toArray(SideFace[]::new));
++    }
++
++    private static boolean canMerge(SideFace a, SideFace b) {
++        return a.side() == b.side()
++                && a.fixed() == b.fixed()
++                && a.horizontal1() == b.horizontal0()
++                && a.y0() == b.y0() && a.y1() == b.y1()
++                && a.stateId() == b.stateId()
++                && a.colour() == b.colour()
++                && a.packedLight() == b.packedLight()
++                && a.flags() == b.flags();
++    }
++
++    private static boolean occupiedAt(PlanetLodVolumeTile tile, int x, int z, int y) {
++        if (x < 0 || x >= PlanetLodVolumeTile.RESOLUTION
++                || z < 0 || z >= PlanetLodVolumeTile.RESOLUTION) {
++            return false;
++        }
++        for (int segment = tile.firstSegment(x, z); segment < tile.endSegment(x, z); segment++) {
++            if (y >= tile.bottomY()[segment] && y < tile.topY()[segment]) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private static void addExposedSides(PlanetLodVolumeTile tile, List<SideFace> output,
++                                        int x, int z, int segment, int bottom, int top) {
++        addDirection(tile, output, x, z, x - 1, z, segment, bottom, top, Side.WEST, x, z, z + 1);
++        addDirection(tile, output, x, z, x + 1, z, segment, bottom, top, Side.EAST, x + 1, z, z + 1);
++        addDirection(tile, output, x, z, x, z - 1, segment, bottom, top, Side.NORTH, z, x, x + 1);
++        addDirection(tile, output, x, z, x, z + 1, segment, bottom, top, Side.SOUTH, z + 1, x, x + 1);
++    }
++
++    private static void addDirection(PlanetLodVolumeTile tile, List<SideFace> output,
++                                     int sourceX, int sourceZ, int neighbourX, int neighbourZ,
++                                     int segment, int bottom, int top, Side side,
++                                     int fixed, int horizontal0, int horizontal1) {
++        List<int[]> visible = new ArrayList<>(4);
++        visible.add(new int[]{bottom, top});
++        if (neighbourX >= 0 && neighbourX < PlanetLodVolumeTile.RESOLUTION
++                && neighbourZ >= 0 && neighbourZ < PlanetLodVolumeTile.RESOLUTION) {
++            for (int neighbour = tile.firstSegment(neighbourX, neighbourZ);
++                 neighbour < tile.endSegment(neighbourX, neighbourZ) && !visible.isEmpty(); neighbour++) {
++                subtract(visible, tile.bottomY()[neighbour], tile.topY()[neighbour]);
++            }
++        }
++        for (int[] interval : visible) {
++            if (interval[1] <= interval[0]) {
++                continue;
++            }
++            output.add(new SideFace(side, fixed, horizontal0, horizontal1,
++                    interval[0], interval[1], tile.blockStateIds()[segment],
++                    tile.colours()[segment], tile.packedLight()[segment], tile.flags()[segment]));
++        }
++    }
++
++    private static void subtract(List<int[]> intervals, int cutBottom, int cutTop) {
++        for (int index = intervals.size() - 1; index >= 0; index--) {
++            int[] value = intervals.get(index);
++            int bottom = value[0];
++            int top = value[1];
++            int overlapBottom = Math.max(bottom, cutBottom);
++            int overlapTop = Math.min(top, cutTop);
++            if (overlapTop <= overlapBottom) {
++                continue;
++            }
++            intervals.remove(index);
++            if (bottom < overlapBottom) {
++                intervals.add(new int[]{bottom, overlapBottom});
++            }
++            if (overlapTop < top) {
++                intervals.add(new int[]{overlapTop, top});
++            }
++        }
++    }
++
++    private static final class Entry {
++        private final long revision;
++        private final AtomicBoolean building = new AtomicBoolean();
++        private volatile Mesh mesh;
++
++        private Entry(long revision) {
++            this.revision = revision;
++        }
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeTextureCache.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeTextureCache.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeTextureCache.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/PlanetVolumeTextureCache.java	2026-07-31 16:31:45.813260576 +0000
+@@ -0,0 +1,62 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.renderer.block.model.BakedQuad;
++import net.minecraft.client.renderer.texture.TextureAtlasSprite;
++import net.minecraft.client.resources.model.BakedModel;
++import net.minecraft.core.Direction;
++import net.minecraft.util.RandomSource;
++import net.minecraft.world.level.block.Block;
++import net.minecraft.world.level.block.state.BlockState;
++
++import java.util.EnumMap;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++
++/** Resolves real Minecraft block-atlas sprites for volume LOD faces. */
++public final class PlanetVolumeTextureCache {
++    public record Sprite(TextureAtlasSprite texture, boolean tinted) {
++    }
++
++    private static final Map<Integer, EnumMap<Direction, Sprite>> CACHE = new HashMap<>();
++
++    private PlanetVolumeTextureCache() {
++    }
++
++    public static Sprite sprite(int stateId, Direction direction) {
++        EnumMap<Direction, Sprite> states = CACHE.computeIfAbsent(stateId,
++                PlanetVolumeTextureCache::buildStateSprites);
++        return states.get(direction);
++    }
++
++    public static void clear() {
++        CACHE.clear();
++    }
++
++    private static EnumMap<Direction, Sprite> buildStateSprites(int stateId) {
++        EnumMap<Direction, Sprite> result = new EnumMap<>(Direction.class);
++        BlockState state = Block.stateById(stateId);
++        Minecraft minecraft = Minecraft.getInstance();
++        BakedModel model = minecraft.getBlockRenderer().getBlockModel(state);
++        TextureAtlasSprite fallback = model.getParticleIcon();
++        for (Direction direction : Direction.values()) {
++            List<BakedQuad> quads = model.getQuads(state, direction, RandomSource.create(31L + direction.ordinal()));
++            if (quads.isEmpty()) {
++                quads = model.getQuads(state, null, RandomSource.create(73L + direction.ordinal()));
++            }
++            BakedQuad selected = null;
++            for (BakedQuad quad : quads) {
++                if (quad.getDirection() == direction) {
++                    selected = quad;
++                    break;
++                }
++                if (selected == null) selected = quad;
++            }
++            result.put(direction, selected == null
++                    ? new Sprite(fallback, false)
++                    : new Sprite(selected.getSprite(), selected.isTinted()));
++        }
++        return result;
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 15:42:37.217260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 16:34:26.217260576 +0000
+@@ -137,6 +137,8 @@
+         renderLiveChunkPatches(buffer, view, camera, transform, currentFace, surface,
+                 lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         source.endBatch(LOD_RENDER_TYPE);
++        PlanetVolumeLodRenderer.renderOverworld(view, camera, transform, currentFace, surface,
++                lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+ 
+@@ -147,7 +149,9 @@
+                     Mth.floor(camera.y), currentFace, DhCubeLodBridge.successfulColumns() + " base / "
+                             + DhLiveChunkPatchCache.patchCount() + " DH exact chunks / "
+                             + SparsePlanetLodClientCache.tileCount(SparsePlanetLodService.EARTH_ID)
+-                            + " sparse tiles");
++                            + " sparse tiles / "
++                            + PlanetLodVolumeClientCache.tileCount(SparsePlanetLodService.EARTH_ID)
++                            + " textured volume chunks");
+         }
+         if (foldAlpha >= 0.999f && !loggedFolded) {
+             loggedFolded = true;
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java	2026-07-31 15:43:40.617260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/networking/GenesisNetworking.java	2026-07-31 16:29:09.709260576 +0000
+@@ -10,7 +10,7 @@
+ 
+ public class GenesisNetworking {
+ 
+-    private static final String PROTOCOL_VERSION = "2";
++    private static final String PROTOCOL_VERSION = "3";
+ 
+     public static void register(RegisterPayloadHandlersEvent event) {
+         PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+@@ -23,6 +23,7 @@
+         registrar.playToClient(SyncTimeOffsetPacket.TYPE, SyncTimeOffsetPacket.STREAM_CODEC, SyncTimeOffsetPacket::handle);
+         registrar.playToClient(PlanetSurfacePacket.TYPE, PlanetSurfacePacket.STREAM_CODEC, PlanetSurfacePacket::handle);
+         registrar.playToClient(SparsePlanetLodTilePacket.TYPE, SparsePlanetLodTilePacket.STREAM_CODEC, SparsePlanetLodTilePacket::handle);
++        registrar.playToClient(PlanetLodVolumeTilePacket.TYPE, PlanetLodVolumeTilePacket.STREAM_CODEC, PlanetLodVolumeTilePacket::handle);
+     }
+ 
+     public static void sendToAll(CustomPacketPayload packet) {
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/networking/PlanetLodVolumeTilePacket.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/networking/PlanetLodVolumeTilePacket.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/networking/PlanetLodVolumeTilePacket.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/networking/PlanetLodVolumeTilePacket.java	2026-07-31 16:29:07.893260576 +0000
+@@ -0,0 +1,116 @@
++package shipwrights.genesis.networking;
++
++import io.netty.buffer.ByteBuf;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.network.codec.ByteBufCodecs;
++import net.minecraft.network.codec.StreamCodec;
++import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
++import net.minecraft.resources.ResourceLocation;
++import net.neoforged.neoforge.network.handling.IPayloadContext;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.lod.PlanetLodVolumeClientCache;
++import shipwrights.genesis.space.surface.PlanetLodVolumeTile;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++/** Streams one exact 16x16 vertical-volume LOD tile. */
++public record PlanetLodVolumeTilePacket(
++        ResourceLocation planet,
++        int faceOrdinal,
++        int chunkX,
++        int chunkZ,
++        long revision,
++        int[] columnOffsets,
++        short[] bottomY,
++        short[] topY,
++        int[] blockStateIds,
++        int[] colours,
++        byte[] packedLight,
++        byte[] flags) implements CustomPacketPayload {
++
++    public static final Type<PlanetLodVolumeTilePacket> TYPE = new Type<>(
++            ResourceLocation.fromNamespaceAndPath(GenesisMod.MOD_ID, "planet_lod_volume_tile"));
++    public static final StreamCodec<ByteBuf, PlanetLodVolumeTilePacket> STREAM_CODEC =
++            StreamCodec.of(PlanetLodVolumeTilePacket::write, PlanetLodVolumeTilePacket::read);
++
++    public static PlanetLodVolumeTilePacket of(ResourceLocation planet, PlanetLodVolumeTile tile) {
++        return new PlanetLodVolumeTilePacket(planet, tile.face().ordinal(), tile.chunkX(), tile.chunkZ(),
++                tile.revision(), tile.columnOffsets(), tile.bottomY(), tile.topY(), tile.blockStateIds(),
++                tile.colours(), tile.packedLight(), tile.flags());
++    }
++
++    public PlanetLodVolumeTile toTile() {
++        CubeNetSurfaceTransform.Face[] faces = CubeNetSurfaceTransform.Face.values();
++        if (faceOrdinal < 0 || faceOrdinal >= faces.length) {
++            throw new IllegalArgumentException("Invalid cube face ordinal " + faceOrdinal);
++        }
++        return new PlanetLodVolumeTile(faces[faceOrdinal], chunkX, chunkZ, revision,
++                columnOffsets, bottomY, topY, blockStateIds, colours, packedLight, flags);
++    }
++
++    private static void write(ByteBuf raw, PlanetLodVolumeTilePacket packet) {
++        FriendlyByteBuf buffer = new FriendlyByteBuf(raw);
++        ResourceLocation.STREAM_CODEC.encode(buffer, packet.planet());
++        ByteBufCodecs.VAR_INT.encode(raw, packet.faceOrdinal());
++        raw.writeInt(packet.chunkX());
++        raw.writeInt(packet.chunkZ());
++        raw.writeLong(packet.revision());
++        int segments = packet.bottomY().length;
++        ByteBufCodecs.VAR_INT.encode(raw, segments);
++        for (int offset : packet.columnOffsets()) {
++            raw.writeShort(offset);
++        }
++        for (int i = 0; i < segments; i++) {
++            raw.writeShort(packet.bottomY()[i]);
++            raw.writeShort(packet.topY()[i]);
++            ByteBufCodecs.VAR_INT.encode(raw, packet.blockStateIds()[i]);
++            raw.writeInt(packet.colours()[i]);
++            raw.writeByte(packet.packedLight()[i]);
++            raw.writeByte(packet.flags()[i]);
++        }
++    }
++
++    private static PlanetLodVolumeTilePacket read(ByteBuf raw) {
++        FriendlyByteBuf buffer = new FriendlyByteBuf(raw);
++        ResourceLocation planet = ResourceLocation.STREAM_CODEC.decode(buffer);
++        int face = ByteBufCodecs.VAR_INT.decode(raw);
++        int chunkX = raw.readInt();
++        int chunkZ = raw.readInt();
++        long revision = raw.readLong();
++        int segments = ByteBufCodecs.VAR_INT.decode(raw);
++        if (segments < 0 || segments > PlanetLodVolumeTile.MAX_SEGMENTS) {
++            throw new IllegalArgumentException("Invalid volume tile segment count " + segments);
++        }
++        int[] offsets = new int[PlanetLodVolumeTile.OFFSET_COUNT];
++        for (int i = 0; i < offsets.length; i++) {
++            offsets[i] = raw.readUnsignedShort();
++        }
++        if (offsets[offsets.length - 1] != segments) {
++            throw new IllegalArgumentException("Volume tile offsets do not match segment count");
++        }
++        short[] bottom = new short[segments];
++        short[] top = new short[segments];
++        int[] states = new int[segments];
++        int[] colours = new int[segments];
++        byte[] light = new byte[segments];
++        byte[] flags = new byte[segments];
++        for (int i = 0; i < segments; i++) {
++            bottom[i] = raw.readShort();
++            top[i] = raw.readShort();
++            states[i] = ByteBufCodecs.VAR_INT.decode(raw);
++            colours[i] = raw.readInt();
++            light[i] = raw.readByte();
++            flags[i] = raw.readByte();
++        }
++        return new PlanetLodVolumeTilePacket(planet, face, chunkX, chunkZ, revision,
++                offsets, bottom, top, states, colours, light, flags);
++    }
++
++    @Override
++    public Type<? extends CustomPacketPayload> type() {
++        return TYPE;
++    }
++
++    public static void handle(PlanetLodVolumeTilePacket packet, IPayloadContext context) {
++        context.enqueueWork(() -> PlanetLodVolumeClientCache.accept(packet.planet(), packet.toTile()));
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/space/surface/PlanetLodVolumeTile.java	2026-07-31 16:27:43.593260576 +0000
+@@ -0,0 +1,116 @@
++package shipwrights.genesis.space.surface;
++
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.util.Objects;
++
++/**
++ * Exact, structure-preserving 3D LOD data for one real Minecraft chunk.
++ *
++ * <p>Unlike {@link SparsePlanetLodTile}, this tile does not collapse every
++ * column to one height and colour. Each of the 256 block columns owns a small
++ * list of vertical material segments. Air gaps, roofs, walls, tree canopies,
++ * towers and other separated geometry therefore survive the trip to the
++ * high-altitude/orbital renderer.</p>
++ */
++public record PlanetLodVolumeTile(
++        CubeNetSurfaceTransform.Face face,
++        int chunkX,
++        int chunkZ,
++        long revision,
++        int[] columnOffsets,
++        short[] bottomY,
++        short[] topY,
++        int[] blockStateIds,
++        int[] colours,
++        byte[] packedLight,
++        byte[] flags) {
++
++    public static final int RESOLUTION = 16;
++    public static final int COLUMN_COUNT = RESOLUTION * RESOLUTION;
++    public static final int OFFSET_COUNT = COLUMN_COUNT + 1;
++    public static final int MAX_SEGMENTS = 4096;
++    public static final int MAX_SEGMENTS_PER_COLUMN = 12;
++
++    public static final byte FLAG_LIQUID = 1;
++    public static final byte FLAG_TRANSLUCENT = 1 << 1;
++    public static final byte FLAG_FOLIAGE = 1 << 2;
++    public static final byte FLAG_EMISSIVE = 1 << 3;
++    public static final byte FLAG_STRUCTURE = 1 << 4;
++    public static final byte FLAG_NATURAL = 1 << 5;
++
++    public PlanetLodVolumeTile {
++        Objects.requireNonNull(face, "face");
++        if (columnOffsets == null || columnOffsets.length != OFFSET_COUNT) {
++            throw new IllegalArgumentException("Volume tile requires 257 column offsets");
++        }
++        int segmentCount = columnOffsets[COLUMN_COUNT];
++        if (segmentCount < 0 || segmentCount > MAX_SEGMENTS) {
++            throw new IllegalArgumentException("Invalid volume segment count " + segmentCount);
++        }
++        if (bottomY == null || bottomY.length != segmentCount
++                || topY == null || topY.length != segmentCount
++                || blockStateIds == null || blockStateIds.length != segmentCount
++                || colours == null || colours.length != segmentCount
++                || packedLight == null || packedLight.length != segmentCount
++                || flags == null || flags.length != segmentCount) {
++            throw new IllegalArgumentException("Volume segment arrays must have identical lengths");
++        }
++        int previous = 0;
++        for (int column = 0; column < OFFSET_COUNT; column++) {
++            int offset = columnOffsets[column];
++            if (offset < previous || offset > segmentCount) {
++                throw new IllegalArgumentException("Invalid column offset at " + column + ": " + offset);
++            }
++            if (column > 0 && offset - previous > MAX_SEGMENTS_PER_COLUMN) {
++                throw new IllegalArgumentException("Column " + (column - 1) + " exceeds segment limit");
++            }
++            previous = offset;
++        }
++        for (int segment = 0; segment < segmentCount; segment++) {
++            if (topY[segment] <= bottomY[segment]) {
++                throw new IllegalArgumentException("Empty/reversed segment " + segment);
++            }
++            if (blockStateIds[segment] < 0) {
++                throw new IllegalArgumentException("Negative block-state id in segment " + segment);
++            }
++        }
++    }
++
++    public int segmentCount() {
++        return bottomY.length;
++    }
++
++    public int columnIndex(int x, int z) {
++        if (x < 0 || x >= RESOLUTION || z < 0 || z >= RESOLUTION) {
++            throw new IndexOutOfBoundsException("volume column " + x + "," + z);
++        }
++        return z * RESOLUTION + x;
++    }
++
++    public int firstSegment(int x, int z) {
++        return columnOffsets[columnIndex(x, z)];
++    }
++
++    public int endSegment(int x, int z) {
++        return columnOffsets[columnIndex(x, z) + 1];
++    }
++
++    public int worldMinX() {
++        return chunkX << 4;
++    }
++
++    public int worldMinZ() {
++        return chunkZ << 4;
++    }
++
++    public record Key(CubeNetSurfaceTransform.Face face, int chunkX, int chunkZ) {
++        public Key {
++            Objects.requireNonNull(face, "face");
++        }
++    }
++
++    public Key key() {
++        return new Key(face, chunkX, chunkZ);
++    }
++}
+diff -ruN '--exclude=.gradle' '--exclude=build' '--exclude=dist' '--exclude=run' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=*-VALIDATION.txt' '--exclude=HIGH-DETAIL-VOLUME-LOD5.md' /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java
+--- /mnt/data/ProjectStarbound_orbital_detail_lod4/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 15:35:03.329260576 +0000
++++ /mnt/data/ProjectStarbound_high_detail_lod5/src/main/java/shipwrights/genesis/space/surface/SparsePlanetLodService.java	2026-07-31 16:30:13.909260576 +0000
+@@ -2,6 +2,7 @@
+ 
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
++import net.minecraft.core.registries.BuiltInRegistries;
+ import net.minecraft.core.QuartPos;
+ import net.minecraft.resources.ResourceLocation;
+ import net.minecraft.server.MinecraftServer;
+@@ -11,11 +12,13 @@
+ import net.minecraft.util.Mth;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.Level;
++import net.minecraft.world.level.LightLayer;
+ import net.minecraft.world.level.LevelHeightAccessor;
+ import net.minecraft.world.level.NoiseColumn;
+ import net.minecraft.world.level.biome.Biome;
+ import net.minecraft.world.level.biome.BiomeSource;
+ import net.minecraft.world.level.biome.Climate;
++import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.chunk.ChunkGenerator;
+ import net.minecraft.world.level.chunk.LevelChunk;
+@@ -30,6 +33,7 @@
+ import net.neoforged.neoforge.event.tick.ServerTickEvent;
+ import net.neoforged.neoforge.network.PacketDistributor;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.networking.PlanetLodVolumeTilePacket;
+ import shipwrights.genesis.networking.SparsePlanetLodTilePacket;
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.teleportation.ArrivalGate;
+@@ -78,10 +82,13 @@
+             * GLOBAL_TILES_PER_AXIS * GLOBAL_TILES_PER_AXIS;
+     private static final int[] PROCEDURAL_RADII = {8, 10, 6};
+     private static final int MAX_SERVER_TILES = 24_576;
++    private static final int MAX_VOLUME_TILES = 8_192;
++    private static final int MAX_VOLUME_SCAN_DEPTH = 96;
+     private static final int MAX_QUEUED = 4096;
+     private static final int COMPLETED_PER_TICK = 3;
+-    private static final int DIRTY_PER_TICK = 4;
++    private static final int DIRTY_PER_TICK = 1;
+     private static final int REPLAY_PER_TICK = 3;
++    private static final int VOLUME_REPLAY_PER_TICK = 1;
+ 
+     private static final ThreadFactory THREAD_FACTORY = runnable -> {
+         Thread thread = new Thread(runnable, "Genesis-Sparse-Planet-LOD");
+@@ -100,12 +107,20 @@
+                     return size() > MAX_SERVER_TILES;
+                 }
+             };
++    private static final LinkedHashMap<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> VOLUME_TILES =
++            new LinkedHashMap<>(256, 0.75f, true) {
++                @Override
++                protected boolean removeEldestEntry(Map.Entry<PlanetLodVolumeTile.Key, PlanetLodVolumeTile> eldest) {
++                    return size() > MAX_VOLUME_TILES;
++                }
++            };
+     private static final Set<SparsePlanetLodTile.Key> QUEUED = ConcurrentHashMap.newKeySet();
+     private static final ConcurrentLinkedQueue<CompletedTile> COMPLETED = new ConcurrentLinkedQueue<>();
+     private static final ConcurrentLinkedQueue<Long> DIRTY_CHUNKS = new ConcurrentLinkedQueue<>();
+     private static final Set<Long> DIRTY_SET = ConcurrentHashMap.newKeySet();
+     private static final Map<UUID, PlayerCursor> PLAYER_CURSORS = new ConcurrentHashMap<>();
+     private static final Map<UUID, Integer> REPLAY_CURSORS = new ConcurrentHashMap<>();
++    private static final Map<UUID, Integer> VOLUME_REPLAY_CURSORS = new ConcurrentHashMap<>();
+ 
+     private static volatile int generation;
+     private static volatile boolean loggedActive;
+@@ -150,6 +165,7 @@
+ 
+         applyCompleted(server);
+         replayCachedTiles(server);
++        replayCachedVolumeTiles(server);
+ 
+         // Crossings are the highest-priority latency path. Keep completed data
+         // flowing to clients, but do not start generator work or exact chunk
+@@ -346,9 +362,184 @@
+             }
+         }
+ 
++        long revision = REVISION.incrementAndGet();
+         SparsePlanetLodTile tile = new SparsePlanetLodTile(face, originX, originZ, 1,
+-                true, REVISION.incrementAndGet(), heights, colours);
++                true, revision, heights, colours);
+         storeAndBroadcast(server, EARTH_ID, tile);
++
++        PlanetLodVolumeTile volume = captureVolumeTile(level, chunk, face, chunkX, chunkZ, revision);
++        if (volume != null && volume.segmentCount() > 0) {
++            storeVolumeAndBroadcast(server, EARTH_ID, volume);
++        }
++    }
++
++    /**
++     * Captures the real vertical surface shell of an already-loaded chunk.
++     * The scan is capped to the top 96 blocks and twelve material runs per
++     * column, which preserves roofs, walls, trees and towers without shipping
++     * caves or the entire underground volume to orbital clients.
++     */
++    private static PlanetLodVolumeTile captureVolumeTile(ServerLevel level, LevelChunk chunk,
++                                                         CubeNetSurfaceTransform.Face face,
++                                                         int chunkX, int chunkZ, long revision) {
++        int[] offsets = new int[PlanetLodVolumeTile.OFFSET_COUNT];
++        List<VolumeSegment> segments = new ArrayList<>(768);
++        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
++        int originX = chunkX << 4;
++        int originZ = chunkZ << 4;
++
++        for (int z = 0; z < 16; z++) {
++            for (int x = 0; x < 16; x++) {
++                int column = z * 16 + x;
++                offsets[column] = segments.size();
++                int top = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
++                top = Mth.clamp(top, level.getMinBuildHeight(), level.getMaxBuildHeight() - 1);
++                int bottomLimit = Math.max(level.getMinBuildHeight(), top - MAX_VOLUME_SCAN_DEPTH + 1);
++                List<VolumeSegment> columnSegments = new ArrayList<>(PlanetLodVolumeTile.MAX_SEGMENTS_PER_COLUMN);
++
++                int runStateId = -1;
++                int runBottom = 0;
++                int runTop = 0;
++                BlockState runState = null;
++                for (int y = top; y >= bottomLimit; y--) {
++                    BlockState state = chunk.getBlockState(pos.set(originX + x, y, originZ + z));
++                    if (state.isAir()) {
++                        if (runState != null) {
++                            appendRun(level, pos, columnSegments, runState, runStateId, runBottom, runTop,
++                                    originX + x, originZ + z);
++                            runState = null;
++                            runStateId = -1;
++                        }
++                        continue;
++                    }
++                    int stateId = Block.getId(state);
++                    if (runState != null && stateId == runStateId && y + 1 == runBottom) {
++                        runBottom = y;
++                    } else {
++                        if (runState != null) {
++                            appendRun(level, pos, columnSegments, runState, runStateId, runBottom, runTop,
++                                    originX + x, originZ + z);
++                        }
++                        runState = state;
++                        runStateId = stateId;
++                        runBottom = y;
++                        runTop = y + 1;
++                    }
++                }
++                if (runState != null) {
++                    appendRun(level, pos, columnSegments, runState, runStateId, runBottom, runTop,
++                            originX + x, originZ + z);
++                }
++
++                // Runs were discovered top-down. Keep the highest material
++                // segments because those are the ones visible from altitude.
++                int keep = Math.min(PlanetLodVolumeTile.MAX_SEGMENTS_PER_COLUMN, columnSegments.size());
++                for (int i = 0; i < keep; i++) {
++                    segments.add(columnSegments.get(i));
++                }
++                offsets[column + 1] = segments.size();
++            }
++        }
++
++        if (segments.isEmpty() || segments.size() > PlanetLodVolumeTile.MAX_SEGMENTS) {
++            return null;
++        }
++        short[] bottoms = new short[segments.size()];
++        short[] tops = new short[segments.size()];
++        int[] stateIds = new int[segments.size()];
++        int[] colours = new int[segments.size()];
++        byte[] lights = new byte[segments.size()];
++        byte[] flags = new byte[segments.size()];
++        for (int i = 0; i < segments.size(); i++) {
++            VolumeSegment segment = segments.get(i);
++            bottoms[i] = (short) segment.bottom();
++            tops[i] = (short) segment.top();
++            stateIds[i] = segment.stateId();
++            colours[i] = segment.colour();
++            lights[i] = segment.light();
++            flags[i] = segment.flags();
++        }
++        return new PlanetLodVolumeTile(face, chunkX, chunkZ, revision, offsets,
++                bottoms, tops, stateIds, colours, lights, flags);
++    }
++
++    private static void appendRun(ServerLevel level, BlockPos.MutableBlockPos pos,
++                                  List<VolumeSegment> output, BlockState state, int stateId,
++                                  int bottom, int top, int worldX, int worldZ) {
++        if (output.size() >= PlanetLodVolumeTile.MAX_SEGMENTS_PER_COLUMN) {
++            return;
++        }
++        // A huge continuous terrain run contributes only its upper shell. The
++        // sparse height tile already represents the mountain/body underneath.
++        int clampedBottom = Math.max(bottom, top - 32);
++        pos.set(worldX, top - 1, worldZ);
++        Holder<Biome> biome = level.getBiome(pos);
++        int colour = colourFor(state, biome, top - 1, level.getSeaLevel());
++        int sky = Mth.clamp(level.getBrightness(LightLayer.SKY, pos), 0, 15);
++        int block = Mth.clamp(level.getBrightness(LightLayer.BLOCK, pos), 0, 15);
++        byte light = (byte) ((sky << 4) | block);
++        output.add(new VolumeSegment(clampedBottom, top, stateId, colour, light, flagsFor(state)));
++    }
++
++    private static byte flagsFor(BlockState state) {
++        byte flags = 0;
++        if (!state.getFluidState().isEmpty()) flags |= PlanetLodVolumeTile.FLAG_LIQUID;
++        if (!state.canOcclude()) flags |= PlanetLodVolumeTile.FLAG_TRANSLUCENT;
++        if (state.getLightEmission() > 0) flags |= PlanetLodVolumeTile.FLAG_EMISSIVE;
++        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
++        String path = id == null ? "" : id.getPath();
++        boolean foliage = path.contains("leaves") || path.contains("grass") || path.contains("flower")
++                || path.contains("vine") || path.contains("crop") || path.contains("sapling");
++        if (foliage) flags |= PlanetLodVolumeTile.FLAG_FOLIAGE;
++        boolean natural = path.contains("stone") || path.contains("deepslate") || path.contains("dirt")
++                || path.contains("grass_block") || path.contains("sand") || path.contains("gravel")
++                || path.contains("clay") || path.contains("terracotta") || path.contains("snow")
++                || path.contains("ice") || path.contains("ore") || path.contains("mud");
++        if (natural) flags |= PlanetLodVolumeTile.FLAG_NATURAL;
++        else flags |= PlanetLodVolumeTile.FLAG_STRUCTURE;
++        return flags;
++    }
++
++    private static void storeVolumeAndBroadcast(MinecraftServer server, ResourceLocation planet,
++                                                PlanetLodVolumeTile tile) {
++        boolean changed;
++        synchronized (TILE_LOCK) {
++            PlanetLodVolumeTile previous = VOLUME_TILES.get(tile.key());
++            changed = previous == null || previous.revision() < tile.revision();
++            if (changed) {
++                VOLUME_TILES.put(tile.key(), tile);
++            }
++        }
++        if (changed && !server.getPlayerList().getPlayers().isEmpty()) {
++            PacketDistributor.sendToAllPlayers(PlanetLodVolumeTilePacket.of(planet, tile));
++        }
++    }
++
++    private static void replayCachedVolumeTiles(MinecraftServer server) {
++        if (VOLUME_REPLAY_CURSORS.isEmpty()) {
++            return;
++        }
++        List<PlanetLodVolumeTile> snapshot;
++        synchronized (TILE_LOCK) {
++            snapshot = new ArrayList<>(VOLUME_TILES.values());
++        }
++        if (snapshot.isEmpty()) {
++            return;
++        }
++        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
++            Integer cursor = VOLUME_REPLAY_CURSORS.get(player.getUUID());
++            if (cursor == null) continue;
++            int next = cursor;
++            for (int i = 0; i < VOLUME_REPLAY_PER_TICK && next < snapshot.size(); i++, next++) {
++                PacketDistributor.sendToPlayer(player,
++                        PlanetLodVolumeTilePacket.of(EARTH_ID, snapshot.get(next)));
++            }
++            if (next >= snapshot.size()) VOLUME_REPLAY_CURSORS.remove(player.getUUID());
++            else VOLUME_REPLAY_CURSORS.put(player.getUUID(), next);
++        }
++    }
++
++    private record VolumeSegment(int bottom, int top, int stateId, int colour, byte light, byte flags) {
+     }
+ 
+     private static void applyCompleted(MinecraftServer server) {
+@@ -411,6 +602,7 @@
+     @SubscribeEvent
+     public static void onLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+         REPLAY_CURSORS.put(event.getEntity().getUUID(), 0);
++        VOLUME_REPLAY_CURSORS.put(event.getEntity().getUUID(), 0);
+     }
+ 
+     @SubscribeEvent
+@@ -418,6 +610,7 @@
+         UUID id = event.getEntity().getUUID();
+         PLAYER_CURSORS.remove(id);
+         REPLAY_CURSORS.remove(id);
++        VOLUME_REPLAY_CURSORS.remove(id);
+     }
+ 
+     @SubscribeEvent
+@@ -429,8 +622,10 @@
+         DIRTY_SET.clear();
+         PLAYER_CURSORS.clear();
+         REPLAY_CURSORS.clear();
++        VOLUME_REPLAY_CURSORS.clear();
+         synchronized (TILE_LOCK) {
+             SERVER_TILES.clear();
++            VOLUME_TILES.clear();
+         }
+         loggedActive = false;
+         globalCursor = 0;

@@ -1,0 +1,1711 @@
+diff --git a/WORLD-TO-PLANET-LOD.md b/WORLD-TO-PLANET-LOD.md
+new file mode 100644
+index 0000000..4817931
+--- /dev/null
++++ b/WORLD-TO-PLANET-LOD.md
+@@ -0,0 +1,117 @@
++# World-to-planet LOD cube — test build 1
++
++This pass replaces the detached current-Earth visual with a renderer owned by
++the overworld itself. The normal world, live cached chunk snapshots, the global
++six-face surface sample, and the orbital Earth all use the same cube-net
++coordinates and the same terrain source.
++
++## Render progression
++
++- **Below Y=256:** vanilla chunk rendering only.
++- **Y=256 upward:** the overworld LOD begins fading in beyond the area vanilla
++  can still cover.
++- **As vertical distance defeats vanilla's far plane:** the LOD also fills the
++  centre beneath the craft, preventing the blank-hole problem.
++- **By Y=1536:** the flat current-face LOD is fully active.
++- **Y=16000–20000:** the other five faces smoothly fold into view.
++- **Y=20000–21000:** the complete cube remains stable through the final near-space buffer.
++- **At the default Y=21000 room crossing:** the orbital cube uses the same size,
++  face layout, terrain heights, colours, sea-level reference, and apparent scale.
++
++This is not a second Earth model placed below the player. While the player is
++in the overworld, `PlanetRenderer` refuses to draw a celestial Earth. The
++world-level LOD renderer owns the Earth visual.
++
++## Terrain sources
++
++1. **Vanilla chunks** — untouched close to the camera.
++2. **Live LOD tiles** — 64x64-block snapshots generated only from client chunks
++   that already exist. Each tile stores a 9x9 height/material grid. This can
++   retain the top silhouette and colour of local terrain edits and structures
++   after the vanilla render sections unload.
++3. **Global six-face sample** — guarantees a planet-scale surface and prevents
++   an empty void where no live tile has ever been cached.
++
++No chunk is force-loaded by the client LOD cache. Sampling is staged at two to
++four tiles per client tick and the cache is bounded to 4096 tiles.
++
++## Cube geometry and coordinates
++
++Earth remains physically consistent with the established 1:16 transform:
++
++- orbital cube: 512 space blocks wide;
++- each surface face: 8192 planet blocks wide;
++- the `up` face remains centred on world `(0, 0)`;
++- all six regions keep the existing cube-net landing transform.
++
++`CubeFaceFrame` is now the shared orientation authority for travel, overworld
++LOD, orbital rendering, and surface observer coordinates. Sea level is the
++face plane on both sides, eliminating the previous vertical offset. Launch
++distance is converted through the same 1:16 scale instead of using the old fixed
++400-space-block standoff, so the cube does not jump larger at the handoff.
++
++## Sable/Create Aeronautics handling
++
++The LOD renderer uses `RenderLevelStageEvent.getCamera().getPosition()`, which
++is the parent-level camera position used by the rest of Genesis rendering. It
++never reads a ship block position or mixes Sable-local coordinates with
++parent-world terrain coordinates.
++
++## Client configuration
++
++```toml
++WorldLodStartHeight = 256
++WorldLodFullHeight = 1536
++WorldLodRadius = 4096
++WorldLodQuality = 2
++CurrentPlanetRevealHeight = 16000
++```
++
++Quality values:
++
++- `1`: coarse folded faces;
++- `2`: balanced default;
++- `3`: full global sample on every face.
++
++## Required in-game verification
++
++1. Remove every older Genesis JAR and install only the new JAR.
++2. Launch in an existing overworld near recognizable terrain.
++3. Fly vertically through Y=256, 512, 1000, 4000, 16000, 19000, 20000, and 21000.
++4. Confirm there is no empty hole directly beneath the craft when vanilla
++   chunks fall outside the vertical far plane.
++5. Confirm the flat terrain gradually becomes a finite cube only above Y=16000.
++6. Cross into space at the default Y=21000 boundary and confirm Earth does not change size or face orientation.
++7. Re-enter through at least two different faces and confirm they map to
++   different cube-net regions.
++8. Grep the log for:
++
++```text
++[WORLD-LOD]
++[SURFACE]
++[VIEWAREA]
++[WATCHDOG]
++[CUBENET]
++```
++
++A successful activation includes:
++
++```text
++[WORLD-LOD] live overworld LOD active at y=...; current face=...; cube reveal begins at y=16000
++[CUBENET] launch from ... radius=1565
++```
++
++## Current limits
++
++- Live edited terrain is an in-memory cache, not a persistent disk LOD database.
++- The orbital cube uses the global six-face terrain sample. Local player-built
++  details are represented in the high-altitude overworld cache where available,
++  but are not yet merged into the orbital atlas after the dimension crossing.
++- Geometry is CPU-cached as height/material grids and emitted through a bounded
++  render pass; this pass does not yet maintain one persistent GPU vertex buffer
++  per tile.
++- Cube-edge walking/wrapping remains a separate feature.
++
++The modified classes were directly compiled as Java 21 bytecode against the
++project's bundled NeoForge 21.1.234 / Minecraft 1.21.1 merged classes. The full
++client still requires an actual game launch for runtime verification.
+diff --git a/gradle.properties b/gradle.properties
+index edab54a..4462a92 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -8,7 +8,7 @@ org.gradle.caching=true
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port
++mod_version=1.21.1-0.8.0-port-world-lod-cube1
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+@@ -33,7 +33,7 @@ kotlin_for_forge_version=5.11.0
+ create_version=6.0.10+mc1.21.1
+ create_aeronautics_version=1.3.0+mc1.21.1
+ create_aeronautics_mod_version=1.3.0
+-sable_version=2.0.3+mc1.21.1
++sable_version=2.0.3+mc1.21.1
+ sable_companion_version=1.6.0
+ registrate_version=MC1.21-1.3.0+67
+ spark_version=1.10.124-neoforge-1.21.1
+diff --git a/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java b/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
+index 83b7c5f..e7e0989 100644
+--- a/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
++++ b/src/main/java/shipwrights/genesis/client/PlanetSurfaceTextures.java
+@@ -16,7 +16,7 @@ import java.util.Map;
+  * Client-side home for planet surfaces sampled from the real world.
+  *
+  * <p>Each planet's six block-derived LOD grids are uploaded once as a colour
+- * atlas while the matching height grids drive the spherical terrain mesh. The
++ * atlas while the matching height grids drive the cube terrain mesh. The
+  * atlas is only the material layer; the planet's shape comes from real generated
+  * world columns. A body with no sample keeps its painted fallback.</p>
+  */
+@@ -87,7 +87,7 @@ public final class PlanetSurfaceTextures {
+                     "textures/" + shortName.getPath() + ".png");
+             Minecraft.getInstance().getTextureManager().register(textureFile, new DynamicTexture(image));
+             UPLOADED.put(planet, shortName);
+-            GenesisMod.LOGGER.info("[SURFACE] {} globe is now driven by six real world regions", planet);
++            GenesisMod.LOGGER.info("[SURFACE] {} orbital cube and overworld LOD now share six real world regions", planet);
+         } catch (Throwable error) {
+             GenesisMod.LOGGER.warn("[SURFACE] could not upload {}", planet, error);
+         }
+diff --git a/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java b/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+new file mode 100644
+index 0000000..cdff7b8
+--- /dev/null
++++ b/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+@@ -0,0 +1,348 @@
++package shipwrights.genesis.client.lod;
++
++import com.mojang.blaze3d.systems.RenderSystem;
++import com.mojang.blaze3d.vertex.VertexConsumer;
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.client.renderer.MultiBufferSource;
++import net.minecraft.client.renderer.RenderType;
++import net.minecraft.resources.ResourceLocation;
++import net.minecraft.util.Mth;
++import net.minecraft.world.level.Level;
++import net.minecraft.world.phys.AABB;
++import net.minecraft.world.phys.Vec3;
++import net.neoforged.api.distmarker.Dist;
++import net.neoforged.bus.api.SubscribeEvent;
++import net.neoforged.fml.common.EventBusSubscriber;
++import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
++import org.joml.Matrix4f;
++import org.joml.Vector3d;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.PlanetSurfaceTextures;
++import shipwrights.genesis.config.GenesisClientConfig;
++import shipwrights.genesis.space.Celestial;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
++import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.teleportation.CubeFaceFrame;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
++
++import java.util.List;
++
++/**
++ * Turns the overworld itself into the orbital cube instead of drawing a second
++ * Earth beneath it.
++ *
++ * <p>There are three layers, all in the parent world's coordinate system:</p>
++ * <ol>
++ *     <li>vanilla chunks remain untouched near the camera;</li>
++ *     <li>cached snapshots of real client chunks replace them after unload;</li>
++ *     <li>the coarse six-face world sample fills everything farther away and
++ *     folds into the other cube faces near the atmosphere boundary.</li>
++ * </ol>
++ *
++ * <p>The camera position supplied by {@link RenderLevelStageEvent} is used for
++ * every calculation. Sable's camera integration already resolves a rider's
++ * local craft transform into parent-world space, so this class never mixes a
++ * sub-level block position with parent-world terrain coordinates.</p>
++ */
++@EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
++public final class WorldLodEarthRenderer {
++    private static final ResourceLocation OVERWORLD_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++    private static final RenderType LOD_RENDER_TYPE = RenderType.debugQuads();
++    private static boolean loggedActive;
++
++    private WorldLodEarthRenderer() {
++    }
++
++    @SubscribeEvent
++    public static void onRenderLevel(RenderLevelStageEvent event) {
++        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
++            return;
++        }
++
++        Minecraft minecraft = Minecraft.getInstance();
++        ClientLevel level = minecraft.level;
++        if (level == null || !level.dimension().equals(Level.OVERWORLD)) {
++            loggedActive = false;
++            return;
++        }
++
++        Vec3 camera = event.getCamera().getPosition();
++        int startHeight = GenesisClientConfig.getWorldLodStartHeight();
++        if (camera.y < startHeight) {
++            loggedActive = false;
++            return;
++        }
++
++        Celestial earth = GenesisMod.getCelestialForLevel(level);
++        if (earth == null) {
++            return;
++        }
++
++        PlanetSurfaceData surface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
++        CubeNetSurfaceTransform.Face currentFace = transform.faceContaining(camera.x, camera.z);
++        if (currentFace == null) {
++            currentFace = CubeNetSurfaceTransform.Face.UP;
++        }
++
++        float configuredLodAlpha = smoothstep((float) ((camera.y - startHeight)
++                / Math.max(1.0, GenesisClientConfig.getWorldLodFullHeight() - startHeight)));
++        int vanillaRadius = Math.max(64, minecraft.options.getEffectiveRenderDistance() * 16);
++        // Vanilla's far plane is three-dimensional. Once the camera is more
++        // than roughly one render radius above the world's top sections, even
++        // the chunks directly underneath it can disappear. This replacement
++        // term closes that centre hole instead of only drawing a distant ring.
++        float verticalReplacement = smoothstep((float) ((camera.y - (level.getMaxBuildHeight() - 64.0))
++                / Math.max(128.0, vanillaRadius * 1.5)));
++        float lodAlpha = Math.max(configuredLodAlpha, verticalReplacement);
++        float cubeAlpha = cubeRevealAlpha(camera.y);
++        if (lodAlpha <= 0.001f && cubeAlpha <= 0.001f) {
++            return;
++        }
++
++        MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
++        VertexConsumer buffer = source.getBuffer(LOD_RENDER_TYPE);
++        Matrix4f view = new Matrix4f(event.getModelViewMatrix());
++
++        int lodRadius = GenesisClientConfig.getWorldLodRadius();
++        double vanillaGroundRadius = vanillaGroundRadius(camera.y, level.getMaxBuildHeight(), vanillaRadius);
++        renderLiveTiles(event, buffer, view, camera, transform, currentFace,
++                lodAlpha, vanillaRadius, vanillaGroundRadius, lodRadius);
++        if (surface != null && surface.isValid()) {
++            renderGlobalWorld(event, buffer, view, camera, transform, currentFace,
++                    surface, lodAlpha, cubeAlpha, vanillaRadius, vanillaGroundRadius, lodRadius);
++        }
++
++        source.endBatch(LOD_RENDER_TYPE);
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++
++        if (!loggedActive) {
++            loggedActive = true;
++            GenesisMod.LOGGER.info(
++                    "[WORLD-LOD] live overworld LOD active at y={}; current face={}, cube reveal begins at y={}",
++                    Mth.floor(camera.y), currentFace, GenesisClientConfig.getCurrentPlanetRevealHeight());
++        }
++    }
++
++    private static void renderLiveTiles(RenderLevelStageEvent event, VertexConsumer buffer,
++                                        Matrix4f view, Vec3 camera,
++                                        CubeNetSurfaceTransform transform,
++                                        CubeNetSurfaceTransform.Face currentFace,
++                                        float lodAlpha, int vanillaRadius, double vanillaGroundRadius, int lodRadius) {
++        List<WorldLodTileCache.Tile> tiles = WorldLodTileCache.tilesNear(
++                camera.x, camera.z, Math.min(lodRadius, vanillaRadius * 3.0));
++        for (WorldLodTileCache.Tile tile : tiles) {
++            double centerX = tile.minX() + WorldLodTileCache.TILE_SIZE * 0.5;
++            double centerZ = tile.minZ() + WorldLodTileCache.TILE_SIZE * 0.5;
++            if (transform.faceContaining(centerX, centerZ) != currentFace) {
++                continue;
++            }
++            double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
++            double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 32.0);
++            double near1 = Math.max(24.0, vanillaGroundRadius * 1.08 + 16.0);
++            float alpha = lodAlpha * distanceBand(distance, near0, near1,
++                    lodRadius * 0.88, lodRadius);
++            if (alpha <= 0.002f) {
++                continue;
++            }
++
++            double minY = Short.MAX_VALUE;
++            double maxY = Short.MIN_VALUE;
++            for (short height : tile.heights()) {
++                minY = Math.min(minY, height);
++                maxY = Math.max(maxY, height);
++            }
++            if (!event.getFrustum().isVisible(new AABB(tile.minX(), minY - 2.0, tile.minZ(),
++                    tile.minX() + WorldLodTileCache.TILE_SIZE, maxY + 2.0,
++                    tile.minZ() + WorldLodTileCache.TILE_SIZE))) {
++                continue;
++            }
++
++            for (int z = 0; z < WorldLodTileCache.CELLS; z++) {
++                for (int x = 0; x < WorldLodTileCache.CELLS; x++) {
++                    addLiveVertex(buffer, view, camera, tile, x, z + 1, alpha);
++                    addLiveVertex(buffer, view, camera, tile, x + 1, z + 1, alpha);
++                    addLiveVertex(buffer, view, camera, tile, x + 1, z, alpha);
++                    addLiveVertex(buffer, view, camera, tile, x, z, alpha);
++                }
++            }
++        }
++    }
++
++    private static void addLiveVertex(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                      WorldLodTileCache.Tile tile, int x, int z, float alpha) {
++        int index = tile.index(x, z);
++        double worldX = tile.minX() + x * (WorldLodTileCache.TILE_SIZE / (double) WorldLodTileCache.CELLS);
++        double worldZ = tile.minZ() + z * (WorldLodTileCache.TILE_SIZE / (double) WorldLodTileCache.CELLS);
++        double worldY = tile.heights()[index] + 0.04;
++        addColourVertex(buffer, view,
++                worldX - camera.x, worldY - camera.y, worldZ - camera.z,
++                tile.colours()[index], alpha);
++    }
++
++    private static void renderGlobalWorld(RenderLevelStageEvent event, VertexConsumer buffer,
++                                          Matrix4f view, Vec3 camera,
++                                          CubeNetSurfaceTransform transform,
++                                          CubeNetSurfaceTransform.Face currentFace,
++                                          PlanetSurfaceData surface,
++                                          float lodAlpha, float cubeAlpha,
++                                          int vanillaRadius, double vanillaGroundRadius, int lodRadius) {
++        int quality = GenesisClientConfig.getWorldLodQuality();
++        int currentStep = quality == 1 ? 2 : 1;
++        int foldedStep = quality == 3 ? 1 : quality == 2 ? 2 : 4;
++        double faceHalf = transform.faceHalfSpan();
++        double faceSpan = transform.faceSpan();
++        double currentCenterX = transform.faceCenterX(currentFace);
++        double currentCenterZ = transform.faceCenterZ(currentFace);
++        double cubeCenterY = surface.seaLevel() - faceHalf;
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            boolean current = face == currentFace;
++            float faceAlpha = current ? lodAlpha : cubeAlpha;
++            if (faceAlpha <= 0.002f) {
++                continue;
++            }
++            int step = current ? currentStep : foldedStep;
++            for (int row = 0; row < resolution; row += step) {
++                int row1 = Math.min(resolution, row + step);
++                double v0 = (row / (double) resolution - 0.5) * faceSpan;
++                double v1 = (row1 / (double) resolution - 0.5) * faceSpan;
++                for (int column = 0; column < resolution; column += step) {
++                    int column1 = Math.min(resolution, column + step);
++                    double u0 = (column / (double) resolution - 0.5) * faceSpan;
++                    double u1 = (column1 / (double) resolution - 0.5) * faceSpan;
++
++                    float cellAlpha = faceAlpha;
++                    if (current) {
++                        double cellX = currentCenterX + (u0 + u1) * 0.5;
++                        double cellZ = currentCenterZ + (v0 + v1) * 0.5;
++                        double distance = horizontalDistance(camera.x, camera.z, cellX, cellZ);
++                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.82 - 48.0);
++                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.18 + 24.0);
++                        float flatBand = distanceBand(distance, near0, near1,
++                                lodRadius * 0.86, lodRadius);
++                        // Before the cube reveal, only a wide terrain field around
++                        // the player is visible. This hides the finite face edge
++                        // while still replacing unloaded chunks. As the cube
++                        // reveal rises, the complete face takes over.
++                        cellAlpha *= Math.max(flatBand, cubeAlpha);
++                        if (WorldLodTileCache.covers(cellX, cellZ)
++                                && distance <= Math.min(lodRadius, vanillaRadius * 3.0)) {
++                            cellAlpha *= 0.03f;
++                        }
++                    }
++                    if (cellAlpha <= 0.002f) {
++                        continue;
++                    }
++
++                    Vector3d p00 = worldPoint(face, currentFace, u0, v0, faceHalf,
++                            elevation(surface, face, column, row), currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p10 = worldPoint(face, currentFace, u1, v0, faceHalf,
++                            elevation(surface, face, column1, row), currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p11 = worldPoint(face, currentFace, u1, v1, faceHalf,
++                            elevation(surface, face, column1, row1), currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p01 = worldPoint(face, currentFace, u0, v1, faceHalf,
++                            elevation(surface, face, column, row1), currentCenterX, cubeCenterY, currentCenterZ);
++
++                    double minX = Math.min(Math.min(p00.x, p10.x), Math.min(p11.x, p01.x));
++                    double maxX = Math.max(Math.max(p00.x, p10.x), Math.max(p11.x, p01.x));
++                    double minY = Math.min(Math.min(p00.y, p10.y), Math.min(p11.y, p01.y));
++                    double maxY = Math.max(Math.max(p00.y, p10.y), Math.max(p11.y, p01.y));
++                    double minZ = Math.min(Math.min(p00.z, p10.z), Math.min(p11.z, p01.z));
++                    double maxZ = Math.max(Math.max(p00.z, p10.z), Math.max(p11.z, p01.z));
++                    if (!event.getFrustum().isVisible(new AABB(minX, minY, minZ, maxX, maxY, maxZ))) {
++                        continue;
++                    }
++
++                    addGlobalVertex(buffer, view, camera, p01,
++                            colour(surface, face, column, row1), cellAlpha);
++                    addGlobalVertex(buffer, view, camera, p11,
++                            colour(surface, face, column1, row1), cellAlpha);
++                    addGlobalVertex(buffer, view, camera, p10,
++                            colour(surface, face, column1, row), cellAlpha);
++                    addGlobalVertex(buffer, view, camera, p00,
++                            colour(surface, face, column, row), cellAlpha);
++                }
++            }
++        }
++    }
++
++    private static Vector3d worldPoint(CubeNetSurfaceTransform.Face face,
++                                       CubeNetSurfaceTransform.Face currentFace,
++                                       double u, double v, double halfExtent, double elevation,
++                                       double centerX, double centerY, double centerZ) {
++        Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v, halfExtent, elevation);
++        Vector3d surface = CubeFaceFrame.celestialToSurface(currentFace, celestial);
++        return surface.add(centerX, centerY, centerZ);
++    }
++
++    private static double elevation(PlanetSurfaceData surface, CubeNetSurfaceTransform.Face face,
++                                    int x, int z) {
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++        int sx = Mth.clamp(x, 0, resolution - 1);
++        int sz = Mth.clamp(z, 0, resolution - 1);
++        return surface.heights()[PlanetSurfaceData.index(face, sx, sz)] - surface.seaLevel();
++    }
++
++    private static int colour(PlanetSurfaceData surface, CubeNetSurfaceTransform.Face face,
++                              int x, int z) {
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
++        int sx = Mth.clamp(x, 0, resolution - 1);
++        int sz = Mth.clamp(z, 0, resolution - 1);
++        return surface.colours()[PlanetSurfaceData.index(face, sx, sz)];
++    }
++
++    private static void addGlobalVertex(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                        Vector3d point, int argb, float alpha) {
++        addColourVertex(buffer, view,
++                point.x - camera.x, point.y - camera.y, point.z - camera.z,
++                argb, alpha);
++    }
++
++    private static void addColourVertex(VertexConsumer buffer, Matrix4f view,
++                                        double x, double y, double z,
++                                        int argb, float alpha) {
++        int r = (argb >> 16) & 0xFF;
++        int g = (argb >> 8) & 0xFF;
++        int b = argb & 0xFF;
++        int a = Mth.clamp((int) (alpha * 255.0f), 0, 255);
++        buffer.addVertex(view, (float) x, (float) y, (float) z).setColor(r, g, b, a);
++    }
++
++    private static float cubeRevealAlpha(double cameraY) {
++        double start = GenesisClientConfig.getCurrentPlanetRevealHeight();
++        double end = Math.max(start + 1.0, shipwrights.genesis.config.GenesisCommonConfig.getAtmosphereExitHeight());
++        return smoothstep((float) ((cameraY - start) / (end - start)));
++    }
++
++    private static float distanceBand(double distance, double near0, double near1,
++                                      double far0, double far1) {
++        float near = smoothstep((float) ((distance - near0) / Math.max(1.0, near1 - near0)));
++        float far = 1.0f - smoothstep((float) ((distance - far0) / Math.max(1.0, far1 - far0)));
++        return Mth.clamp(near * far, 0.0f, 1.0f);
++    }
++
++
++    private static double vanillaGroundRadius(double cameraY, double terrainCeiling, double renderRadius) {
++        double vertical = Math.max(0.0, cameraY - terrainCeiling);
++        double squared = renderRadius * renderRadius - vertical * vertical;
++        return squared <= 0.0 ? 0.0 : Math.sqrt(squared);
++    }
++
++    private static double horizontalDistance(double x0, double z0, double x1, double z1) {
++        double dx = x1 - x0;
++        double dz = z1 - z0;
++        return Math.sqrt(dx * dx + dz * dz);
++    }
++
++    private static float smoothstep(float value) {
++        float clamped = Mth.clamp(value, 0.0f, 1.0f);
++        return clamped * clamped * (3.0f - 2.0f * clamped);
++    }
++}
+diff --git a/src/main/java/shipwrights/genesis/client/lod/WorldLodTileCache.java b/src/main/java/shipwrights/genesis/client/lod/WorldLodTileCache.java
+new file mode 100644
+index 0000000..6f37b1a
+--- /dev/null
++++ b/src/main/java/shipwrights/genesis/client/lod/WorldLodTileCache.java
+@@ -0,0 +1,300 @@
++package shipwrights.genesis.client.lod;
++
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Holder;
++import net.minecraft.util.Mth;
++import net.minecraft.world.level.Level;
++import net.minecraft.world.level.biome.Biome;
++import net.minecraft.world.level.block.state.BlockState;
++import net.minecraft.world.level.chunk.LevelChunk;
++import net.minecraft.world.level.chunk.status.ChunkStatus;
++import net.minecraft.world.level.levelgen.Heightmap;
++import net.minecraft.world.level.material.MapColor;
++import net.neoforged.api.distmarker.Dist;
++import net.neoforged.bus.api.SubscribeEvent;
++import net.neoforged.fml.common.EventBusSubscriber;
++import net.neoforged.neoforge.client.event.ClientTickEvent;
++import net.neoforged.neoforge.event.level.ChunkEvent;
++import shipwrights.genesis.GenesisMod;
++
++import java.util.ArrayDeque;
++import java.util.ArrayList;
++import java.util.HashSet;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++
++/**
++ * Incremental snapshots of real client chunks for the near/mid altitude LOD.
++ *
++ * <p>The global six-face sample guarantees that the planet never becomes an
++ * empty void. These tiles are the higher-detail overlay: they are captured from
++ * chunks the client genuinely received, so terrain edits and player-built
++ * structures can survive after vanilla unloads the original render sections.
++ * No chunk is force-loaded and no world scan happens from the render thread.</p>
++ */
++@EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
++public final class WorldLodTileCache {
++    public static final int TILE_SIZE = 64;
++    public static final int CELLS = 8;
++    public static final int VERTICES = CELLS + 1;
++
++    private static final int MAX_TILES = 4096;
++    private static final int NORMAL_REFRESH_TICKS = 400;
++    private static final int NEAR_REFRESH_TICKS = 80;
++    private static final int MAX_QUEUE = 2048;
++
++    private static final Map<Long, Tile> TILES = new LinkedHashMap<>(256, 0.75f, true);
++    private static final ArrayDeque<Long> PENDING = new ArrayDeque<>();
++    private static final Set<Long> QUEUED = new HashSet<>();
++    private static final BlockPos.MutableBlockPos MUTABLE = new BlockPos.MutableBlockPos();
++
++    private static ClientLevel activeLevel;
++
++    private WorldLodTileCache() {
++    }
++
++    public record Tile(int tileX, int tileZ, short[] heights, int[] colours, long sampledAt) {
++        public int minX() {
++            return tileX * TILE_SIZE;
++        }
++
++        public int minZ() {
++            return tileZ * TILE_SIZE;
++        }
++
++        public int index(int x, int z) {
++            return z * VERTICES + x;
++        }
++    }
++
++    @SubscribeEvent
++    public static void onChunkLoad(ChunkEvent.Load event) {
++        if (!(event.getLevel() instanceof ClientLevel level) || !level.dimension().equals(Level.OVERWORLD)) {
++            return;
++        }
++        int chunkX = event.getChunk().getPos().x;
++        int chunkZ = event.getChunk().getPos().z;
++        queueTile(Math.floorDiv(chunkX * 16, TILE_SIZE), Math.floorDiv(chunkZ * 16, TILE_SIZE), true);
++    }
++
++    @SubscribeEvent
++    public static void onChunkUnload(ChunkEvent.Unload event) {
++        if (!(event.getLevel() instanceof ClientLevel level) || !level.dimension().equals(Level.OVERWORLD)) {
++            return;
++        }
++        // Capture the tile before ClientChunkCache drops the chunk. The event is
++        // posted before removal, so the full tile can still be read here on the
++        // client thread. Failure simply leaves the previous snapshot intact.
++        int chunkX = event.getChunk().getPos().x;
++        int chunkZ = event.getChunk().getPos().z;
++        int tileX = Math.floorDiv(chunkX * 16, TILE_SIZE);
++        int tileZ = Math.floorDiv(chunkZ * 16, TILE_SIZE);
++        Tile tile = sample(level, tileX, tileZ);
++        if (tile != null) {
++            put(tile);
++        }
++    }
++
++    @SubscribeEvent
++    public static void onClientTick(ClientTickEvent.Post event) {
++        Minecraft minecraft = Minecraft.getInstance();
++        ClientLevel level = minecraft.level;
++        if (level == null || !level.dimension().equals(Level.OVERWORLD)) {
++            if (activeLevel != null) {
++                clear();
++            }
++            activeLevel = null;
++            return;
++        }
++
++        if (activeLevel != level) {
++            clear();
++            activeLevel = level;
++        }
++
++        if (minecraft.gameRenderer == null) {
++            return;
++        }
++
++        var camera = minecraft.gameRenderer.getMainCamera().getPosition();
++        int centerTileX = Math.floorDiv(Mth.floor(camera.x), TILE_SIZE);
++        int centerTileZ = Math.floorDiv(Mth.floor(camera.z), TILE_SIZE);
++        int renderBlocks = Math.max(64, minecraft.options.getEffectiveRenderDistance() * 16);
++        int radius = Math.max(2, (int) Math.ceil(renderBlocks / (double) TILE_SIZE) + 1);
++        long now = level.getGameTime();
++
++        // Nearest first. The queue is bounded and only references chunks the
++        // client is already expected to hold.
++        for (int ring = 0; ring <= radius; ring++) {
++            for (int dz = -ring; dz <= ring; dz++) {
++                for (int dx = -ring; dx <= ring; dx++) {
++                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) {
++                        continue;
++                    }
++                    int tileX = centerTileX + dx;
++                    int tileZ = centerTileZ + dz;
++                    Tile existing = peek(tileX, tileZ);
++                    long refresh = ring <= 1 ? NEAR_REFRESH_TICKS : NORMAL_REFRESH_TICKS;
++                    if (existing == null || now - existing.sampledAt() >= refresh) {
++                        queueTile(tileX, tileZ, false);
++                    }
++                }
++            }
++        }
++
++        int budget = camera.y >= 512.0 ? 4 : 2;
++        while (budget-- > 0 && !PENDING.isEmpty()) {
++            long key = PENDING.removeFirst();
++            QUEUED.remove(key);
++            int tileX = keyX(key);
++            int tileZ = keyZ(key);
++            Tile tile = sample(level, tileX, tileZ);
++            if (tile != null) {
++                put(tile);
++            }
++        }
++    }
++
++    public static List<Tile> tilesNear(double worldX, double worldZ, double radiusBlocks) {
++        int minTileX = Math.floorDiv(Mth.floor(worldX - radiusBlocks), TILE_SIZE);
++        int maxTileX = Math.floorDiv(Mth.floor(worldX + radiusBlocks), TILE_SIZE);
++        int minTileZ = Math.floorDiv(Mth.floor(worldZ - radiusBlocks), TILE_SIZE);
++        int maxTileZ = Math.floorDiv(Mth.floor(worldZ + radiusBlocks), TILE_SIZE);
++        List<Tile> result = new ArrayList<>((maxTileX - minTileX + 1) * (maxTileZ - minTileZ + 1));
++        synchronized (TILES) {
++            for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
++                for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
++                    Tile tile = TILES.get(key(tileX, tileZ));
++                    if (tile != null) {
++                        result.add(tile);
++                    }
++                }
++            }
++        }
++        return result;
++    }
++
++    public static boolean covers(double worldX, double worldZ) {
++        int tileX = Math.floorDiv(Mth.floor(worldX), TILE_SIZE);
++        int tileZ = Math.floorDiv(Mth.floor(worldZ), TILE_SIZE);
++        synchronized (TILES) {
++            return TILES.containsKey(key(tileX, tileZ));
++        }
++    }
++
++    public static void clear() {
++        synchronized (TILES) {
++            TILES.clear();
++        }
++        PENDING.clear();
++        QUEUED.clear();
++    }
++
++    private static Tile peek(int tileX, int tileZ) {
++        synchronized (TILES) {
++            return TILES.get(key(tileX, tileZ));
++        }
++    }
++
++    private static void put(Tile tile) {
++        synchronized (TILES) {
++            TILES.put(key(tile.tileX(), tile.tileZ()), tile);
++            while (TILES.size() > MAX_TILES) {
++                var iterator = TILES.entrySet().iterator();
++                if (!iterator.hasNext()) {
++                    break;
++                }
++                iterator.next();
++                iterator.remove();
++            }
++        }
++    }
++
++    private static void queueTile(int tileX, int tileZ, boolean front) {
++        long key = key(tileX, tileZ);
++        if (QUEUED.contains(key) || PENDING.size() >= MAX_QUEUE) {
++            return;
++        }
++        QUEUED.add(key);
++        if (front) {
++            PENDING.addFirst(key);
++        } else {
++            PENDING.addLast(key);
++        }
++    }
++
++    private static Tile sample(ClientLevel level, int tileX, int tileZ) {
++        int minX = tileX * TILE_SIZE;
++        int minZ = tileZ * TILE_SIZE;
++        int maxX = minX + TILE_SIZE;
++        int maxZ = minZ + TILE_SIZE;
++
++        int minChunkX = Math.floorDiv(minX, 16);
++        int maxChunkX = Math.floorDiv(maxX, 16);
++        int minChunkZ = Math.floorDiv(minZ, 16);
++        int maxChunkZ = Math.floorDiv(maxZ, 16);
++        for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
++            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
++                if (level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FULL, false) == null) {
++                    return null;
++                }
++            }
++        }
++
++        short[] heights = new short[VERTICES * VERTICES];
++        int[] colours = new int[VERTICES * VERTICES];
++        for (int z = 0; z < VERTICES; z++) {
++            int worldZ = minZ + z * TILE_SIZE / CELLS;
++            for (int x = 0; x < VERTICES; x++) {
++                int worldX = minX + x * TILE_SIZE / CELLS;
++                LevelChunk chunk = level.getChunkSource().getChunk(
++                        Math.floorDiv(worldX, 16), Math.floorDiv(worldZ, 16), ChunkStatus.FULL, false);
++                if (chunk == null) {
++                    return null;
++                }
++                int height = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, worldX & 15, worldZ & 15) - 1;
++                height = Mth.clamp(height, level.getMinBuildHeight(), level.getMaxBuildHeight() - 1);
++                MUTABLE.set(worldX, height, worldZ);
++                BlockState state = level.getBlockState(MUTABLE);
++                Holder<Biome> biome = level.getBiome(MUTABLE);
++                int index = z * VERTICES + x;
++                heights[index] = (short) height;
++                colours[index] = colourFor(level, MUTABLE, state, biome);
++            }
++        }
++        return new Tile(tileX, tileZ, heights, colours, level.getGameTime());
++    }
++
++    private static int colourFor(ClientLevel level, BlockPos pos, BlockState state, Holder<Biome> biome) {
++        MapColor mapColor = state.getMapColor(level, pos);
++        int rgb;
++        if (!state.getFluidState().isEmpty() || mapColor == MapColor.WATER) {
++            rgb = biome.value().getWaterColor();
++        } else if (mapColor == MapColor.GRASS) {
++            rgb = biome.value().getGrassColor(pos.getX(), pos.getZ());
++        } else if (mapColor == MapColor.PLANT) {
++            rgb = biome.value().getFoliageColor();
++        } else if (mapColor != MapColor.NONE && mapColor.col != 0) {
++            rgb = mapColor.col;
++        } else {
++            rgb = biome.value().getGrassColor(pos.getX(), pos.getZ());
++        }
++        return 0xFF000000 | rgb;
++    }
++
++    private static long key(int x, int z) {
++        return ((long) x << 32) ^ (z & 0xFFFFFFFFL);
++    }
++
++    private static int keyX(long key) {
++        return (int) (key >> 32);
++    }
++
++    private static int keyZ(long key) {
++        return (int) key;
++    }
++}
+diff --git a/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java b/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
+index 8548226..a3f2d40 100644
+--- a/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
++++ b/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
+@@ -16,6 +16,18 @@ public class GenesisClientConfig {
+     private static ModConfigSpec.ConfigValue<Integer> currentPlanetRevealHeight;
+     private static final int defaultCurrentPlanetRevealHeight = 16000;
+ 
++    private static ModConfigSpec.ConfigValue<Integer> worldLodStartHeight;
++    private static final int defaultWorldLodStartHeight = 256;
++
++    private static ModConfigSpec.ConfigValue<Integer> worldLodFullHeight;
++    private static final int defaultWorldLodFullHeight = 1536;
++
++    private static ModConfigSpec.ConfigValue<Integer> worldLodRadius;
++    private static final int defaultWorldLodRadius = 4096;
++
++    private static ModConfigSpec.ConfigValue<Integer> worldLodQuality;
++    private static final int defaultWorldLodQuality = 2;
++
+     public static boolean enableSpaceLighting() {
+         boolean result = defaultSpaceShaderEnable;
+         try {
+@@ -40,6 +52,38 @@ public class GenesisClientConfig {
+         return Math.max(0, result);
+     }
+ 
++    public static int getWorldLodStartHeight() {
++        int result = defaultWorldLodStartHeight;
++        try {
++            result = worldLodStartHeight.get();
++        } catch (Exception ignored) { }
++        return Math.max(128, result);
++    }
++
++    public static int getWorldLodFullHeight() {
++        int result = defaultWorldLodFullHeight;
++        try {
++            result = worldLodFullHeight.get();
++        } catch (Exception ignored) { }
++        return Math.max(getWorldLodStartHeight() + 1, result);
++    }
++
++    public static int getWorldLodRadius() {
++        int result = defaultWorldLodRadius;
++        try {
++            result = worldLodRadius.get();
++        } catch (Exception ignored) { }
++        return Math.max(512, result);
++    }
++
++    public static int getWorldLodQuality() {
++        int result = defaultWorldLodQuality;
++        try {
++            result = worldLodQuality.get();
++        } catch (Exception ignored) { }
++        return Math.max(1, Math.min(3, result));
++    }
++
+     public static double getCelestialVisualScale() {
+         double result = defaultCelestialVisualScale;
+         try {
+@@ -56,8 +100,20 @@ public class GenesisClientConfig {
+         renderCurrentPlanet = builder.define("ShouldRenderCurrentPlanet", defaultRenderCurrentPlanet);
+         celestialVisualScale = builder.defineInRange("CelestialVisualScale", defaultCelestialVisualScale, 0.25, 8.0);
+         currentPlanetRevealHeight = builder
+-                .comment("Altitude where the planet below first becomes visible while climbing through its atmosphere.")
++                .comment("Altitude where the finite cube-planet silhouette begins folding into view.")
+                 .defineInRange("CurrentPlanetRevealHeight", defaultCurrentPlanetRevealHeight, 0, 100000);
++        worldLodStartHeight = builder
++                .comment("Altitude where cached terrain LOD begins extending beyond vanilla chunks.")
++                .defineInRange("WorldLodStartHeight", defaultWorldLodStartHeight, 128, 16000);
++        worldLodFullHeight = builder
++                .comment("Altitude where the flat-world LOD reaches full opacity.")
++                .defineInRange("WorldLodFullHeight", defaultWorldLodFullHeight, 129, 20000);
++        worldLodRadius = builder
++                .comment("Maximum radius in blocks for the pre-space flat-world LOD field.")
++                .defineInRange("WorldLodRadius", defaultWorldLodRadius, 512, 16384);
++        worldLodQuality = builder
++                .comment("World-to-planet LOD quality: 1=fast, 2=balanced, 3=high.")
++                .defineInRange("WorldLodQuality", defaultWorldLodQuality, 1, 3);
+         return builder.build();
+     }
+ }
+diff --git a/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java b/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java
+index be026a5..99c46c3 100644
+--- a/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java
++++ b/src/main/java/shipwrights/genesis/config/GenesisCommonConfig.java
+@@ -17,14 +17,14 @@ public class GenesisCommonConfig {
+         // genuine climb without being an impractical slog to reach on a ship.
+         atmosphereExitHeight = builder.define("atmosphereExitHeight", 20000);
+         atmosphereEntryHeight = builder.define("atmosphereEntryHeight", 19000);
+-        // Build a spherical orbital LOD from each planet dimension's generated
++        // Build a six-face world LOD from each planet dimension's generated
+         // block columns instead of treating the painted atlas as the surface.
+         //
+         // Enabled for the overworld only. Sampling is isolated on a dedicated
+         // minimum-priority thread, pauses during crossings, and never touches
+         // Minecraft's worldgen executor. Slow planetary generators are skipped.
+         planetSurfaceSampling = builder
+-                .comment("Build Earth's spherical orbital LOD from generated Minecraft world columns.",
++                .comment("Build Earth's six-face world LOD from generated Minecraft world columns.",
+                         "Runs on one low-priority thread and pauses during dimension crossings.")
+                 .define("planetSurfaceSampling", true);
+         return builder.build();
+diff --git a/src/main/java/shipwrights/genesis/space/VantagePoint.java b/src/main/java/shipwrights/genesis/space/VantagePoint.java
+index e18142b..2acc72f 100644
+--- a/src/main/java/shipwrights/genesis/space/VantagePoint.java
++++ b/src/main/java/shipwrights/genesis/space/VantagePoint.java
+@@ -1,41 +1,48 @@
+-package shipwrights.genesis.space;
+-
+-
+-import net.minecraft.core.Registry;
+-import net.minecraft.world.level.Level;
+-import org.jetbrains.annotations.Nullable;
+-import org.joml.Quaterniond;
+-import org.joml.Quaterniondc;
+-import org.joml.Vector3d;
+-import org.joml.Vector3dc;
+-import shipwrights.genesis.GenesisMod;
+-
+-/// Represents where the observer is in space, for purposes such as rendering celestials.
+-public interface VantagePoint {
+-
+-    Vector3dc getPosition();
+-    Quaterniondc getRotation();
+-
++package shipwrights.genesis.space;
++
++
++import net.minecraft.core.Registry;
++import net.minecraft.world.level.Level;
++import org.jetbrains.annotations.Nullable;
++import org.joml.Quaterniond;
++import org.joml.Quaterniondc;
++import org.joml.Vector3d;
++import org.joml.Vector3dc;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.teleportation.CubeFaceFrame;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
++
++/// Represents where the observer is in space, for purposes such as rendering celestials.
++public interface VantagePoint {
++
++    Vector3dc getPosition();
++    Quaterniondc getRotation();
++
+     /// if null, the observer has no access to space. Example: the observer is in The Nether
+     static @Nullable VantagePoint get(Level level, Vector3dc posInLevel, long ticks, float partialTick) {
+         if (GenesisMod.isSpaceDimension(level)) {
+             return new VantagePoint.InSpace(SpaceLevel.toCelestialSpace(level, posInLevel));
+         } else {
+-            Celestial celestial = GenesisMod.getCelestialForLevel(level);
+-            if (celestial != null) {
+-                Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
+-                /// for now, always put the player on the "north" (-z) side of the planet
+-                Quaterniond rotation = new Quaterniond()
+-                        .rotateTo(new Vector3d(0, 1, 0), new Vector3d(0, 0, -1));
+-
+-                return new VantagePoint.OnCelestial(celestial, rotation, ticks, partialTick, registry);
+-            } else {
+-                return null;
+-            }
+-        }
+-    }
+-
+-
++            Celestial celestial = GenesisMod.getCelestialForLevel(level);
++            if (celestial != null) {
++                Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
++                CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                        celestial.getActualSize(), SpaceTravelManager.entryPadding(celestial.getActualSize()));
++                CubeNetSurfaceTransform.Face face = transform.faceContaining(posInLevel.x(), posInLevel.z());
++                if (face == null) {
++                    face = CubeNetSurfaceTransform.Face.UP;
++                }
++                Quaterniond rotation = CubeFaceFrame.surfaceToCelestial(face);
++
++                return new VantagePoint.OnCelestial(celestial, rotation, ticks, partialTick, registry);
++            } else {
++                return null;
++            }
++        }
++    }
++
++
+     record InSpace (Vector3dc position) implements VantagePoint {
+         public InSpace() {
+             this(new Vector3d());
+@@ -45,36 +52,36 @@ public interface VantagePoint {
+         public Vector3dc getPosition() {
+             return position;
+         }
+-
+-        @Override
+-        public Quaterniondc getRotation() {
+-            return new Quaterniond();
+-        }
+-    }
+-
+-    record OnCelestial (
+-            Celestial celestial,
+-            /// should be treated like as the camera's latitude/longitude on the celestial, but as a quaternion for easier usage
+-            Quaterniondc cameraRotationFromNorthPole,
+-            long ticks,
+-            float partialTick,
+-            Registry<Celestial> registry
+-    ) implements VantagePoint {
+-
+-
+-        @Override
+-        public Vector3dc getPosition() {
+-            return celestial.getPosition(ticks, partialTick, registry);
+-        }
+-
+-        @Override
+-        public Quaterniondc getRotation() {
+-            // worldRotation = celestialRotation * localCameraRotation
+-            return getCelestialRotation().mul(cameraRotationFromNorthPole, new Quaterniond());
+-        }
+-
+-        public Quaterniondc getCelestialRotation() {
+-            return celestial.getRotation(ticks, partialTick, registry);
+-        }
+-    }
+-}
++
++        @Override
++        public Quaterniondc getRotation() {
++            return new Quaterniond();
++        }
++    }
++
++    record OnCelestial (
++            Celestial celestial,
++            /// should be treated like as the camera's latitude/longitude on the celestial, but as a quaternion for easier usage
++            Quaterniondc cameraRotationFromNorthPole,
++            long ticks,
++            float partialTick,
++            Registry<Celestial> registry
++    ) implements VantagePoint {
++
++
++        @Override
++        public Vector3dc getPosition() {
++            return celestial.getPosition(ticks, partialTick, registry);
++        }
++
++        @Override
++        public Quaterniondc getRotation() {
++            // worldRotation = celestialRotation * localCameraRotation
++            return getCelestialRotation().mul(cameraRotationFromNorthPole, new Quaterniond());
++        }
++
++        public Quaterniondc getCelestialRotation() {
++            return celestial.getRotation(ticks, partialTick, registry);
++        }
++    }
++}
+diff --git a/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java b/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java
+index 208db3d..9ab76bc 100644
+--- a/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/CelestialRenderCoordinates.java
+@@ -8,8 +8,12 @@ import org.joml.Vector3d;
+ import org.joml.Vector3dc;
+ import shipwrights.genesis.config.GenesisClientConfig;
+ import shipwrights.genesis.config.GenesisCommonConfig;
++import shipwrights.genesis.client.PlanetSurfaceTextures;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
+ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
+ public final class CelestialRenderCoordinates {
+     private static final double SURFACE_WORLD_TO_CELESTIAL_SCALE = 1.0 / 16.0;
+@@ -41,12 +45,26 @@ public final class CelestialRenderCoordinates {
+             Vector3d east = rotatedAxis(surfaceRotation, 1.0, 0.0, 0.0);
+             Vector3d south = rotatedAxis(surfaceRotation, 0.0, 0.0, 1.0);
+ 
+-            double altitude = Math.max(0.0, cameraPosition.y) * SURFACE_WORLD_TO_CELESTIAL_SCALE;
++            CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
++                    onCelestial.celestial().getActualSize(),
++                    SpaceTravelManager.entryPadding(onCelestial.celestial().getActualSize()));
++            CubeNetSurfaceTransform.Face face = transform.faceContaining(cameraPosition.x, cameraPosition.z);
++            if (face == null) {
++                face = CubeNetSurfaceTransform.Face.UP;
++            }
++            double localX = cameraPosition.x - transform.faceCenterX(face);
++            double localZ = cameraPosition.z - transform.faceCenterZ(face);
++            var celestialKey = onCelestial.registry().getResourceKey(onCelestial.celestial());
++            PlanetSurfaceData surface = celestialKey
++                    .map(key -> PlanetSurfaceTextures.surface(key.location()))
++                    .orElse(null);
++            double surfaceBaseY = surface != null ? surface.seaLevel() : 0.0;
++            double altitude = (cameraPosition.y - surfaceBaseY) * SURFACE_WORLD_TO_CELESTIAL_SCALE;
+             double surfaceRadius = onCelestial.celestial().getActualSize() / 2.0;
+ 
+             observerPosition.fma(surfaceRadius + altitude, up);
+-            observerPosition.fma(cameraPosition.x * SURFACE_WORLD_TO_CELESTIAL_SCALE, east);
+-            observerPosition.fma(cameraPosition.z * SURFACE_WORLD_TO_CELESTIAL_SCALE, south);
++            observerPosition.fma(localX * SURFACE_WORLD_TO_CELESTIAL_SCALE, east);
++            observerPosition.fma(localZ * SURFACE_WORLD_TO_CELESTIAL_SCALE, south);
+             return observerPosition;
+         }
+ 
+@@ -86,8 +104,8 @@ public final class CelestialRenderCoordinates {
+     }
+ 
+     public static float getCurrentPlanetAlpha(Vec3 cameraPosition) {
+-        // The globe must not appear while the player is still in the ordinary
+-        // atmosphere. It begins emerging at 16,000 blocks by default and
++        // The detached current-planet renderer must not appear while the player is still in the ordinary
++        // atmosphere. Earth now uses WorldLodEarthRenderer instead; this remains for other bodies. It begins emerging at 16,000 blocks by default and
+         // reaches full opacity over the next 1,000 blocks, before the 20,000
+         // block atmosphere exit. The reveal height is client-configurable.
+         float fadeStart = GenesisClientConfig.getCurrentPlanetRevealHeight();
+diff --git a/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java b/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java
+index c049667..19618b9 100644
+--- a/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/PlanetAtmosphereRenderer.java
+@@ -38,11 +38,14 @@ public class PlanetAtmosphereRenderer implements CelestialRenderer {
+         long ticks = GenesisMod.getTicks(level);
+         float partialTick = GenesisMod.getPartialTick(level, event);
+         Vector3dc position = toRender.getPosition(ticks, partialTick, registry);
++        ResourceLocation celestialId = registry.getResourceKey(toRender).orElseThrow().location();
+         CelestialRenderCoordinates.RenderTransform renderTransform =
+                 CelestialRenderCoordinates.getRenderTransform(toRender, vantagePoint, event.getCamera().getPosition(), ticks, partialTick, registry);
+         position = renderTransform.position();
+         Quaterniondc rotation = renderTransform.rotation();
+-        double size = CelestialRenderCoordinates.getVisualHalfExtent(toRender) * 2.0;
++        double size = OVERWORLD_ID.equals(celestialId)
++                ? toRender.getActualSize()
++                : CelestialRenderCoordinates.getVisualHalfExtent(toRender) * 2.0;
+         double renderDistanceScale = CelestialRenderCoordinates.getPlanetRenderDistanceScale(position);
+         if (renderDistanceScale != 1.0) {
+             position = CelestialRenderCoordinates.scaleRenderPosition(position, renderDistanceScale);
+@@ -51,8 +54,9 @@ public class PlanetAtmosphereRenderer implements CelestialRenderer {
+ 
+         MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+         VertexConsumer atmosphereBuffer = bufferSource.getBuffer(getPlanetAtmosphereRenderType());
+-        ResourceLocation celestialId = registry.getResourceKey(toRender).orElseThrow().location();
+-        boolean spherical = OVERWORLD_ID.equals(celestialId);
++        // Earth is a cube planet. Its atmosphere follows the same cube shell;
++        // the old spherical special case belonged to the detached-globe pass.
++        boolean spherical = false;
+         renderAtmosphere(event.getPoseStack(), atmosphereBuffer, size, position, rotation, event, toRender, vantagePoint, spherical);
+         bufferSource.endBatch(getPlanetAtmosphereRenderType());
+     }
+diff --git a/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java b/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
+index 03e7935..2790fc3 100644
+--- a/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
++++ b/src/main/java/shipwrights/genesis/space/renderer/PlanetRenderer.java
+@@ -32,6 +32,7 @@ import shipwrights.genesis.space.Celestial;
+ import shipwrights.genesis.space.VantagePoint;
+ import shipwrights.genesis.space.surface.PlanetSurfaceData;
+ import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.teleportation.CubeFaceFrame;
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ 
+ import java.lang.Math;
+@@ -75,9 +76,23 @@ public class PlanetRenderer implements CelestialRenderer {
+         float partialTick = GenesisMod.getPartialTick(level, event);
+ 
+         Registry<Celestial> registry = GenesisMod.getCelestialRegistry(level);
++        ResourceLocation planetID = registry.getResourceKey(toRender).orElseThrow().location();
++        // The overworld draws its own terrain LOD while the player is still in
++        // that world. Rendering a second celestial Earth here is exactly the
++        // detached-model effect the world-to-planet pipeline is designed to
++        // remove.
++        if (OVERWORLD_ID.equals(planetID)
++                && vantagePoint instanceof VantagePoint.OnCelestial onCelestial
++                && onCelestial.celestial().equals(toRender)) {
++            return;
++        }
+         Vector3dc position = toRender.getPosition(ticks, partialTick, registry);
+         Quaterniondc rotation = toRender.getRotation(ticks, partialTick, registry);
+-        double halfExtent = CelestialRenderCoordinates.getVisualHalfExtent(toRender);
++        // Earth must use its physical size so the 8192-block surface face and
++        // the 512-space-block orbital cube meet at exactly the same scale.
++        double halfExtent = OVERWORLD_ID.equals(planetID)
++                ? toRender.getActualSize() * 0.5
++                : CelestialRenderCoordinates.getVisualHalfExtent(toRender);
+         float alpha = 1f;
+ 
+         Vector3dc starPosition = toRender.getNearestStar(ticks, partialTick, registry).getPosition(ticks, partialTick, registry);
+@@ -153,7 +168,7 @@ public class PlanetRenderer implements CelestialRenderer {
+         // and at a rate that does not change with the planet's day length.
+         shader.safeGetUniform("CloudTime").set((float) ((System.currentTimeMillis() % 100_000_000L) / 1000.0));
+ 
+-        renderPlanetAt(registry.getResourceKey(toRender).orElseThrow().location(), shadows, event.getPoseStack(), position.x(), position.y(), position.z(), halfExtent, toRender.getActualSize() * 0.5, rotation, alpha);
++        renderPlanetAt(planetID, shadows, event.getPoseStack(), position.x(), position.y(), position.z(), halfExtent, toRender.getActualSize() * 0.5, rotation, alpha);
+ 
+         new PlanetAtmosphereRenderer().invoke(event, toRender, vantagePoint);
+     }
+@@ -195,15 +210,11 @@ public class PlanetRenderer implements CelestialRenderer {
+         float twoThirds = 2.0f / 3.0f;
+ 
+         PlanetSurfaceData liveSurface = PlanetSurfaceTextures.surface(planetID);
+-        boolean lodGlobe = OVERWORLD_ID.equals(planetID);
+-        if (lodGlobe && live != null && liveSurface != null && liveSurface.isValid() && physicalHalfExtent > 0.0) {
++        boolean worldLodCube = OVERWORLD_ID.equals(planetID);
++        if (worldLodCube && live != null && liveSurface != null && liveSurface.isValid() && physicalHalfExtent > 0.0) {
+             int meshResolution = terrainMeshResolution(x, y, z, halfExtent);
+-            addTerrainGlobe(matrix, buffer, halfSize, physicalHalfExtent, liveSurface,
++            addTerrainCube(matrix, buffer, halfSize, physicalHalfExtent, liveSurface,
+                     meshResolution, rotation, alpha);
+-        } else if (lodGlobe) {
+-            // Keep the same spherical silhouette before the live LOD packet
+-            // arrives, so Earth does not visibly pop from cube to globe.
+-            addPaintedGlobe(matrix, buffer, halfSize, PAINTED_GLOBE_MESH, rotation, alpha);
+         } else {
+             addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, 1.0f), rotation, -halfSize, -halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, halfSize, halfSize, -halfSize, halfSize, halfSize, twoThirds, 0.0f, 1.0f, 0.5f, alpha);        // South face (+Z)
+             addTexturedCubeFace(matrix, buffer, halfSize, new Vector3f(0.0f, 0.0f, -1.0f), rotation, halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, -halfSize, halfSize, -halfSize, halfSize, halfSize, -halfSize, 0.0f, 0.0f, third, 0.5f, alpha);        // North face (-Z)
+@@ -241,7 +252,48 @@ public class PlanetRenderer implements CelestialRenderer {
+         return TERRAIN_MESH_LOW;
+     }
+ 
+-    /** Draws the six flat cube-net regions as a height-displaced LOD globe. */
++    /** Draws the six world regions as the actual height-displaced cube Earth. */
++    private static void addTerrainCube(Matrix4f matrix, VertexConsumer buffer, float halfSize,
++                                       double physicalHalfExtent, PlanetSurfaceData surface,
++                                       int meshResolution, Quaternionf rotation, float alpha) {
++        double reliefScale = halfSize / physicalHalfExtent / PLANET_BLOCKS_PER_SPACE_BLOCK;
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            for (int row = 0; row < meshResolution; row++) {
++                double t0 = row / (double) meshResolution;
++                double t1 = (row + 1) / (double) meshResolution;
++                for (int column = 0; column < meshResolution; column++) {
++                    double s0 = column / (double) meshResolution;
++                    double s1 = (column + 1) / (double) meshResolution;
++                    addTerrainCubeVertex(matrix, buffer, face, s0, t1, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainCubeVertex(matrix, buffer, face, s1, t1, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainCubeVertex(matrix, buffer, face, s1, t0, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                    addTerrainCubeVertex(matrix, buffer, face, s0, t0, halfSize, reliefScale,
++                            surface, rotation, alpha);
++                }
++            }
++        }
++    }
++
++    private static void addTerrainCubeVertex(Matrix4f matrix, VertexConsumer buffer,
++                                             CubeNetSurfaceTransform.Face face, double s, double t,
++                                             float halfSize, double reliefScale, PlanetSurfaceData surface,
++                                             Quaternionf rotation, float alpha) {
++        double elevation = sampleHeight(surface, face, s, t) - surface.seaLevel();
++        double u = (s * 2.0 - 1.0) * halfSize;
++        double v = (t * 2.0 - 1.0) * halfSize;
++        Vector3d point = CubeFaceFrame.cubePoint(face, u, v, halfSize, elevation * reliefScale);
++        float textureU = (float) ((face.atlasColumn() + s) / 3.0);
++        float textureV = (float) ((face.atlasRow() + t) / 2.0);
++        Vector3d normal = new Vector3d(CubeFaceFrame.axes(face).up());
++        addTexturedVertexWithLighting(matrix, buffer, (float) point.x, (float) point.y, (float) point.z,
++                textureU, textureV, new Vector3f((float) normal.x, (float) normal.y, (float) normal.z),
++                rotation, alpha);
++    }
++
++    /** Legacy spherical implementation retained only for non-Earth experiments. */
+     private static void addTerrainGlobe(Matrix4f matrix, VertexConsumer buffer, float halfSize,
+                                         double physicalHalfExtent, PlanetSurfaceData surface,
+                                         int meshResolution, Quaternionf rotation, float alpha) {
+diff --git a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
+index 79243af..79a18e0 100644
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceData.java
+@@ -9,13 +9,13 @@ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+  * {@link CubeNetSurfaceTransform.Face}: north, west, south, east, down, up.
+  * Each value is one coarse world column, not a painted biome pixel. The colour
+  * comes from the generated column's visible block material and the height is
+- * the actual generated surface Y used to displace the orbital globe.</p>
++ * the actual generated surface Y used to displace the orbital cube.</p>
+  *
+  * @param colours six face grids of ARGB block-derived colours, face-major
+  * @param heights the same six grids, as world Y of each LOD column's surface
+  * @param minHeight lowest sampled column across all six regions
+  * @param maxHeight highest sampled column across all six regions
+- * @param seaLevel generator sea level; the globe's base radius is anchored here
++ * @param seaLevel generator sea level; the cube's base half-extent is anchored here
+  */
+ public record PlanetSurfaceData(int[] colours, short[] heights, int minHeight,
+                                 int maxHeight, int seaLevel) {
+diff --git a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
+index 8be6367..a8e49b1 100644
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceSampler.java
+@@ -25,12 +25,12 @@ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+  * <p>This is not a screenshot and it is not a biome-colour painting. Every LOD
+  * cell asks the planet's real chunk generator for the corresponding vertical
+  * block column, finds its visible top block, stores that block material's map
+- * colour, and stores its actual Y coordinate. The client then stretches these
+- * six flat cube-net regions over a sphere and displaces the sphere by the saved
+- * heights.</p>
++ * colour, and stores its actual Y coordinate. The client uses these six flat
++ * cube-net regions as the high-altitude terrain field and as the displaced
++ * faces of the orbital cube.</p>
+  *
+  * <p>The generator is queried without loading chunks. That makes the global
+- * globe finite and safe, but also means player-built structures are not part of
++ * planet LOD finite and safe, but also means player-built structures are not part of
+  * this baseline pass yet. Loaded-world overlays can be layered on later without
+  * changing the coordinate system or renderer.</p>
+  */
+@@ -103,7 +103,7 @@ public final class PlanetSurfaceSampler {
+                     if (index % DEADLINE_CHECK_INTERVAL == 0 && System.nanoTime() > deadline) {
+                         CubeNetSurfaceTransform.Face face = faces[Math.min(faces.length - 1, index / faceTexels)];
+                         GenesisMod.LOGGER.warn(
+-                                "[SURFACE] {} is generating too slowly to build globe LOD ({}%, on {} after {}s); keeping its painted fallback",
++                                "[SURFACE] {} is generating too slowly to build world LOD ({}%, on {} after {}s); keeping its painted fallback",
+                                 dimension.location(), index * 100 / texels, face,
+                                 DEADLINE_NANOS / 1_000_000_000L);
+                         return null;
+@@ -112,7 +112,7 @@ public final class PlanetSurfaceSampler {
+                     while (shipwrights.genesis.teleportation.ArrivalGate.crossingInProgress()) {
+                         Thread.sleep(50L);
+                         if (System.nanoTime() > deadline) {
+-                            GenesisMod.LOGGER.info("[SURFACE] {} globe LOD abandoned; crossings kept it waiting",
++                            GenesisMod.LOGGER.info("[SURFACE] {} world LOD abandoned; crossings kept it waiting",
+                                     dimension.location());
+                             return null;
+                         }
+@@ -157,7 +157,7 @@ public final class PlanetSurfaceSampler {
+                 shadeLodCells(colours, heights);
+                 return new PlanetSurfaceData(colours, heights, minHeight, maxHeight, seaLevel);
+             } catch (Throwable error) {
+-                GenesisMod.LOGGER.warn("[SURFACE] could not build globe LOD for {}", dimension.location(), error);
++                GenesisMod.LOGGER.warn("[SURFACE] could not build world LOD for {}", dimension.location(), error);
+                 return null;
+             }
+         }
+diff --git a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java
+index 7696f45..d6745ed 100644
+--- a/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java
++++ b/src/main/java/shipwrights/genesis/space/surface/PlanetSurfaceService.java
+@@ -184,7 +184,7 @@ public final class PlanetSurfaceService {
+             // level's chunk source; only the sampling itself leaves it.
+             PlanetSurfaceSampler.Job job = new PlanetSurfaceSampler.Job(level, span);
+             IN_PROGRESS.put(planet, CompletableFuture.supplyAsync(job::sample, SAMPLER));
+-            GenesisMod.LOGGER.info("[SURFACE] building spherical LOD for {} from six {}-block world regions", planet, span);
++            GenesisMod.LOGGER.info("[SURFACE] building six-face world LOD for {} from six {}-block world regions", planet, span);
+             return;
+         }
+ 
+@@ -206,7 +206,7 @@ public final class PlanetSurfaceService {
+             GenesisMod.LOGGER.warn("[SURFACE] giving up on {}; it keeps its painted texture", planet);
+         } else {
+             SAMPLED.put(planet, surface);
+-            GenesisMod.LOGGER.info("[SURFACE] built spherical LOD for {} from generated block columns; relief y={}..{}, sea={}",
++            GenesisMod.LOGGER.info("[SURFACE] built six-face world LOD for {} from generated block columns; relief y={}..{}, sea={}",
+                     planet, surface.minHeight(), surface.maxHeight(), surface.seaLevel());
+         }
+     }
+diff --git a/src/main/java/shipwrights/genesis/teleportation/CubeFaceFrame.java b/src/main/java/shipwrights/genesis/teleportation/CubeFaceFrame.java
+new file mode 100644
+index 0000000..9a1fea4
+--- /dev/null
++++ b/src/main/java/shipwrights/genesis/teleportation/CubeFaceFrame.java
+@@ -0,0 +1,97 @@
++package shipwrights.genesis.teleportation;
++
++import org.joml.Quaterniond;
++import org.joml.Vector3d;
++import org.joml.Vector3dc;
++
++import java.util.Objects;
++
++/**
++ * Orientation and geometry shared by cube-net travel, high-altitude world LOD,
++ * and the orbital cube renderer.
++ *
++ * <p>The axes form the Minecraft surface basis for a face: {@code right} is
++ * increasing world X inside that face's cube-net region, {@code up} is away
++ * from the planet, and {@code south} is increasing world Z. Keeping this in one
++ * place prevents the travel transform and the renderer from silently using
++ * different face rotations.</p>
++ */
++public final class CubeFaceFrame {
++    public record Axes(Vector3dc right, Vector3dc up, Vector3dc south) {
++        public Axes {
++            Objects.requireNonNull(right, "right");
++            Objects.requireNonNull(up, "up");
++            Objects.requireNonNull(south, "south");
++        }
++    }
++
++    private CubeFaceFrame() {
++    }
++
++    public static Axes axes(CubeNetSurfaceTransform.Face face) {
++        Objects.requireNonNull(face, "face");
++        return switch (face) {
++            case NORTH -> new Axes(
++                    new Vector3d(-1.0, 0.0, 0.0),
++                    new Vector3d(0.0, 0.0, -1.0),
++                    new Vector3d(0.0, -1.0, 0.0));
++            case WEST -> new Axes(
++                    new Vector3d(0.0, 0.0, 1.0),
++                    new Vector3d(-1.0, 0.0, 0.0),
++                    new Vector3d(0.0, -1.0, 0.0));
++            case SOUTH -> new Axes(
++                    new Vector3d(1.0, 0.0, 0.0),
++                    new Vector3d(0.0, 0.0, 1.0),
++                    new Vector3d(0.0, -1.0, 0.0));
++            case EAST -> new Axes(
++                    new Vector3d(0.0, 0.0, -1.0),
++                    new Vector3d(1.0, 0.0, 0.0),
++                    new Vector3d(0.0, -1.0, 0.0));
++            case DOWN -> new Axes(
++                    new Vector3d(1.0, 0.0, 0.0),
++                    new Vector3d(0.0, -1.0, 0.0),
++                    new Vector3d(0.0, 0.0, -1.0));
++            case UP -> new Axes(
++                    new Vector3d(1.0, 0.0, 0.0),
++                    new Vector3d(0.0, 1.0, 0.0),
++                    new Vector3d(0.0, 0.0, 1.0));
++        };
++    }
++
++    /** Rotates the ordinary Minecraft X/Y/Z surface basis into the face basis. */
++    public static Quaterniond surfaceToCelestial(CubeNetSurfaceTransform.Face face) {
++        Axes axes = axes(face);
++        // JOML lookAlong maps local -Z to the supplied direction and local +Y
++        // to up. Supplying -south therefore maps local +Z to south while also
++        // fixing roll, which maps local +X to right.
++        return new Quaterniond()
++                .lookAlong(new Vector3d(axes.south()).negate(), new Vector3d(axes.up()))
++                .normalize();
++    }
++
++    /**
++     * A terrain point on a cube face in the planet's rotating local frame.
++     * Elevation is measured outward from the face plane.
++     */
++    public static Vector3d cubePoint(CubeNetSurfaceTransform.Face face,
++                                     double u, double v,
++                                     double halfExtent, double elevation) {
++        Axes axes = axes(face);
++        return new Vector3d(axes.right()).mul(u)
++                .fma(halfExtent + elevation, axes.up())
++                .fma(v, axes.south());
++    }
++
++    /**
++     * Converts a celestial-local vector into the flat world basis of the face
++     * currently beneath the player.
++     */
++    public static Vector3d celestialToSurface(CubeNetSurfaceTransform.Face currentFace,
++                                              Vector3dc celestialVector) {
++        Axes current = axes(currentFace);
++        return new Vector3d(
++                celestialVector.dot(current.right()),
++                celestialVector.dot(current.up()),
++                celestialVector.dot(current.south()));
++    }
++}
+diff --git a/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java b/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java
+index 90081b3..f59b281 100644
+--- a/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java
++++ b/src/main/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporter.java
+@@ -293,15 +293,34 @@ public class PlanetToSpaceTeleporter {
+ 			local.set(0.0, 1.0, 0.0);
+ 		}
+ 
+-		local.normalize(transform.halfExtent() + SpaceTravelManager.ATMOSPHERE_EXIT_CLEARANCE);
++		double crossingHeight = AtmosphereHeights.exitHeight(celestial) + SPACE_TELEPORT_BUFFER;
++		double exitRadius = scaleMatchedExitRadius(transform, crossingHeight, level.getSeaLevel());
++		local.normalize(exitRadius);
+ 		celestial.getRotation(ticks, 0.0f, registry).transform(local);
+ 
+ 		Vector3d center = new Vector3d(celestial.getPosition(ticks, registry));
+ 		Vec3 target = new Vec3(center.x + local.x, center.y + local.y, center.z + local.z);
+-		GenesisMod.LOGGER.info("[CUBENET] launch from {}{} surface ({}, {}) -> local ({}, {}, {})",
++		GenesisMod.LOGGER.info("[CUBENET] launch from {}{} surface ({}, {}) -> local ({}, {}, {}), radius={}",
+ 				shell.face(), shell.outsideNetFallback() ? " [legacy fallback]" : "",
+ 				Math.round(x), Math.round(z),
+-				Math.round(shell.x()), Math.round(shell.y()), Math.round(shell.z()));
++				Math.round(shell.x()), Math.round(shell.y()), Math.round(shell.z()),
++				Math.round(exitRadius));
+ 		return target;
+ 	}
++
++	/**
++	 * Converts the planet-side crossing altitude into the equivalent distance
++	 * from the celestial centre in the 1:16 space frame. This keeps the planet's
++	 * apparent size continuous across the seamless room handoff. The padded
++	 * entry shell remains the hard minimum so a launch can never immediately
++	 * trigger re-entry.
++	 */
++	static double scaleMatchedExitRadius(CubeNetSurfaceTransform transform, double crossingHeight, double seaLevel) {
++		double altitudeAboveSurface = Math.max(0.0, crossingHeight - seaLevel);
++		double scaleMatched = transform.halfExtent()
++				+ altitudeAboveSurface * SpaceTravelManager.SPACE_BLOCKS_PER_PLANET_BLOCK;
++		double legacyClearance = transform.halfExtent() + SpaceTravelManager.ATMOSPHERE_EXIT_CLEARANCE;
++		return Math.max(transform.entryRadius() + 1.0, Math.max(legacyClearance, scaleMatched));
++	}
++
+ }
+diff --git a/src/test/java/shipwrights/genesis/teleportation/CubeFaceFrameTest.java b/src/test/java/shipwrights/genesis/teleportation/CubeFaceFrameTest.java
+new file mode 100644
+index 0000000..8f5a1b1
+--- /dev/null
++++ b/src/test/java/shipwrights/genesis/teleportation/CubeFaceFrameTest.java
+@@ -0,0 +1,43 @@
++package shipwrights.genesis.teleportation;
++
++import org.joml.Quaterniond;
++import org.joml.Vector3d;
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++
++class CubeFaceFrameTest {
++    private static final double EPSILON = 1.0E-9;
++
++    @Test
++    void everyFaceRotationMapsMinecraftBasisToDeclaredAxes() {
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            CubeFaceFrame.Axes axes = CubeFaceFrame.axes(face);
++            Quaterniond rotation = CubeFaceFrame.surfaceToCelestial(face);
++            assertVector(axes.right(), rotation.transform(new Vector3d(1, 0, 0)));
++            assertVector(axes.up(), rotation.transform(new Vector3d(0, 1, 0)));
++            assertVector(axes.south(), rotation.transform(new Vector3d(0, 0, 1)));
++        }
++    }
++
++    @Test
++    void currentFaceAlwaysUnfoldsToFlatMinecraftCoordinates() {
++        double half = 4096.0;
++        double u = 1234.5;
++        double v = -987.25;
++        double elevation = 71.0;
++        for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
++            Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v, half, elevation);
++            Vector3d surface = CubeFaceFrame.celestialToSurface(face, celestial);
++            assertEquals(u, surface.x, EPSILON);
++            assertEquals(half + elevation, surface.y, EPSILON);
++            assertEquals(v, surface.z, EPSILON);
++        }
++    }
++
++    private static void assertVector(org.joml.Vector3dc expected, Vector3d actual) {
++        assertEquals(expected.x(), actual.x, EPSILON);
++        assertEquals(expected.y(), actual.y, EPSILON);
++        assertEquals(expected.z(), actual.z, EPSILON);
++    }
++}
+diff --git a/src/test/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporterTest.java b/src/test/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporterTest.java
+index bdf787b..c6b5dfb 100644
+--- a/src/test/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporterTest.java
++++ b/src/test/java/shipwrights/genesis/teleportation/integration/PlanetToSpaceTeleporterTest.java
+@@ -1,54 +1,75 @@
+-package shipwrights.genesis.teleportation.integration;
+-
+-import org.joml.Quaterniond;
+-import org.joml.Quaterniondc;
+-import org.joml.Vector3d;
+-import org.junit.jupiter.api.DisplayName;
+-import org.junit.jupiter.api.Test;
+-
+-import static org.junit.jupiter.api.Assertions.assertEquals;
+-
+-class PlanetToSpaceTeleporterTest {
+-
+-    private static final double EPS = 1e-9;
+-
+-    // Matches the frame rotation used by computeSpaceTarget: celestialRotation * cameraRotation⁻¹.
+-    // With identity celestial rotation and cameraRotation = rotateTo(Y, -Z), the frame rotation
+-    // is rotateTo(Y, -Z).conjugate() = rotateTo(Y, +Z).
+-    // "Away from planet" = frameRotation.transform(0,1,0) = (0,0,+1).
+-    private static final Quaterniondc VANTAGE_ROTATION =
+-            new Quaterniond().rotateTo(new Vector3d(0, 1, 0), new Vector3d(0, 0, 1));
+-
+-    @Test
+-    @DisplayName("Identity ship rotation: local up (0,1,0) should point away from planet")
+-    void identityShipRotation_localUpPointsAwayFromPlanet() {
+-        Quaterniondc shipRotation = new Quaterniond(); // identity
+-
+-        Quaterniondc spaceRotation = PlanetToSpaceTeleporter.computeSpaceRotation(VANTAGE_ROTATION, shipRotation);
+-
+-        // spaceRotation = frameRotation, so local-up → (0,0,+1)
+-        Vector3d result = spaceRotation.transform(0, 1, 0, new Vector3d());
+-        assertEquals(0.0, result.x, EPS, "X should be 0");
+-        assertEquals(0.0, result.y, EPS, "Y should be 0");
+-        assertEquals(1.0, result.z, EPS, "Z should be +1 (away from planet)");
+-    }
+-
+-    @Test
+-    @DisplayName("Ship rotated so local north (0,0,+1) maps to world-up: local north should point away from planet")
+-    void northPointingUpShip_localNorthPointsAwayFromPlanet() {
+-        // Ship is rotated so local north (0,0,+1) points world-up (0,1,0)
+-        Quaterniondc shipRotation =
+-                new Quaterniond().rotateTo(new Vector3d(0, 0, 1), new Vector3d(0, 1, 0));
+-
+-        Quaterniondc spaceRotation = PlanetToSpaceTeleporter.computeSpaceRotation(VANTAGE_ROTATION, shipRotation);
+-
+-        // spaceRotation.transform(0,0,+1)
+-        //   = frameRotation.transform(shipRotation.transform(0,0,+1))
+-        //   = frameRotation.transform(0,1,0)
+-        //   = (0,0,+1) = "away from planet"
+-        Vector3d result = spaceRotation.transform(0, 0, 1, new Vector3d());
+-        assertEquals(0.0, result.x, EPS, "X should be 0");
+-        assertEquals(0.0, result.y, EPS, "Y should be 0");
+-        assertEquals(1.0, result.z, EPS, "Z should be +1 (away from planet)");
+-    }
+-}
++package shipwrights.genesis.teleportation.integration;
++
++import org.joml.Quaterniond;
++import org.joml.Quaterniondc;
++import org.joml.Vector3d;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++
++class PlanetToSpaceTeleporterTest {
++
++    private static final double EPS = 1e-9;
++
++    // Matches the frame rotation used by computeSpaceTarget: celestialRotation * cameraRotation⁻¹.
++    // With identity celestial rotation and cameraRotation = rotateTo(Y, -Z), the frame rotation
++    // is rotateTo(Y, -Z).conjugate() = rotateTo(Y, +Z).
++    // "Away from planet" = frameRotation.transform(0,1,0) = (0,0,+1).
++    private static final Quaterniondc VANTAGE_ROTATION =
++            new Quaterniond().rotateTo(new Vector3d(0, 1, 0), new Vector3d(0, 0, 1));
++
++    @Test
++    @DisplayName("Identity ship rotation: local up (0,1,0) should point away from planet")
++    void identityShipRotation_localUpPointsAwayFromPlanet() {
++        Quaterniondc shipRotation = new Quaterniond(); // identity
++
++        Quaterniondc spaceRotation = PlanetToSpaceTeleporter.computeSpaceRotation(VANTAGE_ROTATION, shipRotation);
++
++        // spaceRotation = frameRotation, so local-up → (0,0,+1)
++        Vector3d result = spaceRotation.transform(0, 1, 0, new Vector3d());
++        assertEquals(0.0, result.x, EPS, "X should be 0");
++        assertEquals(0.0, result.y, EPS, "Y should be 0");
++        assertEquals(1.0, result.z, EPS, "Z should be +1 (away from planet)");
++    }
++
++    @Test
++    @DisplayName("Ship rotated so local north (0,0,+1) maps to world-up: local north should point away from planet")
++    void northPointingUpShip_localNorthPointsAwayFromPlanet() {
++        // Ship is rotated so local north (0,0,+1) points world-up (0,1,0)
++        Quaterniondc shipRotation =
++                new Quaterniond().rotateTo(new Vector3d(0, 0, 1), new Vector3d(0, 1, 0));
++
++        Quaterniondc spaceRotation = PlanetToSpaceTeleporter.computeSpaceRotation(VANTAGE_ROTATION, shipRotation);
++
++        // spaceRotation.transform(0,0,+1)
++        //   = frameRotation.transform(shipRotation.transform(0,0,+1))
++        //   = frameRotation.transform(0,1,0)
++        //   = (0,0,+1) = "away from planet"
++        Vector3d result = spaceRotation.transform(0, 0, 1, new Vector3d());
++        assertEquals(0.0, result.x, EPS, "X should be 0");
++        assertEquals(0.0, result.y, EPS, "Y should be 0");
++        assertEquals(1.0, result.z, EPS, "Z should be +1 (away from planet)");
++    }
++    @Test
++    @DisplayName("Earth launch radius preserves the 1:16 apparent scale at the crossing")
++    void scaleMatchedExitRadius_preservesEarthScale() {
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(512.0, 1000.0);
++
++        double radius = PlanetToSpaceTeleporter.scaleMatchedExitRadius(transform, 21_000.0, 63.0);
++
++        assertEquals(256.0 + (21_000.0 - 63.0) / 16.0, radius, EPS);
++    }
++
++    @Test
++    @DisplayName("Launch radius always clears the padded re-entry shell")
++    void scaleMatchedExitRadius_neverDropsInsideEntryShell() {
++        CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(512.0, 1000.0);
++
++        double radius = PlanetToSpaceTeleporter.scaleMatchedExitRadius(transform, 100.0, 63.0);
++
++        assertEquals(transform.entryRadius() + 1.0, radius, EPS);
++    }
++
++}

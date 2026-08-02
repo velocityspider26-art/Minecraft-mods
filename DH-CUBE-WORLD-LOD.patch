@@ -1,0 +1,1116 @@
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/build.gradle /mnt/data/ProjectStarbound_dh_cube/build.gradle
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/build.gradle	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/build.gradle	2026-07-31 11:56:42.638209738 +0000
+@@ -106,6 +106,10 @@
+ }
+ 
+ dependencies {
++    // Genesis reads DH's public terrain repository and render events. The jar
++    // stays external at runtime; do not shade it into Genesis.
++    compileOnly(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
++    localRuntime(files("libs/DistantHorizons-3.2.0-b-1.21.1-fabric-neoforge.jar"))
+     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.0"))
+     implementation("io.github.llamalad7:mixinextras-neoforge:0.5.0")
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/gradle.properties /mnt/data/ProjectStarbound_dh_cube/gradle.properties
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/gradle.properties	2026-07-31 09:57:26.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/gradle.properties	2026-07-31 12:03:46.658222247 +0000
+@@ -8,7 +8,7 @@
+ mod_id=genesis
+ mod_name=Genesis
+ mod_license=Apache 2.0
+-mod_version=1.21.1-0.8.0-port-world-lod-cube1
++mod_version=1.21.1-0.8.0-port-dh-cube-lod1
+ maven_group=shipwrights.genesis
+ archives_name=genesis
+ 
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/PlanetSurfaceLifecycle.java	2026-07-31 11:56:42.638209738 +0000
+@@ -5,6 +5,7 @@
+ import net.neoforged.fml.common.EventBusSubscriber;
+ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+ import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.lod.DhCubeLodBridge;
+ 
+ /**
+  * Drops sampled planet surfaces when leaving a world.
+@@ -20,6 +21,7 @@
+ 
+     @SubscribeEvent
+     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
++        DhCubeLodBridge.clear();
+         PlanetSurfaceTextures.clear();
+     }
+ }
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/DhCubeLodBridge.java	2026-07-31 12:06:41.302227399 +0000
+@@ -0,0 +1,527 @@
++package shipwrights.genesis.client.lod;
++
++import com.seibel.distanthorizons.api.DhApi;
++import com.seibel.distanthorizons.api.interfaces.block.IDhApiBlockStateWrapper;
++import com.seibel.distanthorizons.api.interfaces.data.IDhApiTerrainDataCache;
++import com.seibel.distanthorizons.api.interfaces.data.IDhApiTerrainDataRepo;
++import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
++import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderEvent;
++import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiChunkModifiedEvent;
++import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiCancelableEventParam;
++import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiEventParam;
++import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
++import com.seibel.distanthorizons.api.objects.DhApiResult;
++import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
++import net.minecraft.client.Minecraft;
++import net.minecraft.client.multiplayer.ClientLevel;
++import net.minecraft.resources.ResourceLocation;
++import shipwrights.genesis.GenesisMod;
++import shipwrights.genesis.client.PlanetSurfaceTextures;
++import shipwrights.genesis.space.surface.PlanetSurfaceData;
++import shipwrights.genesis.space.surface.PlanetSurfaceSampler;
++import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
++
++import java.awt.Color;
++import java.util.Arrays;
++import java.util.Objects;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.ThreadFactory;
++import java.util.concurrent.atomic.AtomicBoolean;
++import java.util.concurrent.atomic.AtomicInteger;
++
++/**
++ * Reads the real Distant Horizons terrain repository and turns its cached
++ * columns into Genesis' six-face cube LOD.
++ *
++ * <p>All repository reads happen on one minimum-priority daemon. DH's API may
++ * wait for its asynchronous data provider, so calling it from the render thread
++ * would recreate the exact flight freezes this project already eliminated.</p>
++ */
++public final class DhCubeLodBridge {
++    private static final ResourceLocation OVERWORLD_ID =
++            ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
++    private static final int OUTPUT_RESOLUTION = PlanetSurfaceSampler.RESOLUTION;
++    private static final int BASE_SAMPLE_RESOLUTION = 16;
++    private static final int CURRENT_FACE_RESOLUTION = 32;
++    private static final int FACE_LENGTH = OUTPUT_RESOLUTION * OUTPUT_RESOLUTION;
++
++    private static final ThreadFactory THREAD_FACTORY = runnable -> {
++        Thread thread = new Thread(runnable, "Genesis-DH-Cube-LOD");
++        thread.setDaemon(true);
++        thread.setPriority(Thread.MIN_PRIORITY);
++        return thread;
++    };
++    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(THREAD_FACTORY);
++    private static final AtomicBoolean EVENTS_BOUND = new AtomicBoolean();
++    private static final AtomicBoolean SAMPLING = new AtomicBoolean();
++    private static final AtomicInteger GENERATION = new AtomicInteger();
++
++    private static volatile IDhApiLevelWrapper activeWrapper;
++    private static volatile IDhApiTerrainDataCache softCache;
++    private static volatile CubeNetSurfaceTransform activeTransform;
++    private static volatile PlanetSurfaceData surface;
++    private static volatile CubeNetSurfaceTransform.Face prioritisedFace = CubeNetSurfaceTransform.Face.UP;
++    private static volatile boolean[] completedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++    private static volatile int[] faceSuccessfulColumns = new int[CubeNetSurfaceTransform.Face.values().length];
++    private static volatile boolean[] refinedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++    private static volatile boolean initialPassComplete;
++    private static volatile int[] colours;
++    private static volatile short[] heights;
++    private static volatile int seaLevel = 63;
++    private static volatile int successfulColumns;
++    private static volatile int failedColumns;
++    private static volatile long lastChunkChangeNanos;
++
++    private DhCubeLodBridge() {
++    }
++
++    /** Called from the overworld render path; never blocks. */
++    public static void update(ClientLevel level, CubeNetSurfaceTransform transform,
++                              CubeNetSurfaceTransform.Face currentFace) {
++        bindEventsOnce();
++        if (level == null || transform == null) {
++            return;
++        }
++        activeTransform = transform;
++        prioritisedFace = currentFace == null ? CubeNetSurfaceTransform.Face.UP : currentFace;
++
++        IDhApiLevelWrapper wrapper = findWrapper(level);
++        if (wrapper == null) {
++            return;
++        }
++        if (activeWrapper != wrapper) {
++            resetForWrapper(wrapper, level);
++        }
++        long changedAt = lastChunkChangeNanos;
++        if (initialPassComplete && changedAt != 0L
++                && System.nanoTime() - changedAt > 2_000_000_000L) {
++            refinedFaces[prioritisedFace.ordinal()] = false;
++            lastChunkChangeNanos = 0L;
++        }
++        startSamplingIfNeeded(wrapper, transform, prioritisedFace, level);
++    }
++
++    public static PlanetSurfaceData surface() {
++        return surface;
++    }
++
++    public static boolean hasFace(CubeNetSurfaceTransform.Face face) {
++        boolean[] completed = completedFaces;
++        int[] faceCounts = faceSuccessfulColumns;
++        return face != null && face.ordinal() < completed.length && completed[face.ordinal()]
++                && faceCounts[face.ordinal()] >= BASE_SAMPLE_RESOLUTION * BASE_SAMPLE_RESOLUTION / 8;
++    }
++
++    public static boolean hasAnyDhTerrain() {
++        return successfulColumns >= BASE_SAMPLE_RESOLUTION * BASE_SAMPLE_RESOLUTION / 8
++                && surface != null && surface.isValid();
++    }
++
++    public static int successfulColumns() {
++        return successfulColumns;
++    }
++
++    public static int failedColumns() {
++        return failedColumns;
++    }
++
++    public static IDhApiLevelWrapper activeWrapper() {
++        return activeWrapper;
++    }
++
++    private static void bindEventsOnce() {
++        if (!EVENTS_BOUND.compareAndSet(false, true)) {
++            return;
++        }
++        try {
++            DhApi.events.bind(DhApiBeforeRenderEvent.class, new DhApiBeforeRenderEvent() {
++                @Override
++                public void beforeRender(DhApiCancelableEventParam<DhApiRenderParam> event) {
++                    DhApiRenderParam value = event.value;
++                    if (value != null
++                            && value.clientLevelWrapper == activeWrapper
++                            && WorldLodEarthRenderer.shouldReplaceFlatDh()) {
++                        event.cancelEvent();
++                    }
++                }
++            });
++            DhApi.events.bind(DhApiChunkModifiedEvent.class, new DhApiChunkModifiedEvent() {
++                @Override
++                public void onChunkModified(DhApiEventParam<EventParam> event) {
++                    EventParam value = event.value;
++                    if (value != null && value.levelWrapper == activeWrapper) {
++                        // Do not rescan on every block/chunk update. Record a
++                        // debounce signal; the next idle sampling pass refreshes
++                        // the face from DH's now-updated cache.
++                        lastChunkChangeNanos = System.nanoTime();
++                    }
++                }
++            });
++            GenesisMod.LOGGER.info("[DH-CUBE] Distant Horizons terrain and render hooks installed (API {})",
++                    DhApi.getModVersion());
++        } catch (Throwable error) {
++            EVENTS_BOUND.set(false);
++            GenesisMod.LOGGER.error("[DH-CUBE] could not install Distant Horizons API hooks", error);
++        }
++    }
++
++    private static IDhApiLevelWrapper findWrapper(ClientLevel level) {
++        try {
++            if (DhApi.Delayed.worldProxy == null || !DhApi.Delayed.worldProxy.worldLoaded()) {
++                return null;
++            }
++            for (IDhApiLevelWrapper wrapper : DhApi.Delayed.worldProxy.getAllLoadedLevelWrappers()) {
++                if (wrapper == null) {
++                    continue;
++                }
++                Object wrapped = wrapper.getWrappedMcObject();
++                if (wrapped == level) {
++                    return wrapper;
++                }
++            }
++            for (IDhApiLevelWrapper wrapper : DhApi.Delayed.worldProxy.getAllLoadedLevelWrappers()) {
++                if (wrapper == null) {
++                    continue;
++                }
++                String identifier = wrapper.getDhIdentifier();
++                String name = wrapper.getDimensionName();
++                if ((identifier != null && identifier.contains("minecraft:overworld"))
++                        || (name != null && name.toLowerCase().contains("overworld"))) {
++                    return wrapper;
++                }
++            }
++        } catch (Throwable ignored) {
++            // DH finishes attaching its level wrapper after the client level is
++            // visible. A not-ready result is normal during those first frames.
++        }
++        return null;
++    }
++
++    private static synchronized void resetForWrapper(IDhApiLevelWrapper wrapper, ClientLevel level) {
++        int generation = GENERATION.incrementAndGet();
++        activeWrapper = wrapper;
++        completedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++        faceSuccessfulColumns = new int[CubeNetSurfaceTransform.Face.values().length];
++        refinedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++        initialPassComplete = false;
++        successfulColumns = 0;
++        failedColumns = 0;
++        surface = null;
++        seaLevel = 63;
++        try {
++            seaLevel = level.getSeaLevel();
++        } catch (Throwable ignored) {
++        }
++
++        int expected = PlanetSurfaceData.expectedLength();
++        colours = new int[expected];
++        heights = new short[expected];
++
++        PlanetSurfaceData previous = PlanetSurfaceTextures.surface(OVERWORLD_ID);
++        if (previous != null && previous.isValid()) {
++            System.arraycopy(previous.colours(), 0, colours, 0, expected);
++            System.arraycopy(previous.heights(), 0, heights, 0, expected);
++            seaLevel = previous.seaLevel();
++        } else {
++            Arrays.fill(colours, 0xFF345A3A);
++            Arrays.fill(heights, (short) seaLevel);
++        }
++
++        closeCache();
++        IDhApiTerrainDataRepo repo = DhApi.Delayed.terrainRepo;
++        if (repo != null) {
++            try {
++                softCache = repo.createSoftCache();
++            } catch (Throwable error) {
++                GenesisMod.LOGGER.warn("[DH-CUBE] could not create DH soft cache", error);
++            }
++        }
++        SAMPLING.set(false);
++        GenesisMod.LOGGER.info("[DH-CUBE] attached to {} (generation {}, sea level {})",
++                wrapper.getDhIdentifier(), generation, seaLevel);
++    }
++
++    private static void startSamplingIfNeeded(IDhApiLevelWrapper wrapper,
++                                              CubeNetSurfaceTransform transform,
++                                              CubeNetSurfaceTransform.Face currentFace,
++                                              ClientLevel level) {
++        if (DhApi.Delayed.terrainRepo == null || softCache == null || colours == null || heights == null) {
++            return;
++        }
++        if (initialPassComplete && refinedFaces[currentFace.ordinal()]) {
++            return;
++        }
++        if (!SAMPLING.compareAndSet(false, true)) {
++            return;
++        }
++        int generation = GENERATION.get();
++        if (!initialPassComplete) {
++            WORKER.execute(() -> sampleAllFaces(generation, wrapper, transform, currentFace, level));
++        } else if (!refinedFaces[currentFace.ordinal()]) {
++            WORKER.execute(() -> refineCurrentFace(generation, wrapper, transform, currentFace, level));
++        } else {
++            SAMPLING.set(false);
++        }
++    }
++
++    private static void sampleAllFaces(int generation, IDhApiLevelWrapper wrapper,
++                                       CubeNetSurfaceTransform transform,
++                                       CubeNetSurfaceTransform.Face currentFace,
++                                       ClientLevel level) {
++        long started = System.nanoTime();
++        try {
++            CubeNetSurfaceTransform.Face[] order = samplingOrder(currentFace);
++            // First publish a very cheap current-face grid so the visual change
++            // appears quickly, then refine that face while DH's own flat LOD is
++            // still available underneath it.
++            sampleFace(generation, wrapper, transform, currentFace, BASE_SAMPLE_RESOLUTION);
++            completedFaces[currentFace.ordinal()] = true;
++            publishSnapshot(level, currentFace);
++
++            sampleFace(generation, wrapper, transform, currentFace, CURRENT_FACE_RESOLUTION);
++            refinedFaces[currentFace.ordinal()] = true;
++            publishSnapshot(level, currentFace);
++
++            for (CubeNetSurfaceTransform.Face face : order) {
++                if (face == currentFace) continue;
++                if (generation != GENERATION.get() || wrapper != activeWrapper) return;
++                sampleFace(generation, wrapper, transform, face, BASE_SAMPLE_RESOLUTION);
++                completedFaces[face.ordinal()] = true;
++                publishSnapshot(level, face);
++            }
++            initialPassComplete = true;
++            double seconds = (System.nanoTime() - started) / 1_000_000_000.0;
++            GenesisMod.LOGGER.info(
++                    "[DH-CUBE] six-face base LOD ready: {} successful columns, {} missing, {} s",
++                    successfulColumns, failedColumns, String.format("%.2f", seconds));
++        } catch (Throwable error) {
++            GenesisMod.LOGGER.error("[DH-CUBE] terrain sampling failed", error);
++        } finally {
++            SAMPLING.set(false);
++        }
++    }
++
++    private static void refineCurrentFace(int generation, IDhApiLevelWrapper wrapper,
++                                          CubeNetSurfaceTransform transform,
++                                          CubeNetSurfaceTransform.Face face,
++                                          ClientLevel level) {
++        try {
++            sampleFace(generation, wrapper, transform, face, CURRENT_FACE_RESOLUTION);
++            if (generation == GENERATION.get() && wrapper == activeWrapper) {
++                refinedFaces[face.ordinal()] = true;
++                completedFaces[face.ordinal()] = true;
++                publishSnapshot(level, face);
++                GenesisMod.LOGGER.info("[DH-CUBE] refined {} to {}x{} DH columns",
++                        face, CURRENT_FACE_RESOLUTION, CURRENT_FACE_RESOLUTION);
++            }
++        } catch (Throwable error) {
++            GenesisMod.LOGGER.warn("[DH-CUBE] could not refine {}", face, error);
++        } finally {
++            SAMPLING.set(false);
++        }
++    }
++
++    private static CubeNetSurfaceTransform.Face[] samplingOrder(CubeNetSurfaceTransform.Face first) {
++        CubeNetSurfaceTransform.Face[] values = CubeNetSurfaceTransform.Face.values();
++        CubeNetSurfaceTransform.Face[] order = new CubeNetSurfaceTransform.Face[values.length];
++        order[0] = first;
++        int index = 1;
++        for (CubeNetSurfaceTransform.Face value : values) {
++            if (value != first) {
++                order[index++] = value;
++            }
++        }
++        return order;
++    }
++
++    private static void sampleFace(int generation, IDhApiLevelWrapper wrapper,
++                                   CubeNetSurfaceTransform transform,
++                                   CubeNetSurfaceTransform.Face face, int sampleResolution) {
++        IDhApiTerrainDataRepo repo = DhApi.Delayed.terrainRepo;
++        IDhApiTerrainDataCache cache = softCache;
++        if (repo == null || cache == null) {
++            return;
++        }
++        double faceSpan = transform.faceSpan();
++        double centerX = transform.faceCenterX(face);
++        double centerZ = transform.faceCenterZ(face);
++
++        GenesisMod.LOGGER.info("[DH-CUBE] sampling {} from DH cached world columns", face);
++        int faceSuccess = 0;
++        for (int sampleZ = 0; sampleZ < sampleResolution; sampleZ++) {
++            if (generation != GENERATION.get()) {
++                return;
++            }
++            double worldZ = centerZ + ((sampleZ + 0.5) / sampleResolution - 0.5) * faceSpan;
++            for (int sampleX = 0; sampleX < sampleResolution; sampleX++) {
++                double worldX = centerX + ((sampleX + 0.5) / sampleResolution - 0.5) * faceSpan;
++                Column column = readColumn(repo, wrapper, cache,
++                        floorToInt(worldX), floorToInt(worldZ));
++                if (column == null) {
++                    failedColumns++;
++                    continue;
++                }
++                successfulColumns++;
++                faceSuccess++;
++                writeSample(face, sampleX, sampleZ, sampleResolution, column);
++            }
++        }
++        faceSuccessfulColumns[face.ordinal()] = faceSuccess;
++    }
++
++    private static Column readColumn(IDhApiTerrainDataRepo repo, IDhApiLevelWrapper wrapper,
++                                     IDhApiTerrainDataCache cache, int worldX, int worldZ) {
++        try {
++            DhApiResult<DhApiTerrainDataPoint[]> result =
++                    repo.getColumnDataAtBlockPos(wrapper, worldX, worldZ, cache);
++            if (result == null || !result.success || result.payload == null) {
++                return null;
++            }
++            DhApiTerrainDataPoint top = null;
++            for (DhApiTerrainDataPoint point : result.payload) {
++                if (point == null || point.blockStateWrapper == null || point.blockStateWrapper.isAir()) {
++                    continue;
++                }
++                if (top == null || point.topYBlockPos > top.topYBlockPos) {
++                    top = point;
++                }
++            }
++            if (top == null) {
++                return null;
++            }
++            int y = Math.max(-32768, Math.min(32767, top.topYBlockPos - 1));
++            int colour = colourFor(wrapper, top, worldX, y, worldZ);
++            return new Column((short) y, colour);
++        } catch (Throwable error) {
++            return null;
++        }
++    }
++
++    private static int colourFor(IDhApiLevelWrapper wrapper, DhApiTerrainDataPoint point,
++                                 int x, int y, int z) {
++        IDhApiBlockStateWrapper state = point.blockStateWrapper;
++        try {
++            Object value = state.getClass().getMethod("getMapColor").invoke(state);
++            if (value instanceof Color colour) {
++                int rgb = (colour.getRed() << 16) | (colour.getGreen() << 8) | colour.getBlue();
++                String serial = Objects.toString(state.getSerialString(), "").toLowerCase();
++                String biome = point.biomeWrapper == null ? ""
++                        : Objects.toString(point.biomeWrapper.getName(), "").toLowerCase();
++                if (state.isLiquid()) return tint(rgb, 0x315D9B, 0.70);
++                if (serial.contains("grass") || serial.contains("leaves") || serial.contains("moss")) {
++                    int biomeGreen = biomeGreen(biome);
++                    return tint(rgb, biomeGreen, 0.58);
++                }
++                return 0xFF000000 | rgb;
++            }
++        } catch (Throwable ignored) {
++        }
++        return fallbackColour(state, point.biomeWrapper == null ? "" : point.biomeWrapper.getName());
++    }
++
++    private static int biomeGreen(String biome) {
++        if (biome.contains("desert") || biome.contains("badlands")) return 0xFF9E9B55;
++        if (biome.contains("snow") || biome.contains("frozen") || biome.contains("ice")) return 0xFFB8C8B2;
++        if (biome.contains("swamp") || biome.contains("mangrove")) return 0xFF4F6B3A;
++        if (biome.contains("jungle")) return 0xFF2F8B3F;
++        if (biome.contains("savanna")) return 0xFF8A9A46;
++        return 0xFF5E9346;
++    }
++
++    private static int tint(int first, int second, double secondWeight) {
++        double w = Math.max(0.0, Math.min(1.0, secondWeight));
++        int r = (int) (((first >> 16) & 0xFF) * (1.0 - w) + ((second >> 16) & 0xFF) * w);
++        int g = (int) (((first >> 8) & 0xFF) * (1.0 - w) + ((second >> 8) & 0xFF) * w);
++        int b = (int) ((first & 0xFF) * (1.0 - w) + (second & 0xFF) * w);
++        return 0xFF000000 | (r << 16) | (g << 8) | b;
++    }
++
++    private static int fallbackColour(IDhApiBlockStateWrapper state, String biomeName) {
++        String serial = state == null ? "" : Objects.toString(state.getSerialString(), "").toLowerCase();
++        if (state != null && state.isLiquid()) {
++            return 0xFF315D9B;
++        }
++        if (serial.contains("snow") || serial.contains("ice")) return 0xFFE9F0F2;
++        if (serial.contains("sand") || serial.contains("sandstone")) return 0xFFC9B36A;
++        if (serial.contains("stone") || serial.contains("deepslate")) return 0xFF777773;
++        if (serial.contains("dirt") || serial.contains("mud")) return 0xFF71503A;
++        if (serial.contains("leaves") || serial.contains("grass") || serial.contains("moss")) return biomeGreen(Objects.toString(biomeName, "").toLowerCase());
++        if (serial.contains("wood") || serial.contains("log") || serial.contains("planks")) return 0xFF856443;
++        return 0xFF6E7D58;
++    }
++
++    private static void writeSample(CubeNetSurfaceTransform.Face face, int sampleX, int sampleZ,
++                                    int sampleResolution, Column column) {
++        int outputsPerSample = OUTPUT_RESOLUTION / sampleResolution;
++        int baseX = sampleX * outputsPerSample;
++        int baseZ = sampleZ * outputsPerSample;
++        for (int dz = 0; dz < outputsPerSample; dz++) {
++            for (int dx = 0; dx < outputsPerSample; dx++) {
++                int index = PlanetSurfaceData.index(face, baseX + dx, baseZ + dz);
++                heights[index] = column.height;
++                colours[index] = column.colour;
++            }
++        }
++    }
++
++    private static void publishSnapshot(ClientLevel level, CubeNetSurfaceTransform.Face completedFace) {
++        int[] colourCopy = colours.clone();
++        short[] heightCopy = heights.clone();
++        int min = Integer.MAX_VALUE;
++        int max = Integer.MIN_VALUE;
++        for (short height : heightCopy) {
++            min = Math.min(min, height);
++            max = Math.max(max, height);
++        }
++        PlanetSurfaceData next = new PlanetSurfaceData(colourCopy, heightCopy, min, max, seaLevel);
++        surface = next;
++        Minecraft minecraft = Minecraft.getInstance();
++        minecraft.execute(() -> {
++            if (minecraft.level == level && next == surface) {
++                PlanetSurfaceTextures.accept(OVERWORLD_ID, next);
++                GenesisMod.LOGGER.info(
++                        "[DH-CUBE] {} face published; the overworld and orbital Earth now use the same DH terrain",
++                        completedFace);
++            }
++        });
++    }
++
++    public static synchronized void clear() {
++        GENERATION.incrementAndGet();
++        SAMPLING.set(false);
++        activeWrapper = null;
++        activeTransform = null;
++        surface = null;
++        colours = null;
++        heights = null;
++        completedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++        faceSuccessfulColumns = new int[CubeNetSurfaceTransform.Face.values().length];
++        refinedFaces = new boolean[CubeNetSurfaceTransform.Face.values().length];
++        initialPassComplete = false;
++        successfulColumns = 0;
++        failedColumns = 0;
++        lastChunkChangeNanos = 0L;
++        closeCache();
++    }
++
++    private static void closeCache() {
++        IDhApiTerrainDataCache cache = softCache;
++        softCache = null;
++        if (cache != null) {
++            try {
++                cache.close();
++            } catch (Throwable ignored) {
++            }
++        }
++    }
++
++    private static int floorToInt(double value) {
++        if (value <= Integer.MIN_VALUE) return Integer.MIN_VALUE;
++        if (value >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
++        return (int) Math.floor(value);
++    }
++
++    private record Column(short height, int colour) {
++    }
++}
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 09:55:30.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/client/lod/WorldLodEarthRenderer.java	2026-07-31 11:58:48.386213448 +0000
+@@ -9,7 +9,6 @@
+ import net.minecraft.resources.ResourceLocation;
+ import net.minecraft.util.Mth;
+ import net.minecraft.world.level.Level;
+-import net.minecraft.world.phys.AABB;
+ import net.minecraft.world.phys.Vec3;
+ import net.neoforged.api.distmarker.Dist;
+ import net.neoforged.bus.api.SubscribeEvent;
+@@ -27,35 +26,34 @@
+ import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
+ import shipwrights.genesis.teleportation.SpaceTravelManager;
+ 
+-import java.util.List;
+-
+ /**
+- * Turns the overworld itself into the orbital cube instead of drawing a second
+- * Earth beneath it.
+- *
+- * <p>There are three layers, all in the parent world's coordinate system:</p>
+- * <ol>
+- *     <li>vanilla chunks remain untouched near the camera;</li>
+- *     <li>cached snapshots of real client chunks replace them after unload;</li>
+- *     <li>the coarse six-face world sample fills everything farther away and
+- *     folds into the other cube faces near the atmosphere boundary.</li>
+- * </ol>
++ * Renders the overworld's own DH terrain as one continuous world-to-cube LOD.
+  *
+- * <p>The camera position supplied by {@link RenderLevelStageEvent} is used for
+- * every calculation. Sable's camera integration already resolves a rider's
+- * local craft transform into parent-world space, so this class never mixes a
+- * sub-level block position with parent-world terrain coordinates.</p>
++ * <p>This is not a second Earth object. Each vertex starts at its real
++ * cube-net world coordinate. During ascent the five remote regions fold around
++ * the unchanged face beneath the player, forming a six-sided planet from the
++ * same cached terrain columns. A uniform camera-relative distance compression
++ * keeps the terrain inside Minecraft's far plane while preserving its angular
++ * size, so high altitude no longer turns the world into an empty void.</p>
+  */
+ @EventBusSubscriber(value = Dist.CLIENT, modid = GenesisMod.MOD_ID)
+ public final class WorldLodEarthRenderer {
+     private static final ResourceLocation OVERWORLD_ID =
+             ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
+     private static final RenderType LOD_RENDER_TYPE = RenderType.debugQuads();
++
++    private static volatile boolean replaceFlatDh;
+     private static boolean loggedActive;
++    private static boolean loggedFolded;
+ 
+     private WorldLodEarthRenderer() {
+     }
+ 
++    /** Read by the DH before-render callback on the following render pass. */
++    public static boolean shouldReplaceFlatDh() {
++        return replaceFlatDh;
++    }
++
+     @SubscribeEvent
+     public static void onRenderLevel(RenderLevelStageEvent event) {
+         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+@@ -65,23 +63,27 @@
+         Minecraft minecraft = Minecraft.getInstance();
+         ClientLevel level = minecraft.level;
+         if (level == null || !level.dimension().equals(Level.OVERWORLD)) {
++            replaceFlatDh = false;
+             loggedActive = false;
++            loggedFolded = false;
+             return;
+         }
+ 
+         Vec3 camera = event.getCamera().getPosition();
+-        int startHeight = GenesisClientConfig.getWorldLodStartHeight();
+-        if (camera.y < startHeight) {
++        int lodStart = GenesisClientConfig.getWorldLodStartHeight();
++        if (camera.y < lodStart) {
++            replaceFlatDh = false;
+             loggedActive = false;
++            loggedFolded = false;
+             return;
+         }
+ 
+         Celestial earth = GenesisMod.getCelestialForLevel(level);
+         if (earth == null) {
++            replaceFlatDh = false;
+             return;
+         }
+ 
+-        PlanetSurfaceData surface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
+         CubeNetSurfaceTransform transform = new CubeNetSurfaceTransform(
+                 earth.getActualSize(), SpaceTravelManager.entryPadding(earth.getActualSize()));
+         CubeNetSurfaceTransform.Face currentFace = transform.faceContaining(camera.x, camera.z);
+@@ -89,34 +91,40 @@
+             currentFace = CubeNetSurfaceTransform.Face.UP;
+         }
+ 
+-        float configuredLodAlpha = smoothstep((float) ((camera.y - startHeight)
+-                / Math.max(1.0, GenesisClientConfig.getWorldLodFullHeight() - startHeight)));
++        DhCubeLodBridge.update(level, transform, currentFace);
++        PlanetSurfaceData surface = DhCubeLodBridge.surface();
++        if (surface == null || !surface.isValid()) {
++            // Keep the previous real-world sample as a temporary visual source
++            // while DH's dedicated worker prepares the first face. As soon as a
++            // DH face completes, the bridge replaces this data in both renderers.
++            surface = PlanetSurfaceTextures.surface(OVERWORLD_ID);
++        }
++        if (surface == null || !surface.isValid()) {
++            replaceFlatDh = false;
++            return;
++        }
++
++        int lodFull = GenesisClientConfig.getWorldLodFullHeight();
++        float lodAlpha = smoothstep((float) ((camera.y - lodStart) / Math.max(1.0, lodFull - lodStart)));
++        float foldAlpha = cubeFoldAlpha(camera.y);
+         int vanillaRadius = Math.max(64, minecraft.options.getEffectiveRenderDistance() * 16);
+-        // Vanilla's far plane is three-dimensional. Once the camera is more
+-        // than roughly one render radius above the world's top sections, even
+-        // the chunks directly underneath it can disappear. This replacement
+-        // term closes that centre hole instead of only drawing a distant ring.
++        double vanillaGroundRadius = vanillaGroundRadius(camera.y, level.getMaxBuildHeight(), vanillaRadius);
+         float verticalReplacement = smoothstep((float) ((camera.y - (level.getMaxBuildHeight() - 64.0))
+                 / Math.max(128.0, vanillaRadius * 1.5)));
+-        float lodAlpha = Math.max(configuredLodAlpha, verticalReplacement);
+-        float cubeAlpha = cubeRevealAlpha(camera.y);
+-        if (lodAlpha <= 0.001f && cubeAlpha <= 0.001f) {
+-            return;
+-        }
++        lodAlpha = Math.max(lodAlpha, verticalReplacement);
++
++        replaceFlatDh = camera.y >= lodFull
++                && DhCubeLodBridge.hasFace(currentFace)
++                && DhCubeLodBridge.hasAnyDhTerrain();
+ 
+         MultiBufferSource.BufferSource source = minecraft.renderBuffers().bufferSource();
+         VertexConsumer buffer = source.getBuffer(LOD_RENDER_TYPE);
+         Matrix4f view = new Matrix4f(event.getModelViewMatrix());
+ 
+-        int lodRadius = GenesisClientConfig.getWorldLodRadius();
+-        double vanillaGroundRadius = vanillaGroundRadius(camera.y, level.getMaxBuildHeight(), vanillaRadius);
+-        renderLiveTiles(event, buffer, view, camera, transform, currentFace,
+-                lodAlpha, vanillaRadius, vanillaGroundRadius, lodRadius);
+-        if (surface != null && surface.isValid()) {
+-            renderGlobalWorld(event, buffer, view, camera, transform, currentFace,
+-                    surface, lodAlpha, cubeAlpha, vanillaRadius, vanillaGroundRadius, lodRadius);
+-        }
+-
++        RenderSystem.enableDepthTest();
++        RenderSystem.depthMask(true);
++        renderCubeNet(buffer, view, camera, transform, currentFace, surface,
++                lodAlpha, foldAlpha, verticalReplacement, vanillaRadius, vanillaGroundRadius);
+         source.endBatch(LOD_RENDER_TYPE);
+         RenderSystem.enableDepthTest();
+         RenderSystem.depthMask(true);
+@@ -124,162 +132,152 @@
+         if (!loggedActive) {
+             loggedActive = true;
+             GenesisMod.LOGGER.info(
+-                    "[WORLD-LOD] live overworld LOD active at y={}; current face={}, cube reveal begins at y={}",
+-                    Mth.floor(camera.y), currentFace, GenesisClientConfig.getCurrentPlanetRevealHeight());
++                    "[DH-CUBE] world-to-planet LOD visible at y={}; face={}, DH columns={}",
++                    Mth.floor(camera.y), currentFace, DhCubeLodBridge.successfulColumns());
+         }
+-    }
+-
+-    private static void renderLiveTiles(RenderLevelStageEvent event, VertexConsumer buffer,
+-                                        Matrix4f view, Vec3 camera,
+-                                        CubeNetSurfaceTransform transform,
+-                                        CubeNetSurfaceTransform.Face currentFace,
+-                                        float lodAlpha, int vanillaRadius, double vanillaGroundRadius, int lodRadius) {
+-        List<WorldLodTileCache.Tile> tiles = WorldLodTileCache.tilesNear(
+-                camera.x, camera.z, Math.min(lodRadius, vanillaRadius * 3.0));
+-        for (WorldLodTileCache.Tile tile : tiles) {
+-            double centerX = tile.minX() + WorldLodTileCache.TILE_SIZE * 0.5;
+-            double centerZ = tile.minZ() + WorldLodTileCache.TILE_SIZE * 0.5;
+-            if (transform.faceContaining(centerX, centerZ) != currentFace) {
+-                continue;
+-            }
+-            double distance = horizontalDistance(camera.x, camera.z, centerX, centerZ);
+-            double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 32.0);
+-            double near1 = Math.max(24.0, vanillaGroundRadius * 1.08 + 16.0);
+-            float alpha = lodAlpha * distanceBand(distance, near0, near1,
+-                    lodRadius * 0.88, lodRadius);
+-            if (alpha <= 0.002f) {
+-                continue;
+-            }
+-
+-            double minY = Short.MAX_VALUE;
+-            double maxY = Short.MIN_VALUE;
+-            for (short height : tile.heights()) {
+-                minY = Math.min(minY, height);
+-                maxY = Math.max(maxY, height);
+-            }
+-            if (!event.getFrustum().isVisible(new AABB(tile.minX(), minY - 2.0, tile.minZ(),
+-                    tile.minX() + WorldLodTileCache.TILE_SIZE, maxY + 2.0,
+-                    tile.minZ() + WorldLodTileCache.TILE_SIZE))) {
+-                continue;
+-            }
+-
+-            for (int z = 0; z < WorldLodTileCache.CELLS; z++) {
+-                for (int x = 0; x < WorldLodTileCache.CELLS; x++) {
+-                    addLiveVertex(buffer, view, camera, tile, x, z + 1, alpha);
+-                    addLiveVertex(buffer, view, camera, tile, x + 1, z + 1, alpha);
+-                    addLiveVertex(buffer, view, camera, tile, x + 1, z, alpha);
+-                    addLiveVertex(buffer, view, camera, tile, x, z, alpha);
+-                }
+-            }
++        if (foldAlpha >= 0.999f && !loggedFolded) {
++            loggedFolded = true;
++            GenesisMod.LOGGER.info(
++                    "[DH-CUBE] the overworld itself is now the complete six-face Earth; no standalone ground model is active");
+         }
+     }
+ 
+-    private static void addLiveVertex(VertexConsumer buffer, Matrix4f view, Vec3 camera,
+-                                      WorldLodTileCache.Tile tile, int x, int z, float alpha) {
+-        int index = tile.index(x, z);
+-        double worldX = tile.minX() + x * (WorldLodTileCache.TILE_SIZE / (double) WorldLodTileCache.CELLS);
+-        double worldZ = tile.minZ() + z * (WorldLodTileCache.TILE_SIZE / (double) WorldLodTileCache.CELLS);
+-        double worldY = tile.heights()[index] + 0.04;
+-        addColourVertex(buffer, view,
+-                worldX - camera.x, worldY - camera.y, worldZ - camera.z,
+-                tile.colours()[index], alpha);
+-    }
+-
+-    private static void renderGlobalWorld(RenderLevelStageEvent event, VertexConsumer buffer,
+-                                          Matrix4f view, Vec3 camera,
+-                                          CubeNetSurfaceTransform transform,
+-                                          CubeNetSurfaceTransform.Face currentFace,
+-                                          PlanetSurfaceData surface,
+-                                          float lodAlpha, float cubeAlpha,
+-                                          int vanillaRadius, double vanillaGroundRadius, int lodRadius) {
++    private static void renderCubeNet(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                      CubeNetSurfaceTransform transform,
++                                      CubeNetSurfaceTransform.Face currentFace,
++                                      PlanetSurfaceData surface,
++                                      float lodAlpha, float foldAlpha, float centerFillAlpha,
++                                      int vanillaRadius, double vanillaGroundRadius) {
+         int quality = GenesisClientConfig.getWorldLodQuality();
+         int currentStep = quality == 1 ? 2 : 1;
+-        int foldedStep = quality == 3 ? 1 : quality == 2 ? 2 : 4;
+-        double faceHalf = transform.faceHalfSpan();
++        int remoteStep = quality == 3 ? 1 : quality == 2 ? 2 : 4;
++        int resolution = PlanetSurfaceSampler.RESOLUTION;
+         double faceSpan = transform.faceSpan();
++        double faceHalf = transform.faceHalfSpan();
+         double currentCenterX = transform.faceCenterX(currentFace);
+         double currentCenterZ = transform.faceCenterZ(currentFace);
+         double cubeCenterY = surface.seaLevel() - faceHalf;
+-        int resolution = PlanetSurfaceSampler.RESOLUTION;
++
++        double renderScale = renderDistanceCompression(
++                camera, currentCenterX, cubeCenterY, currentCenterZ, vanillaRadius);
++        int lodRadius = GenesisClientConfig.getWorldLodRadius();
+ 
+         for (CubeNetSurfaceTransform.Face face : CubeNetSurfaceTransform.Face.values()) {
+             boolean current = face == currentFace;
+-            float faceAlpha = current ? lodAlpha : cubeAlpha;
++            if (!current && foldAlpha <= 0.001f) {
++                continue;
++            }
++            float faceAlpha = current ? lodAlpha : foldAlpha;
+             if (faceAlpha <= 0.002f) {
+                 continue;
+             }
+-            int step = current ? currentStep : foldedStep;
+-            for (int row = 0; row < resolution; row += step) {
+-                int row1 = Math.min(resolution, row + step);
+-                double v0 = (row / (double) resolution - 0.5) * faceSpan;
+-                double v1 = (row1 / (double) resolution - 0.5) * faceSpan;
+-                for (int column = 0; column < resolution; column += step) {
+-                    int column1 = Math.min(resolution, column + step);
+-                    double u0 = (column / (double) resolution - 0.5) * faceSpan;
+-                    double u1 = (column1 / (double) resolution - 0.5) * faceSpan;
++            int step = current ? currentStep : remoteStep;
++            for (int row = 0; row < resolution - 1; row += step) {
++                int row1 = Math.min(resolution - 1, row + step);
++                double v0 = gridCoordinate(row, resolution, faceSpan);
++                double v1 = gridCoordinate(row1, resolution, faceSpan);
++                for (int column = 0; column < resolution - 1; column += step) {
++                    int column1 = Math.min(resolution - 1, column + step);
++                    double u0 = gridCoordinate(column, resolution, faceSpan);
++                    double u1 = gridCoordinate(column1, resolution, faceSpan);
+ 
+-                    float cellAlpha = faceAlpha;
++                    float alpha = faceAlpha;
+                     if (current) {
+                         double cellX = currentCenterX + (u0 + u1) * 0.5;
+                         double cellZ = currentCenterZ + (v0 + v1) * 0.5;
+                         double distance = horizontalDistance(camera.x, camera.z, cellX, cellZ);
+-                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.82 - 48.0);
+-                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.18 + 24.0);
+-                        float flatBand = distanceBand(distance, near0, near1,
+-                                lodRadius * 0.86, lodRadius);
+-                        // Before the cube reveal, only a wide terrain field around
+-                        // the player is visible. This hides the finite face edge
+-                        // while still replacing unloaded chunks. As the cube
+-                        // reveal rises, the complete face takes over.
+-                        cellAlpha *= Math.max(flatBand, cubeAlpha);
+-                        if (WorldLodTileCache.covers(cellX, cellZ)
+-                                && distance <= Math.min(lodRadius, vanillaRadius * 3.0)) {
+-                            cellAlpha *= 0.03f;
+-                        }
+-                    }
+-                    if (cellAlpha <= 0.002f) {
+-                        continue;
++                        double near0 = Math.max(0.0, vanillaGroundRadius * 0.72 - 48.0);
++                        double near1 = Math.max(32.0, vanillaGroundRadius * 1.12 + 24.0);
++                        float outerBand = distanceBand(distance, near0, near1,
++                                lodRadius * 0.94, lodRadius);
++                        // At extreme altitude vanilla's three-dimensional far
++                        // plane has no terrain directly underneath the camera.
++                        // Fold progress closes that hole continuously rather than
++                        // waiting for a model swap at the atmosphere boundary.
++                        alpha *= Math.max(outerBand, Math.max(foldAlpha, centerFillAlpha));
+                     }
+-
+-                    Vector3d p00 = worldPoint(face, currentFace, u0, v0, faceHalf,
+-                            elevation(surface, face, column, row), currentCenterX, cubeCenterY, currentCenterZ);
+-                    Vector3d p10 = worldPoint(face, currentFace, u1, v0, faceHalf,
+-                            elevation(surface, face, column1, row), currentCenterX, cubeCenterY, currentCenterZ);
+-                    Vector3d p11 = worldPoint(face, currentFace, u1, v1, faceHalf,
+-                            elevation(surface, face, column1, row1), currentCenterX, cubeCenterY, currentCenterZ);
+-                    Vector3d p01 = worldPoint(face, currentFace, u0, v1, faceHalf,
+-                            elevation(surface, face, column, row1), currentCenterX, cubeCenterY, currentCenterZ);
+-
+-                    double minX = Math.min(Math.min(p00.x, p10.x), Math.min(p11.x, p01.x));
+-                    double maxX = Math.max(Math.max(p00.x, p10.x), Math.max(p11.x, p01.x));
+-                    double minY = Math.min(Math.min(p00.y, p10.y), Math.min(p11.y, p01.y));
+-                    double maxY = Math.max(Math.max(p00.y, p10.y), Math.max(p11.y, p01.y));
+-                    double minZ = Math.min(Math.min(p00.z, p10.z), Math.min(p11.z, p01.z));
+-                    double maxZ = Math.max(Math.max(p00.z, p10.z), Math.max(p11.z, p01.z));
+-                    if (!event.getFrustum().isVisible(new AABB(minX, minY, minZ, maxX, maxY, maxZ))) {
++                    if (alpha <= 0.002f) {
+                         continue;
+                     }
+ 
+-                    addGlobalVertex(buffer, view, camera, p01,
+-                            colour(surface, face, column, row1), cellAlpha);
+-                    addGlobalVertex(buffer, view, camera, p11,
+-                            colour(surface, face, column1, row1), cellAlpha);
+-                    addGlobalVertex(buffer, view, camera, p10,
+-                            colour(surface, face, column1, row), cellAlpha);
+-                    addGlobalVertex(buffer, view, camera, p00,
+-                            colour(surface, face, column, row), cellAlpha);
++                    Vector3d p00 = blendedPoint(face, currentFace, transform, surface,
++                            column, row, u0, v0, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p10 = blendedPoint(face, currentFace, transform, surface,
++                            column1, row, u1, v0, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p11 = blendedPoint(face, currentFace, transform, surface,
++                            column1, row1, u1, v1, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ);
++                    Vector3d p01 = blendedPoint(face, currentFace, transform, surface,
++                            column, row1, u0, v1, foldAlpha, currentCenterX, cubeCenterY, currentCenterZ);
++
++                    addVertex(buffer, view, camera, p01, renderScale,
++                            colour(surface, face, column, row1), alpha);
++                    addVertex(buffer, view, camera, p11, renderScale,
++                            colour(surface, face, column1, row1), alpha);
++                    addVertex(buffer, view, camera, p10, renderScale,
++                            colour(surface, face, column1, row), alpha);
++                    addVertex(buffer, view, camera, p00, renderScale,
++                            colour(surface, face, column, row), alpha);
+                 }
+             }
+         }
+     }
+ 
+-    private static Vector3d worldPoint(CubeNetSurfaceTransform.Face face,
+-                                       CubeNetSurfaceTransform.Face currentFace,
+-                                       double u, double v, double halfExtent, double elevation,
+-                                       double centerX, double centerY, double centerZ) {
+-        Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v, halfExtent, elevation);
+-        Vector3d surface = CubeFaceFrame.celestialToSurface(currentFace, celestial);
+-        return surface.add(centerX, centerY, centerZ);
++    private static Vector3d blendedPoint(CubeNetSurfaceTransform.Face face,
++                                         CubeNetSurfaceTransform.Face currentFace,
++                                         CubeNetSurfaceTransform transform,
++                                         PlanetSurfaceData surface,
++                                         int gridX, int gridZ, double u, double v,
++                                         float foldAlpha,
++                                         double currentCenterX, double cubeCenterY, double currentCenterZ) {
++        double elevation = elevation(surface, face, gridX, gridZ);
++        double flatX = transform.faceCenterX(face) + u;
++        double flatY = surface.seaLevel() + elevation;
++        double flatZ = transform.faceCenterZ(face) + v;
++
++        Vector3d celestial = CubeFaceFrame.cubePoint(face, u, v,
++                transform.faceHalfSpan(), elevation);
++        Vector3d folded = CubeFaceFrame.celestialToSurface(currentFace, celestial)
++                .add(currentCenterX, cubeCenterY, currentCenterZ);
++
++        return new Vector3d(
++                Mth.lerp(foldAlpha, flatX, folded.x),
++                Mth.lerp(foldAlpha, flatY, folded.y),
++                Mth.lerp(foldAlpha, flatZ, folded.z));
++    }
++
++    /**
++     * Moves the entire distant world uniformly toward the camera when it would
++     * be clipped. Uniform scaling of every camera-relative vector preserves the
++     * apparent size and direction exactly; unlike shrinking a standalone model,
++     * the terrain still occupies the same pixels and remains continuous across
++     * the dimension handoff.
++     */
++    private static double renderDistanceCompression(Vec3 camera,
++                                                    double centerX, double centerY, double centerZ,
++                                                    int vanillaRadius) {
++        double dx = centerX - camera.x;
++        double dy = centerY - camera.y;
++        double dz = centerZ - camera.z;
++        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
++        double target = Math.max(640.0, vanillaRadius * 3.25);
++        double fullScale = distance <= target ? 1.0 : target / distance;
++
++        double start = Math.max(512.0, GenesisClientConfig.getWorldLodStartHeight());
++        double full = Math.max(start + 1.0, GenesisClientConfig.getWorldCubeCompressionFullHeight());
++        float influence = smoothstep((float) ((camera.y - start) / (full - start)));
++        return Mth.lerp(influence, 1.0, fullScale);
++    }
++
++    private static void addVertex(VertexConsumer buffer, Matrix4f view, Vec3 camera,
++                                  Vector3d world, double renderScale, int argb, float alpha) {
++        double x = (world.x - camera.x) * renderScale;
++        double y = (world.y - camera.y) * renderScale;
++        double z = (world.z - camera.z) * renderScale;
++        int r = (argb >> 16) & 0xFF;
++        int g = (argb >> 8) & 0xFF;
++        int b = argb & 0xFF;
++        int a = Mth.clamp((int) (alpha * 255.0f), 0, 255);
++        buffer.addVertex(view, (float) x, (float) y, (float) z).setColor(r, g, b, a);
+     }
+ 
+     private static double elevation(PlanetSurfaceData surface, CubeNetSurfaceTransform.Face face,
+@@ -298,26 +296,13 @@
+         return surface.colours()[PlanetSurfaceData.index(face, sx, sz)];
+     }
+ 
+-    private static void addGlobalVertex(VertexConsumer buffer, Matrix4f view, Vec3 camera,
+-                                        Vector3d point, int argb, float alpha) {
+-        addColourVertex(buffer, view,
+-                point.x - camera.x, point.y - camera.y, point.z - camera.z,
+-                argb, alpha);
+-    }
+-
+-    private static void addColourVertex(VertexConsumer buffer, Matrix4f view,
+-                                        double x, double y, double z,
+-                                        int argb, float alpha) {
+-        int r = (argb >> 16) & 0xFF;
+-        int g = (argb >> 8) & 0xFF;
+-        int b = argb & 0xFF;
+-        int a = Mth.clamp((int) (alpha * 255.0f), 0, 255);
+-        buffer.addVertex(view, (float) x, (float) y, (float) z).setColor(r, g, b, a);
++    private static double gridCoordinate(int index, int resolution, double faceSpan) {
++        return (index / (double) (resolution - 1) - 0.5) * faceSpan;
+     }
+ 
+-    private static float cubeRevealAlpha(double cameraY) {
+-        double start = GenesisClientConfig.getCurrentPlanetRevealHeight();
+-        double end = Math.max(start + 1.0, shipwrights.genesis.config.GenesisCommonConfig.getAtmosphereExitHeight());
++    private static float cubeFoldAlpha(double cameraY) {
++        double start = GenesisClientConfig.getWorldCubeFoldStartHeight();
++        double end = Math.max(start + 1.0, GenesisClientConfig.getCurrentPlanetRevealHeight());
+         return smoothstep((float) ((cameraY - start) / (end - start)));
+     }
+ 
+@@ -328,7 +313,6 @@
+         return Mth.clamp(near * far, 0.0f, 1.0f);
+     }
+ 
+-
+     private static double vanillaGroundRadius(double cameraY, double terrainCeiling, double renderRadius) {
+         double vertical = Math.max(0.0, cameraY - terrainCeiling);
+         double squared = renderRadius * renderRadius - vertical * vertical;
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java	2026-07-31 09:55:30.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/src/main/java/shipwrights/genesis/config/GenesisClientConfig.java	2026-07-31 12:07:22.394228611 +0000
+@@ -22,6 +22,12 @@
+     private static ModConfigSpec.ConfigValue<Integer> worldLodFullHeight;
+     private static final int defaultWorldLodFullHeight = 1536;
+ 
++    private static ModConfigSpec.ConfigValue<Integer> worldCubeFoldStartHeight;
++    private static final int defaultWorldCubeFoldStartHeight = 15000;
++
++    private static ModConfigSpec.ConfigValue<Integer> worldCubeCompressionFullHeight;
++    private static final int defaultWorldCubeCompressionFullHeight = 2048;
++
+     private static ModConfigSpec.ConfigValue<Integer> worldLodRadius;
+     private static final int defaultWorldLodRadius = 4096;
+ 
+@@ -68,6 +74,23 @@
+         return Math.max(getWorldLodStartHeight() + 1, result);
+     }
+ 
++
++    public static int getWorldCubeFoldStartHeight() {
++        int result = defaultWorldCubeFoldStartHeight;
++        try {
++            result = worldCubeFoldStartHeight.get();
++        } catch (Exception ignored) { }
++        return Math.max(getWorldLodFullHeight(), Math.min(getCurrentPlanetRevealHeight() - 1, result));
++    }
++
++    public static int getWorldCubeCompressionFullHeight() {
++        int result = defaultWorldCubeCompressionFullHeight;
++        try {
++            result = worldCubeCompressionFullHeight.get();
++        } catch (Exception ignored) { }
++        return Math.max(Math.max(513, getWorldLodStartHeight() + 1), result);
++    }
++
+     public static int getWorldLodRadius() {
+         int result = defaultWorldLodRadius;
+         try {
+@@ -108,6 +131,12 @@
+         worldLodFullHeight = builder
+                 .comment("Altitude where the flat-world LOD reaches full opacity.")
+                 .defineInRange("WorldLodFullHeight", defaultWorldLodFullHeight, 129, 20000);
++        worldCubeFoldStartHeight = builder
++                .comment("Altitude where the five remote cube-net regions begin folding around the current world face.")
++                .defineInRange("WorldCubeFoldStartHeight", defaultWorldCubeFoldStartHeight, 1024, 19999);
++        worldCubeCompressionFullHeight = builder
++                .comment("Altitude where camera-relative distance compression fully prevents far-plane clipping.")
++                .defineInRange("WorldCubeCompressionFullHeight", defaultWorldCubeCompressionFullHeight, 513, 20000);
+         worldLodRadius = builder
+                 .comment("Maximum radius in blocks for the pre-space flat-world LOD field.")
+                 .defineInRange("WorldLodRadius", defaultWorldLodRadius, 512, 16384);
+diff -ruN '--exclude=.git' '--exclude=dist' '--exclude=libs' '--exclude=*.patch' '--exclude=*.sha256' '--exclude=DH-CUBE-WORLD-LOD.md' /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/templates/META-INF/neoforge.mods.toml /mnt/data/ProjectStarbound_dh_cube/src/main/templates/META-INF/neoforge.mods.toml
+--- /mnt/data/starbound_current/ProjectStarbound_world_to_planet_lod1/src/main/templates/META-INF/neoforge.mods.toml	2026-07-31 05:12:50.000000000 +0000
++++ /mnt/data/ProjectStarbound_dh_cube/src/main/templates/META-INF/neoforge.mods.toml	2026-07-31 11:56:42.638209738 +0000
+@@ -54,3 +54,10 @@
+ versionRange="[1.8.2,)"
+ ordering="AFTER"
+ side="CLIENT"
++
++[[dependencies.${mod_id}]]
++modId="distanthorizons"
++type="required"
++versionRange="[3.2.0-b,)"
++ordering="AFTER"
++side="CLIENT"

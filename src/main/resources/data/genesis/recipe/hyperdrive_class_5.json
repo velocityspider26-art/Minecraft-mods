@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "genesis:hyperdrive_class_6"
+    },
+    {
+      "item": "genesis:void_shard"
+    },
+    {
+      "item": "genesis:void_shard"
+    },
+    {
+      "item": "minecraft:ender_pearl"
+    },
+    {
+      "item": "minecraft:ender_pearl"
+    }
+  ],
+  "result": {
+    "id": "genesis:hyperdrive_class_5",
+    "count": 1
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "minecraft:weighted_state_provider",
+        "entries": [
+          { "weight": 3, "data": { "Name": "minecraft:packed_ice" } },
+          { "weight": 1, "data": { "Name": "minecraft:blue_ice" } }
+        ]
+      },
+      "rules": []
+    },
+    "radius": 4,
+    "half_height": 2,
+    "target": {
+      "type": "minecraft:matching_blocks",
+      "blocks": [
+        "minecraft:gravel",
+        "minecraft:tuff",
+        "minecraft:deepslate"
+      ]
+    }
+  }
+}

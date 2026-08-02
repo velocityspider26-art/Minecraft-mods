@@ -1,25 +1,43 @@
+# Genesis
+A suite of mods providing perhaps the most exciting modded space experience in Minecraft.
 
-Installation information
-=======
+![Genesis](images/2026-03-13_02.05.09.png)
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Priorities:
+- Designed specifically for Valkyrien Skies
+- Good performance on all systems
+- Immersive and visually captivating without looking like an entirely different game
+- Sci-fi theme with unique concepts and designs
+- Content-rich without overwhelming new players
+- Modular and configurable
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+## Modules
+The suite is split into separate mods for modularity and maintainability. Each can be installed independently, making it easier for modpack creators to pick what they need.
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+### Genesis
+> The core space mod which adds a space dimension, planets, an asteroid belt, and other features that appear in space or are directly related to space.
+>
+> Everything in space is 1/16th scale. This feature is unique to Genesis, and allows for a space dimension which feels much more vast, with better performance than any known alternative. You might not notice this feature right away - that's the point! We've been working hard to ensure that this scaling is done as seamlessly as possible.
+>
+> [modrinth](https://modrinth.com/mod/vs-genesis) | [curseforge](https://www.curseforge.com/minecraft/mc-mods/vs-genesis)
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+### Zero Point Labs
+> This mod provides you with the technology to build high performance spacecraft for your extra-terrestrial travels.
+>
+> Includes ion thrusters, energy weapons, gyroscopes, and more.
+>
+> [modrinth](https://modrinth.com/mod/zpl) | [curseforge](https://www.curseforge.com/minecraft/mc-mods/zero-point-labs)
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+### Zero Point Systems
+> This mod includes a unique but intuitive system for controlling your ship with redstone, as well as cables for transmitting redstone and FE.
+>
+> Similar to the Linked Controller from Create, but with physical cables which encourage more interesting ship design.
+>
+> [modrinth](https://modrinth.com/mod/zps) | [curseforge](https://www.curseforge.com/minecraft/mc-mods/zps)
+
+### Dataplanets
+> An addon for Genesis which procedurally generates unique planet dimensions for each new world.
+>
+> Currently bundled with Genesis until Genesis gets its own planets.
+>
+> ~~modrinth~~ | ~~curseforge~~
