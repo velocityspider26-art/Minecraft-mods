@@ -1,26 +1,25 @@
 package shipwrights.genesis.space.voxel;
 
+import org.junit.jupiter.api.Test;
 import shipwrights.genesis.teleportation.CubeNetSurfaceTransform;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 
+/**
+ * Core voxel-engine checks: material packing, palette round trips,
+ * structure-preserving reduction, greedy meshing, region persistence with CRC,
+ * pyramid batch updates, dirty-queue dedup and LRU budgeting.
+ *
+ * <p>These were originally a {@code main()} harness, which meant
+ * {@code gradlew test} never ran them. They are ordinary JUnit tests now so the
+ * build actually enforces them.</p>
+ */
 public final class PlanetVoxelEngineSelfTest {
-    public static void main(String[] args) throws Exception {
-        materialRoundTrip();
-        brickPaletteRoundTrip();
-        structurePreservingReduction();
-        greedyMeshing();
-        randomReductionStress();
-        regionPersistence();
-        pyramidBatchUpdate();
-        dirtyQueueDeduplication();
-        lruBudget();
-        System.out.println("PlanetVoxelEngineSelfTest: PASS");
-    }
 
-    private static void materialRoundTrip() {
+    @Test
+    void materialRoundTrip() {
         long material = PlanetVoxelMaterial.pack(123456, 0x42A0E0, 15, 7,
                 PlanetVoxelMaterial.FLAG_OPAQUE | PlanetVoxelMaterial.FLAG_STRUCTURE);
         check(PlanetVoxelMaterial.blockStateId(material) == 123456, "state id");
@@ -30,7 +29,8 @@ public final class PlanetVoxelEngineSelfTest {
         check(PlanetVoxelMaterial.hasFlag(material, PlanetVoxelMaterial.FLAG_STRUCTURE), "structure flag");
     }
 
-    private static void brickPaletteRoundTrip() {
+    @Test
+    void brickPaletteRoundTrip() {
         PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(CubeNetSurfaceTransform.Face.UP, 0, -3, 4, 8);
         PlanetVoxelBrickBuilder builder = new PlanetVoxelBrickBuilder(key, 10);
         long stone = PlanetVoxelMaterial.pack(1, 0x777777, 15, 0,
@@ -46,7 +46,8 @@ public final class PlanetVoxelEngineSelfTest {
     }
 
 
-    private static void greedyMeshing() {
+    @Test
+    void greedyMeshing() {
         PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(CubeNetSurfaceTransform.Face.UP, 0, 0, 0, 0);
         PlanetVoxelBrickBuilder builder = new PlanetVoxelBrickBuilder(key, 1);
         long stone = PlanetVoxelMaterial.pack(1, 0x777777, 15, 0,
@@ -59,7 +60,8 @@ public final class PlanetVoxelEngineSelfTest {
         check(area == 16 * 16 * 2 + 16 * 4, "slab exposed area");
     }
 
-    private static void structurePreservingReduction() {
+    @Test
+    void structurePreservingReduction() {
         PlanetVoxelBrick[] children = new PlanetVoxelBrick[8];
         long terrain = PlanetVoxelMaterial.pack(3, 0x55AA44, 15, 0,
                 PlanetVoxelMaterial.FLAG_OPAQUE | PlanetVoxelMaterial.FLAG_NATURAL);
@@ -89,7 +91,8 @@ public final class PlanetVoxelEngineSelfTest {
                 PlanetVoxelMaterial.FLAG_STRUCTURE), "structure survives mip reduction");
     }
 
-    private static void randomReductionStress() {
+    @Test
+    void randomReductionStress() {
         Random random = new Random(0x5EEDC0DEL);
         long terrain = PlanetVoxelMaterial.pack(10, 0x668855, 15, 0,
                 PlanetVoxelMaterial.FLAG_OPAQUE | PlanetVoxelMaterial.FLAG_NATURAL);
@@ -114,7 +117,8 @@ public final class PlanetVoxelEngineSelfTest {
         }
     }
 
-    private static void regionPersistence() throws Exception {
+    @Test
+    void regionPersistence() throws Exception {
         Path directory = Files.createTempDirectory("genesis-voxel-test");
         try {
             PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(CubeNetSurfaceTransform.Face.WEST, 2,
@@ -139,7 +143,8 @@ public final class PlanetVoxelEngineSelfTest {
     }
 
 
-    private static void pyramidBatchUpdate() throws Exception {
+    @Test
+    void pyramidBatchUpdate() throws Exception {
         Path directory = Files.createTempDirectory("genesis-voxel-pyramid-test");
         try (PlanetVoxelRegionStore disk = new PlanetVoxelRegionStore(directory)) {
             PlanetVoxelStore memory = new PlanetVoxelStore(16L * 1024L * 1024L);
@@ -165,7 +170,8 @@ public final class PlanetVoxelEngineSelfTest {
         }
     }
 
-    private static void dirtyQueueDeduplication() {
+    @Test
+    void dirtyQueueDeduplication() {
         PlanetVoxelDirtyTracker tracker = new PlanetVoxelDirtyTracker();
         PlanetVoxelBrickKey key = new PlanetVoxelBrickKey(CubeNetSurfaceTransform.Face.UP, 0, 1, 2, 3);
         tracker.mark(key, PlanetVoxelDirtyTracker.Reason.BACKGROUND_IMPORT, 1000);
@@ -177,7 +183,8 @@ public final class PlanetVoxelEngineSelfTest {
         check(tracker.poll() == null, "stale queue entries skipped");
     }
 
-    private static void lruBudget() {
+    @Test
+    void lruBudget() {
         PlanetVoxelStore store = new PlanetVoxelStore(16L * 1024L * 1024L);
         long material = PlanetVoxelMaterial.pack(8, 0x777777, 15, 0,
                 PlanetVoxelMaterial.FLAG_OPAQUE);
