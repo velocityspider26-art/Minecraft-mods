@@ -70,21 +70,29 @@ local function findEntry(def: any, names: {string}): any?
 	return nil
 end
 
-local function deriveOne(def: any, names: {string}, fallback: CFrame?): CFrame?
+-- The POSITION always comes from the authored anchor when there is one.
+--
+-- Those anchors are not decoration: Animations.luau drives the support hand
+-- between `left`, `magwell`, `charge` and `pouch` during a reload, and they were
+-- tuned as a set. Replacing `left` with the centre of whatever part is called
+-- Foregrip moves the hand 0.4 studs down the handguard on the MK18 alone and
+-- desynchronises it from every animation that hands off to it.
+--
+-- Only the ORIENTATION is derived, because that is the part the viewmodel never
+-- had to specify -- its hand is a sphere.
+local function deriveOne(def: any, names: {string}, authored: CFrame?): CFrame?
+	local axis = UP
 	local entry = findEntry(def, names)
 	if entry then
 		local cf = partCFrame(entry)
-		local axis = longAxis(entry, cf)
+		axis = longAxis(entry, cf)
 		-- Point the axis at the top of the grip (the trigger end), never down.
 		if axis:Dot(UP) < 0 then axis = -axis end
-		return frame(cf.Position, axis, FORWARD)
 	end
-	if fallback then
-		-- No named part: keep the authored position, but give it a sane
-		-- orientation rather than the viewmodel's.
-		return frame(fallback.Position, UP, FORWARD)
-	end
-	return nil
+	local origin = authored and authored.Position
+		or (entry and partCFrame(entry).Position)
+	if not origin then return nil end
+	return frame(origin, axis, FORWARD)
 end
 
 local cache = setmetatable({}, {__mode = "k"})

@@ -112,6 +112,11 @@ function SoldierVisual.build(character: Model): any
 	end
 
 	character:SetAttribute("BlacksiteVisualBody", rig.mode)
+	-- One line, on purpose. "The body looks wrong" is not diagnosable from the
+	-- outside; which of the three draw paths was taken, and whether it actually
+	-- produced geometry, answers it immediately.
+	print(("[BLACKSITE] operator body: mode=%s pieces=%d bones=%d skinned=%s")
+		:format(rig.mode, #rig.parts, #rig.order, tostring(rig.skinned ~= nil)))
 	return rig
 end
 
@@ -200,7 +205,14 @@ function SoldierVisual.poseBody(rig: any, state: any)
 	HumanRig.reset(rig)
 	HumanPose.update(rig, rig.motion, state, tonumber(state.dt) or rig.motion.dt)
 	HumanRig.solve(rig, root)
+	rig.solved = true
 	rig.posedArms = false
+
+	-- Lay the R15 shadow over the new pose NOW, not in updateBody. FPSClient
+	-- reads getChestCF/getHeadCF between poseBody and updateBody to place the
+	-- camera and the weapon; syncing afterwards would hand it last frame's
+	-- skeleton and the whole viewmodel would trail the body by a frame.
+	syncR15(rig)
 end
 
 function SoldierVisual.poseArms(rig: any, chestCF: CFrame, handL: CFrame, handR: CFrame,
@@ -260,7 +272,15 @@ end
 function SoldierVisual.updateBody(rig: any, cameraCF: CFrame, isLocal: boolean)
 	if not rig or not rig.holder or not rig.holder.Parent then return end
 	HumanRig.apply(rig)
-	syncR15(rig)
+
+	-- Re-hide the R15 shell EVERY frame. LocalTransparencyModifier is not a
+	-- setting, it is a per-frame value: Roblox's own first-person handling
+	-- rewrites it on the local character, so hiding the shell once at build
+	-- time lasts exactly until the next time the camera touches it, and then
+	-- the old R15 body pops back through the new one.
+	for part in rig.hidden do
+		if part.Parent then part.LocalTransparencyModifier = 1 end
+	end
 
 	local down = -cameraCF.LookVector.Y
 	local torso = math.clamp((down + 0.015) / 0.22, 0, 1) ^ 0.72
@@ -285,15 +305,31 @@ end
 -- QUERIES
 --------------------------------------------------------------------------------
 
+-- These two are read by FPSClient to place the CAMERA and, through
+-- CHEST_TO_SHOULDER, the weapon itself. They must keep returning what they
+-- always returned: the R15 Head and UpperTorso PARTS.
+--
+-- A bone is not a part. Head sits at the atlas joint and UpperTorso's origin is
+-- the centre of the chest box, so handing back the equivalent human bone moves
+-- the eye down a third of a stud and the whole weapon with it. Everything
+-- downstream -- eye relief, free-aim pivot, ADS solve -- is tuned against the
+-- part frames, so the part frames are what it gets.
+--
+-- This costs nothing in fidelity: syncR15 has already laid those parts over the
+-- human skeleton this frame, so they follow the real body.
 function SoldierVisual.getHeadCF(rig: any): CFrame?
-	if not rig or not rig.bones then return nil end
-	local b = rig.bones.Head
+	if not rig or not rig.character then return nil end
+	local part = findPart(rig.character, "Head")
+	if part then return part.CFrame end
+	local b = rig.solved and rig.bones and rig.bones.Head
 	return b and b.world or nil
 end
 
 function SoldierVisual.getChestCF(rig: any): CFrame?
-	if not rig or not rig.bones then return nil end
-	local b = rig.bones.Spine1
+	if not rig or not rig.character then return nil end
+	local part = findPart(rig.character, "UpperTorso", "Torso")
+	if part then return part.CFrame end
+	local b = rig.solved and rig.bones and rig.bones.Spine1
 	return b and b.world or nil
 end
 
