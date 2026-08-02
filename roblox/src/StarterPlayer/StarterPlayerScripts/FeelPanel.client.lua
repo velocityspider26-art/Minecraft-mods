@@ -40,7 +40,32 @@ local Cfg = require(Modules:WaitForChild("GameConfig"))
 -- "how far the gun swings when you whip the camera" is tunable, "ROT_ACCEL" is
 -- not.
 --------------------------------------------------------------------------------
+-- Where the weapon sits on screen. Cfg.VIEWMODEL.HIP is re-read every frame, so
+-- rewriting it moves the gun live. The shipped pose is kept as the base and
+-- these are a nudge on top, pre-multiplied so X is always screen-right
+-- regardless of the few degrees of cant baked into the carry.
+local VM_BASE = Cfg.VIEWMODEL.HIP
+local nudge = {x = 0, y = 0, z = 0}
+
+local function applyNudge()
+	Cfg.VIEWMODEL.HIP = CFrame.new(nudge.x, nudge.y, nudge.z) * VM_BASE
+end
+
 local KNOBS = {
+	{group = "WHERE THE GUN SITS"},
+	{id = "vm_x", label = "Gun left / right", step = 0.02, min = -0.55, max = 0.55,
+		fmt = "%+.2f", hint = "negative brings it in toward the middle of the screen",
+		getf = function() return nudge.x end,
+		setf = function(v) nudge.x = v applyNudge() end},
+	{id = "vm_y", label = "Gun up / down", step = 0.02, min = -0.45, max = 0.55,
+		fmt = "%+.2f", hint = "positive raises it into frame",
+		getf = function() return nudge.y end,
+		setf = function(v) nudge.y = v applyNudge() end},
+	{id = "vm_z", label = "Gun near / far", step = 0.02, min = -0.45, max = 0.45,
+		fmt = "%+.2f", hint = "negative pushes it away from the camera",
+		getf = function() return nudge.z end,
+		setf = function(v) nudge.z = v applyNudge() end},
+
 	{group = "WEAPON WEIGHT"},
 	{tbl = "INERTIA", key = "ROT_ACCEL", label = "Swing when you turn",
 		step = 0.002, min = 0, max = 0.06, fmt = "%.3f",
@@ -133,13 +158,27 @@ local PRESETS = {
 }
 
 local function slot(k: any): string
-	return k.tbl .. "_" .. k.key
+	return k.id or (k.tbl .. "_" .. k.key)
+end
+
+local function knobGet(k: any): number
+	if k.getf then return k.getf() end
+	return Cfg[k.tbl][k.key] or 0
+end
+
+local function knobSet(k: any, v: number)
+	v = math.clamp(v, k.min, k.max)
+	if k.setf then k.setf(v) else Cfg[k.tbl][k.key] = v end
+end
+
+local function tunable(k: any): boolean
+	return k.tbl ~= nil or k.getf ~= nil
 end
 
 -- Capture the shipped values so ORIGINAL is always a real destination.
 for _, k in ipairs(KNOBS) do
-	if k.tbl then
-		PRESETS[1].values[slot(k)] = Cfg[k.tbl][k.key]
+	if tunable(k) then
+		PRESETS[1].values[slot(k)] = knobGet(k)
 	end
 end
 
@@ -149,10 +188,10 @@ local function applyPreset(index: number)
 	preset = ((index - 1) % #PRESETS) + 1
 	local values = PRESETS[preset].values
 	for _, k in ipairs(KNOBS) do
-		if k.tbl then
+		if tunable(k) then
 			local v = values[slot(k)]
 			if v == nil then v = PRESETS[1].values[slot(k)] end
-			if v ~= nil then Cfg[k.tbl][k.key] = v end
+			if v ~= nil then knobSet(k, v) end
 		end
 	end
 end
@@ -287,13 +326,12 @@ end
 --------------------------------------------------------------------------------
 -- INPUT
 --------------------------------------------------------------------------------
-local selected = 2 -- first non-group row
+local selected = 2 -- first tunable row
 
 local function step(direction: number)
 	local k = KNOBS[selected]
-	if not k or not k.tbl then return end
-	local v = (Cfg[k.tbl][k.key] or 0) + k.step * direction
-	Cfg[k.tbl][k.key] = math.clamp(v, k.min, k.max)
+	if not k or not tunable(k) then return end
+	knobSet(k, knobGet(k) + k.step * direction)
 end
 
 local function move(direction: number)
@@ -301,7 +339,7 @@ local function move(direction: number)
 		selected += direction
 		if selected < 1 then selected = #KNOBS end
 		if selected > #KNOBS then selected = 1 end
-		if KNOBS[selected].tbl then return end
+		if tunable(KNOBS[selected]) then return end
 	end
 end
 
@@ -366,7 +404,7 @@ RunService.RenderStepped:Connect(function(dt)
 		if k.group then
 			row.Text = ("<font color='#6f7a66'>── %s ──</font>"):format(k.group)
 		else
-			local value = Cfg[k.tbl][k.key] or 0
+			local value = knobGet(k)
 			local base = PRESETS[1].values[slot(k)] or value
 			local mark = (math.abs(value - base) > 1e-9) and "*" or " "
 			local span = math.max(k.max - k.min, 1e-6)
@@ -383,10 +421,10 @@ RunService.RenderStepped:Connect(function(dt)
 	hint.Text = k and k.hint and ("<i>" .. k.hint .. "</i>") or ""
 end)
 
--- Ship on MILSIM rather than making the heavier feel something you have to go
--- and find. GameConfig keeps the v35 numbers so ORIGINAL is a real comparison
--- and one keypress away, which is the point: the difference between the two is
--- the thing that has been hard to describe in words.
-applyPreset(2)
+-- Ship on ORIGINAL. MILSIM's larger MAX_ROT plus higher acceleration puts the
+-- muzzle off screen when the camera whips, which is exactly the "gun is barely
+-- there and drags" complaint. MILSIM is one Q keypress away for anyone who
+-- wants the heavier feel; the default has to be the one that behaves.
+applyPreset(1)
 
 print("[BLACKSITE] FeelPanel ready -- press F4 to tune the feel, Q/E for presets")

@@ -22716,47 +22716,74 @@ local cachedTemplate: Model? = nil
 local cachedMode = "none"
 local warned = false
 
+-- A limb is a tapered tube and a skull is a sphere. Drawn as boxes they read as
+-- a robot -- which is exactly what the fallback looked like -- so the primitive
+-- path uses the nearest primitive to the actual anatomy instead. A Roblox
+-- Cylinder runs its length along X while every bone here runs along its own Y,
+-- hence the quarter turn baked into the offset.
+local ROUND = {
+	Head = "Ball",
+	Neck = "Cylinder",
+	LeftUpperArm = "Cylinder", LeftForeArm = "Cylinder",
+	RightUpperArm = "Cylinder", RightForeArm = "Cylinder",
+	LeftThigh = "Cylinder", LeftShin = "Cylinder",
+	RightThigh = "Cylinder", RightShin = "Cylinder",
+}
+
+local function buildPrimitive(name: string, entry: any): BasePart
+	local part = Instance.new("Part")
+	local sx, sy, sz = entry.size[1], entry.size[2], entry.size[3]
+	local shape = ROUND[name]
+	if shape == "Ball" then
+		part.Shape = Enum.PartType.Ball
+		local d = (sx + sy + sz) / 3
+		part.Size = Vector3.new(d, d, d)
+	elseif shape == "Cylinder" then
+		part.Shape = Enum.PartType.Cylinder
+		-- Length along the bone, girth from the other two axes averaged so an
+		-- arm does not come out as an oval.
+		local girth = (sx + sz) * 0.5
+		part.Size = Vector3.new(sy, girth, girth)
+		part:SetAttribute("ShapeOffset", CFrame.Angles(0, 0, math.rad(90)))
+	else
+		part.Size = Vector3.new(sx, sy, sz)
+	end
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	configure(part, name, entry)
+	return part
+end
+
 local function buildTemplate(): (Model, string)
 	local model = Instance.new("Model")
 	model.Name = "BlacksiteOperatorShell"
-	local built, wanted = 0, 0
-	local mode = "mesh"
+	local meshed, wanted = 0, 0
 	for _, name in ipairs(Data.SEGMENTS) do
 		local entry = Data[name]
 		if entry then
 			wanted += 1
+			-- Per segment, not all-or-nothing. The old version threw away every
+			-- mesh that HAD built the moment one failed, so a single segment
+			-- over budget cost the whole body its geometry and the player got
+			-- nineteen boxes.
 			local part = buildMeshPart(entry)
 			if part then
 				configure(part, name, entry)
-				part.Parent = model
-				built += 1
+				meshed += 1
+			else
+				part = buildPrimitive(name, entry)
 			end
+			part.Parent = model
 		end
 	end
-	if built &lt; wanted then
-		-- Mesh APIs are off (or over budget). Fall back to blocks sized from the
-		-- same per-bone measurements, so the proportions stay this soldier's.
-		model:Destroy()
-		model = Instance.new("Model")
-		model.Name = "BlacksiteOperatorShell"
-		mode = "primitive"
-		for _, name in ipairs(Data.SEGMENTS) do
-			local entry = Data[name]
-			if entry then
-				local part = Instance.new("Part")
-				part.Size = Vector3.new(entry.size[1], entry.size[2], entry.size[3])
-				part.TopSurface = Enum.SurfaceType.Smooth
-				part.BottomSurface = Enum.SurfaceType.Smooth
-				configure(part, name, entry)
-				part.Parent = model
-			end
-		end
-		if not warned then
-			warned = true
-			warn("[BLACKSITE] Mesh APIs unavailable -- operator drawn as sized blocks. " ..
-				"Enable Experience Settings &gt; Security &gt; Allow Mesh &amp; Image APIs, or import " ..
-				"roblox/assets/swat_operator.fbx once (see roblox/README.md) for the real body.")
-		end
+	local mode = meshed == wanted and "mesh"
+		or (meshed &gt; 0 and "mixed" or "primitive")
+	if meshed &lt; wanted and not warned then
+		warned = true
+		warn(("[BLACKSITE] %d of %d body segments could not be built as meshes and are "):format(wanted - meshed, wanted)
+			.. "drawn as shaped primitives. Turn on Experience Settings &gt; Security &gt; "
+			.. "Allow Mesh &amp; Image APIs, or import roblox/assets/swat_operator.fbx "
+			.. "once (see roblox/README.md) for the real textured body.")
 	end
 	return model, mode
 end
@@ -22889,10 +22916,15 @@ function HumanRig.new(parent: Instance, source: Model?, scales: any?): any
 			if boneName and entry then
 				local s = scaleOf(boneName)
 				if math.abs(s - 1) &gt; 1e-3 then d.Size = d.Size * s end
+				-- Cylinders carry a quarter turn so their length lies along the
+				-- bone rather than across it.
+				local shape = d:GetAttribute("ShapeOffset")
+				local offset = CFrame.new(entry.centre[1] * s, entry.centre[2] * s, entry.centre[3] * s)
+				if typeof(shape) == "CFrame" then offset = offset * shape end
 				rig.parts[#rig.parts + 1] = {
 					part = d,
 					bone = boneName,
-					offset = CFrame.new(entry.centre[1] * s, entry.centre[2] * s, entry.centre[3] * s),
+					offset = offset,
 					group = d.Name,
 				}
 			end
@@ -29100,7 +29132,32 @@ local Cfg = require(Modules:WaitForChild("GameConfig"))
 -- "how far the gun swings when you whip the camera" is tunable, "ROT_ACCEL" is
 -- not.
 --------------------------------------------------------------------------------
+-- Where the weapon sits on screen. Cfg.VIEWMODEL.HIP is re-read every frame, so
+-- rewriting it moves the gun live. The shipped pose is kept as the base and
+-- these are a nudge on top, pre-multiplied so X is always screen-right
+-- regardless of the few degrees of cant baked into the carry.
+local VM_BASE = Cfg.VIEWMODEL.HIP
+local nudge = {x = 0, y = 0, z = 0}
+
+local function applyNudge()
+	Cfg.VIEWMODEL.HIP = CFrame.new(nudge.x, nudge.y, nudge.z) * VM_BASE
+end
+
 local KNOBS = {
+	{group = "WHERE THE GUN SITS"},
+	{id = "vm_x", label = "Gun left / right", step = 0.02, min = -0.55, max = 0.55,
+		fmt = "%+.2f", hint = "negative brings it in toward the middle of the screen",
+		getf = function() return nudge.x end,
+		setf = function(v) nudge.x = v applyNudge() end},
+	{id = "vm_y", label = "Gun up / down", step = 0.02, min = -0.45, max = 0.55,
+		fmt = "%+.2f", hint = "positive raises it into frame",
+		getf = function() return nudge.y end,
+		setf = function(v) nudge.y = v applyNudge() end},
+	{id = "vm_z", label = "Gun near / far", step = 0.02, min = -0.45, max = 0.45,
+		fmt = "%+.2f", hint = "negative pushes it away from the camera",
+		getf = function() return nudge.z end,
+		setf = function(v) nudge.z = v applyNudge() end},
+
 	{group = "WEAPON WEIGHT"},
 	{tbl = "INERTIA", key = "ROT_ACCEL", label = "Swing when you turn",
 		step = 0.002, min = 0, max = 0.06, fmt = "%.3f",
@@ -29193,13 +29250,27 @@ local PRESETS = {
 }
 
 local function slot(k: any): string
-	return k.tbl .. "_" .. k.key
+	return k.id or (k.tbl .. "_" .. k.key)
+end
+
+local function knobGet(k: any): number
+	if k.getf then return k.getf() end
+	return Cfg[k.tbl][k.key] or 0
+end
+
+local function knobSet(k: any, v: number)
+	v = math.clamp(v, k.min, k.max)
+	if k.setf then k.setf(v) else Cfg[k.tbl][k.key] = v end
+end
+
+local function tunable(k: any): boolean
+	return k.tbl ~= nil or k.getf ~= nil
 end
 
 -- Capture the shipped values so ORIGINAL is always a real destination.
 for _, k in ipairs(KNOBS) do
-	if k.tbl then
-		PRESETS[1].values[slot(k)] = Cfg[k.tbl][k.key]
+	if tunable(k) then
+		PRESETS[1].values[slot(k)] = knobGet(k)
 	end
 end
 
@@ -29209,10 +29280,10 @@ local function applyPreset(index: number)
 	preset = ((index - 1) % #PRESETS) + 1
 	local values = PRESETS[preset].values
 	for _, k in ipairs(KNOBS) do
-		if k.tbl then
+		if tunable(k) then
 			local v = values[slot(k)]
 			if v == nil then v = PRESETS[1].values[slot(k)] end
-			if v ~= nil then Cfg[k.tbl][k.key] = v end
+			if v ~= nil then knobSet(k, v) end
 		end
 	end
 end
@@ -29347,13 +29418,12 @@ end
 --------------------------------------------------------------------------------
 -- INPUT
 --------------------------------------------------------------------------------
-local selected = 2 -- first non-group row
+local selected = 2 -- first tunable row
 
 local function step(direction: number)
 	local k = KNOBS[selected]
-	if not k or not k.tbl then return end
-	local v = (Cfg[k.tbl][k.key] or 0) + k.step * direction
-	Cfg[k.tbl][k.key] = math.clamp(v, k.min, k.max)
+	if not k or not tunable(k) then return end
+	knobSet(k, knobGet(k) + k.step * direction)
 end
 
 local function move(direction: number)
@@ -29361,7 +29431,7 @@ local function move(direction: number)
 		selected += direction
 		if selected &lt; 1 then selected = #KNOBS end
 		if selected &gt; #KNOBS then selected = 1 end
-		if KNOBS[selected].tbl then return end
+		if tunable(KNOBS[selected]) then return end
 	end
 end
 
@@ -29426,7 +29496,7 @@ RunService.RenderStepped:Connect(function(dt)
 		if k.group then
 			row.Text = ("&lt;font color='#6f7a66'&gt;── %s ──&lt;/font&gt;"):format(k.group)
 		else
-			local value = Cfg[k.tbl][k.key] or 0
+			local value = knobGet(k)
 			local base = PRESETS[1].values[slot(k)] or value
 			local mark = (math.abs(value - base) &gt; 1e-9) and "*" or " "
 			local span = math.max(k.max - k.min, 1e-6)
@@ -29443,11 +29513,11 @@ RunService.RenderStepped:Connect(function(dt)
 	hint.Text = k and k.hint and ("&lt;i&gt;" .. k.hint .. "&lt;/i&gt;") or ""
 end)
 
--- Ship on MILSIM rather than making the heavier feel something you have to go
--- and find. GameConfig keeps the v35 numbers so ORIGINAL is a real comparison
--- and one keypress away, which is the point: the difference between the two is
--- the thing that has been hard to describe in words.
-applyPreset(2)
+-- Ship on ORIGINAL. MILSIM's larger MAX_ROT plus higher acceleration puts the
+-- muzzle off screen when the camera whips, which is exactly the "gun is barely
+-- there and drags" complaint. MILSIM is one Q keypress away for anyone who
+-- wants the heavier feel; the default has to be the one that behaves.
+applyPreset(1)
 
 print("[BLACKSITE] FeelPanel ready -- press F4 to tune the feel, Q/E for presets")
 </string>

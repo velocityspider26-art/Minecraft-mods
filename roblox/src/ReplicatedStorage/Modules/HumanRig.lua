@@ -152,47 +152,74 @@ local cachedTemplate: Model? = nil
 local cachedMode = "none"
 local warned = false
 
+-- A limb is a tapered tube and a skull is a sphere. Drawn as boxes they read as
+-- a robot -- which is exactly what the fallback looked like -- so the primitive
+-- path uses the nearest primitive to the actual anatomy instead. A Roblox
+-- Cylinder runs its length along X while every bone here runs along its own Y,
+-- hence the quarter turn baked into the offset.
+local ROUND = {
+	Head = "Ball",
+	Neck = "Cylinder",
+	LeftUpperArm = "Cylinder", LeftForeArm = "Cylinder",
+	RightUpperArm = "Cylinder", RightForeArm = "Cylinder",
+	LeftThigh = "Cylinder", LeftShin = "Cylinder",
+	RightThigh = "Cylinder", RightShin = "Cylinder",
+}
+
+local function buildPrimitive(name: string, entry: any): BasePart
+	local part = Instance.new("Part")
+	local sx, sy, sz = entry.size[1], entry.size[2], entry.size[3]
+	local shape = ROUND[name]
+	if shape == "Ball" then
+		part.Shape = Enum.PartType.Ball
+		local d = (sx + sy + sz) / 3
+		part.Size = Vector3.new(d, d, d)
+	elseif shape == "Cylinder" then
+		part.Shape = Enum.PartType.Cylinder
+		-- Length along the bone, girth from the other two axes averaged so an
+		-- arm does not come out as an oval.
+		local girth = (sx + sz) * 0.5
+		part.Size = Vector3.new(sy, girth, girth)
+		part:SetAttribute("ShapeOffset", CFrame.Angles(0, 0, math.rad(90)))
+	else
+		part.Size = Vector3.new(sx, sy, sz)
+	end
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	configure(part, name, entry)
+	return part
+end
+
 local function buildTemplate(): (Model, string)
 	local model = Instance.new("Model")
 	model.Name = "BlacksiteOperatorShell"
-	local built, wanted = 0, 0
-	local mode = "mesh"
+	local meshed, wanted = 0, 0
 	for _, name in ipairs(Data.SEGMENTS) do
 		local entry = Data[name]
 		if entry then
 			wanted += 1
+			-- Per segment, not all-or-nothing. The old version threw away every
+			-- mesh that HAD built the moment one failed, so a single segment
+			-- over budget cost the whole body its geometry and the player got
+			-- nineteen boxes.
 			local part = buildMeshPart(entry)
 			if part then
 				configure(part, name, entry)
-				part.Parent = model
-				built += 1
+				meshed += 1
+			else
+				part = buildPrimitive(name, entry)
 			end
+			part.Parent = model
 		end
 	end
-	if built < wanted then
-		-- Mesh APIs are off (or over budget). Fall back to blocks sized from the
-		-- same per-bone measurements, so the proportions stay this soldier's.
-		model:Destroy()
-		model = Instance.new("Model")
-		model.Name = "BlacksiteOperatorShell"
-		mode = "primitive"
-		for _, name in ipairs(Data.SEGMENTS) do
-			local entry = Data[name]
-			if entry then
-				local part = Instance.new("Part")
-				part.Size = Vector3.new(entry.size[1], entry.size[2], entry.size[3])
-				part.TopSurface = Enum.SurfaceType.Smooth
-				part.BottomSurface = Enum.SurfaceType.Smooth
-				configure(part, name, entry)
-				part.Parent = model
-			end
-		end
-		if not warned then
-			warned = true
-			warn("[BLACKSITE] Mesh APIs unavailable -- operator drawn as sized blocks. " ..
-				"Enable Experience Settings > Security > Allow Mesh & Image APIs, or import " ..
-				"roblox/assets/swat_operator.fbx once (see roblox/README.md) for the real body.")
-		end
+	local mode = meshed == wanted and "mesh"
+		or (meshed > 0 and "mixed" or "primitive")
+	if meshed < wanted and not warned then
+		warned = true
+		warn(("[BLACKSITE] %d of %d body segments could not be built as meshes and are "):format(wanted - meshed, wanted)
+			.. "drawn as shaped primitives. Turn on Experience Settings > Security > "
+			.. "Allow Mesh & Image APIs, or import roblox/assets/swat_operator.fbx "
+			.. "once (see roblox/README.md) for the real textured body.")
 	end
 	return model, mode
 end
@@ -325,10 +352,15 @@ function HumanRig.new(parent: Instance, source: Model?, scales: any?): any
 			if boneName and entry then
 				local s = scaleOf(boneName)
 				if math.abs(s - 1) > 1e-3 then d.Size = d.Size * s end
+				-- Cylinders carry a quarter turn so their length lies along the
+				-- bone rather than across it.
+				local shape = d:GetAttribute("ShapeOffset")
+				local offset = CFrame.new(entry.centre[1] * s, entry.centre[2] * s, entry.centre[3] * s)
+				if typeof(shape) == "CFrame" then offset = offset * shape end
 				rig.parts[#rig.parts + 1] = {
 					part = d,
 					bone = boneName,
-					offset = CFrame.new(entry.centre[1] * s, entry.centre[2] * s, entry.centre[3] * s),
+					offset = offset,
 					group = d.Name,
 				}
 			end
