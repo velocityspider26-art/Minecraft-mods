@@ -118,10 +118,16 @@ configurations {
 dependencies {
     // Distant Horizons is NOT a dependency of the planet renderer any more.
     // Genesis' own sparse voxel pyramid is the sole source of orbital terrain,
-    // so DH is neither compiled against nor shipped. If the player installs it
-    // separately the two simply coexist; drop a jar into libs/ only if you want
-    // it on the development runtime classpath.
-    fileTree(dir: 'libs', include: '*.jar').each { localRuntime(files(it)) }
+    // so DH is neither compiled against nor shipped. A DH jar in libs/ is still
+    // picked up for the development run, which is the only reason this looks in
+    // libs/ at all.
+    //
+    // Deliberately matched by name rather than '*.jar'. A blanket sweep puts
+    // every jar sitting in libs/ on the run classpath, so one stale copy of a
+    // mod that is also declared below — a 1.20.1 Pehkui next to the 1.21 one,
+    // say — loads alongside it, and which version wins is decided by classpath
+    // order rather than by anything intentional.
+    fileTree(dir: 'libs', include: 'DistantHorizons-*.jar').each { localRuntime(files(it)) }
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.0"))
     implementation("io.github.llamalad7:mixinextras-neoforge:0.5.0")
