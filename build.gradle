@@ -115,19 +115,54 @@ configurations {
     }
 }
 
+/**
+ * Warns about loose jars in libs/ that will collide at runtime.
+ *
+ * <p>Two jars registering one mod id is not a Gradle error and not a FML crash
+ * — the game just picks one and carries on, so a stale jar shows up much later
+ * as a mod behaving like the wrong version. This turns that into a build
+ * message naming the exact file to delete.</p>
+ */
+def checkLooseModJars(FileTree jars) {
+    // Mod slugs declared as Modrinth dependencies below. A libs/ jar starting
+    // with one of these is a second copy of something Gradle already resolves.
+    def declared = ['pehkui', 'create', 'create-aeronautics', 'sable', 'curios', 'zps',
+                    'lodestonelib', 'fusion-connected-textures', 'architectury-api',
+                    'kotlin-for-forge', 'spark', 'jei', 'mekanism']
+    def bySlug = [:].withDefault { [] }
+    jars.each { jar ->
+        // Strip the version: everything up to the first '-' followed by a digit.
+        def slug = (jar.name.toLowerCase() - '.jar').replaceFirst(/-\d.*$/, '')
+        bySlug[slug] << jar.name
+    }
+    bySlug.each { slug, names ->
+        if (names.size() > 1) {
+            logger.warn("[libs] '${slug}' has ${names.size()} jars in libs/ — ${names.join(', ')}. " +
+                    "They register the same mod id; delete all but the 1.21.1 one.")
+        }
+        if (declared.contains(slug)) {
+            logger.warn("[libs] '${slug}' is already a declared dependency, but libs/ also has " +
+                    "${names.join(', ')}. Delete it — otherwise both load and classpath order " +
+                    "decides which version the game uses.")
+        }
+    }
+}
+
 dependencies {
     // Distant Horizons is NOT a dependency of the planet renderer any more.
     // Genesis' own sparse voxel pyramid is the sole source of orbital terrain,
-    // so DH is neither compiled against nor shipped. A DH jar in libs/ is still
-    // picked up for the development run, which is the only reason this looks in
-    // libs/ at all.
+    // so DH is neither compiled against nor shipped. It is simply one of the
+    // loose jars below, and the game runs with or without it.
     //
-    // Deliberately matched by name rather than '*.jar'. A blanket sweep puts
-    // every jar sitting in libs/ on the run classpath, so one stale copy of a
-    // mod that is also declared below — a 1.20.1 Pehkui next to the 1.21 one,
-    // say — loads alongside it, and which version wins is decided by classpath
-    // order rather than by anything intentional.
-    fileTree(dir: 'libs', include: 'DistantHorizons-*.jar').each { localRuntime(files(it)) }
+    // libs/ holds the development run's loose mod jars. They all go on the run
+    // classpath — but a jar here that duplicates a mod declared further down,
+    // or a second copy of a jar already in this folder, loads *alongside* it.
+    // Both copies register the same mod id and classpath order decides which
+    // one the game actually uses, which is how a 1.20.1 jar ends up quietly
+    // shadowing the 1.21 build resolved from Modrinth. Neither case is an
+    // error Gradle would otherwise report, so name them loudly here.
+    checkLooseModJars(fileTree(dir: 'libs', include: '*.jar'))
+    fileTree(dir: 'libs', include: '*.jar').each { localRuntime(files(it)) }
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.0"))
     implementation("io.github.llamalad7:mixinextras-neoforge:0.5.0")

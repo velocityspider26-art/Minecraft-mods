@@ -2,6 +2,8 @@
 .idea/
 build/
 lib/
+# Loose development-run mod jars (third-party, not ours to redistribute)
+libs/
 run/
 bin/
 run-data/
