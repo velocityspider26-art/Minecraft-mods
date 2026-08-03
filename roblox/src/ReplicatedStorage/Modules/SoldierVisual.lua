@@ -485,14 +485,20 @@ function SoldierVisual.poseBody(rig: any, state: any)
 	end
 end
 
+-- True distance, not distance along the camera's forward axis. See the note on
+-- OperatorShell.nearPlane: the forward-axis version culls your own legs, which
+-- are two studs below you and zero studs in front, and is why the first-person
+-- body only ever appeared when looking straight down.
 local function nearPlaneVisibility(part: BasePart, cameraCF: CFrame): number
-	local localCF = cameraCF:ToObjectSpace(part.CFrame)
-	local half = part.Size * .5
-	local extent = math.abs(localCF.RightVector.Z) * half.X
-		+ math.abs(localCF.UpVector.Z) * half.Y
-		+ math.abs(localCF.LookVector.Z) * half.Z
-	local nearest = -localCF.Position.Z - extent
-	return math.clamp((nearest - .055) / .17, 0, 1)
+	local toCam = cameraCF.Position - part.Position
+	local dist = toCam.Magnitude
+	if dist < 1e-4 then return 0 end
+	local dir = toCam / dist
+	local cf, half = part.CFrame, part.Size * .5
+	local reach = math.abs(cf.RightVector:Dot(dir)) * half.X
+		+ math.abs(cf.UpVector:Dot(dir)) * half.Y
+		+ math.abs(cf.LookVector:Dot(dir)) * half.Z
+	return math.clamp((dist - reach - .05) / .20, 0, 1)
 end
 
 local function visibilityFor(group: string, isLocal: boolean, torsoVis: number, legsVis: number): number

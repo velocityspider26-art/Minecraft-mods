@@ -346,13 +346,32 @@ end
 -- DRAW
 --------------------------------------------------------------------------------
 
+-- Fade only what is genuinely about to clip through the lens.
+--
+-- This used to measure along the camera's FORWARD axis: distance in front minus
+-- the part's extent. That is the right test for something ahead of you and the
+-- wrong test for your own body, which is mostly BELOW you. Stood level, your own
+-- chest is about 0.1 studs "in front" and half a stud thick, so the test came out
+-- negative and faded it to nothing; your legs, two studs down and zero studs
+-- forward, were culled outright. The body only appeared when you looked almost
+-- vertically down, which is indistinguishable from it never being there at all.
+--
+-- True distance is the honest measure: a part two studs below you is two studs
+-- away and belongs on screen.
 local function nearPlane(part: BasePart, cameraCF: CFrame): number
-	local localCF = cameraCF:ToObjectSpace(part.CFrame)
-	local half = part.Size * 0.5
-	local extent = math.abs(localCF.RightVector.Z) * half.X
-		+ math.abs(localCF.UpVector.Z) * half.Y
-		+ math.abs(localCF.LookVector.Z) * half.Z
-	return math.clamp(((-localCF.Position.Z - extent) - 0.055) / 0.17, 0, 1)
+	local toCam = cameraCF.Position - part.Position
+	local dist = toCam.Magnitude
+	if dist < 1e-4 then return 0 end
+	local dir = toCam / dist
+	-- Distance from the part's centre to its surface ALONG the line to the
+	-- camera. The bounding diagonal would do here but it over-reaches badly on
+	-- a wide part -- the chest is a stud across and only two thirds of a stud
+	-- under your chin, so a diagonal test fades it out permanently.
+	local cf, half = part.CFrame, part.Size * 0.5
+	local reach = math.abs(cf.RightVector:Dot(dir)) * half.X
+		+ math.abs(cf.UpVector:Dot(dir)) * half.Y
+		+ math.abs(cf.LookVector:Dot(dir)) * half.Z
+	return math.clamp((dist - reach - 0.05) / 0.20, 0, 1)
 end
 
 function OperatorShell.draw(shell: any, rig: any, cameraCF: CFrame, isLocal: boolean,

@@ -14939,14 +14939,20 @@ function SoldierVisual.poseBody(rig: any, state: any)
 	end
 end
 
+-- True distance, not distance along the camera's forward axis. See the note on
+-- OperatorShell.nearPlane: the forward-axis version culls your own legs, which
+-- are two studs below you and zero studs in front, and is why the first-person
+-- body only ever appeared when looking straight down.
 local function nearPlaneVisibility(part: BasePart, cameraCF: CFrame): number
-	local localCF = cameraCF:ToObjectSpace(part.CFrame)
-	local half = part.Size * .5
-	local extent = math.abs(localCF.RightVector.Z) * half.X
-		+ math.abs(localCF.UpVector.Z) * half.Y
-		+ math.abs(localCF.LookVector.Z) * half.Z
-	local nearest = -localCF.Position.Z - extent
-	return math.clamp((nearest - .055) / .17, 0, 1)
+	local toCam = cameraCF.Position - part.Position
+	local dist = toCam.Magnitude
+	if dist &lt; 1e-4 then return 0 end
+	local dir = toCam / dist
+	local cf, half = part.CFrame, part.Size * .5
+	local reach = math.abs(cf.RightVector:Dot(dir)) * half.X
+		+ math.abs(cf.UpVector:Dot(dir)) * half.Y
+		+ math.abs(cf.LookVector:Dot(dir)) * half.Z
+	return math.clamp((dist - reach - .05) / .20, 0, 1)
 end
 
 local function visibilityFor(group: string, isLocal: boolean, torsoVis: number, legsVis: number): number
@@ -24025,13 +24031,32 @@ end
 -- DRAW
 --------------------------------------------------------------------------------
 
+-- Fade only what is genuinely about to clip through the lens.
+--
+-- This used to measure along the camera's FORWARD axis: distance in front minus
+-- the part's extent. That is the right test for something ahead of you and the
+-- wrong test for your own body, which is mostly BELOW you. Stood level, your own
+-- chest is about 0.1 studs "in front" and half a stud thick, so the test came out
+-- negative and faded it to nothing; your legs, two studs down and zero studs
+-- forward, were culled outright. The body only appeared when you looked almost
+-- vertically down, which is indistinguishable from it never being there at all.
+--
+-- True distance is the honest measure: a part two studs below you is two studs
+-- away and belongs on screen.
 local function nearPlane(part: BasePart, cameraCF: CFrame): number
-	local localCF = cameraCF:ToObjectSpace(part.CFrame)
-	local half = part.Size * 0.5
-	local extent = math.abs(localCF.RightVector.Z) * half.X
-		+ math.abs(localCF.UpVector.Z) * half.Y
-		+ math.abs(localCF.LookVector.Z) * half.Z
-	return math.clamp(((-localCF.Position.Z - extent) - 0.055) / 0.17, 0, 1)
+	local toCam = cameraCF.Position - part.Position
+	local dist = toCam.Magnitude
+	if dist &lt; 1e-4 then return 0 end
+	local dir = toCam / dist
+	-- Distance from the part's centre to its surface ALONG the line to the
+	-- camera. The bounding diagonal would do here but it over-reaches badly on
+	-- a wide part -- the chest is a stud across and only two thirds of a stud
+	-- under your chin, so a diagonal test fades it out permanently.
+	local cf, half = part.CFrame, part.Size * 0.5
+	local reach = math.abs(cf.RightVector:Dot(dir)) * half.X
+		+ math.abs(cf.UpVector:Dot(dir)) * half.Y
+		+ math.abs(cf.LookVector:Dot(dir)) * half.Z
+	return math.clamp((dist - reach - 0.05) / 0.20, 0, 1)
 end
 
 function OperatorShell.draw(shell: any, rig: any, cameraCF: CFrame, isLocal: boolean,
@@ -29435,11 +29460,74 @@ local function move(direction: number)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- F6 -- STAND A COPY OF THE BODY IN FRONT OF YOU
+--
+-- One keypress that separates three questions which have been answered as one:
+-- does the geometry BUILD, does the skeleton POSE it, and does the visibility
+-- logic SHOW it. This bypasses the last two entirely -- bind pose, no camera
+-- fade, no transparency at all -- and parks the result six studs away.
+--
+-- See a soldier: the geometry is fine and the fault is posing or visibility.
+-- See nothing: it never built, and no amount of placement work will help.
+--------------------------------------------------------------------------------
+local HumanRig = require(Modules:WaitForChild("HumanRig"))
+local dummy: Model? = nil
+
+local function toggleDummy()
+	if dummy then
+		dummy:Destroy()
+		dummy = nil
+		return
+	end
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local holder = Instance.new("Model")
+	holder.Name = "BlacksiteBodyTest"
+	holder.Parent = workspace
+
+	local ok, rig = pcall(HumanRig.new, holder, nil, 1)
+	if not ok or not rig then
+		holder:Destroy()
+		warn("[BLACKSITE] body test: HumanRig.new threw -- " .. tostring(rig))
+		return
+	end
+
+	local look = hrp.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude &gt; 1e-4 and flat.Unit or Vector3.new(0, 0, -1)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local floor = hrp.Position.Y - ((hum and hum.HipHeight or 2) + hrp.Size.Y * 0.5)
+	local at = Vector3.new(hrp.Position.X, floor, hrp.Position.Z) + flat * 6
+
+	pcall(function()
+		HumanRig.solve(rig, CFrame.lookAt(at, at - flat))
+		HumanRig.apply(rig)
+	end)
+	for _, d in holder:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = 0
+			d.LocalTransparencyModifier = 0
+		end
+	end
+	dummy = holder
+
+	local n = #rig.parts
+	if rig.mode == "skinned" then n = 1 end
+	warn(("[BLACKSITE] body test: mode=%s, %d pieces, standing at %s")
+		:format(tostring(rig.mode), n, tostring(at)))
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local k = input.KeyCode
 	if k == Enum.KeyCode.F4 then
 		gui.Enabled = not gui.Enabled
+		return
+	elseif k == Enum.KeyCode.F6 then
+		toggleDummy()
 		return
 	end
 	if not gui.Enabled then return end
@@ -29486,7 +29574,8 @@ RunService.RenderStepped:Connect(function(dt)
 	else
 		bodyB.Text = ""
 	end
-	bodyC.Text = "       F3 shows the effect pulses | F1 shows the controls"
+	bodyC.Text = dummy and "       F6 removes the test body"
+		or "       F6 stands a copy of the body 6 studs in front of you"
 
 	presetLine.Text = ("PRESET   &amp;lt; &lt;font color='#d6cbb8'&gt;%s&lt;/font&gt; &amp;gt;   (Q/E)")
 		:format(PRESETS[preset].name)

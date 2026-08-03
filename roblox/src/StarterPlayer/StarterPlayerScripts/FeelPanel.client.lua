@@ -343,11 +343,74 @@ local function move(direction: number)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- F6 -- STAND A COPY OF THE BODY IN FRONT OF YOU
+--
+-- One keypress that separates three questions which have been answered as one:
+-- does the geometry BUILD, does the skeleton POSE it, and does the visibility
+-- logic SHOW it. This bypasses the last two entirely -- bind pose, no camera
+-- fade, no transparency at all -- and parks the result six studs away.
+--
+-- See a soldier: the geometry is fine and the fault is posing or visibility.
+-- See nothing: it never built, and no amount of placement work will help.
+--------------------------------------------------------------------------------
+local HumanRig = require(Modules:WaitForChild("HumanRig"))
+local dummy: Model? = nil
+
+local function toggleDummy()
+	if dummy then
+		dummy:Destroy()
+		dummy = nil
+		return
+	end
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local holder = Instance.new("Model")
+	holder.Name = "BlacksiteBodyTest"
+	holder.Parent = workspace
+
+	local ok, rig = pcall(HumanRig.new, holder, nil, 1)
+	if not ok or not rig then
+		holder:Destroy()
+		warn("[BLACKSITE] body test: HumanRig.new threw -- " .. tostring(rig))
+		return
+	end
+
+	local look = hrp.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 1e-4 and flat.Unit or Vector3.new(0, 0, -1)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local floor = hrp.Position.Y - ((hum and hum.HipHeight or 2) + hrp.Size.Y * 0.5)
+	local at = Vector3.new(hrp.Position.X, floor, hrp.Position.Z) + flat * 6
+
+	pcall(function()
+		HumanRig.solve(rig, CFrame.lookAt(at, at - flat))
+		HumanRig.apply(rig)
+	end)
+	for _, d in holder:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = 0
+			d.LocalTransparencyModifier = 0
+		end
+	end
+	dummy = holder
+
+	local n = #rig.parts
+	if rig.mode == "skinned" then n = 1 end
+	warn(("[BLACKSITE] body test: mode=%s, %d pieces, standing at %s")
+		:format(tostring(rig.mode), n, tostring(at)))
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local k = input.KeyCode
 	if k == Enum.KeyCode.F4 then
 		gui.Enabled = not gui.Enabled
+		return
+	elseif k == Enum.KeyCode.F6 then
+		toggleDummy()
 		return
 	end
 	if not gui.Enabled then return end
@@ -394,7 +457,8 @@ RunService.RenderStepped:Connect(function(dt)
 	else
 		bodyB.Text = ""
 	end
-	bodyC.Text = "       F3 shows the effect pulses | F1 shows the controls"
+	bodyC.Text = dummy and "       F6 removes the test body"
+		or "       F6 stands a copy of the body 6 studs in front of you"
 
 	presetLine.Text = ("PRESET   &lt; <font color='#d6cbb8'>%s</font> &gt;   (Q/E)")
 		:format(PRESETS[preset].name)
