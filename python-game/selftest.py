@@ -955,6 +955,153 @@ def test_game_loop(root, game):
     game.close_menu()
     game.state = trident.STATE_PLAYING
 
+    # -- the boss --
+    boss_level = next(i for i, lvl in enumerate(trident.LEVELS)
+                      if any("b" in row for row in lvl["grid"]))
+    check("the last mission is the boss mission",
+          boss_level == len(trident.LEVELS) - 1)
+
+    game.difficulty = trident.DEFAULT_DIFFICULTY
+    game.load_level(boss_level)
+    game.state = trident.STATE_PLAYING
+    boss = next(m for m in game.monsters if m.info.get("boss"))
+    check("the boss has far more health than a normal hostile",
+          boss.max_hp > 5 * trident.MONSTERS["t"]["max_hp"])
+    check("the boss is bigger than a normal hostile",
+          boss.info["height_scale"] > trident.MONSTERS["t"]["height_scale"])
+    check("the boss shares the sprite pool layout",
+          len(trident.BLACKJACK_BODY) == len(trident.SPRITE_SHAPES)
+          and all(part[0] == shape for part, shape
+                  in zip(trident.BLACKJACK_BODY, trident.SPRITE_SHAPES)))
+
+    # The bar only belongs on screen once it has noticed you. Drive the draw
+    # directly - a full tick would let the boss wake itself up again, since it
+    # can see out of its chamber from the moment the mission starts.
+    boss.awake = False
+    game.draw_boss_bar()
+    check("no boss bar before it has seen you",
+          game.canvas.itemcget(game.boss_back, "state") == "hidden")
+    boss.awake = True
+    game.tick()
+    check("the boss bar appears once it is awake",
+          game.canvas.itemcget(game.boss_back, "state") == "normal")
+
+    full = game.canvas.coords(game.boss_bar)[2]
+    boss.hp = boss.max_hp // 2
+    game.tick()
+    half = game.canvas.coords(game.boss_bar)[2]
+    check("the boss bar tracks its health", half < full,
+          "%.0f vs %.0f" % (half, full))
+
+    game.damage_monster(boss, 10 ** 6)
+    game.tick()
+    check("killing the boss takes the bar away",
+          game.canvas.itemcget(game.boss_back, "state") == "hidden")
+    check("the boss is worth a lot of points", boss.info["score"] >= 1000)
+
+    # It has to be killable with the ammunition on the level, or the last
+    # mission is unwinnable.
+    game.load_level(boss_level)
+    boss = next(m for m in game.monsters if m.info.get("boss"))
+    on_level = game.ammo + sum(p.info["ammo"] for p in game.pickups)
+    needed = sum(m.hp for m in game.monsters) / trident.SHOT_DAMAGE
+    check("the last mission carries enough ammunition to finish it (%d rounds "
+          "available, ~%d needed with every shot on target)"
+          % (on_level, needed), on_level > needed * 1.5)
+
+    game.load_level(0)
+
+    # -- display scaling --
+    check("the game starts unscaled", game.scale == 1)
+    base_w = int(game.canvas["width"])
+    game.apply_scale(2)
+    check("scaling resizes the canvas", int(game.canvas["width"]) == base_w * 2)
+
+    game.state = trident.STATE_PLAYING
+    game.close_menu()
+    game.tick()
+    # Everything drawn must scale together. A stripe left behind at 1x would
+    # be an obvious tear down the middle of the picture.
+    lit = [game.canvas.coords(i) for i in game.column_items[120]
+           if game.canvas.coords(i)[0] > 0]
+    check("wall stripes scale with the view",
+          lit and abs(lit[0][0] - 120 * game.column_w * 2) < 4,
+          "stripe at %s, expected ~%.0f"
+          % (lit[0][:1] if lit else "nothing", 120 * game.column_w * 2))
+    reticle_2x = game.canvas.coords(game.cross_items[0])[0]
+    weapon_2x = max(game.canvas.coords(i)[3] for i in game.gun_items)
+    game.apply_scale(1)
+    game.tick()
+    reticle_1x = game.canvas.coords(game.cross_items[0])[0]
+    weapon_1x = max(game.canvas.coords(i)[3] for i in game.gun_items)
+    game.apply_scale(2)
+    game.tick()
+    check("the reticle scales with the view",
+          abs(reticle_2x - reticle_1x * 2) < 2,
+          "%.0f at 2x vs %.0f at 1x" % (reticle_2x, reticle_1x))
+    check("the weapon scales with the view",
+          abs(weapon_2x - weapon_1x * 2) < 2,
+          "%.0f at 2x vs %.0f at 1x" % (weapon_2x, weapon_1x))
+
+    # Mouse movement is in screen pixels and has to be converted back.
+    game.mouse_captured = True
+    game._warping = False
+    before = game.angle
+    game._on_mouse_move(FakeMove(trident.SCREEN_W * 2 // 2 + 200,
+                                 trident.SCREEN_H * 2 // 2))
+    turned_2x = (game.angle - before + math.pi) % (2 * math.pi) - math.pi
+    game.apply_scale(1)
+    game._warping = False
+    before = game.angle
+    game._on_mouse_move(FakeMove(trident.SCREEN_W // 2 + 100,
+                                 trident.SCREEN_H // 2))
+    turned_1x = (game.angle - before + math.pi) % (2 * math.pi) - math.pi
+    check("the mouse feels the same whatever the scale",
+          abs(turned_2x - turned_1x) < 1e-6,
+          "%.5f at 2x vs %.5f at 1x" % (turned_2x, turned_1x))
+    game.mouse_captured = False
+    game.tick()
+    check("the game still draws back at 1x", game.running)
+
+    # A rescale must not strand whatever was on screen at the time. The
+    # visibility bookkeeping is not a position cache, and clearing it left
+    # sprites and blood from the moment of the switch stuck there for good.
+    game.load_level(boss_level)
+    game.state = trident.STATE_PLAYING
+    boss = next(m for m in game.monsters if m.info.get("boss"))
+    game.px, game.py = boss.x, boss.y - 4.0
+    game._update_camera_position()
+    game.angle = math.atan2(boss.y - game.py, boss.x - game.px)
+    game._update_camera_vectors()
+    boss.awake = True
+    game.spray_blood(boss.x, boss.y, 20)
+    game.tick()
+    on_before = len(game._on_screen)
+    check("the boss is on screen to begin with", on_before > 0)
+
+    game.apply_scale(2)
+    game.tick()
+    game.load_level(0)              # a mission with no boss in it
+    game.state = trident.STATE_PLAYING
+    game.tick()
+    check("the boss bar goes away when the mission changes",
+          game.canvas.itemcget(game.boss_back, "state") == "hidden")
+
+    stranded = [item for item in game._on_screen
+                if game.canvas.coords(item)[0] > trident.PARKED + 100
+                and item not in game.pool_items]
+    visible_blood = [i for i in game.blood_items
+                     if game.canvas.itemcget(i, "state") == "normal"]
+    check("no blood is stranded on screen after a rescale",
+          len(visible_blood) <= len(game.blood),
+          "%d specks drawn, %d alive" % (len(visible_blood), len(game.blood)))
+    game.apply_scale(1)
+
+    # -- ten missions --
+    check("there are ten missions", len(trident.LEVELS) == 10)
+    check("every mission has a different name",
+          len({lvl["name"] for lvl in trident.LEVELS}) == len(trident.LEVELS))
+
     # -- every level loads --
     for index in range(len(trident.LEVELS)):
         game.load_level(index)

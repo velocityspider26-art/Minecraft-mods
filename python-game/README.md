@@ -53,7 +53,7 @@ The game opens on a menu rather than dropping you straight in:
 | **NEW MISSION** | starts again from the first |
 | **DIFFICULTY** | RECRUIT / OPERATOR / VETERAN |
 | **DETAIL** | LOW / MEDIUM / HIGH — see *Frame rate* below |
-| **FULLSCREEN** | borderless, view centred |
+| **FULLSCREEN** | borderless, magnified to fit your screen |
 | **QUIT** | |
 
 `W`/`S` or the arrows move, `A`/`D` change a setting, `Enter` picks, and you
@@ -96,12 +96,17 @@ Neutralise every hostile in the compound, then reach the green extraction
 beacon. It stays sealed until the last hostile is down — the status bar tells
 you how many are left. Grab medkits and rifle magazines on the way.
 
-Two operations, two kinds of hostile:
+**Ten operations**, ending with a compound raid against a high-value target.
 
 | | Health | Behaviour |
 | --- | --- | --- |
 | **Tango** | 46 | Rushes you. Dangerous inside 5 metres, poor beyond it. |
 | **Marksman** | 62 | Backs off to keep you at rifle range and shoots accurately. |
+| **BLACKJACK** | 900 | The final target. Slow, enormous, hits like a truck. |
+
+BLACKJACK sits in a sealed inner chamber whose only way in faces *away* from
+where you come ashore, so the compound has to be cleared before you can breach
+it. A health bar across the top of the screen tracks it once it has seen you.
 
 Your weapon is an M4-style carbine: fully automatic at about 570 rounds per
 minute, 24 damage a round, and accurate enough that misses are your fault.
@@ -261,7 +266,15 @@ Python is slow, and drawing is slow, so the game follows two rules:
   times a frame, would be slow — so every shade of every colour is worked out
   once at the beginning and looked up from a list afterwards.
 
-### 15. It looks after itself
+### 15. Fullscreen
+
+The game always draws the same picture, 640 across and 400 down. Fullscreen
+just multiplies every number on the way to the screen — by 2, or 3 if your
+monitor is big enough. It is nearly free, because it draws exactly the same
+number of shapes; they are simply bigger. Whole numbers only, so every pixel
+becomes a neat square block instead of going blurry.
+
+### 16. It looks after itself
 
 Nobody knows how fast the computer running this will be, so the game times its
 own frames. If they start taking too long it quietly draws the walls with less
@@ -273,7 +286,7 @@ problem and keeps going, rather than freezing. And if you click away to another
 window it lets go of whatever keys you were holding, so you do not come back to
 find yourself running into a wall.
 
-### 16. The heartbeat
+### 17. The heartbeat
 
 About 30 times a second the game does the same three things: **read the
 keyboard and mouse → move everything a tiny bit → redraw the screen.** Then it
@@ -636,7 +649,29 @@ The two thresholds are deliberately far apart and a change has to be earned
 over twenty frames, or the quality would visibly flicker every time one frame
 ran slightly long.
 
-### 15. Making it fast enough in Python
+### 15. Fullscreen without paying for it
+
+The first attempt at fullscreen just centred the 640x400 view on a black
+screen, which is not fullscreen — it is a small game with a big border.
+
+Making it genuinely bigger sounds expensive, but it is not, because **the cost
+here is the number of shapes, not the number of pixels.** Scaling the picture
+up draws exactly as many rectangles as before; they are simply larger. So the
+game still thinks entirely in its fixed 640x400 view — all the maths, the
+collision, the sprite work — and every coordinate is multiplied by a whole
+number on its way out to the canvas, in `_place`. Nothing upstream knows.
+
+Whole numbers only, deliberately: at 2x every pixel becomes an exact 2x2 block
+and the art stays crisp, where a fractional stretch would go soft. Fullscreen
+picks the largest multiple that fits your screen.
+
+Two things needed care. Fonts and line widths do not scale with coordinates,
+so their originals are recorded at start-up and multiplied separately. And the
+mouse reports screen pixels while the game thinks in view units, so pointer
+movement is divided back down — otherwise aiming would get twice as twitchy in
+fullscreen. There is a test for exactly that.
+
+### 16. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -766,13 +801,15 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 173 checks covering the level
+or just open it in IDLE and press F5. It runs 267 checks covering the level
 data, the raycasting maths, the wall texture tables, mouse aiming, pitch
 clamping, leaning being cut short at a wall, the sight picture, hit markers, blood
 physics, the reticle staying clear of the weapon at every pitch and sway, the game
 surviving a broken frame, focus loss letting go of held keys, automatic quality
 stepping down and back up, the difficulty multipliers, the save file surviving
-being empty or edited into nonsense, every menu row, and fullscreen, and a few hundred
+being empty or edited into nonsense, every menu row, fullscreen scaling keeping the mouse
+feeling the same, the boss and its health bar, and the last mission carrying
+enough ammunition to actually finish it, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 

@@ -398,6 +398,18 @@ GUN_MUZZLE_X, GUN_MUZZLE_Y = 6, -180     # tip of the flash hider
 GUN_BUTT_X, GUN_BUTT_Y = 74, 30          # bottom of the buttstock
 
 
+def _scaled_font(spec, scale):
+    """Multiply the point size in a Tk font string, leaving the rest alone."""
+    parts = str(spec).replace("{", "").replace("}", "").split()
+    out = []
+    for token in parts:
+        if token.lstrip("-").isdigit():
+            out.append(str(abs(int(token)) * scale))
+        else:
+            out.append(token)
+    return " ".join(out)
+
+
 def gun_axis(y):
     """Where the centre-line of the weapon sits at this height."""
     along = (y - GUN_MUZZLE_Y) / (GUN_BUTT_Y - GUN_MUZZLE_Y)
@@ -556,6 +568,21 @@ HOSTILE = (
 # a rectangle into an oval once created, so we lock the layout in here.)
 SPRITE_SHAPES = ("rect", "rect", "rect", "rect", "rect", "oval", "rect", "rect", "rect")
 
+# The high-value target. Same nine-shape layout as an ordinary hostile so it
+# can share the sprite pool, but heavier everywhere: broader shoulders, a
+# helmet instead of a balaclava, and a plate carrier across the chest.
+BLACKJACK_BODY = (
+    ("rect", 0.28, 0.68, 0.46, 1.00, "limb"),   # left leg
+    ("rect", 0.54, 0.68, 0.72, 1.00, "limb"),   # right leg
+    ("rect", 0.00, 0.26, 0.20, 0.70, "limb"),   # left arm
+    ("rect", 0.80, 0.26, 1.00, 0.70, "limb"),   # right arm
+    ("rect", 0.16, 0.20, 0.84, 0.72, "body"),   # torso
+    ("oval", 0.32, 0.00, 0.68, 0.26, "head"),   # helmet
+    ("rect", 0.33, 0.09, 0.67, 0.16, "visor"),  # visor
+    ("rect", 0.24, 0.28, 0.76, 0.56, "rig"),    # plate carrier
+    ("rect", 0.00, 0.42, 0.52, 0.52, "gun"),    # heavy weapon
+)
+
 MONSTERS = {
     "t": {
         # Rushes you with a submachine gun. Dangerous up close, poor at range.
@@ -603,6 +630,32 @@ MONSTERS = {
             "body": ( 62,  66,  48), "limb": ( 46,  50,  36),
             "head": ( 34,  36,  30), "visor": (198,  74,  54),
             "rig":  (104,  98,  74), "gun":  ( 30,  30,  34),
+        },
+    },
+    "b": {
+        # The final target. Slow, enormous, and hits hard enough that standing
+        # still in front of it is not a plan.
+        "name": "BLACKJACK",
+        "max_hp": 900,
+        "speed": 1.35,
+        "radius": 0.55,
+        "sight": 22.0,
+        "score": 3000,
+        "parts": BLACKJACK_BODY,
+        "width_ratio": 0.86,
+        "height_scale": 1.80,       # towers over you
+        "attack_cooldown": 1.15,
+        "melee_damage": 24,
+        "melee_range": 2.3,
+        "ranged": True,
+        "ranged_damage": 10,
+        "ranged_range": 13.0,
+        "keep_distance": 0.0,       # comes straight at you
+        "boss": True,
+        "colours": {
+            "body": ( 46,  44,  50), "limb": ( 34,  33,  38),
+            "head": ( 58,  54,  46), "visor": (236,  96,  40),
+            "rig":  (112,  46,  34), "gun":  ( 26,  26,  30),
         },
     },
 }
@@ -682,6 +735,7 @@ BLOOD_POOL_SHADES = make_shade_table((96, 12, 14), dimmest=0.20)
 #      P  ............. where the operator starts
 #      t  ............. a Tango       (rushes you)
 #      m  ............. a Marksman    (holds back and shoots)
+#      b  ............. BLACKJACK, the final target
 #      h  ............. a medkit
 #      a  ............. a rifle magazine
 #      X  ............. the extraction point
@@ -741,6 +795,214 @@ LEVELS = [
             "#..........mm..........#",
             "#....##....RR....##....#",
             "#.a..##....RR....##..a.#",
+            "########################",
+        ],
+    },
+    {
+        "name": "TUNNEL NETWORK",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#....#........#........#",
+            "#.P..#...t....#....h...#",
+            "#....#........#........#",
+            "#....####.#####....#####",
+            "#.......#.....#........#",
+            "#..a....#..m..#...t....#",
+            "#.......#.....#........#",
+            "####.####.#####.####.###",
+            "#......................#",
+            "#..t......h.......m....#",
+            "#......................#",
+            "###.####.#####.####.####",
+            "#.....#........#.......#",
+            "#..h..#...t....#...a...#",
+            "#.....#........#.......#",
+            "#####.#####.####...#####",
+            "#......................#",
+            "#...m........X.....t...#",
+            "########################",
+        ],
+    },
+    {
+        "name": "RELAY STATION",
+        "start_angle": 0,
+        "grid": [
+            "########################",
+            "#..........SSSS........#",
+            "#.P........S..S....t...#",
+            "#..........S..S........#",
+            "#...OOOO...SSSS...OOO..#",
+            "#...O..O..........O.O..#",
+            "#...O..O....a.....O.O..#",
+            "#...OO.OO.........OOO..#",
+            "#......................#",
+            "#..t......m..t.........#",
+            "#......................#",
+            "#..OOOOOO......OOOOOO..#",
+            "#..O..h..O....O..a...O.#",
+            "#..O.....O....O......O.#",
+            "#..OO.OOOO....OOOO.OOO.#",
+            "#......................#",
+            "#.....m.....X.....m....#",
+            "#......................#",
+            "#..h................a..#",
+            "########################",
+        ],
+    },
+    {
+        "name": "THE MOTOR POOL",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#......................#",
+            "#..P...RR...RR...RR....#",
+            "#......RR...RR...RR....#",
+            "#......................#",
+            "#..t.......m.......t...#",
+            "#......................#",
+            "#..RR...RR...RR...RR...#",
+            "#..RR...RR...RR...RR...#",
+            "#......................#",
+            "#....a...........h.....#",
+            "#......................#",
+            "#..RR...RR...RR...RR...#",
+            "#..RR...RR...RR...RR...#",
+            "#......................#",
+            "#....m....t.....m......#",
+            "#......................#",
+            "#......RR...RR...RR....#",
+            "#..h...RR.X.RR...RR..a.#",
+            "########################",
+        ],
+    },
+    {
+        "name": "COLD STORAGE",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#..P....#........#.....#",
+            "#.......#...h....#..t..#",
+            "#..SSS..#..SSSS..#.....#",
+            "#..S....#..S..S..#..SS.#",
+            "#..S..a.....S..S....S..#",
+            "#..SSS..#..SSSS..#..S..#",
+            "#.......#........#.....#",
+            "#..#############.......#",
+            "#......................#",
+            "#...t.......m......t...#",
+            "#......................#",
+            "#.......#############..#",
+            "#.....#........#.......#",
+            "#..a..#..SSSS..#...h...#",
+            "#.....#..S..S..#.......#",
+            "#..m..#..S..S..#...m...#",
+            "#.....#..SS.SS.#.......#",
+            "#.....#....X...#..t....#",
+            "########################",
+        ],
+    },
+    {
+        "name": "THE CATWALKS",
+        "start_angle": 0,
+        "grid": [
+            "########################",
+            "#.P....................#",
+            "#....YYYYYYYYYYYYYY....#",
+            "#....Y............Y....#",
+            "#....Y...a....h...Y.t..#",
+            "#....Y............Y....#",
+            "#....YY.YYYYYYYY.YY....#",
+            "#......................#",
+            "#.......m........m.....#",
+            "#......................#",
+            "#..YYYYYY......YYYYYY..#",
+            "#..Y....Y......Y....Y..#",
+            "#..Y..h.Y..t...Y.a..Y..#",
+            "#..Y....Y......Y....Y..#",
+            "#..YY.YYY......YYY.YY..#",
+            "#......................#",
+            "#....t...........t.....#",
+            "#......................#",
+            "#........m..X..m.......#",
+            "########################",
+        ],
+    },
+    {
+        "name": "AMMUNITION DUMP",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#....#............#....#",
+            "#.P..#....t..a....#..m.#",
+            "#....#............#....#",
+            "#....#..RRRRRRRR..#....#",
+            "#.......R......R.......#",
+            "#..a....R..h...R....h..#",
+            "#.......R......R.......#",
+            "#....#..RRR..RRR..#....#",
+            "#....#............#....#",
+            "#....##.########.##....#",
+            "#......................#",
+            "#..t.....m....m.....t..#",
+            "#......................#",
+            "#..RRRR..........RRRR..#",
+            "#..R..R....X.....R..R..#",
+            "#..R..R..........R..R..#",
+            "#..RRRR..........RRRR..#",
+            "#..h................a..#",
+            "########################",
+        ],
+    },
+    {
+        "name": "THE INNER KEEP",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#......................#",
+            "#.P...............t..m.#",
+            "#......................#",
+            "#..OOOOOOOOOOOOOOOOOO..#",
+            "#..O................O..#",
+            "#..O..a..........h..O..#",
+            "#..O....OOOOOOOO....O..#",
+            "#..O....O......O....O..#",
+            "#..O....O..h...O....O..#",
+            "#..O....O......O....O..#",
+            "#..O....OOO..OOO....O..#",
+            "#..O................O..#",
+            "#..O..m..........m..O..#",
+            "#..O................O..#",
+            "#..OOOOOO......OOOOOO..#",
+            "#......................#",
+            "#....t......X......t...#",
+            "#..a................h..#",
+            "########################",
+        ],
+    },
+    {
+        "name": "COMPOUND - TARGET BLACKJACK",
+        "start_angle": 90,
+        "grid": [
+            "########################",
+            "#......................#",
+            "#..RRRRRRRRRRRRRRRRRR..#",
+            "#..R................R..#",
+            "#..R..a....m.....h..R..#",
+            "#..R................R..#",
+            "#..R....RRR..RRR....R..#",
+            "#..R....R......R....R..#",
+            "#..R....R..b...R....R..#",
+            "#..R....R......R....R..#",
+            "#..R....RRRRRRRR....R..#",
+            "#..R................R..#",
+            "#..R..t..........t..R..#",
+            "#..R................R..#",
+            "#..RRRRRR......RRRRRR..#",
+            "#......................#",
+            "#..RR.........RR.......#",
+            "#.P..a....RR..m....h...#",
+            "#..........X...........#",
             "########################",
         ],
     },
@@ -918,6 +1180,7 @@ class Game:
         self.detail_tier = 0        # coarser wall texture when things are tight
         self.column_step = 1        # how many rays share one drawn stripe
         self.quality = DEFAULT_QUALITY
+        self.scale = 1
         self._detail_score = 0
         self._reported_error = False
 
@@ -929,9 +1192,12 @@ class Game:
         self._build_sprite_pool()
         self._build_weapon()
         self._build_overlay()
+        self._build_boss_bar()
         self._build_menu()
         self._build_hud()
         self._build_minimap()
+
+        self._capture_base_style()
 
         self._bind_keys()
         # Closing the window with its X button has to stop the loop too, or
@@ -1015,6 +1281,69 @@ class Game:
         self.column_fill = ["#000000"] * (NUM_COLUMNS * MAX_BANDS)
         self._band_y0 = [-1] * (NUM_COLUMNS * MAX_BANDS)
         self._band_y1 = [-1] * (NUM_COLUMNS * MAX_BANDS)
+
+    # -- display scaling ---------------------------------------------------
+    #
+    # Everything in the game thinks in a fixed 640x400 view. Blowing that up
+    # for fullscreen happens right at the last moment: every coordinate is
+    # multiplied on its way out to the canvas, and nothing upstream has to
+    # know. That keeps all the maths, the collision and the sprite work in one
+    # coordinate system - and, crucially, it does not draw a single extra
+    # shape, so a bigger picture costs almost nothing in frame rate.
+
+    def _place(self, item, *coords):
+        """Move a shape, scaling from view coordinates to screen ones."""
+        k = self.scale
+        if k != 1:
+            coords = tuple(value * k for value in coords)
+        self._tk_call(self._canvas_name, "coords", item, *coords)
+
+    def _capture_base_style(self):
+        """Remember every font and line width, so scaling can multiply them."""
+        self._base_fonts = {}
+        self._base_widths = {}
+        for item in self.canvas.find_all():
+            if self.canvas.type(item) == "text":
+                self._base_fonts[item] = str(self.canvas.itemcget(item, "font"))
+            width = self.canvas.itemcget(item, "width")
+            try:
+                self._base_widths[item] = float(width)
+            except (TypeError, ValueError):
+                pass
+
+    def apply_scale(self, scale):
+        """
+        Resize the whole picture by a whole-number factor.
+
+        Whole numbers only, on purpose: at 2x every pixel becomes an exact
+        2x2 block, so the art stays crisp instead of going soft the way a
+        fractional stretch would.
+        """
+        scale = max(1, int(scale))
+        if scale == self.scale:
+            return
+        factor = scale / self.scale
+        self.scale = scale
+
+        self.canvas.configure(width=SCREEN_W * scale,
+                              height=(SCREEN_H + HUD_H) * scale)
+        # Everything already on the canvas moves with one call. Anything the
+        # game repositions every frame goes through _place and is scaled there.
+        self.canvas.scale("all", 0, 0, factor, factor)
+
+        for item, font in self._base_fonts.items():
+            self.canvas.itemconfigure(item, font=_scaled_font(font, scale))
+        for item, width in self._base_widths.items():
+            self.canvas.itemconfigure(item, width=max(1.0, width * scale))
+
+        # The wall stripes cache their positions as whole screen pixels, so
+        # those really are stale and have to go. The sprite and blood
+        # bookkeeping must NOT be cleared: it records what is currently
+        # visible, not where things are, and canvas.scale has already moved
+        # them. Forgetting it would leave whatever was on screen at the moment
+        # of the switch stranded there for good.
+        self._reset_column_pool()
+        self._hud_cache.clear()
 
     def _reset_column_pool(self):
         """
@@ -1147,6 +1476,48 @@ class Game:
                                                          fill="#7de07d",
                                                          outline="")
                             for _ in self.cross_parts]
+
+    def _build_boss_bar(self):
+        """A health bar across the top, shown only while a boss is awake."""
+        self.boss_items = []
+        self.boss_name = self.canvas.create_text(
+            SCREEN_W / 2, 20, text="", fill="#e8b24a",
+            font=("Courier", 11, "bold"), state="hidden")
+        self.boss_back = self.canvas.create_rectangle(
+            120, 30, SCREEN_W - 120, 42, fill="#140c0c", outline="#5a3a34",
+            state="hidden")
+        self.boss_bar = self.canvas.create_rectangle(
+            121, 31, SCREEN_W - 121, 41, fill="#c8402c", outline="",
+            state="hidden")
+        self.boss_items = [self.boss_name, self.boss_back, self.boss_bar]
+        self._boss_shown = False
+
+    def draw_boss_bar(self):
+        """Find the boss, if there is one awake, and show how it is doing."""
+        boss = None
+        for monster in self.monsters:
+            if monster.alive and monster.awake and monster.info.get("boss"):
+                boss = monster
+                break
+
+        if boss is None:
+            if self._boss_shown:
+                for item in self.boss_items:
+                    self.canvas.itemconfigure(item, state="hidden")
+                self._boss_shown = False
+            return
+
+        if not self._boss_shown:
+            for item in self.boss_items:
+                self.canvas.itemconfigure(item, state="normal")
+            self.canvas.itemconfigure(self.boss_name,
+                                      text="HIGH VALUE TARGET - %s"
+                                           % boss.info["name"])
+            self._boss_shown = True
+
+        fraction = max(0.0, boss.hp / boss.max_hp)
+        width = (SCREEN_W - 242) * fraction
+        self._place(self.boss_bar, 121, 31, 121 + width, 41)
 
     def _build_menu(self):
         """The main menu: a title, a stack of entries, and a footer."""
@@ -1376,8 +1747,8 @@ class Game:
         self._warping = True
         try:
             self.canvas.event_generate("<Motion>", warp=True,
-                                       x=int(SCREEN_W // 2),
-                                       y=int(SCREEN_H // 2))
+                                       x=int(SCREEN_W * self.scale // 2),
+                                       y=int(SCREEN_H * self.scale // 2))
         except tk.TclError:
             self._warping = False
             self.mouse_enabled = False
@@ -1387,7 +1758,7 @@ class Game:
 
     def _on_mouse_down(self, event):
         if self.state == STATE_MENU:
-            row = int(round((event.y - MENU_TOP) / MENU_SPACING))
+            row = int(round((event.y / self.scale - MENU_TOP) / MENU_SPACING))
             if 0 <= row < len(MENU_ENTRIES) and self._menu_enabled(
                     MENU_ENTRIES[row]):
                 self.menu_index = row
@@ -1421,8 +1792,10 @@ class Game:
         if not self.mouse_captured or self.state != STATE_PLAYING:
             return
 
-        move_x = event.x - SCREEN_W // 2
-        move_y = event.y - SCREEN_H // 2
+        # The pointer reports screen pixels; the game thinks in view units.
+        k = self.scale
+        move_x = (event.x - SCREEN_W * k // 2) / k
+        move_y = (event.y - SCREEN_H * k // 2) / k
         if move_x == 0 and move_y == 0:
             return
 
@@ -1627,6 +2000,11 @@ class Game:
         self.ads = 0.0
         self.aiming = False
         self.blood = []
+        # Actually take the bar down, rather than just forgetting it is up -
+        # otherwise it stays on screen into a mission that has no boss.
+        for item in getattr(self, "boss_items", ()):
+            self.canvas.itemconfigure(item, state="hidden")
+        self._boss_shown = False
         self.cam_x = self.px
         self.cam_y = self.py
 
@@ -2054,15 +2432,24 @@ class Game:
         monster.hp -= amount
         monster.hurt_flash = 0.09
         monster.awake = True
-        self.spray_blood(monster.x, monster.y, BLOOD_ON_HIT)
+        big = monster.info.get("boss", False)
+        self.spray_blood(monster.x, monster.y,
+                         BLOOD_ON_HIT * (2 if big else 1),
+                         force=1.5 if big else 1.0)
         if monster.hp <= 0 and monster.alive:
             monster.alive = False
             monster.death_timer = 0.0
-            self.spray_blood(monster.x, monster.y, BLOOD_ON_DEATH, force=1.35)
+            self.spray_blood(monster.x, monster.y,
+                             BLOOD_ON_DEATH * (2 if big else 1),
+                             force=2.0 if big else 1.35)
             self.kills += 1
             self.level_score += int(monster.info["score"]
                                     * DIFFICULTIES[self.difficulty]["score"])
-            self.say("%s down." % monster.info["name"], 1.4)
+            if monster.info.get("boss"):
+                self.say("%s IS DOWN. Move to extraction."
+                         % monster.info["name"], 5.0)
+            else:
+                self.say("%s down." % monster.info["name"], 1.4)
             if self.kills >= self.total_monsters:
                 self.say("All hostiles neutralised - move to extraction!", 4.0)
 
@@ -2223,7 +2610,7 @@ class Game:
         """Slide the ceiling/floor bands to wherever the horizon now is."""
         offset = self.horizon - self.half_h
         for item, y0, y1 in self.bg_items:
-            self.canvas.coords(item, 0, y0 + offset, SCREEN_W, y1 + offset)
+            self._place(item, 0, y0 + offset, SCREEN_W, y1 + offset)
 
     def draw_walls(self, rays):
         """
@@ -2262,7 +2649,9 @@ class Game:
         step = self.column_step
         half_step = step // 2
         last_ray = NUM_COLUMNS - 1
-        span = int(step * column_w) + 1
+        k = self.scale                      # view units -> screen units
+        span = (int(step * column_w) + 1) * k
+        limit = SCREEN_H * k
 
         for i in range(0, NUM_COLUMNS, step):
             # One stripe can stand for several rays. Take the middle one so the
@@ -2287,7 +2676,7 @@ class Game:
 
             height = SCREEN_H / distance
             top = horizon - height * 0.5
-            x0 = int(i * column_w)
+            x0 = int(i * column_w) * k
             x1 = x0 + span
 
             shades = (bright if side == 0 else dark)[char]
@@ -2314,8 +2703,8 @@ class Game:
                     y0 = 0
                 if y1 > SCREEN_H:
                     y1 = SCREEN_H
-                y0 = int(y0)
-                y1 = int(y1)
+                y0 = int(y0 * k)
+                y1 = int(y1 * k)
                 if y1 <= y0:
                     continue
 
@@ -2412,12 +2801,13 @@ class Game:
 
         # Park anything that was on screen last frame but is not any more.
         for item in self._on_screen - used:
-            self.canvas.coords(item, -40, -40, -30, -30)
+            self._place(item, -40, -40, -30, -30)
         self._on_screen = used
 
     def _draw_one_sprite(self, slot, kind, info, depth, screen_x, used,
                          flash=False, squash=0.0, level_override=None):
         canvas = self.canvas
+        place = self._place
         horizon = self.horizon
 
         full_height = SCREEN_H / depth
@@ -2481,7 +2871,7 @@ class Game:
             if x1 <= x0 or y1 <= y0 or x1 < 0 or x0 > SCREEN_W:
                 continue
 
-            canvas.coords(item, x0, y0, x1, y1)
+            place(item, x0, y0, x1, y1)
             canvas.itemconfigure(item,
                                  fill="#ffffff" if flash else shades[colour_key][level])
             used.add(item)
@@ -2517,8 +2907,8 @@ class Game:
                 continue
             floor_y = horizon + full_height * 0.5
             item = self.pool_items[slot]
-            canvas.coords(item, screen_x - width * 0.5, floor_y - width * 0.16,
-                          screen_x + width * 0.5, floor_y + width * 0.16)
+            self._place(item, screen_x - width * 0.5, floor_y - width * 0.16,
+                        screen_x + width * 0.5, floor_y + width * 0.16)
             canvas.itemconfigure(item, state="normal",
                                  fill=BLOOD_POOL_SHADES[shade_index(depth)])
             slot += 1
@@ -2550,8 +2940,8 @@ class Game:
                 continue
 
             item = self.blood_items[slot]
-            canvas.coords(item, screen_x - size, screen_y - size,
-                          screen_x + size, screen_y + size)
+            self._place(item, screen_x - size, screen_y - size,
+                        screen_x + size, screen_y + size)
             # Specks darken as they dry, so a spray fades rather than blinking.
             fade = max(0.0, min(1.0, life / BLOOD_LIFETIME))
             canvas.itemconfigure(
@@ -2637,7 +3027,7 @@ class Game:
                 x1 = optic_x + (x1 - optic_x) * recede
                 y0 = optic_y + (y0 - optic_y) * recede
                 y1 = optic_y + (y1 - optic_y) * recede
-            canvas.coords(item, centre + x0, base + y0, centre + x1, base + y1)
+            self._place(item, centre + x0, base + y0, centre + x1, base + y1)
 
         # --- the sight picture ---
         if ads > SIGHT_SHOW_AT:
@@ -2646,14 +3036,12 @@ class Game:
             settle = (ads - SIGHT_SHOW_AT) / (1.0 - SIGHT_SHOW_AT)
             radius = SIGHT_RADIUS * (1.55 - 0.55 * settle)
             outer = radius + SIGHT_RING_WIDTH * 0.5
-            canvas.coords(self.sight_ring, aim_x - outer, aim_y - outer,
-                          aim_x + outer, aim_y + outer)
-            canvas.coords(self.sight_edge, aim_x - radius, aim_y - radius,
-                          aim_x + radius, aim_y + radius)
-            canvas.coords(self.dot_halo, aim_x - 7, aim_y - 7,
-                          aim_x + 7, aim_y + 7)
-            canvas.coords(self.dot_item, aim_x - 3, aim_y - 3,
-                          aim_x + 3, aim_y + 3)
+            self._place(self.sight_ring, aim_x - outer, aim_y - outer,
+                        aim_x + outer, aim_y + outer)
+            self._place(self.sight_edge, aim_x - radius, aim_y - radius,
+                        aim_x + radius, aim_y + radius)
+            self._place(self.dot_halo, aim_x - 7, aim_y - 7, aim_x + 7, aim_y + 7)
+            self._place(self.dot_item, aim_x - 3, aim_y - 3, aim_x + 3, aim_y + 3)
             if not self._sight_visible:
                 for item in (self.sight_ring, self.sight_edge,
                              self.dot_halo, self.dot_item):
@@ -2671,9 +3059,8 @@ class Game:
             near = reach * 0.45
             for item, (sx, sy) in zip(self.hit_items,
                                       ((-1, -1), (1, -1), (-1, 1), (1, 1))):
-                canvas.coords(item,
-                              aim_x + sx * near, aim_y + sy * near,
-                              aim_x + sx * reach, aim_y + sy * reach)
+                self._place(item, aim_x + sx * near, aim_y + sy * near,
+                            aim_x + sx * reach, aim_y + sy * reach)
             if not self._hitmark_visible:
                 for item in self.hit_items:
                     canvas.itemconfigure(item, state="normal")
@@ -2687,10 +3074,10 @@ class Game:
         # down the sight, the optic itself is the reticle.
         if ads > 0.55:
             for item in self.cross_items:
-                canvas.coords(item, 0, 0, 0, 0)
+                self._place(item, 0, 0, 0, 0)
         else:
             for item, (x0, y0, x1, y1) in zip(self.cross_items, self.cross_parts):
-                canvas.coords(item, aim_x + x0, aim_y + y0, aim_x + x1, aim_y + y1)
+                self._place(item, aim_x + x0, aim_y + y0, aim_x + x1, aim_y + y1)
 
         if self.flash_timer > 0:
             muzzle_x = centre - 3
@@ -2702,7 +3089,7 @@ class Game:
                 radius = size if i % 2 == 0 else size * 0.42
                 points.append(muzzle_x + math.cos(angle) * radius)
                 points.append(muzzle_y + math.sin(angle) * radius)
-            canvas.coords(self.flash_item, *points)
+            self._place(self.flash_item, *points)
             canvas.itemconfigure(self.flash_item, state="normal")
         else:
             canvas.itemconfigure(self.flash_item, state="hidden")
@@ -2732,8 +3119,8 @@ class Game:
             self.canvas.itemconfigure(self.hp_bar, fill=colour)
             self._hud_cache["hp_colour"] = colour
 
-        self.canvas.coords(self.hp_bar, 19, SCREEN_H + 59,
-                           19 + max(0.0, 102 * fraction), SCREEN_H + 67)
+        self._place(self.hp_bar, 19, SCREEN_H + 59,
+                    19 + max(0.0, 102 * fraction), SCREEN_H + 67)
 
         self._set_text(self.message_text, self.message if self.message_timer > 0 else "")
 
@@ -2757,7 +3144,7 @@ class Game:
             item = self.minimap_dots[index]
             x = ox + monster.x * cell
             y = oy + monster.y * cell
-            canvas.coords(item, x - 1.5, y - 1.5, x + 1.5, y + 1.5)
+            self._place(item, x - 1.5, y - 1.5, x + 1.5, y + 1.5)
             canvas.itemconfigure(item, state="normal",
                                  fill="#ff5555" if monster.awake else "#a04040")
             index += 1
@@ -2768,7 +3155,7 @@ class Game:
             item = self.minimap_dots[index]
             x = ox + pickup.x * cell
             y = oy + pickup.y * cell
-            canvas.coords(item, x - 1.5, y - 1.5, x + 1.5, y + 1.5)
+            self._place(item, x - 1.5, y - 1.5, x + 1.5, y + 1.5)
             canvas.itemconfigure(item, state="normal",
                                  fill="#55dd55" if pickup.kind == "h" else "#ddbb44")
             index += 1
@@ -2779,17 +3166,16 @@ class Game:
 
         x = ox + self.px * cell
         y = oy + self.py * cell
-        canvas.coords(self.map_player, x - 2, y - 2, x + 2, y + 2)
-        canvas.coords(self.map_facing, x, y,
-                      x + self.dir_x * cell * 1.9, y + self.dir_y * cell * 1.9)
+        self._place(self.map_player, x - 2, y - 2, x + 2, y + 2)
+        self._place(self.map_facing, x, y,
+                    x + self.dir_x * cell * 1.9, y + self.dir_y * cell * 1.9)
 
     def _draw_minimap_walls(self):
         """Redrawn only when a level loads, never during play."""
         cell = self.map_cell
         ox, oy = self.map_x, self.map_y
-        self.canvas.coords(self.map_bg, ox - 3, oy - 3,
-                           ox + self.map_w * cell + 3,
-                           oy + self.map_h * cell + 3)
+        self._place(self.map_bg, ox - 3, oy - 3,
+                    ox + self.map_w * cell + 3, oy + self.map_h * cell + 3)
 
         # Draw each unbroken run of identical squares as ONE bar rather than a
         # square per cell. A 24x20 map is mostly long straight walls, so this
@@ -2811,8 +3197,7 @@ class Game:
                     item = self.minimap_wall_items[index]
                     x = ox + col * cell
                     y = oy + row * cell
-                    self.canvas.coords(item, x, y, x + (run_end - col) * cell,
-                                       y + cell)
+                    self._place(item, x, y, x + (run_end - col) * cell, y + cell)
                     self.canvas.itemconfigure(
                         item, state="normal",
                         fill="#3fd46a" if char == "X" else "#5a5a6a")
@@ -2913,10 +3298,9 @@ class Game:
             y = MENU_TOP + index * MENU_SPACING
             if selected:
                 left = SCREEN_W / 2 - 150
-                canvas.coords(marker, left, y - 7, left + 12, y,
-                              left, y + 7)
+                self._place(marker, left, y - 7, left + 12, y, left, y + 7)
             else:
-                canvas.coords(marker, 0, 0, 0, 0, 0, 0)
+                self._place(marker, 0, 0, 0, 0, 0, 0)
 
         canvas.itemconfigure(
             self.menu_hint,
@@ -2988,11 +3372,21 @@ class Game:
             self.fullscreen = False
             self.say("Fullscreen is not available here", 3.0)
             return
+
         if self.fullscreen:
+            # Blow the picture up by the largest whole number that still fits.
+            # Whole numbers keep every pixel an exact square block instead of
+            # going soft, and because it is only a multiply on the way out to
+            # the canvas it does not draw one extra shape - a bigger picture
+            # is very nearly free.
+            self.apply_scale(min(self.root.winfo_screenwidth() // SCREEN_W,
+                                 self.root.winfo_screenheight()
+                                 // (SCREEN_H + HUD_H)))
             self.canvas.pack_forget()
             self.canvas.place(relx=0.5, rely=0.5, anchor="center")
             self.root.configure(bg="#000000")
         else:
+            self.apply_scale(1)
             self.canvas.place_forget()
             self.canvas.pack()
         self.save["fullscreen"] = self.fullscreen
@@ -3102,6 +3496,7 @@ class Game:
         self.draw_blood()
         self.draw_weapon()
         self.draw_hud()
+        self.draw_boss_bar()
         self.draw_minimap()
 
         hurting = "normal" if self.pain_timer > 0 else "hidden"
