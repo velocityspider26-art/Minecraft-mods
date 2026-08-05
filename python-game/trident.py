@@ -113,8 +113,19 @@ ADS_SPEED = 9.0         # how fast the sight comes up, in "per second"
 ADS_SENSITIVITY = 0.55  # the mouse slows down while you are zoomed in
 ADS_MOVE_SCALE = 0.48   # so does your walk
 ADS_SPREAD_SCALE = 0.18 # and the rifle tightens right up
-ADS_SQUEEZE_X = 0.34    # how far the weapon narrows as it lines up with you
-ADS_SQUEEZE_Y = 0.72    # and how much it shortens
+ADS_SQUEEZE_X = 0.42    # how far the weapon narrows as it lines up with you
+ADS_SQUEEZE_Y = 0.78    # and how much it shortens
+
+# The sight picture: looking through the optic, you see a dark tube with a
+# ring of housing around the outside and a red dot floating in the middle.
+SIGHT_RADIUS = 92       # radius of the clear glass, in pixels
+SIGHT_RING_WIDTH = 40   # thickness of the housing around it
+SIGHT_SHOW_AT = 0.40    # how far into the ADS movement the tube appears
+ADS_GUN_DROP = SIGHT_RADIUS + 26   # how far the weapon sits below the tube
+
+# Hit marker: a small X that flicks up on the reticle when a round connects.
+HITMARK_TIME = 0.13
+LOW_AMMO = 10           # rounds left before the counter starts warning you
 
 # Weapon sway. A real rifle has weight: swing the view and it lags behind,
 # then settles. SWAY_TURN is how many pixels it trails per radian you turn.
@@ -373,6 +384,10 @@ CARBINE_PARTS = build_carbine()
 # stays correct if the weapon is ever redrawn.
 OPTIC_CENTRE_Y = -120
 OPTIC_CENTRE_X = round(gun_axis(OPTIC_CENTRE_Y))
+
+# Anything higher up the weapon than this counts as being in front of the
+# optic, and folds away when you look down the sight.
+GUN_FORWARD_OF_OPTIC = OPTIC_CENTRE_Y - 14
 
 
 
@@ -713,6 +728,9 @@ class Game:
         self._turn_accum = 0.0      # view movement waiting to be turned into sway
         self._pitch_accum = 0.0
         self.breath = 0.0
+        self.hitmark_timer = 0.0
+        self._sight_visible = False
+        self._hitmark_visible = False
         self.ads = 0.0              # 0 = hip fire, 1 = fully sighted in
         self.lean = 0.0             # -1 hard left, +1 hard right
         self.lean_applied = 0.0     # how much of it the walls allowed
@@ -875,9 +893,25 @@ class Game:
                                                        fill=colour, outline="")
                           for *_, colour in self.gun_parts]
 
-        # The red dot inside the optic, shown only while sighted in.
+        # The sight picture, drawn over the weapon. A hollow ring stands in for
+        # the optic housing you are looking through - tkinter can draw an oval
+        # outline of any thickness, which is exactly the shape needed - and the
+        # red dot floats in the clear middle.
+        self.sight_ring = self.canvas.create_oval(
+            0, 0, 0, 0, outline="#0b0d11", width=SIGHT_RING_WIDTH, fill="",
+            state="hidden")
+        self.sight_edge = self.canvas.create_oval(
+            0, 0, 0, 0, outline="#565c66", width=2, fill="", state="hidden")
+        self.dot_halo = self.canvas.create_oval(0, 0, 0, 0, fill="#7a1a14",
+                                                outline="", state="hidden")
         self.dot_item = self.canvas.create_oval(0, 0, 0, 0, fill="#ff3b30",
-                                                outline="")
+                                                outline="", state="hidden")
+
+        # Hit marker - four short diagonals. Lines can be drawn at any angle,
+        # unlike the rectangles everything else is made of.
+        self.hit_items = [self.canvas.create_line(0, 0, 0, 0, fill="#f2f2f2",
+                                                  width=2, state="hidden")
+                          for _ in range(4)]
 
         # An eight-pointed star that pops for a moment when you fire.
         self.flash_item = self.canvas.create_polygon(0, 0, 0, 0, 0, 0,
@@ -1255,6 +1289,7 @@ class Game:
         self.sway_y = 0.0
         self._turn_accum = 0.0
         self._pitch_accum = 0.0
+        self.hitmark_timer = 0.0
         self.ads = 0.0
         self.aiming = False
         self.blood = []
@@ -1616,6 +1651,7 @@ class Game:
             victim = self._pellet_target(spread)
             if victim is not None:
                 self.damage_monster(victim, SHOT_DAMAGE)
+                self.hitmark_timer = HITMARK_TIME
 
     def _pellet_target(self, spread):
         """Find the nearest living monster this pellet hits, or None."""
@@ -2177,27 +2213,85 @@ class Game:
         # exactly on the aim point, and the bob and the lean shift damp away.
         # The optic moves with the squeeze, so line up against the squeezed
         # position or the sight ends up off to one side.
+        # Once the tube is up it IS the sight, so the weapon's own little optic
+        # block is redundant - and leaving the receiver sitting in the middle
+        # of the glass looks like you are aiming through your own rifle. So the
+        # sighted pose drops far enough for the body to sit below the housing,
+        # with just the top of it showing, which is what you actually see.
         sight_x = (aim_x - OPTIC_CENTRE_X * squeeze_x
                    + self.lean_applied * LEAN_GUN_SHIFT * 0.3
                    + self.sway_x * 0.35 + breath_x * 0.5)
-        sight_y = (aim_y - OPTIC_CENTRE_Y * squeeze_y + self.recoil * 0.5
+        sight_y = (aim_y - OPTIC_CENTRE_Y * squeeze_y + ADS_GUN_DROP
+                   + self.recoil * 0.5
                    + self.sway_y * 0.35 + breath_y * 0.5)
 
         centre = hip_x + (sight_x - hip_x) * ads
         base = hip_y + (sight_y - hip_y) * ads
 
-        for item, (x0, y0, x1, y1, _colour) in zip(self.gun_items, self.gun_parts):
-            canvas.coords(item,
-                          centre + x0 * squeeze_x, base + y0 * squeeze_y,
-                          centre + x1 * squeeze_x, base + y1 * squeeze_y)
+        # Everything in front of the optic - handguard, gas block, front sight,
+        # muzzle - shrinks away towards the optic as the sight comes up. Behind
+        # a red dot you are looking straight down the weapon, so the barrel is
+        # pointing away from you and should recede, not sit there side-on.
+        recede = 1.0 - ads
+        optic_x = OPTIC_CENTRE_X * squeeze_x
+        optic_y = OPTIC_CENTRE_Y * squeeze_y
 
-        # The red dot itself. It only appears once you are properly behind the
-        # optic, and it is what you actually aim with from then on.
-        if ads > 0.55:
-            canvas.coords(self.dot_item, aim_x - 2.5, aim_y - 2.5,
-                          aim_x + 2.5, aim_y + 2.5)
-        else:
-            canvas.coords(self.dot_item, 0, 0, 0, 0)
+        for item, part in zip(self.gun_items, self.gun_parts):
+            x0, y0, x1, y1 = part[0], part[1], part[2], part[3]
+            x0 *= squeeze_x
+            x1 *= squeeze_x
+            y0 *= squeeze_y
+            y1 *= squeeze_y
+            if part[1] < GUN_FORWARD_OF_OPTIC:
+                x0 = optic_x + (x0 - optic_x) * recede
+                x1 = optic_x + (x1 - optic_x) * recede
+                y0 = optic_y + (y0 - optic_y) * recede
+                y1 = optic_y + (y1 - optic_y) * recede
+            canvas.coords(item, centre + x0, base + y0, centre + x1, base + y1)
+
+        # --- the sight picture ---
+        if ads > SIGHT_SHOW_AT:
+            # The tube starts oversized and settles to its proper size, which
+            # reads as the optic coming up to your eye.
+            settle = (ads - SIGHT_SHOW_AT) / (1.0 - SIGHT_SHOW_AT)
+            radius = SIGHT_RADIUS * (1.55 - 0.55 * settle)
+            outer = radius + SIGHT_RING_WIDTH * 0.5
+            canvas.coords(self.sight_ring, aim_x - outer, aim_y - outer,
+                          aim_x + outer, aim_y + outer)
+            canvas.coords(self.sight_edge, aim_x - radius, aim_y - radius,
+                          aim_x + radius, aim_y + radius)
+            canvas.coords(self.dot_halo, aim_x - 7, aim_y - 7,
+                          aim_x + 7, aim_y + 7)
+            canvas.coords(self.dot_item, aim_x - 3, aim_y - 3,
+                          aim_x + 3, aim_y + 3)
+            if not self._sight_visible:
+                for item in (self.sight_ring, self.sight_edge,
+                             self.dot_halo, self.dot_item):
+                    canvas.itemconfigure(item, state="normal")
+                self._sight_visible = True
+        elif self._sight_visible:
+            for item in (self.sight_ring, self.sight_edge,
+                         self.dot_halo, self.dot_item):
+                canvas.itemconfigure(item, state="hidden")
+            self._sight_visible = False
+
+        # --- hit marker ---
+        if self.hitmark_timer > 0:
+            reach = 12 - 4 * (self.hitmark_timer / HITMARK_TIME)
+            near = reach * 0.45
+            for item, (sx, sy) in zip(self.hit_items,
+                                      ((-1, -1), (1, -1), (-1, 1), (1, 1))):
+                canvas.coords(item,
+                              aim_x + sx * near, aim_y + sy * near,
+                              aim_x + sx * reach, aim_y + sy * reach)
+            if not self._hitmark_visible:
+                for item in self.hit_items:
+                    canvas.itemconfigure(item, state="normal")
+                self._hitmark_visible = True
+        elif self._hitmark_visible:
+            for item in self.hit_items:
+                canvas.itemconfigure(item, state="hidden")
+            self._hitmark_visible = False
 
         # The crosshair fades out as the optic takes over - once you are looking
         # down the sight, the optic itself is the reticle.
@@ -2211,7 +2305,7 @@ class Game:
         if self.flash_timer > 0:
             muzzle_x = centre - 3
             muzzle_y = base + self.muzzle_y
-            size = 26 + random.uniform(-4, 4)
+            size = (26 + random.uniform(-4, 4)) * (1.0 - 0.55 * ads)
             points = []
             for i in range(8):
                 angle = i * math.pi / 4
@@ -2226,6 +2320,10 @@ class Game:
     def draw_hud(self):
         self._set_text(self.hp_text, str(self.hp))
         self._set_text(self.ammo_text, str(self.ammo))
+        ammo_colour = "#d45454" if self.ammo <= LOW_AMMO else "#e0c24a"
+        if self._hud_cache.get("ammo_colour") != ammo_colour:
+            self.canvas.itemconfigure(self.ammo_text, fill=ammo_colour)
+            self._hud_cache["ammo_colour"] = ammo_colour
         self._set_text(self.kills_text, "%d/%d" % (self.kills, self.total_monsters))
         self._set_text(self.score_text, str(self.total_score + self.level_score))
         self._set_text(self.level_text, "OP %d" % (self.level_index + 1))
@@ -2379,6 +2477,7 @@ class Game:
         self.shot_timer = max(0.0, self.shot_timer - dt)
         self.flash_timer = max(0.0, self.flash_timer - dt)
         self.pain_timer = max(0.0, self.pain_timer - dt)
+        self.hitmark_timer = max(0.0, self.hitmark_timer - dt)
         self.message_timer = max(0.0, self.message_timer - dt)
         self.recoil *= max(0.0, 1.0 - dt * 9.0)
         self.exit_pulse = (self.exit_pulse + dt * 3.2) % (2 * math.pi)

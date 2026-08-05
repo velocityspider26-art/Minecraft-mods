@@ -536,6 +536,88 @@ def test_game_loop(root, game):
     check("letting go lowers it again", game.ads < 0.05, "ads %.2f" % game.ads)
     game._update_camera_vectors()
 
+    # -- the sight picture --
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+    game.sway_x = game.sway_y = 0.0
+
+    game.ads = 0.0
+    game.tick()
+    check("no sight tube while hip firing",
+          game.canvas.itemcget(game.sight_ring, "state") == "hidden")
+
+    game.ads = 1.0
+    game._update_camera_vectors()
+    game.tick()
+    check("the sight tube appears when fully sighted in",
+          game.canvas.itemcget(game.sight_ring, "state") == "normal")
+
+    # The tube and the dot both have to sit on the aim point, or you would be
+    # aiming with something that is not pointing where the rounds go.
+    ring = game.canvas.coords(game.sight_ring)
+    check("the sight tube is centred on the aim point",
+          abs((ring[0] + ring[2]) / 2 - trident.SCREEN_W / 2) < 1.0
+          and abs((ring[1] + ring[3]) / 2 - game.horizon) < 1.0,
+          "tube centre (%.1f, %.1f)" % ((ring[0] + ring[2]) / 2,
+                                        (ring[1] + ring[3]) / 2))
+    dot = game.canvas.coords(game.dot_item)
+    check("the red dot sits on the aim point",
+          abs((dot[0] + dot[2]) / 2 - trident.SCREEN_W / 2) < 1.0
+          and abs((dot[1] + dot[3]) / 2 - game.horizon) < 1.0)
+
+    # Everything forward of the optic must fold away, or the barrel sits
+    # across the glass you are trying to look through.
+    forward = [item for item, part in zip(game.gun_items, game.gun_parts)
+               if part[1] < trident.GUN_FORWARD_OF_OPTIC]
+    check("there are parts in front of the optic to fold away", forward)
+    spans = [game.canvas.coords(i) for i in forward]
+    biggest = max((c[3] - c[1]) for c in spans)
+    check("the barrel folds away behind the sight", biggest < 2.0,
+          "tallest forward part is still %.1f px" % biggest)
+
+    game.ads = 0.0
+    game._update_camera_vectors()
+    game.tick()
+    check("the tube goes away again when you lower the weapon",
+          game.canvas.itemcget(game.sight_ring, "state") == "hidden")
+
+    # -- hit marker --
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+    game.hitmark_timer = 0.0
+    game.tick()
+    check("no hit marker before you hit anything",
+          game.canvas.itemcget(game.hit_items[0], "state") == "hidden")
+
+    # Stand right on top of a hostile and fire - every round should connect.
+    target = game.monsters[0]
+    game.px, game.py = target.x, target.y - 1.4
+    game._update_camera_position()
+    game.angle = math.atan2(target.y - game.py, target.x - game.px)
+    game._update_camera_vectors()
+    game.cast_rays()
+    game.shot_timer = 0.0
+    game.shoot()
+    check("a round that connects raises the hit marker",
+          game.hitmark_timer > 0)
+    game.tick()
+    check("the hit marker is drawn on the reticle",
+          game.canvas.itemcget(game.hit_items[0], "state") == "normal")
+
+    for _ in range(30):
+        game.tick()
+    check("the hit marker fades away on its own",
+          game.canvas.itemcget(game.hit_items[0], "state") == "hidden")
+
+    # -- low ammo warning --
+    game.ammo = trident.LOW_AMMO + 5
+    game.tick()
+    plenty = game.canvas.itemcget(game.ammo_text, "fill")
+    game.ammo = trident.LOW_AMMO - 1
+    game.tick()
+    check("the round counter warns you when you are nearly dry",
+          game.canvas.itemcget(game.ammo_text, "fill") != plenty)
+
     # -- blood --
     game.load_level(0)
     game.blood = []

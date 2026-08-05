@@ -30,7 +30,7 @@ IDLE itself is built on — so if you can open IDLE, you can run this.
 | --- | --- |
 | **Mouse** | aim — click the window to capture it |
 | **Left mouse** or `Space` | fire |
-| **Right mouse** | aim down the sight — zooms in, steadies the rifle |
+| **Right mouse** | aim down the sight — red dot, zoom, steadier rifle |
 | `W` `S` or `↑` `↓` | move forward / backward |
 | `A` `D` | strafe (step sideways without turning) |
 | `Q` `E` | lean left / right to peek round a corner |
@@ -166,21 +166,29 @@ Looking down the sight is like squinting through a cardboard tube. You see
 making its pretend camera lens narrower. Everything else — slower mouse,
 slower walk, steadier rifle — follows from that one change.
 
-### 10. Leaning is just moving your eyeballs
+### 10. What you see when you aim
+
+Looking down a sight is not "the gun, but squashed". It is a **tube you look
+through**. So the game draws a big dark ring with clear space in the middle, a
+red dot floating in that space, and the rest of the rifle poking up from below
+the ring. The barrel folds away out of sight, because when you look down a
+rifle the barrel is pointing away from you — you would not see it side-on.
+
+### 11. Leaning is just moving your eyeballs
 
 Press `Q` or `E` and your **feet stay exactly where they are** while your
 **head slides sideways**. That is the entire trick, and it is why you can peek
 past a corner without stepping into the open. If your head would end up inside
 a wall, the game shortens the lean until it fits.
 
-### 11. Blood
+### 12. Blood
 
 Each speck of blood is a tiny dot that remembers three things: where it is, how
 high off the floor it is, and how fast it is travelling. Thirty times a second
 each dot moves a little and falls a little. When it hits the floor, it is
 deleted. Bodies leave a dark pool that spreads out over about a second.
 
-### 12. The gun is a staircase
+### 13. The gun is a staircase
 
 The gun has to sit at an angle, but the only shape this game can draw is a
 rectangle that is perfectly straight up and down. You cannot tilt a rectangle.
@@ -193,7 +201,7 @@ The gun also has **weight**. Swing the view fast and it trails behind for a
 moment before catching up, and it drifts very gently even when you stand still,
 as if you were breathing.
 
-### 13. Why it doesn't run like treacle
+### 14. Why it doesn't run like treacle
 
 Python is slow, and drawing is slow, so the game follows two rules:
 
@@ -205,7 +213,7 @@ Python is slow, and drawing is slow, so the game follows two rules:
   times a frame, would be slow — so every shade of every colour is worked out
   once at the beginning and looked up from a list afterwards.
 
-### 14. The heartbeat
+### 15. The heartbeat
 
 About 30 times a second the game does the same three things: **read the
 keyboard and mouse → move everything a tiny bit → redraw the screen.** Then it
@@ -411,15 +419,33 @@ Holding the right mouse button raises the sight, and one number drives all of
 it. `self.ads` slides between 0 and 1 rather than snapping, and everything
 reads off it: the field of view narrows (which *is* the zoom — the camera
 plane's length is the FOV, so shortening it magnifies), the mouse slows down,
-your walk slows down, and the rifle's scatter tightens.
+your walk slows down, the rifle's scatter tightens, and the weapon sway damps
+right down.
 
-The weapon has to move too, and it cannot rotate — canvas rectangles are
-axis-aligned. Two things stand in for the rotation. The whole sprite slides
-until the middle of the optic sits exactly on the aim point, and at the same
-time it is **squeezed horizontally**, because bringing a rifle in line with
-your eye means you stop seeing it side-on and start looking along it. Once you
-are properly behind the optic the crosshair disappears and a red dot takes
-over, which is what you aim with from then on.
+The first attempt at this just squeezed the side-on weapon sprite and slid its
+little optic block onto the aim point. It looked wrong, and the reason is worth
+understanding: **looking down a sight is not a squashed side view of a rifle.**
+It is a view *through a tube*. So the sight is now drawn as what you would
+actually see:
+
+- **The tube** is a hollow oval — tkinter will draw an oval outline of any
+  thickness you like, which is exactly the shape needed — with a thin lighter
+  ring just inside it for the edge of the glass. It starts oversized and
+  settles to its proper size, which reads as the optic coming up to your eye.
+- **Everything in front of the optic** — handguard, gas block, front sight,
+  muzzle — folds away towards the optic as the sight comes up. Behind a red dot
+  you are looking straight *down* the weapon, so the barrel is pointing away
+  from you and must recede rather than sit there side-on.
+- **The weapon body drops below the tube.** Once the tube exists it *is* the
+  sight, so the sprite's own optic is redundant, and leaving the receiver
+  sitting in the middle of the glass looks like you are aiming through your own
+  rifle. Only the top of the body shows under the housing, which is what you
+  really see.
+- **The red dot** floats in the clear middle with a dim halo behind it, and the
+  crosshair disappears — from then on the dot is what you aim with.
+
+The muzzle flash is scaled down while sighted in, or it would blot out the
+whole sight picture every time you pulled the trigger.
 
 ### 8. Leaning
 
@@ -436,7 +462,19 @@ outright, the code tries the full distance, and if that spot is solid it keeps
 shortening the reach until it finds one that is not. So leaning into a wall
 just quietly stops part-way instead of clipping through.
 
-### 9. Blood
+### 9. Feedback: hit markers and warnings
+
+Two small things that cost almost nothing and make the game feel finished.
+
+A round that actually connects flicks a **hit marker** onto the reticle for
+about an eighth of a second — four short diagonals that spring outwards. They
+are `create_line` items rather than rectangles, because a line can be drawn at
+any angle and a rectangle cannot.
+
+The rounds counter turns **red** below ten, so you notice you are nearly dry
+before the rifle goes quiet on you.
+
+### 10. Blood
 
 Specks live in the **world**, not on the screen: each has a map position, a
 height above the floor, and a velocity, and falls under gravity until it lands
@@ -449,7 +487,7 @@ Bodies stay where they fall and a pool spreads underneath them over about a
 second. The particle pool is capped, so a long firefight cannot slowly fill
 memory with old specks.
 
-### 10. Hostiles: billboards and a depth buffer
+### 11. Hostiles: billboards and a depth buffer
 
 Hostiles and pickups are **billboards** — flat cut-outs that always turn to
 face you. Each is projected onto the screen by inverting the camera matrix
@@ -468,7 +506,7 @@ The code goes a bit further and walks outwards from the sprite's centre column
 to find how much of it is unobstructed, so a hostile can be *half* hidden
 around a corner rather than popping in and out all at once.
 
-### 11. Making it fast enough in Python
+### 12. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -485,7 +523,7 @@ colour once, at import time, and the render loop just indexes into a list.
 There is also a small cache so a stripe that has not changed colour does not
 get recoloured at all.
 
-Measured by `selftest.py` in this environment: **about 19 ms of work per
+Measured by `selftest.py` in this environment: **about 13 ms of work per
 frame** at 320 rays, against a 33 ms budget for 30 fps. That figure is the
 worst case — the benchmark spins the camera every frame, which defeats the
 "has this changed colour?" cache completely. Walking normally it is well under
@@ -560,6 +598,8 @@ Everything worth changing is at the top of the file in **Section 1**.
 - **Lean too far or too little?** `LEAN_DISTANCE`.
 - **Weapon swings too much?** `SWAY_TURN`, or `SWAY_MAX` for the limit.
   `SWAY_BREATH` is the idle drift. Zero them all to lock the weapon still.
+- **Hit markers or the low-ammo warning in the way?** `HITMARK_TIME` and
+  `LOW_AMMO`. `SIGHT_RADIUS` and `SIGHT_RING_WIDTH` size the optic tube.
 - **Too much blood?** `BLOOD_ON_HIT`, `BLOOD_ON_DEATH`, or `MAX_BLOOD` for
   the overall cap. Set them all to 0 to turn it off.
 - **Game runs slowly?** Lower `NUM_COLUMNS` from `320` to `160` or `128`. This
@@ -576,10 +616,10 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 92 checks covering the level
+or just open it in IDLE and press F5. It runs 104 checks covering the level
 data, the raycasting maths, the wall texture tables, mouse aiming, pitch
-clamping, leaning being cut short at a wall, the sight, blood physics, the
-reticle staying clear of the weapon at every pitch and sway, and a few hundred
+clamping, leaning being cut short at a wall, the sight picture, hit markers, blood
+physics, the reticle staying clear of the weapon at every pitch and sway, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 
