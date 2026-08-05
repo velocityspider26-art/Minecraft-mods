@@ -604,7 +604,11 @@ def test_game_loop(root, game):
     check("the hit marker is drawn on the reticle",
           game.canvas.itemcget(game.hit_items[0], "state") == "normal")
 
-    for _ in range(30):
+    # Wait it out by the clock, not by counting frames. The marker fades on
+    # elapsed time, and how many frames that takes depends entirely on how
+    # fast the machine is.
+    deadline = time.perf_counter() + trident.HITMARK_TIME + 0.15
+    while time.perf_counter() < deadline:
         game.tick()
     check("the hit marker fades away on its own",
           game.canvas.itemcget(game.hit_items[0], "state") == "hidden")
@@ -690,6 +694,77 @@ def test_game_loop(root, game):
     worst += max(abs(v) for t in trident.WALL_SEAMS.values() for v in t)
     check("shade table is deep enough for the texture offsets (%d < %d)"
           % (worst, trident.SHADE_LEVELS), worst < trident.SHADE_LEVELS)
+
+    # -- staying alive when things go wrong --
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+
+    # Losing focus must drop every held key. Without this you alt-tab away
+    # mid-sprint and come back jammed against a wall.
+    game.keys = {"w", "shift_l"}
+    game.firing = True
+    game.aiming = True
+    game.mouse_captured = True
+    game._on_focus_lost()
+    check("losing focus lets go of every held key", not game.keys)
+    check("losing focus stops you firing", not game.firing and not game.aiming)
+    check("losing focus hands the mouse back", not game.mouse_captured)
+
+    # One bad frame must not kill the loop for good. A game that has silently
+    # stopped redrawing looks exactly like a crash.
+    game._reported_error = False
+    broken = game.draw_hud
+    game.draw_hud = lambda: 1 / 0
+    game.tick()
+    game.draw_hud = broken
+    check("a broken frame does not stop the game", game.running)
+    check("the error is reported rather than swallowed", game._reported_error)
+    game.tick()
+    check("the next frame carries on normally", game.running)
+
+    # Quitting is idempotent - the window close button and Esc both land here.
+    check("quit is available to the window close button", callable(game.quit))
+
+    # -- automatic quality --
+    game.detail_tier = 0
+    game._detail_score = 0
+    budget = trident.FRAME_MS / 1000.0
+    for _ in range(trident.DETAIL_PATIENCE + 2):
+        game._pace(budget * 2.0)            # every frame overruns badly
+    check("wall detail drops when frames overrun", game.detail_tier > 0,
+          "tier is still %d" % game.detail_tier)
+    for _ in range(trident.DETAIL_PATIENCE + 2):
+        game._pace(budget * 0.1)            # now there is plenty of room
+    check("wall detail comes back when there is room", game.detail_tier == 0,
+          "tier stuck at %d" % game.detail_tier)
+
+    # A comfortable frame time must not make it wobble either way.
+    game.detail_tier = 1
+    game._detail_score = 0
+    steady = budget * (trident.DETAIL_DROP_AT + trident.DETAIL_RAISE_AT) / 2
+    for _ in range(trident.DETAIL_PATIENCE * 3):
+        game._pace(steady)
+    check("steady frame times leave the detail alone", game.detail_tier == 1,
+          "tier drifted to %d" % game.detail_tier)
+    game.detail_tier = 0
+
+    # Every tier has to be drawable, because the machine decides which one
+    # gets used and we never get to try it first.
+    for tier in range(trident.MAX_TIER + 1):
+        game.detail_tier = tier
+        game.tick()
+    check("every detail tier renders without error", True)
+    game.detail_tier = 0
+
+    check("coarser tiers really do use fewer bands",
+          all(len(t[0]) >= len(t[-1]) for t in trident.WALL_BAND_TIERS.values()))
+    for char, tiers in trident.WALL_BAND_TIERS.items():
+        covers = all(abs(t[0][0]) < 1e-9 and abs(t[-1][1] - 1.0) < 1e-9
+                     for t in tiers)
+        gapless = all(abs(t[i][1] - t[i + 1][0]) < 1e-9
+                      for t in tiers for i in range(len(t) - 1))
+        check("wall %r covers the full height at every tier" % char,
+              covers and gapless)
 
     # -- every level loads --
     for index in range(len(trident.LEVELS)):

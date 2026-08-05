@@ -213,7 +213,19 @@ Python is slow, and drawing is slow, so the game follows two rules:
   times a frame, would be slow — so every shade of every colour is worked out
   once at the beginning and looked up from a list afterwards.
 
-### 15. The heartbeat
+### 15. It looks after itself
+
+Nobody knows how fast the computer running this will be, so the game times its
+own frames. If they start taking too long it quietly draws the walls with less
+detail; when there is room again it puts the detail back. You lose some of the
+lines on the walls and nothing else.
+
+It is also hard to kill. If something goes wrong on one frame it prints the
+problem and keeps going, rather than freezing. And if you click away to another
+window it lets go of whatever keys you were holding, so you do not come back to
+find yourself running into a wall.
+
+### 16. The heartbeat
 
 About 30 times a second the game does the same three things: **read the
 keyboard and mouse → move everything a tiny bit → redraw the screen.** Then it
@@ -506,7 +518,50 @@ The code goes a bit further and walks outwards from the sprite's centre column
 to find how much of it is unobstructed, so a hostile can be *half* hidden
 around a corner rather than popping in and out all at once.
 
-### 12. Making it fast enough in Python
+### 12. Staying up on a computer you have never seen
+
+The game has to survive a machine nobody tested it on, so a few things are
+defensive on purpose.
+
+**One bad frame must not end the game.** The frame body is wrapped, and if
+anything throws, the error is printed once and the loop carries on. A window
+that has silently stopped redrawing looks exactly like a crash; a game with one
+glitchy frame does not.
+
+**Closing the window has to stop the loop.** `WM_DELETE_WINDOW` is bound, so
+the X button and `Esc` both go through the same clean shutdown. Without it the
+next scheduled frame wakes up and tries to draw into a window that is gone.
+
+**Losing focus drops every held key.** Keys held when you alt-tab never send a
+release, so without this you come back to find yourself still sprinting into a
+wall.
+
+**Pointer warping might not be allowed.** It is the one thing here that depends
+on the operating system agreeing to something, so it is wrapped: if it fails,
+mouse aiming turns itself off and says so rather than leaving you with a view
+that will not move.
+
+**The frame loop always leaves tkinter some time.** If a frame overruns and we
+ask to be woken immediately, frames queue back-to-back and the window stops
+answering the keyboard — which, again, looks like a freeze. There is a minimum
+gap between frames for that reason.
+
+### 13. Automatic quality
+
+There is no way to know in advance how fast the computer running this will be,
+so rather than guessing, the game watches how long its frames actually take.
+
+If they start overrunning the budget it steps the walls down to a coarser
+version of their texture; when there is room again it steps them back up. Wall
+banding is by far the cheapest thing to give up — you lose the horizontal
+courses but keep the shading, the seams and all of the perspective, so it still
+reads as a corridor.
+
+The two thresholds are deliberately far apart and a change has to be earned
+over twenty frames, or the quality would visibly flicker every time one frame
+ran slightly long.
+
+### 14. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -523,11 +578,28 @@ colour once, at import time, and the render loop just indexes into a list.
 There is also a small cache so a stripe that has not changed colour does not
 get recoloured at all.
 
-Measured by `selftest.py` in this environment: **about 13 ms of work per
+Drawing the walls turned out to be **86%** of the whole frame, so that is where
+the work went. Profiling showed it making 3,234 separate calls into the drawing
+library per frame, at about 1.6 microseconds each. Three changes between them
+roughly halved the frame:
+
+- **Talk to Tcl directly.** `canvas.coords(...)` is convenient but adds a layer
+  of Python argument handling to every call. Going straight to `tk.call` is
+  about 30% cheaper per call, which matters a lot when there are thousands.
+- **Use whole numbers.** Integers marshal faster than floats, *and* a wall that
+  has shifted a fraction of a pixel now rounds to the same place it was — which
+  feeds the next trick.
+- **Do not touch what has not moved.** Every band remembers where it was put
+  last frame. If it has not changed, the call is skipped entirely. Standing
+  still costs almost nothing.
+
+Plus the detail tiers from section 13, which cut the number of rectangles a
+typical frame draws in the first place.
+
+Measured by `selftest.py` in this environment: **12.6 ms → 6.9 ms of work per
 frame** at 320 rays, against a 33 ms budget for 30 fps. That figure is the
 worst case — the benchmark spins the camera every frame, which defeats the
-"has this changed colour?" cache completely. Walking normally it is well under
-half that, because most stripes keep the colour they already had.
+change-detection completely. Walking normally it is well under half that.
 
 ---
 
@@ -602,9 +674,12 @@ Everything worth changing is at the top of the file in **Section 1**.
   `LOW_AMMO`. `SIGHT_RADIUS` and `SIGHT_RING_WIDTH` size the optic tube.
 - **Too much blood?** `BLOOD_ON_HIT`, `BLOOD_ON_DEATH`, or `MAX_BLOOD` for
   the overall cap. Set them all to 0 to turn it off.
-- **Game runs slowly?** Lower `NUM_COLUMNS` from `320` to `160` or `128`. This
-  is by far the biggest lever — the picture gets chunkier, nothing else
-  changes. There is a live frame-rate readout in the corner of the status bar.
+- **Game runs slowly?** It should handle this itself — the walls step down to
+  a coarser texture automatically when frames overrun, and step back up when
+  they do not. If you want to force the issue, lower `NUM_COLUMNS` from `320`
+  to `160` or `128`; that is the biggest lever there is. There is a live
+  frame-rate readout in the corner of the status bar. `DETAIL_DROP_AT`,
+  `DETAIL_RAISE_AT` and `DETAIL_PATIENCE` tune how eagerly it adapts.
 - **Too hard?** Raise `PLAYER_MAX_HP` or `START_AMMO`, or lower the hostiles'
   `ranged_damage` in Section 3.
 - **Too dark?** Raise `FOG_FAR`.
@@ -616,10 +691,12 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 104 checks covering the level
+or just open it in IDLE and press F5. It runs 121 checks covering the level
 data, the raycasting maths, the wall texture tables, mouse aiming, pitch
 clamping, leaning being cut short at a wall, the sight picture, hit markers, blood
-physics, the reticle staying clear of the weapon at every pitch and sway, and a few hundred
+physics, the reticle staying clear of the weapon at every pitch and sway, the game
+surviving a broken frame, focus loss letting go of held keys, automatic quality
+stepping down and back up, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 

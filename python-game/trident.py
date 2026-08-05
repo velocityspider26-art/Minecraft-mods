@@ -56,6 +56,7 @@ import math
 import random
 import time
 import tkinter as tk
+import traceback
 
 
 # ===========================================================================
@@ -77,6 +78,13 @@ MAX_DEPTH = 26.0        # rays give up after this many grid squares
 
 TARGET_FPS = 30
 FRAME_MS = int(1000 / TARGET_FPS)
+MIN_FRAME_GAP_MS = 4    # always leave tkinter this long to itself
+
+# Automatic quality. If frames start overrunning the budget the walls step
+# down to a coarser texture, and step back up when there is room again.
+DETAIL_DROP_AT = 0.85   # fraction of the frame budget that counts as "slow"
+DETAIL_RAISE_AT = 0.45  # ...and as "plenty of room"
+DETAIL_PATIENCE = 20    # frames of agreement needed before anything changes
 
 # Movement, measured in grid squares per second.
 WALK_SPEED = 2.9
@@ -270,11 +278,61 @@ WALL_BANDS = {
 
 MAX_BANDS = max(len(bands) for bands in WALL_BANDS.values())
 
-# Anything shorter than this on screen is too far away for the banding to
-# read as anything but noise, so distant walls collapse to a single stripe.
-# That also keeps the cost down, because most columns in view are distant.
-BAND_MIN_HEIGHT = 30
-FLAT_BAND = ((0.0, 1.0, 0),)
+
+def simplify_bands(bands):
+    """
+    Halve a band list by merging neighbours in pairs.
+
+    Each merged pair keeps the shade of whichever of the two covered more of
+    the wall, so the boldest features survive and the fine ones drop out
+    first. That is exactly the right thing to lose as a wall shrinks into the
+    distance.
+    """
+    merged = []
+    for i in range(0, len(bands) - 1, 2):
+        first, second = bands[i], bands[i + 1]
+        taller = first if (first[1] - first[0]) >= (second[1] - second[0]) else second
+        merged.append((first[0], second[1], taller[2]))
+    if len(bands) % 2:
+        last = bands[-1]
+        merged.append((merged[-1][1], last[1], last[2]) if merged else last)
+    return tuple(merged)
+
+
+def band_tiers(bands):
+    """Full detail, then progressively coarser versions, down to one stripe."""
+    tiers = [tuple(bands)]
+    while len(tiers[-1]) > 1:
+        tiers.append(simplify_bands(tiers[-1]))
+    tiers.append(((0.0, 1.0, 0),))          # a single flat stripe
+    return tuple(tiers)
+
+
+# The banding is only worth drawing while each band is still a few pixels
+# tall. As a wall shrinks into the distance we step down through coarser
+# versions of its texture - which is also most of what keeps the frame cheap,
+# since a corridor is mostly made of columns that are some way off.
+WALL_BAND_TIERS = {char: band_tiers(bands) for char, bands in WALL_BANDS.items()}
+MAX_TIER = max(len(t) for t in WALL_BAND_TIERS.values()) - 1
+
+# Smallest on-screen wall height that still earns each tier, biggest first.
+# The numbers keep every band at roughly 15 pixels or more.
+TIER_HEIGHTS = (105.0, 60.0, 30.0, 0.0)
+
+
+def tier_for_height(height):
+    """Which detail tier a wall this tall on screen deserves."""
+    for tier, minimum in enumerate(TIER_HEIGHTS):
+        if height >= minimum:
+            return tier
+    return len(TIER_HEIGHTS) - 1
+
+
+# Distance -> brightness step, worked out once instead of per column per frame.
+SHADE_STEPS_PER_UNIT = 8
+SHADE_LOOKUP = tuple(
+    shade_index(i / SHADE_STEPS_PER_UNIT)
+    for i in range(int(MAX_DEPTH * SHADE_STEPS_PER_UNIT) + 4))
 
 SEAM_STEPS = 32         # how finely we sample across the wall face
 
@@ -741,6 +799,14 @@ class Game:
         self.fps = 0.0
         self.running = True
         self.horizon = self.half_h
+        # A direct line to Tcl. Going through canvas.coords() costs an extra
+        # layer of Python argument handling on every one of the thousands of
+        # calls the wall loop makes, and it adds up to milliseconds.
+        self._tk_call = self.canvas.tk.call
+        self._canvas_name = self.canvas._w
+        self.detail_tier = 0        # bumped up if the machine cannot keep up
+        self._detail_score = 0
+        self._reported_error = False
 
         # Build every canvas item once, up front. During the game we only
         # ever MOVE and RECOLOUR them - creating and deleting thousands of
@@ -754,6 +820,10 @@ class Game:
         self._build_minimap()
 
         self._bind_keys()
+        # Closing the window with its X button has to stop the loop too, or
+        # the next scheduled frame wakes up and tries to draw into a window
+        # that is not there any more.
+        root.protocol("WM_DELETE_WINDOW", self.quit)
 
         self.level_index = 0
         self.total_score = 0
@@ -807,8 +877,7 @@ class Game:
         ever moved afterwards.
         """
         self.column_items = []
-        self.column_fill = []       # each band's current colour
-        self.column_used = []       # how many bands the column drew last frame
+        self.column_used = [0] * NUM_COLUMNS    # bands each column drew last frame
         for i in range(NUM_COLUMNS):
             x0 = i * self.column_w
             # +1 pixel of overlap so there are no hairline gaps between stripes
@@ -817,8 +886,13 @@ class Game:
                 self.canvas.create_rectangle(x0, 0, x1, 0,
                                              fill="#000000", outline="")
                 for _ in range(MAX_BANDS)])
-            self.column_fill.append(["#000000"] * MAX_BANDS)
-            self.column_used.append(0)
+
+        # Where every band was put last frame, and what colour it was, so an
+        # unchanged band can be skipped. Kept as three flat lists rather than
+        # a list of lists - one index calculation beats two lookups.
+        self.column_fill = ["#000000"] * (NUM_COLUMNS * MAX_BANDS)
+        self._band_y0 = [-1] * (NUM_COLUMNS * MAX_BANDS)
+        self._band_y1 = [-1] * (NUM_COLUMNS * MAX_BANDS)
 
     def _build_sprite_pool(self):
         """
@@ -1057,7 +1131,7 @@ class Game:
         self.canvas.bind("<Motion>", self._on_mouse_move)
         # If the window loses focus (you alt-tabbed, or a dialog opened) let
         # the mouse go, otherwise the pointer stays trapped in a dead window.
-        self.root.bind("<FocusOut>", lambda _e: self._release_mouse())
+        self.root.bind("<FocusOut>", lambda _e: self._on_focus_lost())
 
     # Mouse aiming
     #
@@ -1070,6 +1144,27 @@ class Game:
     # Warping the pointer generates *another* Motion event, which would look
     # like the player yanking the mouse back the other way. `_warping` marks
     # that echo so it can be thrown away.
+
+    def _on_focus_lost(self):
+        """
+        Alt-tabbing away must not leave you running forwards for ever.
+
+        Keys held when the window loses focus never send a release to us, so
+        without this you come back to find yourself jammed against a wall.
+        """
+        self._release_mouse()
+        self.keys.clear()
+        self._pending_release.clear()
+        self.firing = False
+        self.aiming = False
+
+    def quit(self):
+        """Shut down cleanly, from the Esc key or the window's close button."""
+        self.running = False
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass            # already gone
 
     def _capture_mouse(self):
         if self.mouse_captured or not self.mouse_enabled:
@@ -1086,10 +1181,25 @@ class Game:
         self.canvas.configure(cursor="")
 
     def _centre_pointer(self):
-        """Put the pointer back in the middle of the view."""
+        """
+        Put the pointer back in the middle of the view.
+
+        This is the one part of the game that depends on something the
+        operating system might refuse to do. If warping is not available we
+        fall back to keyboard turning rather than leaving the player with a
+        view that will not move.
+        """
         self._warping = True
-        self.canvas.event_generate("<Motion>", warp=True,
-                                   x=int(SCREEN_W // 2), y=int(SCREEN_H // 2))
+        try:
+            self.canvas.event_generate("<Motion>", warp=True,
+                                       x=int(SCREEN_W // 2),
+                                       y=int(SCREEN_H // 2))
+        except tk.TclError:
+            self._warping = False
+            self.mouse_enabled = False
+            self._release_mouse()
+            self.say("Mouse aiming is not available here - use the arrow keys",
+                     5.0)
 
     def _on_mouse_down(self, _event):
         if self.state == STATE_TITLE:
@@ -1184,8 +1294,7 @@ class Game:
                 return
             # Stop the loop first: if we destroyed the window while a tick was
             # still booked in, that tick would wake up and find nothing to draw.
-            self.running = False
-            self.root.destroy()
+            self.quit()
             return
 
         if self.state == STATE_TITLE:
@@ -1503,8 +1612,12 @@ class Game:
             # (distance along the view direction, not along the ray). That is
             # exactly what we want: using the true ray length would bend the
             # walls outwards into a fisheye lens.
-            if distance < 0.0001:
-                distance = 0.0001
+            # A defensive floor. Walls cannot actually get this close - you
+            # would have to be standing inside one - but dividing the screen
+            # height by a near-zero distance would produce an absurd number
+            # to hand to the drawing code.
+            if distance < 0.05:
+                distance = 0.05
 
             # Where along the face of that wall square did we hit? Follow the
             # ray out to the wall and keep the fractional part. This is the
@@ -1886,43 +1999,74 @@ class Game:
             self.canvas.coords(item, 0, y0 + offset, SCREEN_W, y1 + offset)
 
     def draw_walls(self, rays):
-        canvas = self.canvas
-        column_w = self.column_w
+        """
+        Paint the wall stripes. This is where nearly all the frame time goes,
+        so it is written for speed rather than for looks.
+
+        Three things earn most of that speed:
+
+        * It talks to Tcl directly instead of going through tkinter's Canvas
+          methods. Those methods are convenient, but every one of them costs a
+          layer of Python argument handling, and there are thousands of calls
+          in here.
+        * Coordinates are whole numbers. Integers marshal into Tcl faster than
+          floats, and a wall that has only shifted a fraction of a pixel now
+          rounds to the same place it was last frame - which feeds straight
+          into the third trick.
+        * Nothing that has not moved is touched at all. Each band remembers
+          where it was put last frame; if it has not changed, the call is
+          skipped entirely. Standing still costs almost nothing.
+        """
+        tk_call = self._tk_call
+        canvas = self._canvas_name
         horizon = self.horizon
+        column_w = self.column_w
         items = self.column_items
         fills = self.column_fill
-
+        cache_y0 = self._band_y0
+        cache_y1 = self._band_y1
         used = self.column_used
+        tiers = WALL_BAND_TIERS
+        seams = WALL_SEAMS
+        bright = WALL_SHADES_BRIGHT
+        dark = WALL_SHADES_DARK
+        lookup = SHADE_LOOKUP
+        top_tier = self.detail_tier          # raised when the machine struggles
 
         for i in range(NUM_COLUMNS):
             distance, side, char, wall_x = rays[i]
             slot = items[i]
+            base_index = i * MAX_BANDS
 
             if distance >= MAX_DEPTH:
                 # Nothing hit: collapse the stripe so only sky/floor shows
                 for band in range(used[i]):
-                    canvas.coords(slot[band], 0, 0, 0, 0)
+                    spot = base_index + band
+                    if cache_y0[spot] != 0 or cache_y1[spot] != 0:
+                        tk_call(canvas, "coords", slot[band], 0, 0, 0, 0)
+                        cache_y0[spot] = 0
+                        cache_y1[spot] = 0
                 used[i] = 0
                 continue
 
             height = SCREEN_H / distance
             top = horizon - height * 0.5
-            x0 = i * column_w
-            x1 = x0 + column_w + 1
+            x0 = int(i * column_w)
+            x1 = int(x0 + column_w + 1)
 
-            shades = (WALL_SHADES_BRIGHT if side == 0 else WALL_SHADES_DARK)[char]
+            shades = (bright if side == 0 else dark)[char]
             # Distance fog, plus the free across-the-wall detail: a groove in
             # the wall face simply reads as a few steps darker.
-            base = shade_index(distance) + WALL_SEAMS[char][int(wall_x * SEAM_STEPS)]
+            base = (lookup[int(distance * SHADE_STEPS_PER_UNIT)]
+                    + seams[char][int(wall_x * SEAM_STEPS)])
 
-            # Close walls get the full banding. Distant ones would be drawing
-            # bands a pixel or two tall, so they collapse to one flat stripe -
-            # which is also what keeps the frame cost down, since most of the
-            # columns on screen at any moment are far away.
-            bands = WALL_BANDS[char] if height >= BAND_MIN_HEIGHT else FLAT_BAND
+            wall_tiers = tiers[char]
+            tier = tier_for_height(height) + top_tier
+            if tier >= len(wall_tiers):
+                tier = len(wall_tiers) - 1
+            bands = wall_tiers[tier]
 
             drawn = 0
-            column_fills = fills[i]
             for band_top, band_bottom, step in bands:
                 y0 = top + height * band_top
                 if y0 >= SCREEN_H:
@@ -1934,6 +2078,8 @@ class Game:
                     y0 = 0
                 if y1 > SCREEN_H:
                     y1 = SCREEN_H
+                y0 = int(y0)
+                y1 = int(y1)
                 if y1 <= y0:
                     continue
 
@@ -1943,17 +2089,24 @@ class Game:
                 elif level >= SHADE_LEVELS:
                     level = SHADE_LEVELS - 1
 
-                item = slot[drawn]
-                canvas.coords(item, x0, y0, x1, y1)
+                spot = base_index + drawn
+                if cache_y0[spot] != y0 or cache_y1[spot] != y1:
+                    tk_call(canvas, "coords", slot[drawn], x0, y0, x1, y1)
+                    cache_y0[spot] = y0
+                    cache_y1[spot] = y1
+
                 colour = shades[level]
-                # Only bother tkinter if the colour actually changed.
-                if colour != column_fills[drawn]:
-                    canvas.itemconfigure(item, fill=colour)
-                    column_fills[drawn] = colour
+                if colour != fills[spot]:
+                    tk_call(canvas, "itemconfigure", slot[drawn], "-fill", colour)
+                    fills[spot] = colour
                 drawn += 1
 
             for band in range(drawn, used[i]):
-                canvas.coords(slot[band], 0, 0, 0, 0)
+                spot = base_index + band
+                if cache_y0[spot] != 0 or cache_y1[spot] != 0:
+                    tk_call(canvas, "coords", slot[band], 0, 0, 0, 0)
+                    cache_y0[spot] = 0
+                    cache_y1[spot] = 0
             used[i] = drawn
 
     def draw_sprites(self):
@@ -2455,13 +2608,43 @@ class Game:
         We use root.after() rather than a `while True:` loop because tkinter
         needs to get back to its own event loop to process keys and repaint
         the window. A busy loop would just freeze the whole program.
+
+        The body is wrapped so that one bad frame cannot kill the game. If
+        something does go wrong the error is reported once and the loop keeps
+        running - a playable game with one glitchy frame beats a window that
+        has silently stopped redrawing and looks like a crash.
         """
         if not self.running:
             return
 
         frame_start = time.perf_counter()
-        dt = frame_start - self.last_time
-        self.last_time = frame_start
+        try:
+            self._frame(frame_start)
+        except tk.TclError:
+            return              # the window went away underneath us
+        except Exception:       # noqa: BLE001 - keep playing whatever happens
+            if not self._reported_error:
+                self._reported_error = True
+                traceback.print_exc()
+                self.say("Something went wrong - see the IDLE window", 6.0)
+
+        elapsed = time.perf_counter() - frame_start
+        self._pace(elapsed)
+
+        # Always leave tkinter a few milliseconds of its own. If a frame
+        # overruns the budget and we ask to be woken immediately, frames queue
+        # up back to back and the window stops responding to the keyboard -
+        # which looks exactly like a freeze.
+        delay = max(MIN_FRAME_GAP_MS, FRAME_MS - int(elapsed * 1000))
+        try:
+            self.root.after(delay, self.tick)
+        except tk.TclError:
+            self.running = False
+
+    def _frame(self, now):
+        """One frame's worth of work: advance the world, then draw it."""
+        dt = now - self.last_time
+        self.last_time = now
         # If the computer stalls (or you drag the window), pretend it was a
         # normal frame. Otherwise one huge dt would teleport you through walls.
         if dt > 0.1:
@@ -2500,10 +2683,6 @@ class Game:
             self.canvas.itemconfigure(self.pain_item, state=hurting)
             self._hud_cache["pain"] = hurting
 
-        # Rolling average of the real gap between frames, shown in the corner
-        # of the status bar. This is the honest frame rate, not just how long
-        # our own drawing took.
-        elapsed = time.perf_counter() - frame_start
         self.frame_times.append(dt)
         if len(self.frame_times) > 30:
             self.frame_times.pop(0)
@@ -2511,9 +2690,37 @@ class Game:
             average = sum(self.frame_times) / len(self.frame_times)
             self.fps = 1.0 / average if average > 0 else 0.0
 
-        # Aim for a steady frame rate by subtracting the time we just spent.
-        delay = max(1, FRAME_MS - int(elapsed * 1000))
-        self.root.after(delay, self.tick)
+    def _pace(self, elapsed):
+        """
+        Keep the game playable on a machine that cannot keep up.
+
+        There is no way to know in advance how fast the computer running this
+        will be, so instead of guessing we watch how long frames actually take
+        and trade wall detail for speed when we have to. Dropping a tier makes
+        every wall use a coarser version of its texture, which is by far the
+        cheapest thing to give up - and it is put back the moment there is room
+        for it again.
+
+        The two thresholds are deliberately far apart, and a change has to be
+        earned over several frames. Otherwise the quality would flicker up and
+        down every time a frame ran slightly long.
+        """
+        budget = FRAME_MS / 1000.0
+        if elapsed > budget * DETAIL_DROP_AT:
+            self._detail_score += 1
+        elif elapsed < budget * DETAIL_RAISE_AT:
+            self._detail_score -= 1
+        else:
+            return
+
+        if self._detail_score >= DETAIL_PATIENCE:
+            self._detail_score = 0
+            if self.detail_tier < MAX_TIER:
+                self.detail_tier += 1
+        elif self._detail_score <= -DETAIL_PATIENCE:
+            self._detail_score = 0
+            if self.detail_tier > 0:
+                self.detail_tier -= 1
 
 
 # ===========================================================================
