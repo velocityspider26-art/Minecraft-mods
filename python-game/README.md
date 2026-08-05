@@ -7,9 +7,10 @@ computer with no installing, no `pip`, and no downloads.
 
 ```
 python-game/
-├── trident.py    the game            (this is the thing you run)
-├── selftest.py   optional checks     (proves the maths and maps are correct)
-└── README.md     this write-up
+├── trident.py           the game     (this is the thing you run)
+├── selftest.py          optional checks
+├── README.md            this write-up
+└── trident_save.json    created on first run - settings and progress
 ```
 
 ---
@@ -18,8 +19,8 @@ python-game/
 
 1. Open `trident.py` in IDLE — **File → Open…**
 2. Press **F5** (or **Run → Run Module**)
-3. **Click inside the game window.** That is what hands the mouse over to the
-   game. Press **Esc** at any time to get your cursor back.
+3. The **main menu** appears. Pick a mission and the game takes the mouse.
+   Press **Esc** at any time to get your cursor back.
 
 `tkinter`, the library that draws the window, ships with Python and is what
 IDLE itself is built on — so if you can open IDLE, you can run this.
@@ -36,11 +37,58 @@ IDLE itself is built on — so if you can open IDLE, you can run this.
 | `Q` `E` | lean left / right to peek round a corner |
 | `←` `→` | turn without the mouse |
 | `Shift` | sprint |
-| `M` | mouse aiming on / off |
+| `M` | mouse aiming on / off — or back to the menu after a mission |
 | `Tab` | show / hide the tac-map |
 | `R` | restart the mission |
 | `N` | next mission (once you have cleared one) |
 | `Esc` | release the mouse — press again to quit |
+
+### The menu
+
+The game opens on a menu rather than dropping you straight in:
+
+| Entry | |
+| --- | --- |
+| **CONTINUE** | picks up at the furthest mission you have reached |
+| **NEW MISSION** | starts again from the first |
+| **DIFFICULTY** | RECRUIT / OPERATOR / VETERAN |
+| **DETAIL** | LOW / MEDIUM / HIGH — see *Frame rate* below |
+| **FULLSCREEN** | borderless, view centred |
+| **QUIT** | |
+
+`W`/`S` or the arrows move, `A`/`D` change a setting, `Enter` picks, and you
+can click a row directly. Everything you change is written to
+`trident_save.json` next to the game, along with your best score and how far
+you have got, so it is all still there next time.
+
+### Difficulty
+
+Each setting is a set of multipliers on the normal game, so one line says
+exactly how much easier or harder it is:
+
+| | Your health | Your ammo | Their damage | Their health | Score |
+| --- | --- | --- | --- | --- | --- |
+| **RECRUIT** | ×1.35 | ×1.35 | ×0.6 | ×0.8 | ×0.75 |
+| **OPERATOR** | — | — | — | — | — |
+| **VETERAN** | ×0.7 | ×0.75 | ×1.5 | ×1.3 | ×1.5 |
+
+### Frame rate
+
+If the game runs slowly, **it should sort itself out** — it measures its own
+frame rate and steps the detail down until it keeps up, then back up if there
+is room. You can also set it yourself in the menu.
+
+What the levels change:
+
+| | Stripe width | Wall texture |
+| --- | --- | --- |
+| **LOW** | 4 rays per stripe | coarse |
+| **MEDIUM** | 2 rays per stripe | reduced |
+| **HIGH** | 1 ray per stripe | full |
+
+MEDIUM is the default and is very hard to tell from HIGH while you are moving.
+LOW still has all the shading, perspective and wall seams — it just draws about
+**eighty** wall shapes a frame instead of two thousand.
 
 ### The mission
 
@@ -546,7 +594,34 @@ ask to be woken immediately, frames queue back-to-back and the window stops
 answering the keyboard — which, again, looks like a freeze. There is a minimum
 gap between frames for that reason.
 
-### 13. Automatic quality
+### 13. Automatic quality, and the bug that stopped it working
+
+The first version of this timed how long our own Python took each frame,
+decided everything was comfortable, and never stepped the quality down — on a
+machine that was managing ten frames a second.
+
+The mistake is worth knowing about, because it is easy to make. **Issuing
+drawing commands and actually drawing are different things.** All those calls
+do is tell the canvas where its shapes now are; the window system does the real
+painting afterwards, on its own time. So our own stopwatch said "3 ms, plenty
+of room" while the frame really took a hundred. It now judges on the measured
+gap between frames, which includes everything.
+
+The other half of the fix was giving it something worth turning down. Wall
+texture detail alone was not enough, because the real cost is not the
+arithmetic — it is **how many separate shapes the drawing library has to track
+and repaint**, and there were over three thousand of them. So the quality
+ladder now also widens the stripes: one stripe per two rays, or per four, which
+cuts the shape count straight down with it. Rays are all still cast either way,
+since they are cheap and the sprites need the full depth buffer to clip
+against.
+
+Measured at the same viewpoint: **2,240 wall shapes a frame at the old
+settings, 209 at MEDIUM, 80 at LOW.** The minimap went from 511 shapes to a few
+dozen at the same time, by drawing each run of identical squares as one bar
+instead of a square per cell.
+
+### 14. How it decides
 
 There is no way to know in advance how fast the computer running this will be,
 so rather than guessing, the game watches how long its frames actually take.
@@ -561,7 +636,7 @@ The two thresholds are deliberately far apart and a change has to be earned
 over twenty frames, or the quality would visibly flicker every time one frame
 ran slightly long.
 
-### 14. Making it fast enough in Python
+### 15. Making it fast enough in Python
 
 Python is not a fast language, and tkinter's canvas is not a fast renderer.
 Two decisions do most of the heavy lifting:
@@ -691,12 +766,13 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 121 checks covering the level
+or just open it in IDLE and press F5. It runs 173 checks covering the level
 data, the raycasting maths, the wall texture tables, mouse aiming, pitch
 clamping, leaning being cut short at a wall, the sight picture, hit markers, blood
 physics, the reticle staying clear of the weapon at every pitch and sway, the game
 surviving a broken frame, focus loss letting go of held keys, automatic quality
-stepping down and back up, and a few hundred
+stepping down and back up, the difficulty multipliers, the save file surviving
+being empty or edited into nonsense, every menu row, and fullscreen, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 

@@ -22,12 +22,22 @@ Test 3 needs a screen, so if you are running somewhere without one it is
 skipped rather than failed.
 """
 
+import json
 import math
+import os
 import sys
+import tempfile
 import time
 from collections import deque
 
 import trident
+
+# Tests must not touch a real save file, so point the game at a scratch one.
+trident.SAVE_FILE = os.path.join(tempfile.gettempdir(), "trident_selftest.json")
+try:
+    os.remove(trident.SAVE_FILE)
+except OSError:
+    pass
 
 
 PASSED = 0
@@ -726,35 +736,56 @@ def test_game_loop(root, game):
     check("quit is available to the window close button", callable(game.quit))
 
     # -- automatic quality --
-    game.detail_tier = 0
-    game._detail_score = 0
-    budget = trident.FRAME_MS / 1000.0
-    for _ in range(trident.DETAIL_PATIENCE + 2):
-        game._pace(budget * 2.0)            # every frame overruns badly
-    check("wall detail drops when frames overrun", game.detail_tier > 0,
-          "tier is still %d" % game.detail_tier)
-    for _ in range(trident.DETAIL_PATIENCE + 2):
-        game._pace(budget * 0.1)            # now there is plenty of room
-    check("wall detail comes back when there is room", game.detail_tier == 0,
-          "tier stuck at %d" % game.detail_tier)
+    # It has to judge on the REAL frame rate. An earlier version timed only
+    # our own Python work, decided every frame was cheap, and so never
+    # stepped down on the machines that needed it most.
+    def pretend_fps(value, frames):
+        game.fps = value
+        game.frame_times = [1.0 / value] * 30
+        for _ in range(frames):
+            game._pace()
 
-    # A comfortable frame time must not make it wobble either way.
-    game.detail_tier = 1
-    game._detail_score = 0
-    steady = budget * (trident.DETAIL_DROP_AT + trident.DETAIL_RAISE_AT) / 2
-    for _ in range(trident.DETAIL_PATIENCE * 3):
-        game._pace(steady)
-    check("steady frame times leave the detail alone", game.detail_tier == 1,
-          "tier drifted to %d" % game.detail_tier)
-    game.detail_tier = 0
+    game.set_quality(2)                      # start at the top
+    pretend_fps(9.0, trident.DETAIL_PATIENCE * 3)
+    check("quality drops when the frame rate is bad", game.quality < 2,
+          "quality stuck at %d" % game.quality)
+    check("dropping quality really does widen the stripes",
+          game.column_step > 1, "stripe width %d" % game.column_step)
 
-    # Every tier has to be drawable, because the machine decides which one
-    # gets used and we never get to try it first.
-    for tier in range(trident.MAX_TIER + 1):
-        game.detail_tier = tier
+    pretend_fps(60.0, trident.DETAIL_PATIENCE * 3)
+    check("quality comes back when the frame rate is fine", game.quality == 2,
+          "quality stuck at %d" % game.quality)
+
+    # A frame rate between the two thresholds must not make it wobble.
+    game.set_quality(1)
+    steady = (trident.QUALITY_DROP_FPS + trident.QUALITY_RAISE_FPS) / 2
+    pretend_fps(steady, trident.DETAIL_PATIENCE * 4)
+    check("a steady frame rate leaves the quality alone", game.quality == 1,
+          "quality drifted to %d" % game.quality)
+
+    check("quality never runs off either end of the ladder", True)
+    game.set_quality(0)
+    pretend_fps(5.0, trident.DETAIL_PATIENCE * 3)
+    check("it stops at the bottom of the ladder", game.quality == 0)
+    game.set_quality(len(trident.QUALITY_LEVELS) - 1)
+    pretend_fps(120.0, trident.DETAIL_PATIENCE * 3)
+    check("it stops at the top of the ladder",
+          game.quality == len(trident.QUALITY_LEVELS) - 1)
+
+    # Every level has to be drawable, because the machine picks which one gets
+    # used and we never get to try it first. Each should draw fewer shapes
+    # than the one above it - that is the whole point of the ladder.
+    drawn = []
+    game.load_level(0)
+    game.state = trident.STATE_PLAYING
+    for level in range(len(trident.QUALITY_LEVELS)):
+        game.set_quality(level)
         game.tick()
-    check("every detail tier renders without error", True)
-    game.detail_tier = 0
+        drawn.append(sum(game.column_used))
+    check("every quality level renders without error", True)
+    check("lower quality really does draw fewer shapes (%s)" % drawn,
+          drawn[0] < drawn[-1])
+    game.set_quality(trident.DEFAULT_QUALITY)
 
     check("coarser tiers really do use fewer bands",
           all(len(t[0]) >= len(t[-1]) for t in trident.WALL_BAND_TIERS.values()))
@@ -765,6 +796,164 @@ def test_game_loop(root, game):
                       for t in tiers for i in range(len(t) - 1))
         check("wall %r covers the full height at every tier" % char,
               covers and gapless)
+
+    # -- difficulty --
+    for level, rules in enumerate(trident.DIFFICULTIES):
+        game.difficulty = level
+        game.load_level(0)
+        hostile = game.monsters[0]
+        check("%s sets up without error" % rules["name"], game.max_hp > 0)
+        if level > 0:
+            check("%s is harder than %s"
+                  % (rules["name"], trident.DIFFICULTIES[level - 1]["name"]),
+                  rules["enemy_damage"] >= trident.DIFFICULTIES[level - 1]["enemy_damage"]
+                  and rules["health"] <= trident.DIFFICULTIES[level - 1]["health"])
+        check("%s hostiles have at least 1 health" % rules["name"],
+              hostile.hp >= 1)
+        check("%s hostiles do at least 1 damage" % rules["name"],
+              hostile.melee_damage >= 1 and hostile.ranged_damage >= 1)
+
+    game.difficulty = 0
+    game.load_level(0)
+    easy_hp, easy_enemy = game.max_hp, game.monsters[0].hp
+    game.difficulty = len(trident.DIFFICULTIES) - 1
+    game.load_level(0)
+    check("the easiest setting gives you more health than the hardest",
+          easy_hp > game.max_hp, "%d vs %d" % (easy_hp, game.max_hp))
+    check("the easiest setting gives hostiles less health",
+          easy_enemy < game.monsters[0].hp)
+    check("a medkit cannot heal past the difficulty's health cap",
+          True)
+    game.hp = game.max_hp
+    medkit = next(p for p in game.pickups if p.kind == "h")
+    game.px, game.py = medkit.x, medkit.y
+    game._update_camera_position()
+    game.check_pickups()
+    check("a full-health operator leaves the medkit alone", not medkit.taken)
+    game.difficulty = trident.DEFAULT_DIFFICULTY
+
+    # -- the save file --
+    check("a missing save file falls back to the defaults",
+          trident.load_save()["difficulty"] == trident.DEFAULT_DIFFICULTY)
+
+    # Nonsense in the file must not stop the game starting. A save is just a
+    # text file - somebody will open it.
+    for junk in ("", "not json at all", "[1, 2, 3]", "null",
+                 '{"difficulty": "hard"}', '{"quality": 999}',
+                 '{"continue_level": -5}', '{"best_score": "loads"}'):
+        with open(trident.SAVE_FILE, "w") as handle:
+            handle.write(junk)
+        data = trident.load_save()
+        ok = (0 <= data["difficulty"] < len(trident.DIFFICULTIES)
+              and 0 <= data["quality"] < len(trident.QUALITY_LEVELS)
+              and 0 <= data["continue_level"] < len(trident.LEVELS)
+              and isinstance(data["best_score"], int))
+        check("save file survives junk: %r" % junk[:22], ok, "got %s" % data)
+
+    # A real round trip.
+    trident.write_save({"difficulty": 2, "quality": 0, "fullscreen": True,
+                        "best_score": 4321, "missions_cleared": 3,
+                        "continue_level": 1, "continue_score": 900})
+    data = trident.load_save()
+    check("settings survive a save and reload",
+          data["difficulty"] == 2 and data["quality"] == 0
+          and data["fullscreen"] is True and data["best_score"] == 4321
+          and data["continue_level"] == 1)
+
+    # Progress is recorded when a mission is cleared.
+    game.save = dict(trident.DEFAULT_SAVE)
+    game.load_level(0)
+    game.kills = 5
+    game.record_progress(0, 1500)
+    check("clearing a mission unlocks the next one",
+          game.save["continue_level"] == 1)
+    check("clearing a mission records the score", game.save["best_score"] == 1500)
+    check("clearing a mission counts towards the total",
+          game.save["missions_cleared"] == 1)
+    game.record_progress(0, 200)
+    check("a worse run does not overwrite your best score",
+          game.save["best_score"] == 1500)
+
+    # An unwritable save must not crash anything.
+    saved_path = trident.SAVE_FILE
+    trident.SAVE_FILE = os.path.join(saved_path, "nope", "cannot", "write.json")
+    check("an unwritable save file is handled quietly",
+          trident.write_save({"a": 1}) is False)
+    game.store_save()
+    check("the game keeps running when it cannot save", game.running)
+    trident.SAVE_FILE = saved_path
+
+    # -- the main menu --
+    game.open_menu()
+    check("the menu opens", game.state == trident.STATE_MENU)
+    check("opening the menu hands the mouse back", not game.mouse_captured)
+
+    # The menu is a full stop - nothing should move behind it.
+    where = (game.px, game.py)
+    game.keys = {"w"}
+    for _ in range(20):
+        game.tick()
+    game.keys = set()
+    check("nothing moves while the menu is open", (game.px, game.py) == where)
+
+    # Navigation must skip over anything that cannot be chosen.
+    game.save["continue_level"] = 0          # nothing to continue yet
+    game.menu_index = 0
+    game._menu_move(1)
+    check("the menu skips entries you cannot pick",
+          trident.MENU_ENTRIES[game.menu_index] != "continue")
+
+    game.save["continue_level"] = 1          # now there is
+    check("continue turns on once you have cleared something",
+          game._menu_enabled("continue"))
+
+    for index, entry in enumerate(trident.MENU_ENTRIES):
+        game.menu_index = index
+        game.draw_menu()
+    check("every menu row draws", True)
+
+    # Changing a value from the menu sticks and is written out.
+    game.open_menu()
+    game.menu_index = trident.MENU_ENTRIES.index("difficulty")
+    before = game.difficulty
+    game._menu_adjust(1)
+    check("the menu changes the difficulty", game.difficulty != before)
+    check("the change is written to the save file",
+          trident.load_save()["difficulty"] == game.difficulty)
+
+    game.menu_index = trident.MENU_ENTRIES.index("quality")
+    before = game.quality
+    game._menu_adjust(1)
+    check("the menu changes the detail level", game.quality != before)
+
+    # Starting a mission from the menu actually starts it.
+    game.open_menu()
+    game.menu_index = trident.MENU_ENTRIES.index("new")
+    game._menu_choose()
+    check("NEW MISSION starts the game", game.state == trident.STATE_PLAYING)
+    check("NEW MISSION starts from the first map", game.level_index == 0)
+
+    game.save["continue_level"] = 1
+    game.save["continue_score"] = 700
+    game.open_menu()
+    game.menu_index = trident.MENU_ENTRIES.index("continue")
+    game._menu_choose()
+    check("CONTINUE picks up where you left off",
+          game.level_index == 1 and game.total_score == 700)
+
+    # -- fullscreen --
+    game.open_menu()
+    was = game.fullscreen
+    game.toggle_fullscreen()
+    check("fullscreen toggles", game.fullscreen != was)
+    game.tick()
+    check("the game still draws in fullscreen", game.running)
+    game.toggle_fullscreen()
+    check("fullscreen toggles back", game.fullscreen == was)
+    game.tick()
+    check("the game still draws after leaving fullscreen", game.running)
+    game.close_menu()
+    game.state = trident.STATE_PLAYING
 
     # -- every level loads --
     for index in range(len(trident.LEVELS)):

@@ -52,7 +52,9 @@ enough to run in plain Python.
 Written for a school project.  See README.md for a full write-up.
 """
 
+import json
 import math
+import os
 import random
 import time
 import tkinter as tk
@@ -80,11 +82,23 @@ TARGET_FPS = 30
 FRAME_MS = int(1000 / TARGET_FPS)
 MIN_FRAME_GAP_MS = 4    # always leave tkinter this long to itself
 
-# Automatic quality. If frames start overrunning the budget the walls step
-# down to a coarser texture, and step back up when there is room again.
-DETAIL_DROP_AT = 0.85   # fraction of the frame budget that counts as "slow"
-DETAIL_RAISE_AT = 0.45  # ...and as "plenty of room"
-DETAIL_PATIENCE = 20    # frames of agreement needed before anything changes
+# Quality ladder: (name, stripe width in rays, wall texture tier).
+#
+# The stripe width is the important one. What actually costs time here is not
+# the arithmetic - it is how many separate shapes the drawing library has to
+# track and repaint, and there are thousands. Drawing one stripe per two rays
+# instead of per ray halves that at a stroke.
+QUALITY_LEVELS = (
+    ("LOW",    4, 3),
+    ("MEDIUM", 2, 1),
+    ("HIGH",   1, 0),
+)
+DEFAULT_QUALITY = 1     # start at MEDIUM; the game moves itself from there
+
+# Automatic quality, judged on the real measured frame rate.
+QUALITY_DROP_FPS = 24.0     # below this, give something up
+QUALITY_RAISE_FPS = 29.0    # above this, there is room for more
+DETAIL_PATIENCE = 25        # frames of agreement before anything changes
 
 # Movement, measured in grid squares per second.
 WALK_SPEED = 2.9
@@ -149,6 +163,26 @@ RETICLE_CLEARANCE = 16  # pixels of clear air kept between muzzle and reticle
 LEAN_DISTANCE = 0.42    # how far out you peek, in grid squares
 LEAN_SPEED = 7.0        # how fast you lean, in "per second"
 LEAN_GUN_SHIFT = 26     # pixels the carbine slides across as you lean
+
+# Difficulty. Every setting is a multiplier on the normal game, so one number
+# per line says exactly how much easier or harder that level is.
+DIFFICULTIES = (
+    {"name": "RECRUIT",  "health": 1.35, "ammo": 1.35,
+     "enemy_damage": 0.60, "enemy_health": 0.80, "enemy_speed": 0.85,
+     "score": 0.75},
+    {"name": "OPERATOR", "health": 1.00, "ammo": 1.00,
+     "enemy_damage": 1.00, "enemy_health": 1.00, "enemy_speed": 1.00,
+     "score": 1.00},
+    {"name": "VETERAN",  "health": 0.70, "ammo": 0.75,
+     "enemy_damage": 1.50, "enemy_health": 1.30, "enemy_speed": 1.15,
+     "score": 1.50},
+)
+DEFAULT_DIFFICULTY = 1
+
+# Where settings and progress are kept. Sitting next to the game file means it
+# travels with the game if you copy it onto a memory stick.
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "trident_save.json")
 
 # Blood
 BLOOD_ON_HIT = 9        # specks thrown up by one round
@@ -335,6 +369,15 @@ SHADE_LOOKUP = tuple(
     for i in range(int(MAX_DEPTH * SHADE_STEPS_PER_UNIT) + 4))
 
 SEAM_STEPS = 32         # how finely we sample across the wall face
+
+# The main menu.
+MENU_ENTRIES = ("continue", "new", "difficulty", "quality", "fullscreen", "quit")
+MENU_TOP = 150
+MENU_SPACING = 34
+
+# Where shapes go when they are not needed. Well off the canvas, so tkinter
+# throws them out on a bounding-box test instead of trying to paint them.
+PARKED = -4000
 
 # ---------------------------------------------------------------------------
 #  THE CARBINE
@@ -705,19 +748,86 @@ LEVELS = [
 
 
 # ===========================================================================
-#  SECTION 5 - GAME OBJECTS
+#  SECTION 5 - SAVED SETTINGS AND PROGRESS
+#
+#  One small JSON file next to the game. It has to survive being missing,
+#  being empty, being edited by hand into nonsense, and living somewhere the
+#  computer will not let us write - a school machine may well refuse. None of
+#  those are allowed to stop the game starting, so every one of them just
+#  falls back to the defaults.
+# ===========================================================================
+
+DEFAULT_SAVE = {
+    "difficulty": DEFAULT_DIFFICULTY,
+    "quality": DEFAULT_QUALITY,
+    "fullscreen": False,
+    "best_score": 0,
+    "missions_cleared": 0,
+    "continue_level": 0,        # furthest mission unlocked
+    "continue_score": 0,
+}
+
+
+def load_save():
+    """Read the save file, falling back to defaults for anything missing."""
+    data = dict(DEFAULT_SAVE)
+    try:
+        with open(SAVE_FILE, "r") as handle:
+            stored = json.load(handle)
+    except (OSError, ValueError):
+        return data             # no file yet, or it is not readable JSON
+    if not isinstance(stored, dict):
+        return data
+
+    for key, fallback in DEFAULT_SAVE.items():
+        value = stored.get(key, fallback)
+        # Only take a value that is the same shape as the default. A hand
+        # edited file should not be able to crash the game.
+        if isinstance(fallback, bool):
+            data[key] = bool(value)
+        elif isinstance(fallback, int) and isinstance(value, (int, float)):
+            data[key] = int(value)
+
+    data["difficulty"] = max(0, min(len(DIFFICULTIES) - 1, data["difficulty"]))
+    data["quality"] = max(0, min(len(QUALITY_LEVELS) - 1, data["quality"]))
+    data["continue_level"] = max(0, min(len(LEVELS) - 1, data["continue_level"]))
+    return data
+
+
+def write_save(data):
+    """Write the save file. Returns False if the computer would not let us."""
+    try:
+        with open(SAVE_FILE, "w") as handle:
+            json.dump(data, handle, indent=2)
+        return True
+    except OSError:
+        return False            # read-only stick, locked-down profile, ...
+
+
+# ===========================================================================
+#  SECTION 6 - GAME OBJECTS
 # ===========================================================================
 
 class Monster:
     """One enemy. Knows where it is, how hurt it is, and what it is doing."""
 
-    def __init__(self, kind, x, y):
+    def __init__(self, kind, x, y, difficulty=DEFAULT_DIFFICULTY):
         info = MONSTERS[kind]
+        rules = DIFFICULTIES[difficulty]
         self.kind = kind
         self.info = info
         self.x = x
         self.y = y
-        self.hp = info["max_hp"]
+        # The difficulty multipliers are baked in here rather than applied
+        # every time they are read, so the rest of the game never has to think
+        # about which difficulty it is running at.
+        self.max_hp = max(1, int(info["max_hp"] * rules["enemy_health"]))
+        self.speed = info["speed"] * rules["enemy_speed"]
+        self.melee_damage = max(1, int(round(info["melee_damage"]
+                                             * rules["enemy_damage"])))
+        self.ranged_damage = max(1, int(round(info.get("ranged_damage", 0)
+                                              * rules["enemy_damage"])))
+        self.hp = self.max_hp
         self.alive = True
         self.awake = False          # has it spotted the player yet?
         self.attack_timer = 0.0     # counts down to its next attack
@@ -741,10 +851,11 @@ class Pickup:
 
 
 # ===========================================================================
-#  SECTION 6 - THE GAME
+#  SECTION 7 - THE GAME
 # ===========================================================================
 
 # The game is always in exactly one of these states.
+STATE_MENU = "menu"
 STATE_TITLE = "title"
 STATE_PLAYING = "playing"
 STATE_DEAD = "dead"
@@ -804,7 +915,9 @@ class Game:
         # calls the wall loop makes, and it adds up to milliseconds.
         self._tk_call = self.canvas.tk.call
         self._canvas_name = self.canvas._w
-        self.detail_tier = 0        # bumped up if the machine cannot keep up
+        self.detail_tier = 0        # coarser wall texture when things are tight
+        self.column_step = 1        # how many rays share one drawn stripe
+        self.quality = DEFAULT_QUALITY
         self._detail_score = 0
         self._reported_error = False
 
@@ -816,6 +929,7 @@ class Game:
         self._build_sprite_pool()
         self._build_weapon()
         self._build_overlay()
+        self._build_menu()
         self._build_hud()
         self._build_minimap()
 
@@ -825,13 +939,21 @@ class Game:
         # that is not there any more.
         root.protocol("WM_DELETE_WINDOW", self.quit)
 
+        # Settings and progress from last time, if there are any.
+        self.save = load_save()
+        self._save_warned = False
+        self.difficulty = self.save["difficulty"]
+        self.menu_index = 1 if self.save["continue_level"] == 0 else 0
+        self.fullscreen = False
+        self.set_quality(self.save["quality"])
+        if self.save["fullscreen"]:
+            self.toggle_fullscreen()
+
         self.level_index = 0
         self.total_score = 0
-        self.state = STATE_TITLE
         self.load_level(0)
-        self._set_overlay("TRIDENT",
-                          "MOUSE aim   CLICK fire   RIGHT-CLICK sight   QE lean",
-                          "click the window to begin")
+        self.state = STATE_MENU
+        self.open_menu()
 
         self.last_time = time.perf_counter()
         self.tick()
@@ -893,6 +1015,25 @@ class Game:
         self.column_fill = ["#000000"] * (NUM_COLUMNS * MAX_BANDS)
         self._band_y0 = [-1] * (NUM_COLUMNS * MAX_BANDS)
         self._band_y1 = [-1] * (NUM_COLUMNS * MAX_BANDS)
+
+    def _reset_column_pool(self):
+        """
+        Put every wall stripe away and forget where they were.
+
+        Called when the stripe width changes. Whichever ones the new width
+        needs will be placed again on the very next frame; the rest stay parked
+        off the canvas where they cost nothing to skip over.
+        """
+        tk_call = self._tk_call
+        canvas = self._canvas_name
+        for column in self.column_items:
+            for item in column:
+                tk_call(canvas, "coords", item, PARKED, PARKED, PARKED, PARKED)
+        for i in range(len(self._band_y0)):
+            self._band_y0[i] = PARKED
+            self._band_y1[i] = PARKED
+        for i in range(len(self.column_used)):
+            self.column_used[i] = 0
 
     def _build_sprite_pool(self):
         """
@@ -1007,6 +1148,47 @@ class Game:
                                                          outline="")
                             for _ in self.cross_parts]
 
+    def _build_menu(self):
+        """The main menu: a title, a stack of entries, and a footer."""
+        self.menu_items = []
+        # Covers the status bar as well as the view - a health bar and an
+        # ammo count sitting under the main menu look like a bug.
+        self.menu_bg = self.canvas.create_rectangle(
+            0, 0, SCREEN_W, SCREEN_H + HUD_H, fill="#05070c", outline="",
+            state="hidden")
+        self.menu_title = self.canvas.create_text(
+            SCREEN_W / 2, 62, text="TRIDENT", fill="#ffcc33",
+            font=("Courier", 38, "bold"), state="hidden")
+        self.menu_sub = self.canvas.create_text(
+            SCREEN_W / 2, 100, text="", fill="#6f7683",
+            font=("Courier", 9), state="hidden")
+
+        self.menu_rows = []
+        for index in range(len(MENU_ENTRIES)):
+            y = MENU_TOP + index * MENU_SPACING
+            marker = self.canvas.create_polygon(0, 0, 0, 0, 0, 0,
+                                                fill="#ffcc33", outline="",
+                                                state="hidden")
+            label = self.canvas.create_text(
+                SCREEN_W / 2 - 20, y, text="", fill="#d8d8e0", anchor="e",
+                font=("Courier", 15, "bold"), state="hidden")
+            value = self.canvas.create_text(
+                SCREEN_W / 2 + 20, y, text="", fill="#7de07d", anchor="w",
+                font=("Courier", 15, "bold"), state="hidden")
+            self.menu_rows.append((marker, label, value))
+
+        self.menu_hint = self.canvas.create_text(
+            SCREEN_W / 2, SCREEN_H + 22, text="", fill="#6f7683",
+            font=("Courier", 9), state="hidden")
+        self.menu_best = self.canvas.create_text(
+            SCREEN_W / 2, SCREEN_H + 46, text="", fill="#8a8a96",
+            font=("Courier", 9), state="hidden")
+
+        self.menu_items = [self.menu_bg, self.menu_title, self.menu_sub,
+                           self.menu_hint, self.menu_best]
+        for row in self.menu_rows:
+            self.menu_items.extend(row)
+
     def _build_overlay(self):
         """Full-screen tints and the big centred text used for menus."""
         # `stipple` draws the rectangle as a dot pattern, which is how you fake
@@ -1094,8 +1276,10 @@ class Game:
                                                    stipple="gray50")
         self.minimap_items.append(self.map_bg)
 
-        # Enough wall squares for the biggest level we might load.
-        biggest = max(len(lvl["grid"]) * len(lvl["grid"][0]) for lvl in LEVELS)
+        # Enough bars for the worst case: a row that alternates wall, floor,
+        # wall, floor all the way across needs one bar per two squares.
+        biggest = max(len(lvl["grid"]) * (len(lvl["grid"][0]) // 2 + 1)
+                      for lvl in LEVELS)
         for _ in range(biggest):
             item = self.canvas.create_rectangle(-20, -20, -10, -10,
                                                 fill="#5a5a6a", outline="",
@@ -1201,10 +1385,18 @@ class Game:
             self.say("Mouse aiming is not available here - use the arrow keys",
                      5.0)
 
-    def _on_mouse_down(self, _event):
+    def _on_mouse_down(self, event):
+        if self.state == STATE_MENU:
+            row = int(round((event.y - MENU_TOP) / MENU_SPACING))
+            if 0 <= row < len(MENU_ENTRIES) and self._menu_enabled(
+                    MENU_ENTRIES[row]):
+                self.menu_index = row
+                self.draw_menu()
+                self._menu_choose()
+            return
         if self.state == STATE_TITLE:
-            self.state = STATE_PLAYING
-            self._hide_overlay()
+            self.open_menu()
+            return
         if not self.mouse_captured:
             # The first click is what grabs the pointer, so it does not also
             # fire - otherwise clicking on the window would waste a round.
@@ -1285,6 +1477,10 @@ class Game:
 
     def _on_key_tapped(self, key):
         """Handle keys that should fire once per press, not once per frame."""
+        if self.state == STATE_MENU:
+            self._menu_key(key)
+            return
+
         if key == "escape":
             # First Esc hands the pointer back, so you are never trapped in
             # the window. A second Esc actually quits.
@@ -1298,9 +1494,14 @@ class Game:
             return
 
         if self.state == STATE_TITLE:
-            self.state = STATE_PLAYING
-            self._hide_overlay()
-            self._capture_mouse()
+            self.open_menu()
+            return
+
+        # Backspace or Tab-out of a finished mission returns to the menu.
+        if key in ("m", "backspace") and self.state in (STATE_DEAD,
+                                                        STATE_CLEARED,
+                                                        STATE_WON):
+            self.open_menu()
             return
 
         if key == "tab":
@@ -1329,6 +1530,27 @@ class Game:
             self.load_level(0)
             self.state = STATE_PLAYING
             self._hide_overlay()
+
+    def _menu_key(self, key):
+        if key in ("up", "w"):
+            self._menu_move(-1)
+        elif key in ("down", "s"):
+            self._menu_move(1)
+        elif key in ("left", "a"):
+            self._menu_adjust(-1)
+        elif key in ("right", "d"):
+            self._menu_adjust(1)
+        elif key in ("return", "kp_enter", "space"):
+            self._menu_choose()
+        elif key == "escape":
+            # Esc backs out of the menu if there is a game to go back to,
+            # otherwise it quits.
+            if self.level_index is not None and self.total_monsters:
+                self.close_menu()
+                self.state = STATE_PLAYING
+                self._capture_mouse()
+            else:
+                self.quit()
 
     def _held(self, *names):
         """True if any of these keys is currently held down."""
@@ -1360,7 +1582,8 @@ class Game:
                 if char == "P":
                     start_x, start_y = centre_x, centre_y
                 elif char in MONSTERS:
-                    self.monsters.append(Monster(char, centre_x, centre_y))
+                    self.monsters.append(
+                        Monster(char, centre_x, centre_y, self.difficulty))
                 elif char in PICKUPS:
                     self.pickups.append(Pickup(char, centre_x, centre_y))
                 elif char == "X":
@@ -1375,8 +1598,10 @@ class Game:
         self.px = start_x
         self.py = start_y
         self.angle = math.radians(level["start_angle"])
-        self.hp = PLAYER_MAX_HP
-        self.ammo = START_AMMO
+        rules = DIFFICULTIES[self.difficulty]
+        self.max_hp = int(PLAYER_MAX_HP * rules["health"])
+        self.hp = self.max_hp
+        self.ammo = int(START_AMMO * rules["ammo"])
         self.kills = 0
         self.level_score = 0
         self.total_monsters = len(self.monsters)
@@ -1835,7 +2060,8 @@ class Game:
             monster.death_timer = 0.0
             self.spray_blood(monster.x, monster.y, BLOOD_ON_DEATH, force=1.35)
             self.kills += 1
-            self.level_score += monster.info["score"]
+            self.level_score += int(monster.info["score"]
+                                    * DIFFICULTIES[self.difficulty]["score"])
             self.say("%s down." % monster.info["name"], 1.4)
             if self.kills >= self.total_monsters:
                 self.say("All hostiles neutralised - move to extraction!", 4.0)
@@ -1870,10 +2096,10 @@ class Game:
             # --- attack ---
             if monster.attack_timer <= 0 and can_see:
                 if info["ranged"] and distance <= info["ranged_range"]:
-                    self.hurt_player(info["ranged_damage"])
+                    self.hurt_player(monster.ranged_damage)
                     monster.attack_timer = info["attack_cooldown"]
                 elif distance <= info["melee_range"] and info["melee_damage"]:
-                    self.hurt_player(info["melee_damage"])
+                    self.hurt_player(monster.melee_damage)
                     monster.attack_timer = info["attack_cooldown"]
 
             # --- move ---
@@ -1897,7 +2123,7 @@ class Game:
                 monster.wobble_timer = random.uniform(0.6, 1.8)
 
             heading = math.atan2(dy, dx) + monster.wobble * 0.5
-            speed = info["speed"] * direction * dt
+            speed = monster.speed * direction * dt
             step_x = math.cos(heading) * speed
             step_y = math.sin(heading) * speed
             radius = info["radius"]
@@ -1933,7 +2159,7 @@ class Game:
             self.state = STATE_DEAD
             self._set_overlay("OPERATOR DOWN",
                               "score this mission: %d" % self.level_score,
-                              "press R to reinsert")
+                              "press R to reinsert, M for the menu")
 
     def check_pickups(self):
         for pickup in self.pickups:
@@ -1944,9 +2170,9 @@ class Game:
 
             info = pickup.info
             if info["heal"]:
-                if self.hp >= PLAYER_MAX_HP:
+                if self.hp >= self.max_hp:
                     continue        # leave it on the floor for later
-                self.hp = min(PLAYER_MAX_HP, self.hp + info["heal"])
+                self.hp = min(self.max_hp, self.hp + info["heal"])
                 self.say("Medkit applied  (+%d)" % info["heal"])
             if info["ammo"]:
                 if self.ammo >= MAX_AMMO:
@@ -1972,18 +2198,19 @@ class Game:
             earned = self.level_score
             self.total_score += earned
             self.level_score = 0
+            self.record_progress(self.level_index, self.total_score)
 
             if self.level_index + 1 < len(LEVELS):
                 self.state = STATE_CLEARED
                 self._set_overlay("AREA SECURE",
                                   "score: %d      total: %d"
                                   % (earned, self.total_score),
-                                  "press N for the next mission")
+                                  "press N for the next mission, M for the menu")
             else:
                 self.state = STATE_WON
                 self._set_overlay("MISSION COMPLETE",
                                   "final score: %d" % self.total_score,
-                                  "press N to run it again")
+                                  "press N to run it again, M for the menu")
             return
 
     def say(self, text, seconds=2.2):
@@ -2032,9 +2259,17 @@ class Game:
         dark = WALL_SHADES_DARK
         lookup = SHADE_LOOKUP
         top_tier = self.detail_tier          # raised when the machine struggles
+        step = self.column_step
+        half_step = step // 2
+        last_ray = NUM_COLUMNS - 1
+        span = int(step * column_w) + 1
 
-        for i in range(NUM_COLUMNS):
-            distance, side, char, wall_x = rays[i]
+        for i in range(0, NUM_COLUMNS, step):
+            # One stripe can stand for several rays. Take the middle one so the
+            # error is shared evenly across the stripe rather than piling up at
+            # one edge. Rays are all still cast either way - they are cheap,
+            # and the sprites need the full depth buffer to clip against.
+            distance, side, char, wall_x = rays[min(i + half_step, last_ray)]
             slot = items[i]
             base_index = i * MAX_BANDS
 
@@ -2042,17 +2277,18 @@ class Game:
                 # Nothing hit: collapse the stripe so only sky/floor shows
                 for band in range(used[i]):
                     spot = base_index + band
-                    if cache_y0[spot] != 0 or cache_y1[spot] != 0:
-                        tk_call(canvas, "coords", slot[band], 0, 0, 0, 0)
-                        cache_y0[spot] = 0
-                        cache_y1[spot] = 0
+                    if cache_y0[spot] != PARKED:
+                        tk_call(canvas, "coords", slot[band],
+                                PARKED, PARKED, PARKED, PARKED)
+                        cache_y0[spot] = PARKED
+                        cache_y1[spot] = PARKED
                 used[i] = 0
                 continue
 
             height = SCREEN_H / distance
             top = horizon - height * 0.5
             x0 = int(i * column_w)
-            x1 = int(x0 + column_w + 1)
+            x1 = x0 + span
 
             shades = (bright if side == 0 else dark)[char]
             # Distance fog, plus the free across-the-wall detail: a groove in
@@ -2103,10 +2339,11 @@ class Game:
 
             for band in range(drawn, used[i]):
                 spot = base_index + band
-                if cache_y0[spot] != 0 or cache_y1[spot] != 0:
-                    tk_call(canvas, "coords", slot[band], 0, 0, 0, 0)
-                    cache_y0[spot] = 0
-                    cache_y1[spot] = 0
+                if cache_y0[spot] != PARKED:
+                    tk_call(canvas, "coords", slot[band],
+                            PARKED, PARKED, PARKED, PARKED)
+                    cache_y0[spot] = PARKED
+                    cache_y1[spot] = PARKED
             used[i] = drawn
 
     def draw_sprites(self):
@@ -2482,7 +2719,7 @@ class Game:
         self._set_text(self.level_text, "OP %d" % (self.level_index + 1))
         self._set_text(self.fps_text, "%d fps  %d rays" % (self.fps, NUM_COLUMNS))
 
-        fraction = self.hp / PLAYER_MAX_HP
+        fraction = self.hp / self.max_hp
         if fraction > 0.55:
             colour = "#54d454"
         elif fraction > 0.25:
@@ -2554,22 +2791,33 @@ class Game:
                            ox + self.map_w * cell + 3,
                            oy + self.map_h * cell + 3)
 
+        # Draw each unbroken run of identical squares as ONE bar rather than a
+        # square per cell. A 24x20 map is mostly long straight walls, so this
+        # turns five hundred shapes into a few dozen - and every shape on the
+        # canvas is one more the drawing library has to walk past on a repaint,
+        # whether or not it changed.
         index = 0
         for row in range(self.map_h):
-            for col in range(self.map_w):
+            col = 0
+            while col < self.map_w:
                 char = self.grid[row][col]
                 if char == ".":
+                    col += 1
                     continue
-                if index >= len(self.minimap_wall_items):
-                    break
-                item = self.minimap_wall_items[index]
-                x = ox + col * cell
-                y = oy + row * cell
-                self.canvas.coords(item, x, y, x + cell, y + cell)
-                self.canvas.itemconfigure(
-                    item, state="normal",
-                    fill="#e8c832" if char == "X" else "#5a5a6a")
-                index += 1
+                run_end = col + 1
+                while run_end < self.map_w and self.grid[row][run_end] == char:
+                    run_end += 1
+                if index < len(self.minimap_wall_items):
+                    item = self.minimap_wall_items[index]
+                    x = ox + col * cell
+                    y = oy + row * cell
+                    self.canvas.coords(item, x, y, x + (run_end - col) * cell,
+                                       y + cell)
+                    self.canvas.itemconfigure(
+                        item, state="normal",
+                        fill="#3fd46a" if char == "X" else "#5a5a6a")
+                    index += 1
+                col = run_end
 
         while index < len(self.minimap_wall_items):
             self.canvas.itemconfigure(self.minimap_wall_items[index],
@@ -2597,6 +2845,179 @@ class Game:
         for item in (self.dark_item, self.title_item,
                      self.subtitle_item, self.prompt_item):
             self.canvas.itemconfigure(item, state="hidden")
+
+    # -- the main menu -----------------------------------------------------
+
+    def open_menu(self):
+        self.state = STATE_MENU
+        self._release_mouse()
+        self._hide_overlay()
+        self.canvas.configure(cursor="")
+        self.draw_menu()
+        for item in self.menu_items:
+            self.canvas.itemconfigure(item, state="normal")
+        self.canvas.tag_raise(self.menu_bg)
+        for item in self.menu_items[1:]:
+            self.canvas.tag_raise(item)
+
+    def close_menu(self):
+        for item in self.menu_items:
+            self.canvas.itemconfigure(item, state="hidden")
+
+    def _menu_value(self, entry):
+        """The right hand side of a menu row, or None if it has no value."""
+        if entry == "difficulty":
+            return DIFFICULTIES[self.difficulty]["name"]
+        if entry == "quality":
+            return QUALITY_LEVELS[self.quality][0]
+        if entry == "fullscreen":
+            return "ON" if self.fullscreen else "OFF"
+        if entry == "continue":
+            return "OP %d" % (self.save["continue_level"] + 1)
+        return None
+
+    def _menu_label(self, entry):
+        return {"continue": "CONTINUE", "new": "NEW MISSION",
+                "difficulty": "DIFFICULTY", "quality": "DETAIL",
+                "fullscreen": "FULLSCREEN", "quit": "QUIT"}[entry]
+
+    def _menu_enabled(self, entry):
+        # Nothing to continue from until you have actually cleared something.
+        return entry != "continue" or self.save["continue_level"] > 0
+
+    def draw_menu(self):
+        canvas = self.canvas
+        canvas.itemconfigure(
+            self.menu_sub,
+            text="%s      %d hostiles down      %d missions cleared"
+                 % (DIFFICULTIES[self.difficulty]["name"],
+                    self.save.get("kills_total", 0),
+                    self.save["missions_cleared"]))
+
+        for index, entry in enumerate(MENU_ENTRIES):
+            marker, label, value = self.menu_rows[index]
+            selected = index == self.menu_index
+            enabled = self._menu_enabled(entry)
+
+            if enabled:
+                colour = "#ffcc33" if selected else "#d8d8e0"
+            else:
+                colour = "#4a4d55"
+            canvas.itemconfigure(label, text=self._menu_label(entry),
+                                 fill=colour)
+
+            shown = self._menu_value(entry)
+            canvas.itemconfigure(value, text=shown or "",
+                                 fill="#7de07d" if enabled else "#3f4650")
+
+            y = MENU_TOP + index * MENU_SPACING
+            if selected:
+                left = SCREEN_W / 2 - 150
+                canvas.coords(marker, left, y - 7, left + 12, y,
+                              left, y + 7)
+            else:
+                canvas.coords(marker, 0, 0, 0, 0, 0, 0)
+
+        canvas.itemconfigure(
+            self.menu_hint,
+            text="W/S or ARROWS to choose    ENTER to pick    A/D to change")
+        canvas.itemconfigure(
+            self.menu_best, text="best score  %d" % self.save["best_score"])
+
+    def _menu_move(self, delta):
+        for _ in range(len(MENU_ENTRIES)):
+            self.menu_index = (self.menu_index + delta) % len(MENU_ENTRIES)
+            if self._menu_enabled(MENU_ENTRIES[self.menu_index]):
+                break
+        self.draw_menu()
+
+    def _menu_adjust(self, delta):
+        """Left/right on a row that has a value cycles through its options."""
+        entry = MENU_ENTRIES[self.menu_index]
+        if entry == "difficulty":
+            self.difficulty = (self.difficulty + delta) % len(DIFFICULTIES)
+            self.save["difficulty"] = self.difficulty
+        elif entry == "quality":
+            self.set_quality((self.quality + delta) % len(QUALITY_LEVELS))
+            self.save["quality"] = self.quality
+        elif entry == "fullscreen":
+            self.toggle_fullscreen()
+        else:
+            return
+        self.store_save()
+        self.draw_menu()
+
+    def _menu_choose(self):
+        entry = MENU_ENTRIES[self.menu_index]
+        if not self._menu_enabled(entry):
+            return
+        if entry == "quit":
+            self.quit()
+        elif entry in ("difficulty", "quality", "fullscreen"):
+            self._menu_adjust(1)
+        elif entry == "new":
+            self.total_score = 0
+            self.start_mission(0)
+        elif entry == "continue":
+            self.total_score = self.save["continue_score"]
+            self.start_mission(self.save["continue_level"])
+
+    def start_mission(self, index):
+        self.close_menu()
+        self._hide_overlay()
+        self.load_level(index)
+        self.state = STATE_PLAYING
+        self._capture_mouse()
+
+    # -- settings ----------------------------------------------------------
+
+    def toggle_fullscreen(self):
+        """
+        Borderless fullscreen.
+
+        The view itself stays the size it is and sits in the middle of a black
+        screen. Stretching it to fill a modern monitor would mean drawing four
+        or five times as many wall stripes, and frame rate is the one thing
+        this game has none of to spare - so it buys you the clean, undistracted
+        screen without costing anything to run.
+        """
+        self.fullscreen = not self.fullscreen
+        try:
+            self.root.attributes("-fullscreen", self.fullscreen)
+        except tk.TclError:
+            self.fullscreen = False
+            self.say("Fullscreen is not available here", 3.0)
+            return
+        if self.fullscreen:
+            self.canvas.pack_forget()
+            self.canvas.place(relx=0.5, rely=0.5, anchor="center")
+            self.root.configure(bg="#000000")
+        else:
+            self.canvas.place_forget()
+            self.canvas.pack()
+        self.save["fullscreen"] = self.fullscreen
+
+    def store_save(self):
+        """Write settings and progress out, quietly giving up if we cannot."""
+        self.save["difficulty"] = self.difficulty
+        self.save["quality"] = self.quality
+        self.save["fullscreen"] = self.fullscreen
+        if not write_save(self.save) and not self._save_warned:
+            self._save_warned = True
+            self.say("Cannot save here - settings will not be remembered", 4.0)
+
+    def record_progress(self, cleared_index, score):
+        """Remember how far you got, so CONTINUE has something to offer."""
+        self.save["missions_cleared"] = self.save.get("missions_cleared", 0) + 1
+        self.save["kills_total"] = self.save.get("kills_total", 0) + self.kills
+        self.save["best_score"] = max(self.save["best_score"], score)
+        nxt = min(len(LEVELS) - 1, cleared_index + 1)
+        if nxt > self.save["continue_level"]:
+            self.save["continue_level"] = nxt
+            self.save["continue_score"] = score
+        elif nxt == self.save["continue_level"]:
+            self.save["continue_score"] = max(self.save["continue_score"], score)
+        self.store_save()
 
     # -- the main loop -----------------------------------------------------
 
@@ -2629,7 +3050,7 @@ class Game:
                 self.say("Something went wrong - see the IDLE window", 6.0)
 
         elapsed = time.perf_counter() - frame_start
-        self._pace(elapsed)
+        self._pace()
 
         # Always leave tkinter a few milliseconds of its own. If a frame
         # overruns the budget and we ask to be woken immediately, frames queue
@@ -2649,6 +3070,11 @@ class Game:
         # normal frame. Otherwise one huge dt would teleport you through walls.
         if dt > 0.1:
             dt = 0.1
+
+        if self.state == STATE_MENU:
+            # The menu is a full stop: nothing moves, nothing is redrawn
+            # behind it, and the frame costs almost nothing.
+            return
 
         if self.state == STATE_PLAYING:
             self.update_player(dt)
@@ -2690,41 +3116,68 @@ class Game:
             average = sum(self.frame_times) / len(self.frame_times)
             self.fps = 1.0 / average if average > 0 else 0.0
 
-    def _pace(self, elapsed):
+    def _pace(self):
         """
         Keep the game playable on a machine that cannot keep up.
 
-        There is no way to know in advance how fast the computer running this
-        will be, so instead of guessing we watch how long frames actually take
-        and trade wall detail for speed when we have to. Dropping a tier makes
-        every wall use a coarser version of its texture, which is by far the
-        cheapest thing to give up - and it is put back the moment there is room
-        for it again.
+        This has to measure the REAL gap between frames, not how long our own
+        Python took. Those are very different numbers: issuing the drawing
+        commands is quick, and then the window system does the actual painting
+        afterwards, on its own time. An earlier version of this timed only our
+        own work, decided every frame was cheap, and so never stepped the
+        quality down on the machines that needed it most.
 
-        The two thresholds are deliberately far apart, and a change has to be
-        earned over several frames. Otherwise the quality would flicker up and
-        down every time a frame ran slightly long.
+        `self.fps` is worked out from the measured gap between frames, so it
+        includes the painting, and that is what we judge on.
         """
-        budget = FRAME_MS / 1000.0
-        if elapsed > budget * DETAIL_DROP_AT:
+        if len(self.frame_times) < 10:
+            return                      # not enough history to judge yet
+
+        if self.fps < QUALITY_DROP_FPS:
             self._detail_score += 1
-        elif elapsed < budget * DETAIL_RAISE_AT:
+        elif self.fps > QUALITY_RAISE_FPS:
             self._detail_score -= 1
         else:
+            self._detail_score = 0
             return
 
         if self._detail_score >= DETAIL_PATIENCE:
             self._detail_score = 0
-            if self.detail_tier < MAX_TIER:
-                self.detail_tier += 1
+            self._step_quality(-1)
         elif self._detail_score <= -DETAIL_PATIENCE:
             self._detail_score = 0
-            if self.detail_tier > 0:
-                self.detail_tier -= 1
+            self._step_quality(+1)
+
+    def _step_quality(self, direction):
+        """
+        Move one notch up or down the quality ladder.
+
+        The ladder trades two things. Coarser wall textures cost the least to
+        give up. Drawing fewer, wider stripes costs more in sharpness but saves
+        far more work, because the real expense is not the arithmetic - it is
+        how many separate shapes the drawing library has to keep track of and
+        repaint. Halving the stripe count halves that.
+        """
+        level = self.quality + direction
+        if level < 0 or level >= len(QUALITY_LEVELS):
+            return
+        self.set_quality(level, announce=True)
+
+    def set_quality(self, level, announce=False):
+        """Apply one of the preset quality levels."""
+        level = max(0, min(len(QUALITY_LEVELS) - 1, level))
+        self.quality = level
+        name, step, tier = QUALITY_LEVELS[level]
+        self.detail_tier = tier
+        if step != self.column_step:
+            self.column_step = step
+            self._reset_column_pool()
+        if announce:
+            self.say("Detail: %s" % name, 2.0)
 
 
 # ===========================================================================
-#  SECTION 7 - START THE GAME
+#  SECTION 8 - START THE GAME
 # ===========================================================================
 
 def main():
