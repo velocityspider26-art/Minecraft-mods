@@ -1097,6 +1097,43 @@ def test_game_loop(root, game):
           "%d specks drawn, %d alive" % (len(visible_blood), len(game.blood)))
     game.apply_scale(1)
 
+    # Scaling must not touch a text item's `width`. On text that option is the
+    # WRAP width in pixels, not a line thickness - it reads 0 for "never
+    # wrap", and multiplying it up to 1 tells Tk to wrap after a single pixel,
+    # which stands every label in the game on its end, one letter per line.
+    for level in (1, 2, 3, 1):
+        game.apply_scale(level)
+        wrapped = [item for item in game.canvas.find_all()
+                   if game.canvas.type(item) == "text"
+                   and str(game.canvas.itemcget(item, "width")) not in ("0", "")]
+        check("no text is given a wrap width at scale %d" % level, not wrapped,
+              "%d labels would wrap: %s" % (len(wrapped), wrapped[:3]))
+
+    # Fonts have to grow with the picture, or fullscreen is a big view with
+    # unreadable little writing in the corner.
+    game.apply_scale(1)
+    base = str(game.canvas.itemcget(game.menu_title, "font"))
+    base_size = next(int(t) for t in base.replace("{", " ").replace("}", " ").split()
+                     if t.lstrip("-").isdigit())
+    game.apply_scale(2)
+    grown = str(game.canvas.itemcget(game.menu_title, "font"))
+    grown_size = next(int(t) for t in grown.replace("{", " ").replace("}", " ").split()
+                      if t.lstrip("-").isdigit())
+    check("fonts grow with the view", grown_size == base_size * 2,
+          "%d -> %d" % (base_size, grown_size))
+    game.apply_scale(1)
+    back = str(game.canvas.itemcget(game.menu_title, "font"))
+    check("fonts go back when the view does", back == base,
+          "%r vs %r" % (back, base))
+
+    # Line widths DO scale - they really are thicknesses.
+    game.apply_scale(2)
+    check("line widths grow with the view",
+          abs(float(game.canvas.itemcget(game.sight_ring, "width"))
+              - trident.SIGHT_RING_WIDTH * 2) < 0.01,
+          "ring is %s wide" % game.canvas.itemcget(game.sight_ring, "width"))
+    game.apply_scale(1)
+
     # -- ten missions --
     check("there are ten missions", len(trident.LEVELS) == 10)
     check("every mission has a different name",

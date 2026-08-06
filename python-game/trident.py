@@ -1299,17 +1299,26 @@ class Game:
         self._tk_call(self._canvas_name, "coords", item, *coords)
 
     def _capture_base_style(self):
-        """Remember every font and line width, so scaling can multiply them."""
+        """
+        Remember every font and line width, so scaling can multiply them.
+
+        Text items are deliberately left out of the width list. On a text item
+        `width` is not a line thickness at all - it is the WRAP width, and 0
+        means "never wrap". Scaling that to 1 tells Tk to wrap after a single
+        pixel, which stands every label on its end, one letter per line.
+        """
         self._base_fonts = {}
         self._base_widths = {}
         for item in self.canvas.find_all():
             if self.canvas.type(item) == "text":
                 self._base_fonts[item] = str(self.canvas.itemcget(item, "font"))
-            width = self.canvas.itemcget(item, "width")
+                continue
             try:
-                self._base_widths[item] = float(width)
+                width = float(self.canvas.itemcget(item, "width"))
             except (TypeError, ValueError):
-                pass
+                continue
+            if width > 0:
+                self._base_widths[item] = width
 
     def apply_scale(self, scale):
         """
@@ -1334,7 +1343,7 @@ class Game:
         for item, font in self._base_fonts.items():
             self.canvas.itemconfigure(item, font=_scaled_font(font, scale))
         for item, width in self._base_widths.items():
-            self.canvas.itemconfigure(item, width=max(1.0, width * scale))
+            self.canvas.itemconfigure(item, width=width * scale)
 
         # The wall stripes cache their positions as whole screen pixels, so
         # those really are stale and have to go. The sprite and blood
