@@ -248,6 +248,8 @@ WALL_COLOURS = {
     "S": (108, 124, 136),   # steel bulkhead
     "R": (124,  74,  50),   # rusted plate
     "Y": (176, 152,  54),   # yellow hazard panel
+    "W": (206, 208, 214),   # white habitat panel
+    "V": ( 54,  70, 104),   # viewport glass
 }
 
 # Two shade tables per wall type. Walls we hit on a north/south face are drawn
@@ -258,6 +260,31 @@ WALL_SHADES_DARK = {c: make_shade_table(dim(rgb, 0.66)) for c, rgb in WALL_COLOU
 
 CEILING_RGB = (34, 38, 50)      # night sky / dark ceiling
 FLOOR_RGB = (62, 62, 60)        # poured concrete
+
+# Each mission can override what the place looks like and how it behaves.
+# `accel` is how quickly you reach walking speed, in "per second": on Earth it
+# is high enough to be instant, and dropping it is what makes the moon feel
+# like the moon - you drift up to speed and glide to a stop.
+DEFAULT_ENV = {
+    "ceiling": CEILING_RGB,
+    "floor": FLOOR_RGB,
+    # Big enough that accel * dt is always past 1.0, so on Earth you reach
+    # walking speed within a single frame at any frame rate - exactly as the
+    # game behaved before momentum existed.
+    "accel": 1000.0,
+    "gravity": 1.0,     # multiplies how fast thrown blood falls
+    "stars": False,
+}
+
+MOON_ENV = {
+    "ceiling": (8, 8, 14),          # airless black
+    "floor": (122, 120, 116),       # regolith grey
+    "accel": 2.4,                   # one sixth of a g, near enough
+    "gravity": 0.17,
+    "stars": True,
+}
+
+STAR_COUNT = 70
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +329,16 @@ WALL_BANDS = {
         (0.00, 0.06,  2), (0.06, 0.28, -1), (0.28, 0.33, -4),
         (0.33, 0.58,  1), (0.58, 0.66, -3), (0.66, 0.92, -1),
         (0.92, 1.00, -5),
+    ),
+    "W": (  # habitat panel: clean seams, a dark rubber skirt
+        (0.00, 0.05,  4), (0.05, 0.32,  1), (0.32, 0.36, -5),
+        (0.36, 0.64,  2), (0.64, 0.68, -5), (0.68, 0.92,  1),
+        (0.92, 1.00, -7),
+    ),
+    "V": (  # viewport: a bright frame around dark glass
+        (0.00, 0.10,  6), (0.10, 0.16, -2), (0.16, 0.46, -6),
+        (0.46, 0.52, -3), (0.52, 0.84, -6), (0.84, 0.90, -2),
+        (0.90, 1.00,  5),
     ),
     "Y": (  # hazard panel: bold stripes
         (0.00, 0.06,  3), (0.06, 0.26, -6), (0.26, 0.46,  2),
@@ -531,6 +568,8 @@ WALL_SEAMS = {
     "S": make_seam_table((0.0,), depth=-4, width=0.05),
     "R": make_seam_table((0.0, 0.5), depth=-2),
     "Y": make_seam_table((0.0,), depth=-3),
+    "W": make_seam_table((0.0, 0.5), depth=-6, width=0.045),
+    "V": make_seam_table((0.0,), depth=-4, width=0.06),
 }
 SKY_BANDS = 8           # the ceiling/floor gradient is drawn as N flat bands
 
@@ -736,6 +775,8 @@ BLOOD_POOL_SHADES = make_shade_table((96, 12, 14), dimmest=0.20)
 #      t  ............. a Tango       (rushes you)
 #      m  ............. a Marksman    (holds back and shoots)
 #      b  ............. BLACKJACK, the final target
+#      W  ............. white habitat panel   (moon)
+#      V  ............. viewport glass        (moon)
 #      h  ............. a medkit
 #      a  ............. a rifle magazine
 #      X  ............. the extraction point
@@ -1006,6 +1047,37 @@ LEVELS = [
             "########################",
         ],
     },
+    {
+        # A bonus mission, and the only one not on Earth. Low gravity, a black
+        # airless sky full of stars, and white habitat panelling instead of
+        # concrete - all of it driven by the level's `env` block rather than
+        # by anything special-cased in the game.
+        "name": "TRANQUILLITY OUTPOST",
+        "start_angle": 90,
+        "env": MOON_ENV,
+        "grid": [
+            "########################",
+            "#..VV....WWWWWW....VV..#",
+            "#.P......W....W........#",
+            "#........W..t.W....a...#",
+            "#..WWWW..W....W..WWWW..#",
+            "#..W..W..WW..WW..W..W..#",
+            "#..W..W..........W..W..#",
+            "#..W..WWWW....WWWW..W..#",
+            "#..W.......m........W..#",
+            "#..WWWW..........WWWW..#",
+            "#......................#",
+            "#..t.....WWWWWW.....t..#",
+            "#........W....W........#",
+            "#..VV....W.h..W....VV..#",
+            "#........WW..WW........#",
+            "#..WWWW..........WWWW..#",
+            "#..W..W....m.....W..W..#",
+            "#..W..W....X.....W..W..#",
+            "#..a.................h.#",
+            "########################",
+        ],
+    },
 ]
 
 
@@ -1181,6 +1253,11 @@ class Game:
         self.column_step = 1        # how many rays share one drawn stripe
         self.quality = DEFAULT_QUALITY
         self.scale = 1
+        self.env = dict(DEFAULT_ENV)
+        self.vel_x = 0.0
+        self.vel_y = 0.0
+        self._blood_pull = BLOOD_GRAVITY
+        self._blood_hang = 1.0
         self._detail_score = 0
         self._reported_error = False
 
@@ -1188,6 +1265,7 @@ class Game:
         # ever MOVE and RECOLOUR them - creating and deleting thousands of
         # canvas items every frame would be far too slow.
         self._build_background()
+        self._build_stars()
         self._build_wall_columns()
         self._build_sprite_pool()
         self._build_weapon()
@@ -1229,6 +1307,7 @@ class Game:
     def _build_background(self):
         """The ceiling and floor: a stack of flat bands faking a gradient."""
         self.bg_items = []          # (item_id, base_y0, base_y1)
+        self.bg_shade = []          # (item_id, is_ceiling, brightness)
         band_h = self.half_h / SKY_BANDS
 
         for i in range(SKY_BANDS):
@@ -1243,17 +1322,86 @@ class Game:
 
             y1 = self.half_h - i * band_h
             y0 = y1 - band_h - (overhang if i == SKY_BANDS - 1 else 0)
-            colour = "#%02x%02x%02x" % dim(CEILING_RGB, bright)
             item = self.canvas.create_rectangle(0, y0, SCREEN_W, y1,
-                                                fill=colour, outline="")
+                                                fill="#000000", outline="")
             self.bg_items.append((item, y0, y1))
+            # Remember which half it is and how bright, so a mission can
+            # repaint the sky and the ground without rebuilding anything.
+            self.bg_shade.append((item, True, bright))
 
             y0 = self.half_h + i * band_h
             y1 = y0 + band_h + (overhang if i == SKY_BANDS - 1 else 0)
-            colour = "#%02x%02x%02x" % dim(FLOOR_RGB, bright)
             item = self.canvas.create_rectangle(0, y0, SCREEN_W, y1,
-                                                fill=colour, outline="")
+                                                fill="#000000", outline="")
             self.bg_items.append((item, y0, y1))
+            self.bg_shade.append((item, False, bright))
+
+    def _recolour_background(self, ceiling, floor):
+        """Repaint the sky and the ground for whichever mission is loading."""
+        for item, is_ceiling, bright in self.bg_shade:
+            rgb = ceiling if is_ceiling else floor
+            self.canvas.itemconfigure(
+                item, fill="#%02x%02x%02x" % dim(rgb, bright))
+
+    def _build_stars(self):
+        """
+        A sky full of stars, for the missions that have one.
+
+        Stars are infinitely far away, so they have no position - only a
+        bearing and a height. That makes them cheaper than anything else on
+        screen: turning slides them across, looking up and down carries them
+        with the horizon, and walking does not move them at all, which is
+        exactly right.
+        """
+        maker = random.Random(20250806)     # fixed, so the sky never reshuffles
+        self.star_field = []
+        self.star_items = []
+        for _ in range(STAR_COUNT):
+            bearing = maker.uniform(0, 2 * math.pi)
+            height = maker.uniform(0.06, 0.92)      # up from the horizon
+            size = maker.choice((1, 1, 1, 2, 2, 3))
+            shade = maker.randint(150, 255)
+            self.star_field.append((bearing, height, size))
+            self.star_items.append(self.canvas.create_rectangle(
+                0, 0, 0, 0, fill="#%02x%02x%02x" % (shade, shade, min(255, shade + 6)),
+                outline="", state="hidden"))
+        self._stars_shown = False
+
+    def draw_stars(self):
+        """Place every star that is currently in front of you."""
+        if not self.env["stars"]:
+            if self._stars_shown:
+                for item in self.star_items:
+                    self.canvas.itemconfigure(item, state="hidden")
+                self._stars_shown = False
+            return
+
+        angle = self.angle
+        horizon = self.horizon
+        plane_len = self.plane_len
+        half_w = SCREEN_W * 0.5
+        shown = 0
+
+        for index, (bearing, height, size) in enumerate(self.star_field):
+            # How far round from straight ahead is it?
+            offset = (bearing - angle + math.pi) % (2 * math.pi) - math.pi
+            if offset < -1.2 or offset > 1.2:       # behind you, or nearly
+                continue
+            screen_x = half_w * (1.0 + math.tan(offset) / plane_len)
+            if screen_x < 0 or screen_x > SCREEN_W:
+                continue
+            screen_y = horizon - height * SCREEN_H * 0.5
+            if screen_y < 0 or screen_y > horizon:
+                continue
+            item = self.star_items[index]
+            self._place(item, screen_x, screen_y,
+                        screen_x + size, screen_y + size)
+            if not self._stars_shown:
+                self.canvas.itemconfigure(item, state="normal")
+            shown += 1
+
+        if not self._stars_shown and shown:
+            self._stars_shown = True
 
     def _build_wall_columns(self):
         """
@@ -1651,9 +1799,11 @@ class Game:
         self.minimap_wall_items = []
         self.minimap_dots = []
 
-        self.map_bg = self.canvas.create_rectangle(0, 0, 0, 0, fill="#000000",
-                                                   outline="#3c3c46",
-                                                   stipple="gray50")
+        # Solid, not stippled. A half-dotted backdrop looked fine over dark
+        # concrete but vanished against the moon's white habitat panels, which
+        # showed straight through the gaps and left the map unreadable.
+        self.map_bg = self.canvas.create_rectangle(0, 0, 0, 0, fill="#0a0c11",
+                                                   outline="#3c3c46")
         self.minimap_items.append(self.map_bg)
 
         # Enough bars for the worst case: a row that alternates wall, floor,
@@ -2009,6 +2159,17 @@ class Game:
         self.ads = 0.0
         self.aiming = False
         self.blood = []
+        self.vel_x = 0.0
+        self.vel_y = 0.0
+        self.env = dict(DEFAULT_ENV)
+        self.env.update(level.get("env", {}))
+        self._recolour_background(self.env["ceiling"], self.env["floor"])
+        # Specks fall slower in low gravity, so they also have to be allowed
+        # to live longer - otherwise they wink out mid-air on their timer and
+        # the gravity setting makes no visible difference at all.
+        gravity = max(0.05, self.env["gravity"])
+        self._blood_pull = BLOOD_GRAVITY * gravity
+        self._blood_hang = min(3.0, 1.0 / gravity ** 0.5)
         # Actually take the bar down, rather than just forgetting it is up -
         # otherwise it stays on screen into a mission that has no boss.
         for item in getattr(self, "boss_items", ()):
@@ -2297,20 +2458,37 @@ class Game:
         running = self._held("shift_l", "shift_r") and self.ads < 0.5
         speed = RUN_SPEED if running else WALK_SPEED
         speed *= 1.0 + (ADS_MOVE_SCALE - 1.0) * self.ads
-        move_x = (self.dir_x * forward + (-self.dir_y) * strafe * STRAFE_SCALE) * speed * dt
-        move_y = (self.dir_y * forward + (self.dir_x) * strafe * STRAFE_SCALE) * speed * dt
+        want_x = (self.dir_x * forward + (-self.dir_y) * strafe * STRAFE_SCALE) * speed
+        want_y = (self.dir_y * forward + (self.dir_x) * strafe * STRAFE_SCALE) * speed
+
+        # Momentum. On Earth `accel` is high enough that this reaches the
+        # wanted speed within a single frame and behaves exactly as it always
+        # has. Turn it down and you get the moon: a slow drift up to speed and
+        # a long glide to a stop, because there is very little holding you to
+        # the ground.
+        catch_up = min(1.0, self.env["accel"] * dt)
+        self.vel_x += (want_x - self.vel_x) * catch_up
+        self.vel_y += (want_y - self.vel_y) * catch_up
+        move_x = self.vel_x * dt
+        move_y = self.vel_y * dt
 
         # Try each axis on its own. If one is blocked the other still works,
         # which is what makes you slide along a wall instead of sticking to it.
-        if move_x and self.can_stand(self.px + move_x, self.py, PLAYER_RADIUS):
-            self.px += move_x
-        if move_y and self.can_stand(self.px, self.py + move_y, PLAYER_RADIUS):
-            self.py += move_y
+        if move_x:
+            if self.can_stand(self.px + move_x, self.py, PLAYER_RADIUS):
+                self.px += move_x
+            else:
+                self.vel_x = 0.0        # you stopped; stop drifting into it
+        if move_y:
+            if self.can_stand(self.px, self.py + move_y, PLAYER_RADIUS):
+                self.py += move_y
+            else:
+                self.vel_y = 0.0
 
         self._update_camera_position()
 
         # Head bob while walking
-        if forward or strafe:
+        if forward or strafe or abs(self.vel_x) + abs(self.vel_y) > 0.4:
             self.bob_phase += dt * (14.0 if running else 9.5)
             self.bob_offset = math.sin(self.bob_phase) * 3.0
         else:
@@ -2434,7 +2612,7 @@ class Game:
                 math.cos(angle) * speed,                # velocity
                 math.sin(angle) * speed,
                 random.uniform(1.2, 3.4) * force,       # upward kick
-                random.uniform(0.55, 1.0) * BLOOD_LIFETIME,
+                random.uniform(0.55, 1.0) * BLOOD_LIFETIME * self._blood_hang,
             ])
 
     def damage_monster(self, monster, amount):
@@ -2536,7 +2714,7 @@ class Game:
             speck[6] -= dt
             if speck[6] <= 0:
                 continue
-            speck[5] -= BLOOD_GRAVITY * dt      # gravity pulls the kick down
+            speck[5] -= self._blood_pull * dt   # gravity pulls the kick down
             speck[0] += speck[3] * dt
             speck[1] += speck[4] * dt
             speck[2] += speck[5] * dt
@@ -3500,6 +3678,7 @@ class Game:
 
         rays = self.cast_rays()
         self.draw_background()
+        self.draw_stars()
         self.draw_walls(rays)
         self.draw_sprites()
         self.draw_blood()

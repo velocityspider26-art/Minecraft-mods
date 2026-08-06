@@ -958,8 +958,9 @@ def test_game_loop(root, game):
     # -- the boss --
     boss_level = next(i for i, lvl in enumerate(trident.LEVELS)
                       if any("b" in row for row in lvl["grid"]))
-    check("the last mission is the boss mission",
-          boss_level == len(trident.LEVELS) - 1)
+    check("the boss is the end of the campaign proper",
+          boss_level >= len(trident.LEVELS) - 2,
+          "boss is mission %d of %d" % (boss_level + 1, len(trident.LEVELS)))
 
     game.difficulty = trident.DEFAULT_DIFFICULTY
     game.load_level(boss_level)
@@ -1135,9 +1136,125 @@ def test_game_loop(root, game):
     game.apply_scale(1)
 
     # -- ten missions --
-    check("there are ten missions", len(trident.LEVELS) == 10)
+    check("there are eleven missions", len(trident.LEVELS) == 11)
     check("every mission has a different name",
           len({lvl["name"] for lvl in trident.LEVELS}) == len(trident.LEVELS))
+
+    # -- the moon --
+    moon = next(i for i, lvl in enumerate(trident.LEVELS)
+                if lvl.get("env", {}).get("stars"))
+    game.difficulty = trident.DEFAULT_DIFFICULTY
+    game.load_level(moon)
+    game.state = trident.STATE_PLAYING
+    check("the moon has its own sky and ground",
+          game.env["ceiling"] != trident.DEFAULT_ENV["ceiling"]
+          and game.env["floor"] != trident.DEFAULT_ENV["floor"])
+    check("the moon has low gravity",
+          game.env["gravity"] < trident.DEFAULT_ENV["gravity"])
+
+    # Low gravity has to actually do something to the blood, or it is just a
+    # number in a dictionary.
+    def settle_time(level_index):
+        game.load_level(level_index)
+        game.blood = []
+        game.spray_blood(game.px, game.py, 30)
+        frames = 0
+        while game.blood and frames < 2000:
+            game.update_blood(0.016)
+            frames += 1
+        return frames
+
+    earth_frames = settle_time(0)
+    moon_frames = settle_time(moon)
+    check("blood hangs in the air longer on the moon (%d frames vs %d)"
+          % (moon_frames, earth_frames), moon_frames > earth_frames * 1.5)
+
+    # And to the way you move. On Earth you reach walking speed within one
+    # frame; on the moon you drift up to it.
+    def speed_after_one_frame(level_index):
+        game.load_level(level_index)
+        game.state = trident.STATE_PLAYING
+        game.vel_x = game.vel_y = 0.0
+        game.keys = {"w"}
+        game.update_player(1 / 60.0)
+        game.keys = set()
+        return math.hypot(game.vel_x, game.vel_y)
+
+    earth_speed = speed_after_one_frame(0)
+    moon_speed = speed_after_one_frame(moon)
+    check("you reach full speed at once on Earth",
+          earth_speed > trident.WALK_SPEED * 0.95, "%.2f" % earth_speed)
+    check("you have to build up speed on the moon (%.2f vs %.2f)"
+          % (moon_speed, earth_speed), moon_speed < earth_speed * 0.25)
+
+    # ...but you still get there eventually, or the level is unplayable.
+    game.load_level(moon)
+    game.state = trident.STATE_PLAYING
+    game.keys = {"w"}
+    for _ in range(180):
+        game.update_player(1 / 60.0)
+    game.keys = set()
+    check("you do get up to speed on the moon in the end",
+          math.hypot(game.vel_x, game.vel_y) > trident.WALK_SPEED * 0.9,
+          "%.2f" % math.hypot(game.vel_x, game.vel_y))
+
+    # And you glide to a stop rather than stopping dead.
+    for _ in range(6):
+        game.update_player(1 / 60.0)
+    check("you keep drifting after you let go",
+          math.hypot(game.vel_x, game.vel_y) > 0.5,
+          "%.2f" % math.hypot(game.vel_x, game.vel_y))
+
+    # Walking into a wall must kill the drift, not leave you scraping along.
+    game.px, game.py = 1.4, 5.5
+    game._update_camera_position()
+    game.vel_x = -20.0
+    game.vel_y = 0.0
+    game.update_player(1 / 60.0)
+    check("hitting a wall stops the drift", game.vel_x == 0.0,
+          "still moving at %.2f" % game.vel_x)
+
+    # -- the starfield --
+    game.load_level(moon)
+    game.state = trident.STATE_PLAYING
+    game.tick()
+    lit = [i for i in game.star_items
+           if game.canvas.itemcget(i, "state") == "normal"]
+    check("stars come out on the moon", lit, "none visible")
+    check("only some of the sky is in front of you at once",
+          len(lit) < trident.STAR_COUNT)
+    above = [game.canvas.coords(i)[1] for i in lit
+             if game.canvas.coords(i)[1] > 0]
+    check("every star is above the horizon",
+          all(y <= game.horizon + 1 for y in above),
+          "lowest star at %.0f, horizon %.0f"
+          % (max(above) if above else 0, game.horizon))
+
+    # Turning slides the sky across; walking does not move it at all, because
+    # stars are infinitely far away.
+    first = game.canvas.coords(lit[0])[0]
+    game.px += 2.0
+    game._update_camera_position()
+    game.tick()
+    check("walking does not move the stars",
+          abs(game.canvas.coords(lit[0])[0] - first) < 0.01)
+    game.angle += 0.3
+    game._update_camera_vectors()
+    game.tick()
+    check("turning does move the stars",
+          abs(game.canvas.coords(lit[0])[0] - first) > 1.0)
+
+    game.load_level(0)
+    game.tick()
+    check("no stars anywhere on Earth",
+          not [i for i in game.star_items
+               if game.canvas.itemcget(i, "state") == "normal"])
+
+    # The tac-map has to stay readable on every mission. A see-through
+    # backdrop disappeared against the moon's white panelling.
+    check("the tac-map backdrop is solid, not see-through",
+          not game.canvas.itemcget(game.map_bg, "stipple"),
+          "stipple is %r" % game.canvas.itemcget(game.map_bg, "stipple"))
 
     # -- every level loads --
     for index in range(len(trident.LEVELS)):

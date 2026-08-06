@@ -96,7 +96,8 @@ Neutralise every hostile in the compound, then reach the green extraction
 beacon. It stays sealed until the last hostile is down — the status bar tells
 you how many are left. Grab medkits and rifle magazines on the way.
 
-**Ten operations**, ending with a compound raid against a high-value target.
+**Eleven operations**: ten on Earth ending with a compound raid against a
+high-value target, and then one somewhere else entirely.
 
 | | Health | Behaviour |
 | --- | --- | --- |
@@ -112,6 +113,21 @@ Your weapon is an M4-style carbine: fully automatic at about 570 rounds per
 minute, 24 damage a round, and accurate enough that misses are your fault.
 Magazines hold 30. Hold the trigger down and 90 rounds last nine seconds, so
 short bursts are worth learning.
+
+### Operation 11
+
+The last mission is on the moon, and it is not just a repaint. Everything that
+makes it feel different comes out of one `env` block on the level itself, which
+any mission can use:
+
+- **One sixth of a g.** You drift up to walking speed instead of reaching it
+  instantly, and you glide for a moment after you let go. Blood thrown up by a
+  hit hangs in the air roughly two and a half times as long before it settles.
+- **A sky full of stars.** Stars are infinitely far away, so they have no
+  position at all — only a bearing and a height. Turning slides them across the
+  sky, looking up and down carries them with the horizon, and walking does not
+  move them a pixel, which is exactly right.
+- **White habitat panelling and grey regolith** instead of concrete and night.
 
 ### A note on the setting
 
@@ -266,7 +282,18 @@ Python is slow, and drawing is slow, so the game follows two rules:
   times a frame, would be slow — so every shade of every colour is worked out
   once at the beginning and looked up from a list afterwards.
 
-### 15. Fullscreen
+### 15. The moon
+
+The last mission reads a small block of settings off the level and everything
+else follows from it. Gravity is one number: turn it down and blood floats for
+longer. How fast you get moving is another: turn *that* down and you slide
+around like you are on ice, which is more or less what low gravity feels like.
+
+The stars are the neat bit. A star is so far away that walking towards it does
+nothing at all — so the game does not give them a position, only a *direction*.
+That is all it needs to work out where on screen to put them.
+
+### 16. Fullscreen
 
 The game always draws the same picture, 640 across and 400 down. Fullscreen
 just multiplies every number on the way to the screen — by 2, or 3 if your
@@ -274,7 +301,7 @@ monitor is big enough. It is nearly free, because it draws exactly the same
 number of shapes; they are simply bigger. Whole numbers only, so every pixel
 becomes a neat square block instead of going blurry.
 
-### 16. It looks after itself
+### 17. It looks after itself
 
 Nobody knows how fast the computer running this will be, so the game times its
 own frames. If they start taking too long it quietly draws the walls with less
@@ -286,7 +313,7 @@ problem and keeps going, rather than freezing. And if you click away to another
 window it lets go of whatever keys you were holding, so you do not come back to
 find yourself running into a wall.
 
-### 17. The heartbeat
+### 18. The heartbeat
 
 About 30 times a second the game does the same three things: **read the
 keyboard and mouse → move everything a tiny bit → redraw the screen.** Then it
@@ -761,6 +788,8 @@ Copy one of the entries in `LEVELS` and redraw the grid. The characters are:
 | `R` | rusted plate | | `m` | a Marksman |
 | `Y` | yellow hazard panel | | `h` | a medkit |
 | `X` | extraction point | | `a` | a rifle magazine |
+| `W` | white habitat panel | | `b` | BLACKJACK (the boss) |
+| `V` | viewport glass | | | |
 
 Two rules: every row must be the same length, and there must be a solid wall
 all the way around the outside — otherwise a ray can shoot off the edge of the
@@ -801,15 +830,16 @@ Everything worth changing is at the top of the file in **Section 1**.
 python selftest.py
 ```
 
-or just open it in IDLE and press F5. It runs 267 checks covering the level
+or just open it in IDLE and press F5. It runs 302 checks covering the level
 data, the raycasting maths, the wall texture tables, mouse aiming, pitch
 clamping, leaning being cut short at a wall, the sight picture, hit markers, blood
 physics, the reticle staying clear of the weapon at every pitch and sway, the game
 surviving a broken frame, focus loss letting go of held keys, automatic quality
 stepping down and back up, the difficulty multipliers, the save file surviving
 being empty or edited into nonsense, every menu row, fullscreen scaling keeping the mouse
-feeling the same, the boss and its health bar, and the last mission carrying
-enough ammunition to actually finish it, and a few hundred
+feeling the same, the boss and its health bar, the last mission carrying
+enough ammunition to actually finish it, and the moon's gravity and starfield
+actually behaving differently from Earth's, and a few hundred
 frames of the real game loop driven by fake input. Everything should say
 `PASS`.
 
