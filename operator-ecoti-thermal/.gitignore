@@ -1,3 +1,5 @@
 bin/
 obj/
 *.user
+reflect/lib/*.dll
+!EcotiThermal.dll
