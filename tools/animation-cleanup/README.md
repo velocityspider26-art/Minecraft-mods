@@ -16,9 +16,11 @@ loadable by the same pipeline as the original.
 
 ## What the capture actually contained
 
-- The performer is **seated on the ground**, right leg folded and toe planted,
-  left leg bent with the thigh presented — correct posture for self-applying a
-  CAT, not the kneeling pose the brief assumed.
+- The performer is **seated on the ground with the right leg folded
+  cross-legged** — knee ~24 cm lateral of the hip, foot tucked across the
+  midline — and the left leg already ~99% extended. The support leg is therefore
+  rebuilt as a true half-kneel (see stage 3b); no amount of pelvis lift alone can
+  put a cross-legged knee on the floor.
 - Frames **0–350** are usable. Frames **351–424** are unrecoverable: the hips
   fall to floor level (Y ≈ −0.01 m), a foot reaches 0.64 m while the pelvis is
   at 0.12 m, and body-wide angular speed hits 6× baseline.
@@ -46,10 +48,22 @@ loadable by the same pipeline as the original.
    delta; the vertical offset decays to zero so the feet do not float. Arms use a
    monotonic release with real high-frequency detail re-injected, because
    reversing the descent turned a bracing motion into a flail.
-5. **Contact IK** — analytic two-bone IK with the original knee plane as pole,
+5. **Posture retarget** — the shot calls for a crouch, so the pelvis is lifted
+   onto the right knee (bounded by anatomy: knee height + thigh length), the
+   support leg is rebuilt as a half-kneel with the shin laid back and the toe
+   behind, and the left leg is driven to a near-straight extension. The hands are
+   recorded relative to the left thigh beforehand and re-solved onto it after, so
+   the tourniquet interaction survives the base-pose change. Runs **after** the
+   ending rebuild — the other order left the rebuilt tail assembled from source
+   frames that were only ~15% retargeted, and the leg swung ±20 cm through the
+   floor. All IK goals are smoothed before solving, since goal noise re-emerges
+   amplified as elbow pop.
+6. **Contact IK** — analytic two-bone IK with the original knee plane as pole,
    eased in/out. Pins the **toe**, not just the ankle: local-space smoothing
    moves the contact point in world space even where the capture was perfect.
-6. **Floor clamp** — iterative, dilated before smoothing so it cannot undershoot.
+7. **Floor handling** — a local foot-floor correction rotates the offending foot
+   about its own ankle first; only the residual goes to the global clamp, which is
+   iterative and dilated before smoothing so it cannot undershoot.
 
 ## Scripts
 
@@ -58,7 +72,7 @@ loadable by the same pipeline as the original.
 | `gltf_io.py` | accessor decoding (stride/sparse/normalized), skeleton, quat↔matrix |
 | `anim_data.py` | dense TRS sampling, FK, quaternion utilities, SLERP |
 | `filters.py` | manifold local-poly smoothing, log/exp, two-bone IK, easing |
-| `clean.py` | the six-stage pipeline |
+| `clean.py` | the cleanup + retarget pipeline |
 | `glb_write.py` | surgical animation-only GLB rewrite |
 | `inspect_glb.py` / `diagnose.py` / `regions.py` / `jitter.py` | inspection + diagnostics |
 | `compare.py` / `qc.py` | validation and before/after metrics |

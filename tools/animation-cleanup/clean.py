@@ -1,16 +1,21 @@
 """C.O.R.E. left-thigh CAT tourniquet - animation cleanup / reconstruction pass.
 
-Stages
-  1  de-chatter        bone-group weighted robust local-polynomial manifold filter
-  2  contact model     height + vertical-velocity planting detection (a skating
+Stages (in execution order)
+  1   de-chatter       bone-group weighted robust local-polynomial manifold
+                       filter, plus damping of the performer's overhead bracing
+                       reach during the descent
+  2   contact model    height + vertical-velocity planting detection (a skating
                        foot slides fast while staying planted, so total speed is
                        the wrong test)
-  3  root stabilise    footlock integrator: cancels per-frame slide of planted
-                       contacts, holds the accumulated offset between contacts so
-                       genuine repositioning survives and nothing ever snaps
-  4  ending rebuild    f351-424 reconstructed from the performer's own descent
-  5  contact IK        per-limb planting with eased constraint blending
-  6  ground + seams    floor clamp and cross-seam continuity
+  3   root stabilise   anchored to the toe's provably-planted window; removes the
+                       ~40 cm secular slide while keeping weight shifts
+  4   ending rebuild   f351-424 reconstructed from the performer's own descent
+  3b  posture retarget seated cross-legged -> crouched half-kneel with the left
+                       leg extended, hands re-solved onto the thigh. Runs AFTER
+                       the ending rebuild so the rebuilt tail inherits the kneel
+                       instead of fighting it.
+  5   contact IK       per-limb planting with eased constraint blending
+  6   ground + seams   local foot-floor correction, then a floor clamp
 """
 from __future__ import annotations
 
@@ -113,6 +118,28 @@ print(f"  finger roughness {_mean(b_rough,True):.3f}° -> {_mean(a_rough,True):.
       f"  ({100*(1-_mean(a_rough,True)/_mean(b_rough,True)):.1f}% reduction, kept light)")
 
 trans[:, HIPS] = smooth_vec_track(trans[:, HIPS], half=4, degree=2)
+
+# ---- descent reach damping ------------------------------------------------
+# While lowering, the performer threw the left arm up to head height (hand Y
+# 1.31 m at f80) to brace against the floor. Against the kneeling body that
+# excursion reads as a wave rather than a reach for the tourniquet, so the arm
+# is flattened onto a calmer arc across the descent. Timing is untouched - only
+# the amplitude of the swing changes.
+DESC_A, DESC_B, DESC_EDGE = 52, 152, 22
+_dw = np.zeros(DESC_B - DESC_A)
+for k in range(len(_dw)):
+    a_ = smootherstep(min(1.0, k / DESC_EDGE))
+    b_ = smootherstep(min(1.0, (len(_dw) - 1 - k) / DESC_EDGE))
+    _dw[k] = min(a_, b_) * 0.94
+_before_reach = None
+for i in [I["LeftArm"], I["LeftForeArm"], I["LeftHand"]]:
+    seg = rot[DESC_A:DESC_B, i]
+    sm = smooth_quat_track(seg, half=22, degree=0, robust=False)
+    rot[DESC_A:DESC_B, i] = slerp(seg, sm, _dw)
+_p = fk_from(rot, trans)[1]
+print(f"  descent reach damped: left hand peak height over f{DESC_A}-{DESC_B} "
+      f"{A.fk()[1][DESC_A:DESC_B, I['LeftHand'], 1].max():.3f} -> "
+      f"{_p[DESC_A:DESC_B, I['LeftHand'], 1].max():.3f} m")
 
 # ======================================================================= STAGE 2
 print("\n[stage 2] contact detection (height + vertical velocity)")
@@ -287,6 +314,238 @@ for i in sorted(A.animated["rotation"]):
 trans[seam, HIPS] = smooth_vec_track(trans[seam, HIPS], half=3, degree=2)
 print(f"  rebuilt {n_out} frames ({n_out/A.fps:.2f}s) from descent span f{SRC_LO}-{SRC_HI}")
 
+# ===================================================================== STAGE 3B
+print("\n[stage 3b] posture retarget: seated -> crouched half-kneel, left leg extended")
+# The capture's treatment section is already half-kneeling in its joint angles
+# (left knee ~159 deg, foot 0.80 m forward) but the pelvis rides at 0.358 m, so
+# the performer is sitting back on the ground instead of carrying weight on the
+# right knee. Lifting the pelvis onto the knee and extending the left leg turns
+# the same performance into the crouch the shot calls for, without rebuilding
+# the tourniquet work itself.
+RT_A, RT_B = 74, F                 # retarget span (whole clip; weighted)
+RT_RISE = 76                       # frames to ease fully in
+# The retarget runs AFTER the ending rebuild and fades back out across it. Doing
+# it the other way round meant the rebuilt rise was assembled from source frames
+# that were only ~15% retargeted, so the reconstructed leg fought the kneel and
+# swung the right foot +/-20 cm through the floor.
+RT_FADE_A, RT_FADE = 10000, 46     # (no fade: the kneel is held to the end)
+KNEE_GROUND = 0.052                # right knee resting height (knee radius)
+ANKLE_H = 0.072                    # right ankle height with the shin along the floor
+LEG_EXT = 0.985                    # left leg extension as a fraction of full reach
+# Pelvis lift is bounded by anatomy, not taste: with the knee on the floor the
+# hip can be at most (knee height + thigh length) above it. Overshooting that
+# lifts the knee off the ground instead of kneeling on it.
+HIP_LIFT = 0.085
+
+W, P, Q = fk_from(rot, trans)
+RUP, RLEG, RFOOT, RTOE = I["RightUpLeg"], I["RightLeg"], I["RightFoot"], I["RightToeBase"]
+LUP, LLEG, LFOOT = I["LeftUpLeg"], I["LeftLeg"], I["LeftFoot"]
+ARMS = {"L": (I["LeftArm"], I["LeftForeArm"], I["LeftHand"]),
+        "R": (I["RightArm"], I["RightForeArm"], I["RightHand"])}
+
+# Record the hands relative to the LEFT THIGH so the tourniquet interaction can
+# be restored bone-for-bone after the base pose moves underneath it.
+thigh_R = quat_to_mat(Q[:, LUP])
+hand_rel = {}
+for s, (_, _, hnd) in ARMS.items():
+    off = np.einsum('fji,fj->fi', thigh_R, P[:, hnd] - P[:, LUP])   # R^T * v
+    hand_rel[s] = (off, qmul(qconj(Q[:, LUP]), Q[:, hnd]))
+
+wmask = np.zeros(F)
+for f in range(RT_A, F):
+    up = smootherstep(min(1.0, (f - RT_A) / RT_RISE))
+    down = 1.0 - smootherstep(float(np.clip((f - RT_FADE_A) / RT_FADE, 0.0, 1.0)))
+    wmask[f] = min(up, down)
+
+l_thigh = float(np.linalg.norm(REST_T := A.skel.rest_t[RLEG]))
+l_shin = float(np.linalg.norm(A.skel.rest_t[RFOOT]))
+l_foot = float(np.linalg.norm(A.skel.rest_t[RTOE]))
+lu_thigh = float(np.linalg.norm(A.skel.rest_t[LLEG]))
+lu_shin = float(np.linalg.norm(A.skel.rest_t[LFOOT]))
+
+toe_keep = P[:, RTOE].copy()
+ank_keep = P[:, LFOOT].copy()
+
+def stable_pole(Pp, root_j, mid_j, end_j, sigma=4.0, scale=0.3):
+    """Temporally-smoothed bend-plane reference for a 2-bone chain.
+
+    Using the raw mid-joint as the pole fails as a limb approaches straight: the
+    component of (mid - root) perpendicular to the limb axis shrinks toward zero
+    and its DIRECTION becomes numerically unstable, so the solver flips the bend
+    plane between frames and the joint visibly pops. Smoothing the perpendicular
+    component across neighbouring frames keeps the plane continuous through
+    those near-singular poses while still following the real bend direction.
+    """
+    axis = Pp[:, end_j] - Pp[:, root_j]
+    u = axis / np.maximum(np.linalg.norm(axis, axis=-1, keepdims=True), 1e-9)
+    v = Pp[:, mid_j] - Pp[:, root_j]
+    perp = v - u * np.sum(v * u, axis=-1, keepdims=True)
+    perp = gauss_smooth(perp, sigma=sigma)
+    pn = np.linalg.norm(perp, axis=-1, keepdims=True)
+    perp = np.where(pn < 1e-6, np.array([0.0, 1.0, 0.0]), perp / np.maximum(pn, 1e-9))
+    return Pp[:, root_j] + perp * scale
+
+
+# Body facing = the direction the extended left leg points, smoothed so the
+# rebuilt support leg cannot inherit per-frame noise from the working leg.
+fwd = P[:, LFOOT] - P[:, LUP]
+fwd[:, 1] = 0.0
+fwd = gauss_smooth(fwd, sigma=6.0)
+fwd /= np.maximum(np.linalg.norm(fwd, axis=-1, keepdims=True), 1e-9)
+
+trans[:, HIPS, 1] += HIP_LIFT * wmask
+W, P, Q = fk_from(rot, trans)
+lpole = stable_pole(P, LUP, LLEG, LFOOT)
+
+# Precompute and smooth every IK goal BEFORE solving. Targets built per-frame
+# from noisy joint positions inject that noise into the thigh orientation, which
+# then drives the hand goal and shows up amplified as elbow pop. Smoothing the
+# goals - not the solved result - keeps the chain clean at the source.
+lank_goal = np.zeros((F, 3))
+for f in range(F):
+    lhip_f = P[f, LUP]
+    dv = ank_keep[f] - lhip_f
+    dv[1] = 0.0
+    hn = np.linalg.norm(dv)
+    dv = dv / hn if hn > 1e-6 else np.array([0.0, 0.0, 1.0])
+    span = (lu_thigh + lu_shin) * LEG_EXT
+    drop = lhip_f[1] - 0.088
+    lank_goal[f] = lhip_f + dv * float(np.sqrt(max(span ** 2 - drop ** 2, 0.04)))
+    lank_goal[f, 1] = 0.088
+lank_goal = gauss_smooth(lank_goal, sigma=3.0)
+
+for f in range(RT_A, min(RT_B, F)):
+    w = wmask[f]
+    if w <= 1e-4:
+        continue
+    # ---- right leg: re-pose from cross-legged fold to a kneel -------------
+    # In the capture this leg is folded cross-legged - knee ~24 cm lateral of
+    # the hip, foot tucked across the midline. No amount of pelvis lift puts
+    # that knee on the floor, so the support leg is rebuilt as a proper kneel:
+    # thigh dropping under the hip, shin laid back along the ground, toe behind.
+    hip = P[f, RUP]
+    knee_cur, ank_cur, toe_cur = P[f, RLEG], P[f, RFOOT], P[f, RTOE]
+    back = -fwd[f]
+
+    drop = max(hip[1] - KNEE_GROUND, 0.05)
+    horiz = float(np.sqrt(max(l_thigh ** 2 - drop ** 2, 1e-4)))
+    knee_t = hip + back * horiz + np.array([0.0, -drop, 0.0])
+    knee_t = knee_cur * (1 - w) + knee_t * w
+
+    shin_h = float(np.sqrt(max(l_shin ** 2 - (ANKLE_H - KNEE_GROUND) ** 2, 1e-4)))
+    ank_t = knee_t + back * shin_h
+    ank_t[1] = ANKLE_H
+    ank_t = ank_cur * (1 - w) + ank_t * w
+    ank_t[1] = max(float(ank_t[1]), 0.045)
+
+    q1 = aim_rotation(knee_cur - hip, knee_t - hip)
+    Qup = qmul(q1, Q[f, RUP])
+    rot[f, RUP] = qmul(qconj(Q[f, par[RUP]]), Qup)
+    d_old = quat_to_mat(q1) @ (ank_cur - knee_cur)
+    q2 = aim_rotation(d_old, ank_t - knee_t)
+    Qlg = qmul(q2, qmul(q1, Q[f, RLEG]))
+    rot[f, RLEG] = qmul(qconj(Qup), Qlg)
+    # foot: laid back behind the ankle, resting on the floor
+    foot_h = float(np.sqrt(max(l_foot ** 2 - ANKLE_H ** 2, 1e-4)))
+    toe_t = ank_t + back * foot_h
+    toe_t[1] = 0.0
+    toe_t = toe_cur * (1 - w) + toe_t * w
+    # The aim only fixes a DIRECTION - the toe then lands a full foot-length
+    # along it, so a blended target that sits close to the ankle overshoots and
+    # drives the toe underground. Re-elevate the direction so the toe rests ON
+    # the floor rather than through it.
+    fdir = toe_t - ank_t
+    fn_ = np.linalg.norm(fdir)
+    fdir = fdir / fn_ if fn_ > 1e-9 else back.copy()
+    if ank_t[1] + fdir[1] * l_foot < 0.0:
+        dy = float(np.clip(-ank_t[1] / l_foot, -1.0, 1.0))
+        h_ = fdir.copy()
+        h_[1] = 0.0
+        hn_ = np.linalg.norm(h_)
+        h_ = h_ / hn_ if hn_ > 1e-9 else back.copy()
+        fdir = h_ * float(np.sqrt(max(1.0 - dy * dy, 0.0)))
+        fdir[1] = dy
+    toe_t = ank_t + fdir * l_foot
+    q3 = aim_rotation(quat_to_mat(qmul(q2, q1)) @ (toe_cur - ank_cur), toe_t - ank_t)
+    Qft = qmul(q3, qmul(q2, qmul(q1, Q[f, RFOOT])))
+    rot[f, RFOOT] = qmul(qconj(Qlg), Qft)
+
+    # ---- left leg: drive it out to a near-straight extension, heel down ---
+    lhip = P[f, LUP]
+    lank = P[f, LFOOT] * (1 - w) + lank_goal[f] * w
+    mid_new, eff_new = two_bone_ik(lhip[None], None, None, lank[None],
+                                   lpole[f][None], lu_thigh, lu_shin)
+    qa = aim_rotation(P[f, LLEG] - lhip, mid_new[0] - lhip)
+    Qlu = qmul(qa, Q[f, LUP])
+    rot[f, LUP] = qmul(qconj(Q[f, par[LUP]]), Qlu)
+    dl = quat_to_mat(qa) @ (P[f, LFOOT] - P[f, LLEG])
+    qb = aim_rotation(dl, eff_new[0] - mid_new[0])
+    Qll = qmul(qb, qmul(qa, Q[f, LLEG]))
+    rot[f, LLEG] = qmul(qconj(Qlu), Qll)
+    rot[f, LFOOT] = qmul(qconj(Qll), Q[f, LFOOT])
+
+# Restore the hands onto the thigh: the base pose moved under them, so re-solve
+# each arm to the transform it originally held relative to the left thigh.
+W, P, Q = fk_from(rot, trans)
+thigh_R2 = quat_to_mat(Q[:, LUP])
+arm_fix = []
+for s, (sh, el, hnd) in ARMS.items():
+    la = float(np.linalg.norm(A.skel.rest_t[el]))
+    lb = float(np.linalg.norm(A.skel.rest_t[hnd]))
+    apole = stable_pole(P, sh, el, hnd)
+    # Smoothed hand goals, for the same reason as the leg goals above.
+    want_all = P[:, LUP] + np.einsum('fij,fj->fi', thigh_R2, hand_rel[s][0])
+    want_all = gauss_smooth(want_all, sigma=2.0)
+    for f in range(RT_A, min(RT_B, F)):
+        w = wmask[f]
+        if w <= 1e-4:
+            continue
+        tgt = P[f, hnd] * (1 - w) + want_all[f] * w
+        arm_fix.append(float(np.linalg.norm(tgt - P[f, hnd])))
+        m2, e2 = two_bone_ik(P[f, sh][None], None, None, tgt[None], apole[f][None], la, lb)
+        qa = aim_rotation(P[f, el] - P[f, sh], m2[0] - P[f, sh])
+        Qs = qmul(qa, Q[f, sh])
+        rot[f, sh] = qmul(qconj(Q[f, par[sh]]), Qs)
+        dl = quat_to_mat(qa) @ (P[f, hnd] - P[f, el])
+        qb = aim_rotation(dl, e2[0] - m2[0])
+        Qe = qmul(qb, qmul(qa, Q[f, el]))
+        rot[f, el] = qmul(qconj(Qs), Qe)
+        want_q = qmul(Q[f, LUP], hand_rel[s][1][f])
+        rot[f, hnd] = qmul(qconj(Qe), slerp(Q[f, hnd], want_q, w))
+
+# An IK solve is a per-frame operation and carries no temporal guarantee, so the
+# retargeted chains get one more high-frequency attenuation pass over the span
+# that was touched. Gross motion is untouched; only solver-introduced ripple goes.
+RT_SM = slice(max(0, RT_A - 6), min(F, RT_B + 6))
+for i in [RUP, RLEG, RFOOT, RTOE, LUP, LLEG, LFOOT,
+          I["LeftArm"], I["LeftForeArm"], I["LeftHand"],
+          I["RightArm"], I["RightForeArm"], I["RightHand"]]:
+    seg_q = rot[RT_SM, i]
+    ref = smooth_quat_track(seg_q, half=4, degree=0, robust=False)
+    rot[RT_SM, i] = slerp(ref, seg_q, np.full(len(seg_q), 0.55))
+
+W, P, Q = fk_from(rot, trans)
+print(f"  pelvis lift {HIP_LIFT*100:.1f} cm applied over f{RT_A}-{RT_B} "
+      f"(eased in over {RT_RISE} frames)")
+print(f"  hips Y     f170-350: {np.median(A.fk()[1][170:351, HIPS,1]):.3f} -> "
+      f"{np.median(P[170:351, HIPS,1]):.3f} m")
+print(f"  right knee f170-350: {np.median(A.fk()[1][170:351, RLEG,1])*100:.1f} -> "
+      f"{np.median(P[170:351, RLEG,1])*100:.1f} cm above floor")
+
+
+def _ang(pp, a, b, c, rng):
+    v1 = pp[rng, a] - pp[rng, b]
+    v2 = pp[rng, c] - pp[rng, b]
+    cs = np.sum(v1 * v2, -1) / (np.linalg.norm(v1, axis=-1) * np.linalg.norm(v2, axis=-1) + 1e-12)
+    return float(np.median(np.rad2deg(np.arccos(np.clip(cs, -1, 1)))))
+
+
+rng = slice(170, 351)
+print(f"  left knee  f170-350: {_ang(A.fk()[1], LUP, LLEG, LFOOT, rng):.1f} -> "
+      f"{_ang(P, LUP, LLEG, LFOOT, rng):.1f} deg (extended)")
+print(f"  mean hand re-solve to hold thigh contact: "
+      f"{np.mean(arm_fix)*100 if arm_fix else 0:.2f} cm")
+
 # ======================================================================= STAGE 5
 print("\n[stage 5] contact planting IK")
 W, P, Q = fk_from(rot, trans)
@@ -401,6 +660,54 @@ def dilate(x, rad):
 
 
 W, P, Q = fk_from(rot, trans)
+
+# Local foot-floor correction, applied BEFORE any global lift. A toe that dips
+# through the floor is a foot-orientation problem, so fix it by rotating the
+# foot about its own ankle. Lifting the whole root instead would hoist the
+# pelvis by the depth of the worst single dip and float the entire character.
+FOOT_CHAINS = [(I["RightFoot"], I["RightToeBase"], I["RightLeg"]),
+               (I["LeftFoot"], I["LeftToeBase"], I["LeftLeg"])]
+_foot_before = float(min(min(P[:, t, 1].min() for _, t, _ in FOOT_CHAINS), 0.0))
+for _ in range(3):
+    fixed_any = False
+    for foot_j, toe_j, leg_j in FOOT_CHAINS:
+        hits = np.where((P[:, toe_j, 1] < -0.001) & (P[:, foot_j, 1] > 0.005))[0]
+        if not len(hits):
+            continue
+        fixed_any = True
+        for f in hits:
+            ank, toe = P[f, foot_j], P[f, toe_j]
+            v = toe - ank
+            L = float(np.linalg.norm(v))
+            if L < 1e-6:
+                continue
+            dy = float(np.clip(-ank[1] / L, -1.0, 1.0))
+            h = v.copy()
+            h[1] = 0.0
+            hn = float(np.linalg.norm(h))
+            h = h / hn if hn > 1e-9 else np.array([0.0, 0.0, 1.0])
+            tgt = h * float(np.sqrt(max(1.0 - dy * dy, 0.0)))
+            tgt[1] = dy
+            qf = aim_rotation(v, tgt * L)
+            rot[f, foot_j] = qmul(qconj(Q[f, leg_j]), qmul(qf, Q[f, foot_j]))
+    W, P, Q = fk_from(rot, trans)
+    if not fixed_any:
+        break
+# one gentle pass so the corrected frames blend with their neighbours
+for foot_j, _, _ in FOOT_CHAINS:
+    sm = smooth_quat_track(rot[:, foot_j], half=2, degree=0, robust=False)
+    rot[:, foot_j] = slerp(sm, rot[:, foot_j], np.full(F, 0.85))
+W, P, Q = fk_from(rot, trans)
+print(f"  foot-floor correction: worst toe {_foot_before*100:.2f} cm -> "
+      f"{min(min(P[:, t, 1].min() for _, t, _ in FOOT_CHAINS), 0.0)*100:.2f} cm")
+_pre = np.minimum(P[:, :, 1].min(axis=1), 0.0)
+_wf = np.argsort(_pre)[:6]
+print("  pre-clamp worst frames: " +
+      ", ".join(f"f{int(f)}={_pre[f]*100:.1f}cm({nm[int(P[f,:,1].argmin())]})" for f in _wf))
+print("  seam trace f344-376 (hipY / RtoeY / RankY / RkneeY, cm):")
+for _f in range(344, 377, 4):
+    print(f"    f{_f}: hip {P[_f,HIPS,1]*100:6.1f}  Rtoe {P[_f,I['RightToeBase'],1]*100:7.1f}"
+          f"  Rank {P[_f,I['RightFoot'],1]*100:6.1f}  Rknee {P[_f,I['RightLeg'],1]*100:6.1f}")
 pen0 = float(np.minimum(P[:, :, 1].min(axis=1), 0.0).min())
 total_lift = np.zeros(F)
 for _ in range(4):
