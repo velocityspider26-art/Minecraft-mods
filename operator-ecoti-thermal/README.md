@@ -52,27 +52,32 @@ simulation of the device, and the name is describing where it hangs rather than 
 
 ## Building
 
-**There is no prebuilt DLL, and that isn't a policy choice — it's that a portable one doesn't
-exist.** The project references `MelonLoader/Il2CppAssemblies/*.dll`, which MelonLoader generates
-on your machine from your installed game build the first time it runs. Those assemblies carry the
-method tokens and type layout of that specific build. A DLL compiled against someone else's
-generated interop is not reliably loadable against yours, and it silently rots the next time the
-game patches. Building locally takes about thirty seconds:
+No prebuilt DLL ships here — it has to be built on a machine that has the game. The project
+references `MelonLoader/Il2CppAssemblies/*.dll`, which MelonLoader generates from your installed
+build the first time it runs, and there is nothing to link against without them. (Compiling
+against stock Unity assemblies instead does not work: Il2CppInterop changes the signatures —
+`GetComponentsInChildren` returns `Il2CppReferenceArray<T>` rather than `T[]` — so the result
+throws on load.)
+
+Three steps, about thirty seconds of actual work:
 
 ```powershell
-# 1. Install MelonLoader against OPERATOR, then launch the game once and quit.
-#    This generates MelonLoader\Il2CppAssemblies\ — the build cannot proceed without it.
-
-# 2. Build and deploy in one step:
+# 1. Install MelonLoader against OPERATOR.exe:  https://github.com/LavaGang/MelonLoader/releases
+# 2. Launch the game once and quit. This generates MelonLoader\Il2CppAssemblies\.
+#    The first run takes a few minutes — let it reach the main menu before quitting.
+# 3. Build and deploy:
 .\deploy.ps1
-
-# or if your install isn't on the default path:
-.\deploy.ps1 -GameDir "D:\Steam\steamapps\common\OPERATOR"
 ```
 
-`deploy.ps1` builds, refuses to copy while the game is running (the DLL is locked, and silently
-shipping a stale build wastes a whole test cycle), and prints the deployed timestamp so you can
-confirm what landed.
+`deploy.ps1` finds the game itself by reading Steam's `libraryfolders.vdf`, so a second drive or a
+non-default path needs no arguments. Pass `-GameDir "D:\..."` only if you've moved things by hand.
+
+It checks every prerequisite before building and each failure tells you what to do about it — no
+SDK, SDK too old, MelonLoader missing, interop not generated yet, game still running. It also
+refuses to copy over a locked DLL and prints the deployed size and timestamp, so a silently failed
+copy can't send you off testing a stale build.
+
+You'll need the .NET 8 SDK: `winget install Microsoft.DotNet.SDK.8`
 
 Manual build if you'd rather:
 
