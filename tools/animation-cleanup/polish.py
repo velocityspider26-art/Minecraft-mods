@@ -83,7 +83,10 @@ work = (P[:, I["LeftHand"]] + P[:, I["RightHand"]]) / 2.0
 # it - a head never snaps onto a moving target
 thigh = (P[:, I["LeftUpLeg"]] + P[:, I["LeftLeg"]]) / 2.0
 target = 0.55 * work + 0.45 * thigh
-target = gauss_smooth(target, sigma=4.0)
+# Heavily damped: a head tracks the general area of the work, not every twitch
+# of the hands. A tight follow re-introduces exactly the chatter the cleanup
+# removed, straight into the most noticeable joint on the character.
+target = gauss_smooth(target, sigma=11.0)
 
 look_mask = np.maximum(band(96, 372, 40, 34), 0.0)
 MAX_LOOK = 50.0
@@ -113,8 +116,8 @@ for f in range(F):
     rot[f, HEAD] = qmul(qconj(Qn_new), qmul(q_use, Q[f, HEAD]))
 
 for i in (NECK, HEAD):
-    rot[:, i] = slerp(smooth_quat_track(rot[:, i], half=4, degree=0, robust=False),
-                      rot[:, i], np.full(F, 0.72))
+    rot[:, i] = slerp(smooth_quat_track(rot[:, i], half=6, degree=0, robust=False),
+                      rot[:, i], np.full(F, 0.45))
 W, P, Q = fk_from(rot, trans)
 for f in range(F):
     Rh = quat_to_mat(Q[f, HEAD])
@@ -233,8 +236,11 @@ settle = damped(150, -0.011, 0.42, 2.1) + damped(334, 0.006, 0.34, 2.4)
 trans[:, I["Hips"], 1] += settle
 # torso follows the weight a beat later (overlap, not lockstep)
 lag = np.concatenate([np.zeros(3), settle[:-3]])
+# Scale chosen so an 11 mm settle produces ~2.5 deg of spine lag. The earlier
+# factor turned it into 26 deg, which swung the head a quarter of a metre at
+# 2 Hz and put more chatter into the head than the cleanup had taken out.
 rot[:, I["Spine"]] = qmul(
-    qexp(np.array([1.0, 0.0, 0.0])[None, :] * (-lag * 55.0)[:, None]), rot[:, I["Spine"]])
+    qexp(np.array([1.0, 0.0, 0.0])[None, :] * (-lag * 4.0)[:, None]), rot[:, I["Spine"]])
 print(f"  knee-plant settle {abs(settle[150:200]).max()*1000:.1f} mm, "
       f"windlass release {abs(settle[334:380]).max()*1000:.1f} mm, torso lags 3 frames")
 

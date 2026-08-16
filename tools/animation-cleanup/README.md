@@ -95,3 +95,29 @@ python3 sheet.py ./shots side sheet.png 6 0.62
 ```
 
 The pipeline is deterministic — the same input reproduces the same bytes.
+
+## The support leg (stage 3b) — why a trajectory, not a blend
+
+The capture has the right leg folded **cross-legged**: knee ~24 cm lateral of the
+hip, foot tucked across the midline. A kneel puts it ~0.75 m *behind* the hip, so
+the leg has to travel ~1.3 m. That entry does not exist in the capture and has to
+be synthesised.
+
+Blending between the captured pose and a target pose fails either way round:
+
+- interpolating **rotations** passes through poses that are individually valid
+  but geometrically wrong, and the leg snapped 100–130°/frame;
+- interpolating **positions** lets the ankle-to-toe separation collapse, the aim
+  direction flips, and the foot drives up to 50 cm through the floor — which the
+  global clamp then "fixed" by hoisting the whole character.
+
+The leg is therefore driven by a continuous **world-space trajectory**: it starts
+exactly on the captured knee/ankle/toe at the entry frame (so there is nothing to
+blend), arcs clear of the floor, and lands on the planted kneel. Each bone is
+aimed in turn rather than solved as a 2-bone chain — laid out flat the knee-to-toe
+span is 98 % of shin+foot, and at that extension the chain's bend plane is
+ill-conditioned and flips. A minimum knee angle is enforced, because lerping the
+knee and ankle goals independently otherwise folds the joint to ~8°.
+
+Result: worst frame-to-frame 34.3° (the raw capture's own max is 30.5°), zero
+floor penetration, root lift 2.1 cm, planted toe 0.25 cm/frame.
