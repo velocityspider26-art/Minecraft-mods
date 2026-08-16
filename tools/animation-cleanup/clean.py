@@ -322,8 +322,8 @@ print("\n[stage 3b] posture retarget: seated -> crouched half-kneel, left leg ex
 # right knee. Lifting the pelvis onto the knee and extending the left leg turns
 # the same performance into the crouch the shot calls for, without rebuilding
 # the tourniquet work itself.
-RT_A, RT_B = 74, F                 # retarget span (whole clip; weighted)
-RT_RISE = 76                       # frames to ease fully in
+RT_A, RT_B = 116, F               # retarget span (whole clip; weighted)
+RT_RISE = 46                       # frames to ease fully in
 # The retarget runs AFTER the ending rebuild and fades back out across it. Doing
 # it the other way round meant the rebuilt rise was assembled from source frames
 # that were only ~15% retargeted, so the reconstructed leg fought the kneel and
@@ -356,6 +356,7 @@ for f in range(RT_A, F):
     up = smootherstep(min(1.0, (f - RT_A) / RT_RISE))
     down = 1.0 - smootherstep(float(np.clip((f - RT_FADE_A) / RT_FADE, 0.0, 1.0)))
     wmask[f] = min(up, down)
+lift_mask = wmask
 
 l_thigh = float(np.linalg.norm(REST_T := A.skel.rest_t[RLEG]))
 l_shin = float(np.linalg.norm(A.skel.rest_t[RFOOT]))
@@ -363,6 +364,8 @@ l_foot = float(np.linalg.norm(A.skel.rest_t[RTOE]))
 lu_thigh = float(np.linalg.norm(A.skel.rest_t[LLEG]))
 lu_shin = float(np.linalg.norm(A.skel.rest_t[LFOOT]))
 
+leg_w = {}
+leg_plan = {}
 toe_keep = P[:, RTOE].copy()
 ank_keep = P[:, LFOOT].copy()
 
@@ -393,7 +396,7 @@ fwd[:, 1] = 0.0
 fwd = gauss_smooth(fwd, sigma=6.0)
 fwd /= np.maximum(np.linalg.norm(fwd, axis=-1, keepdims=True), 1e-9)
 
-trans[:, HIPS, 1] += HIP_LIFT * wmask
+trans[:, HIPS, 1] += HIP_LIFT * lift_mask
 W, P, Q = fk_from(rot, trans)
 lpole = stable_pole(P, LUP, LLEG, LFOOT)
 
@@ -414,6 +417,103 @@ for f in range(F):
     lank_goal[f, 1] = 0.088
 lank_goal = gauss_smooth(lank_goal, sigma=3.0)
 
+# Right-leg support goals. Recomputing knee/ankle/toe from the moving hip every
+# frame makes the whole support leg travel with the body - the kneeling foot
+# skates exactly the way the raw capture did. So the goals are computed once,
+# frozen to their median over the stable treatment core, and only released at
+# the edges. The knee and toe are contacts: they belong to the floor, not to the
+# pelvis.
+CORE_S = slice(180, 326)
+back_ref = -np.median(fwd[CORE_S], axis=0)
+back_ref /= np.linalg.norm(back_ref)
+hip_ref = np.median(P[CORE_S, RUP], axis=0)
+
+drop_r = max(hip_ref[1] - KNEE_GROUND, 0.05)
+horiz_r = float(np.sqrt(max(l_thigh ** 2 - drop_r ** 2, 1e-4)))
+knee_ref = hip_ref + back_ref * horiz_r + np.array([0.0, -drop_r, 0.0])
+
+
+def _place(origin, direction, drop_to, length):
+    """Point at `length` from origin, aimed along `direction` but landing at
+    height `drop_to` - keeps the bone rigid while resting on the floor."""
+    d = direction * 1.0
+    dy = float(np.clip((drop_to - origin[1]) / length, -1.0, 1.0))
+    h = np.array([d[0], 0.0, d[2]])
+    hn = float(np.linalg.norm(h))
+    h = h / hn if hn > 1e-9 else np.array([0.0, 0.0, 1.0])
+    v = h * float(np.sqrt(max(1.0 - dy * dy, 0.0)))
+    v[1] = dy
+    return origin + v * length
+
+
+# The pelvis wanders a few cm, and wherever it ends up CLOSER to the planted
+# knee than one femur, the solver - which always extends the full bone along the
+# aim - drives the knee out the far side and through the floor. Pushing the
+# reference out until the femur can always reach makes the knee land slightly
+# SHORT instead, which is harmless.
+_d_hip = np.linalg.norm(P[CORE_S, RUP] - knee_ref, axis=-1)
+_deficit = float(max(0.0, l_thigh - _d_hip.min()) + 0.012)
+if _deficit > 0.012:
+    knee_ref = knee_ref + back_ref * _deficit
+    print(f"  knee reference pushed {_deficit*100:.1f} cm further back so the "
+          f"femur always reaches it (was {_d_hip.min():.3f} m vs thigh {l_thigh:.3f} m)")
+ank_ref = _place(knee_ref, back_ref, ANKLE_H, l_shin)
+toe_ref = _place(ank_ref, back_ref, 0.0, l_foot)
+
+
+# Contacts are pinned HORIZONTALLY (that is what stops the skate) while their
+# height is derived from what the leg can actually reach. A fully fixed 3-D goal
+# breaks whenever the pelvis rides higher than one thigh-length above it: the
+# solver aims at an unreachable point, the leg drives through the floor and the
+# clamp answers by hoisting the whole character ~48 cm into the air.
+# Two goal frames, blended:
+#   body-relative while he is still moving into position - the kneel follows the
+#     pelvis, so the target is always reachable and the leg never has to aim at a
+#     point it cannot get to (which drove the foot 47 cm under the floor and made
+#     the clamp hoist the whole character);
+#   world-fixed once he is settled - that is what actually stops the skate.
+# The knee's ground position is fixed for the whole clip; where the femur cannot
+# reach it the per-frame back-off below eases the retarget off rather than
+# forcing an impossible pose.
+pin = np.ones(F)
+knee_off = knee_ref - hip_ref
+ank_off = ank_ref - hip_ref
+toe_off = toe_ref - hip_ref
+knee_goal = np.zeros((F, 3))
+ank_goal = np.zeros((F, 3))
+toe_goal = np.zeros((F, 3))
+for f in range(F):
+    hp = P[f, RUP]
+    p_ = pin[f]
+    # Knee: horizontal position as close to its planted spot as the thigh can
+    # reach, vertical drop taken from what is left of the bone. Built this way
+    # the goal is EXACTLY one thigh-length from the hip, so the solver lands on
+    # it instead of overshooting past it, and its ground position stays put
+    # while the pelvis shifts.
+    k_xz = np.array([(hp[0] + knee_off[0]) * (1 - p_) + knee_ref[0] * p_,
+                     0.0,
+                     (hp[2] + knee_off[2]) * (1 - p_) + knee_ref[2] * p_])
+    hxz = np.array([k_xz[0] - hp[0], 0.0, k_xz[2] - hp[2]])
+    dh = float(np.linalg.norm(hxz))
+    hxz = hxz / dh if dh > 1e-9 else back_ref.copy()
+    dh = min(dh, l_thigh * 0.985)
+    knee_goal[f] = hp + hxz * dh
+    knee_goal[f, 1] = hp[1] - float(np.sqrt(max(l_thigh ** 2 - dh ** 2, 1e-6)))
+    knee_goal[f, 1] = max(knee_goal[f, 1], KNEE_GROUND)
+    # Rebuild the rest of the chain OUTWARD from the knee at exact bone lengths.
+    # Blending each joint's goal independently leaves them at the wrong spacing,
+    # and since an aim only fixes a direction the solved joint then overshoots
+    # its goal - the toe lands a full foot-length along the ray and ends up under
+    # the floor even in the settled pose.
+    a_blend = np.array([(hp[0]+ank_off[0])*(1-p_) + ank_ref[0]*p_, ANKLE_H,
+                        (hp[2]+ank_off[2])*(1-p_) + ank_ref[2]*p_])
+    ank_goal[f] = _place(knee_goal[f], a_blend - knee_goal[f], ANKLE_H, l_shin)
+    t_blend = np.array([(hp[0]+toe_off[0])*(1-p_) + toe_ref[0]*p_, 0.0,
+                        (hp[2]+toe_off[2])*(1-p_) + toe_ref[2]*p_])
+    toe_goal[f] = _place(ank_goal[f], t_blend - ank_goal[f], 0.0, l_foot)
+print(f"  support leg pinned to world: knee ({knee_ref[0]:+.3f},{knee_ref[1]:+.3f},"
+      f"{knee_ref[2]:+.3f})  toe ({toe_ref[0]:+.3f},{toe_ref[1]:+.3f},{toe_ref[2]:+.3f})")
+
 for f in range(RT_A, min(RT_B, F)):
     w = wmask[f]
     if w <= 1e-4:
@@ -427,48 +527,73 @@ for f in range(RT_A, min(RT_B, F)):
     knee_cur, ank_cur, toe_cur = P[f, RLEG], P[f, RFOOT], P[f, RTOE]
     back = -fwd[f]
 
-    drop = max(hip[1] - KNEE_GROUND, 0.05)
-    horiz = float(np.sqrt(max(l_thigh ** 2 - drop ** 2, 1e-4)))
-    knee_t = hip + back * horiz + np.array([0.0, -drop, 0.0])
-    knee_t = knee_cur * (1 - w) + knee_t * w
+    # Solve the FULL kneel for this frame against the fixed world contacts, then
+    # blend the leg towards it in ROTATION space. Interpolating joint POSITIONS
+    # instead lets the ankle-to-toe separation collapse mid-blend, the aim
+    # direction flips, and the foot snaps ~75 deg in a single frame. A slerp
+    # between two valid poses is always a valid pose.
+    # The leg travels ~1.3 m from tucked-in-front to laid-back-behind. Aim at a
+    # LIFTED version of the kneel through the middle of the transition so the
+    # shin and foot arc over the floor instead of ploughing through it; the lift
+    # vanishes at both ends, so the settled pose is the true kneel.
+    arc = float(np.sin(np.pi * np.clip(w, 0.0, 1.0)))
+    knee_g = knee_goal[f] + np.array([0.0, 0.12 * arc, 0.0])
+    ank_g = _place(knee_g, ank_goal[f] - knee_goal[f], ANKLE_H + 0.16 * arc, l_shin)
+    toe_g = _place(ank_g, toe_goal[f] - ank_goal[f], 0.20 * arc, l_foot)
 
-    shin_h = float(np.sqrt(max(l_shin ** 2 - (ANKLE_H - KNEE_GROUND) ** 2, 1e-4)))
-    ank_t = knee_t + back * shin_h
-    ank_t[1] = ANKLE_H
-    ank_t = ank_cur * (1 - w) + ank_t * w
-    ank_t[1] = max(float(ank_t[1]), 0.045)
+    q1 = aim_rotation(knee_cur - hip, knee_g - hip)
+    Qup_t = qmul(q1, Q[f, RUP])
+    knee_after = hip + (knee_g - hip) / max(
+        float(np.linalg.norm(knee_g - hip)), 1e-9) * l_thigh
 
-    q1 = aim_rotation(knee_cur - hip, knee_t - hip)
-    Qup = qmul(q1, Q[f, RUP])
-    rot[f, RUP] = qmul(qconj(Q[f, par[RUP]]), Qup)
     d_old = quat_to_mat(q1) @ (ank_cur - knee_cur)
-    q2 = aim_rotation(d_old, ank_t - knee_t)
-    Qlg = qmul(q2, qmul(q1, Q[f, RLEG]))
-    rot[f, RLEG] = qmul(qconj(Qup), Qlg)
-    # foot: laid back behind the ankle, resting on the floor
-    foot_h = float(np.sqrt(max(l_foot ** 2 - ANKLE_H ** 2, 1e-4)))
-    toe_t = ank_t + back * foot_h
-    toe_t[1] = 0.0
-    toe_t = toe_cur * (1 - w) + toe_t * w
-    # The aim only fixes a DIRECTION - the toe then lands a full foot-length
-    # along it, so a blended target that sits close to the ankle overshoots and
-    # drives the toe underground. Re-elevate the direction so the toe rests ON
-    # the floor rather than through it.
-    fdir = toe_t - ank_t
-    fn_ = np.linalg.norm(fdir)
-    fdir = fdir / fn_ if fn_ > 1e-9 else back.copy()
-    if ank_t[1] + fdir[1] * l_foot < 0.0:
-        dy = float(np.clip(-ank_t[1] / l_foot, -1.0, 1.0))
-        h_ = fdir.copy()
-        h_[1] = 0.0
-        hn_ = np.linalg.norm(h_)
-        h_ = h_ / hn_ if hn_ > 1e-9 else back.copy()
-        fdir = h_ * float(np.sqrt(max(1.0 - dy * dy, 0.0)))
-        fdir[1] = dy
-    toe_t = ank_t + fdir * l_foot
-    q3 = aim_rotation(quat_to_mat(qmul(q2, q1)) @ (toe_cur - ank_cur), toe_t - ank_t)
-    Qft = qmul(q3, qmul(q2, qmul(q1, Q[f, RFOOT])))
-    rot[f, RFOOT] = qmul(qconj(Qlg), Qft)
+    q2 = aim_rotation(d_old, ank_g - knee_after)
+    Qlg_t = qmul(q2, qmul(q1, Q[f, RLEG]))
+    ank_after = knee_after + (ank_g - knee_after) / max(
+        float(np.linalg.norm(ank_g - knee_after)), 1e-9) * l_shin
+
+    q3 = aim_rotation(quat_to_mat(qmul(q2, q1)) @ (toe_cur - ank_cur),
+                      toe_g - ank_after)
+    Qft_t = qmul(q3, qmul(q2, qmul(q1, Q[f, RFOOT])))
+
+    tgt_up = qmul(qconj(Q[f, par[RUP]]), Qup_t)
+    tgt_lg = qmul(qconj(Qup_t), Qlg_t)
+    tgt_ft = qmul(qconj(Qlg_t), Qft_t)
+    o_up, o_lg, o_ft = rot[f, RUP].copy(), rot[f, RLEG].copy(), rot[f, RFOOT].copy()
+    Qpar = Q[f, par[RUP]]
+
+    def _chain(ww):
+        """World knee/ankle/toe for a candidate blend weight."""
+        wu = qmul(Qpar, slerp(o_up, tgt_up, ww))
+        kp = hip + quat_to_mat(wu) @ A.skel.rest_t[RLEG]
+        wl = qmul(wu, slerp(o_lg, tgt_lg, ww))
+        ap = kp + quat_to_mat(wl) @ A.skel.rest_t[RFOOT]
+        wf = qmul(wl, slerp(o_ft, tgt_ft, ww))
+        tp = ap + quat_to_mat(wf) @ A.skel.rest_t[RTOE]
+        return kp, ap, tp
+
+    # Self-limiting blend. Slerping between two very different leg poses can pass
+    # through intermediates that dip below the floor; rather than let the global
+    # clamp answer that by hoisting the whole character half a metre, back the
+    # retarget off on exactly the frames that would penetrate.
+    # Reachability back-off, decided per frame but COMMITTED later. The captured
+    # sit and the synthesised kneel are far apart, and blends between them can
+    # dip below the floor; easing off there is necessary. Applying the decision
+    # immediately is not - it steps between neighbouring frames and snaps the leg
+    # over 100 deg, so the weights are smoothed before they are used.
+    w_use = w
+    for _ in range(9):
+        kp, ap, tp = _chain(w_use)
+        if min(kp[1], ap[1], tp[1]) >= -0.020 or w_use <= 0.02:
+            break
+        w_use *= 0.78
+    leg_w[f] = w_use
+    rot[f, RUP] = slerp(o_up, tgt_up, w_use)
+    rot[f, RLEG] = slerp(o_lg, tgt_lg, w_use)
+    rot[f, RFOOT] = slerp(o_ft, tgt_ft, w_use)
+    rot[f, RUP] = slerp(o_up, tgt_up, w_use)
+    rot[f, RLEG] = slerp(o_lg, tgt_lg, w_use)
+    rot[f, RFOOT] = slerp(o_ft, tgt_ft, w_use)
 
     # ---- left leg: drive it out to a near-straight extension, heel down ---
     lhip = P[f, LUP]
@@ -483,6 +608,21 @@ for f in range(RT_A, min(RT_B, F)):
     Qll = qmul(qb, qmul(qa, Q[f, LLEG]))
     rot[f, LLEG] = qmul(qconj(Qlu), Qll)
     rot[f, LFOOT] = qmul(qconj(Qll), Q[f, LFOOT])
+
+_eased = sorted(f for f, v in leg_w.items() if v < 0.98)
+if _eased:
+    _a, _b = max(0, _eased[0] - 10), min(F, _eased[-1] + 12)
+    # The back-off keeps the leg out of the floor but decides frame by frame, so
+    # its output steps. Smooth the resulting CURVES (not the weights) across the
+    # entry window: that removes the step without giving back the floor clearance
+    # the back-off just bought.
+    for _i in (RUP, RLEG, RFOOT):
+        _seg = rot[_a:_b, _i]
+        rot[_a:_b, _i] = slerp(
+            smooth_quat_track(_seg, half=3, degree=1, robust=False), _seg,
+            np.full(len(_seg), 0.72))
+    print(f"  support-leg entry: {len(_eased)} frames eased for reach, "
+          f"curves smoothed over f{_a}-{_b}")
 
 # Restore the hands onto the thigh: the base pose moved under them, so re-solve
 # each arm to the transform it originally held relative to the left thigh.
@@ -517,12 +657,18 @@ for s, (sh, el, hnd) in ARMS.items():
 # retargeted chains get one more high-frequency attenuation pass over the span
 # that was touched. Gross motion is untouched; only solver-introduced ripple goes.
 RT_SM = slice(max(0, RT_A - 6), min(F, RT_B + 6))
-for i in [RUP, RLEG, RFOOT, RTOE, LUP, LLEG, LFOOT,
+# The support leg is excluded: it is driven onto exact world contacts, and
+# averaging it afterwards pulls it straight back off them and through the floor.
+for i in [LUP, LLEG, LFOOT,
           I["LeftArm"], I["LeftForeArm"], I["LeftHand"],
           I["RightArm"], I["RightForeArm"], I["RightHand"]]:
     seg_q = rot[RT_SM, i]
     ref = smooth_quat_track(seg_q, half=4, degree=0, robust=False)
     rot[RT_SM, i] = slerp(ref, seg_q, np.full(len(seg_q), 0.55))
+for i in [RUP, RLEG, RFOOT, RTOE]:
+    seg_q = rot[RT_SM, i]
+    ref = smooth_quat_track(seg_q, half=3, degree=0, robust=False)
+    rot[RT_SM, i] = slerp(ref, seg_q, np.full(len(seg_q), 0.90))
 
 W, P, Q = fk_from(rot, trans)
 print(f"  pelvis lift {HIP_LIFT*100:.1f} cm applied over f{RT_A}-{RT_B} "
@@ -582,6 +728,12 @@ MAX_PIN = 0.06   # never yank an ankle further than this; beyond it the contact
                  # model is wrong and forcing it would deform the pose
 
 for side, (up, leg, foot, toe_j, cname) in LIMB.items():
+    if side == "R":
+        # The posture retarget already pins this leg to fixed world contacts.
+        # A second contact solver on top of that only fights it - it re-detects
+        # "contacts" from the retargeted motion and drags the foot off the pins.
+        print("  R leg: pinned by the posture retarget, contact IK skipped")
+        continue
     l1 = float(np.linalg.norm(REST[leg]))
     l2 = float(np.linalg.norm(REST[foot]))
     # Only sustained contacts get pinned; brief dips are the injured leg being
@@ -714,7 +866,9 @@ for _ in range(4):
     pen = np.minimum(P[:, :, 1].min(axis=1), 0.0)
     if pen.min() >= -0.003:
         break
-    need = dilate(np.maximum(-pen, 0.0), 4)
+    # Capped: the root lift exists to absorb millimetre dips, not to answer a
+    # limb passing through the floor. Uncapped it hoists the entire character.
+    need = np.minimum(dilate(np.maximum(-pen, 0.0), 4), 0.05)
     lift = gauss_smooth(need[:, None], sigma=2.5)[:, 0]
     trans[:, HIPS, 1] += lift
     total_lift += lift
