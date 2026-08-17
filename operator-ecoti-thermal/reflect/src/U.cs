@@ -50,6 +50,55 @@ namespace OperatorEcotiThermal.Reflect
             if (_warned.Add(what)) MelonLogger.Warning($"[EcotiThermal] unresolved: {what}");
         }
 
+        /// <summary>
+        /// Unity engine modules this mod needs, in load order of importance.
+        ///
+        /// These are force-loaded before any type resolution. AppDomain.GetAssemblies() only
+        /// returns assemblies already loaded, and an Il2CppInterop assembly is loaded lazily — the
+        /// first time something references it. UnityEngine.CoreModule is up early because
+        /// MelonLoader itself uses it, but IMGUIModule (which owns UnityEngine.GUI) has no reason
+        /// to be loaded in a game that draws its UI with uGUI canvases, as this one does. Without
+        /// an explicit Assembly.Load, every drawing member resolves to null and the overlay can
+        /// never become ready.
+        /// </summary>
+        private static readonly string[] UnityModules =
+        {
+            "UnityEngine.CoreModule",
+            "UnityEngine.IMGUIModule",
+            "UnityEngine.InputLegacyModule",
+            "UnityEngine.TextRenderingModule",
+            "UnityEngine",
+        };
+
+        private static readonly List<string> _moduleReport = new List<string>();
+
+        private static void ForceLoadUnityModules()
+        {
+            _moduleReport.Clear();
+
+            foreach (var name in UnityModules)
+            {
+                var already = false;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (string.Equals(asm.GetName().Name, name, StringComparison.OrdinalIgnoreCase))
+                    { already = true; break; }
+                }
+
+                if (already) { _moduleReport.Add($"  loaded    {name}"); continue; }
+
+                try
+                {
+                    Assembly.Load(name);
+                    _moduleReport.Add($"  forced    {name}");
+                }
+                catch (Exception e)
+                {
+                    _moduleReport.Add($"  NOT FOUND {name}  ({e.GetType().Name})");
+                }
+            }
+        }
+
         private static Type Find(string full)
         {
             var t = Type.GetType(full, false);
@@ -64,6 +113,23 @@ namespace OperatorEcotiThermal.Reflect
                 }
                 catch { }
             }
+
+            // Last resort: some interop assemblies expose the type only via a full search of their
+            // exported types, e.g. when the namespace differs from the assembly name.
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var n = asm.GetName().Name;
+                if (n == null || (!n.StartsWith("UnityEngine", StringComparison.OrdinalIgnoreCase)
+                                  && !n.StartsWith("Il2Cpp", StringComparison.OrdinalIgnoreCase))) continue;
+
+                try
+                {
+                    foreach (var candidate in asm.GetTypes())
+                        if (candidate.FullName == full) return candidate;
+                }
+                catch { }
+            }
+
             return null;
         }
 
@@ -71,6 +137,8 @@ namespace OperatorEcotiThermal.Reflect
         public static bool Init()
         {
             if (Ready) return true;
+
+            ForceLoadUnityModules();
 
             _tInput     = Find("UnityEngine.Input");
             _tTime      = Find("UnityEngine.Time");
@@ -90,7 +158,12 @@ namespace OperatorEcotiThermal.Reflect
 
             // The engine assemblies are not loaded until Unity itself is up, so a total miss here
             // simply means "too early" rather than "broken". Init is retried until it succeeds.
-            if (_tCamera == null || _tGUI == null || _tVector3 == null) return false;
+            // The report is built either way, so a permanent miss is still diagnosable.
+            if (_tCamera == null || _tGUI == null || _tVector3 == null)
+            {
+                BuildReport();
+                return false;
+            }
 
             const BindingFlags PubStatic = BindingFlags.Public | BindingFlags.Static;
             const BindingFlags PubInst = BindingFlags.Public | BindingFlags.Instance;
@@ -164,6 +237,18 @@ namespace OperatorEcotiThermal.Reflect
             _report.Clear();
             void Add(string n, object o) => _report.Add($"  {(o != null ? "ok  " : "MISS")}  {n}");
 
+            Add("UnityEngine.Input", _tInput);
+            Add("UnityEngine.Time", _tTime);
+            Add("UnityEngine.Screen", _tScreen);
+            Add("UnityEngine.Texture2D", _tTexture2D);
+            Add("UnityEngine.Component", _tComponent);
+            Add("UnityEngine.Transform", _tTransform);
+            Add("UnityEngine.Renderer", _tRenderer);
+            Add("UnityEngine.Vector3", _tVector3);
+            Add("UnityEngine.Rect", _tRect);
+            Add("UnityEngine.Color", _tColor);
+            Add("UnityEngine.Bounds", _tBounds);
+            Add("UnityEngine.KeyCode", _tKeyCode);
             Add("UnityEngine.Camera", _tCamera);
             Add("UnityEngine.GUI", _tGUI);
             Add("Camera.main", _cameraMain);
@@ -192,11 +277,37 @@ namespace OperatorEcotiThermal.Reflect
         /// </summary>
         public static void SelfTest()
         {
-            MelonLogger.Msg("──── EcotiThermal reflection self-test ────");
-            if (_report.Count == 0) MelonLogger.Msg("  (Unity not yet loaded)");
+            MelonLogger.Msg("════ EcotiThermal reflection self-test ════");
+
+            MelonLogger.Msg("Unity modules:");
+            if (_moduleReport.Count == 0) MelonLogger.Msg("  (Init has not run yet)");
+            foreach (var line in _moduleReport) MelonLogger.Msg(line);
+
+            MelonLogger.Msg("Members:");
+            if (_report.Count == 0) MelonLogger.Msg("  (nothing resolved yet)");
             foreach (var line in _report) MelonLogger.Msg(line);
+
+            // If resolution failed, the list of assemblies that ARE present is the thing that
+            // identifies why. Printed only on failure, since it is long.
+            if (!Ready)
+            {
+                MelonLogger.Msg("Loaded assemblies (UnityEngine* / Il2Cpp*):");
+                var names = new List<string>();
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    var n = asm.GetName().Name;
+                    if (n == null) continue;
+                    if (n.StartsWith("UnityEngine", StringComparison.OrdinalIgnoreCase)
+                        || n.StartsWith("Il2Cpp", StringComparison.OrdinalIgnoreCase))
+                        names.Add(n);
+                }
+                names.Sort();
+                if (names.Count == 0) MelonLogger.Msg("  (none — Unity is not up yet)");
+                foreach (var n in names) MelonLogger.Msg("  " + n);
+            }
+
             MelonLogger.Msg($"  => overlay {(Ready ? "CAN" : "CANNOT")} draw");
-            MelonLogger.Msg("───────────────────────────────────────────");
+            MelonLogger.Msg("══════════════════════════════════════════");
         }
 
         // ── Scalars ───────────────────────────────────────────────────────────────────────────

@@ -454,12 +454,16 @@ namespace OperatorEcotiThermal.Reflect
         private bool _active;
         private string _status = "starting";
         private bool _selfTested;
+        private readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
 
         public override void OnInitializeMelon()
         {
             _opt = Options.Load();
-            LoggerInstance.Msg("ECOTI Thermal Overlay (reflection build) loaded.");
-            LoggerInstance.Msg("  F7 toggle · F8 status HUD · F9 dump (also prints the reflection self-test)");
+            _clock.Start();
+
+            LoggerInstance.Msg("=== ECOTI Thermal Overlay (reflection build) INITIALISED ===");
+            LoggerInstance.Msg("  If you can read this line, the melon loaded correctly.");
+            LoggerInstance.Msg("  F7 toggle · F8 status HUD · F9 dump + reflection self-test");
             LoggerInstance.Msg("  Solo sessions only. Off whenever another player is connected.");
         }
 
@@ -478,7 +482,25 @@ namespace OperatorEcotiThermal.Reflect
             {
                 // Unity's assemblies are not loaded at melon init, so resolution is retried until
                 // it takes, then reported once.
-                if (!U.Init()) return;
+                if (!U.Init())
+                {
+                    // If it is still failing well after startup, that is not "too early" any more —
+                    // it is the failure mode. Report it once, unprompted, so the log carries the
+                    // diagnosis without the user having to know about the dump key.
+                    //
+                    // Timed off a managed stopwatch, not U.UnscaledTime: when Unity has not resolved
+                    // that property returns its fallback and never advances, so a Unity-based timer
+                    // would guarantee this branch never fires in exactly the case it exists for.
+                    if (!_selfTested && _clock.Elapsed.TotalSeconds > 10.0)
+                    {
+                        _selfTested = true;
+                        LoggerInstance.Error("Unity reflection did not resolve after 10s. Self-test follows; "
+                                           + "send this whole block if you are reporting it.");
+                        U.SelfTest();
+                    }
+                    return;
+                }
+
                 if (!_selfTested) { _selfTested = true; U.SelfTest(); }
             }
 
