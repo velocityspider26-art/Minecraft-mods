@@ -357,6 +357,20 @@ namespace OperatorEcotiThermal.Reflect
         /// Log what resolved. This is the diagnostic that matters: this build cannot be tested
         /// before shipping, so if something is wrong, this table says which member it was.
         /// </summary>
+        /// <summary>The self-test table as lines, for embedding in the diagnostic file.</summary>
+        public static IEnumerable<string> ReportLines()
+        {
+            yield return "Unity modules:";
+            if (_moduleReport.Count == 0) yield return "  (Init has not run yet)";
+            foreach (var line in _moduleReport) yield return line;
+
+            yield return "Members:";
+            if (_report.Count == 0) yield return "  (nothing resolved yet)";
+            foreach (var line in _report) yield return line;
+
+            yield return $"  => tracking {(CoreReady ? "OK" : "BROKEN")}, drawing {(CanDraw ? "OK" : "BROKEN")}";
+        }
+
         public static void SelfTest()
         {
             MelonLogger.Msg("════ EcotiThermal reflection self-test ════");

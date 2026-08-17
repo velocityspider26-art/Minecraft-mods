@@ -461,6 +461,7 @@ namespace OperatorEcotiThermal.Reflect
         private bool _active;
         private string _status = "starting";
         private bool _selfTested;
+        private bool _loggedFirstActivation;
         private readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
 
         public override void OnInitializeMelon()
@@ -470,6 +471,8 @@ namespace OperatorEcotiThermal.Reflect
 
             LoggerInstance.Msg("=== ECOTI Thermal Overlay (reflection build) INITIALISED ===");
             LoggerInstance.Msg("  If you can read this line, the melon loaded correctly.");
+            LoggerInstance.Msg($"  Diagnostic report: {Diag.Location}");
+            Diag.Write("melon init", "not evaluated yet", 0);
             LoggerInstance.Msg("  F7 toggle · F8 status HUD · F9 dump + reflection self-test");
             LoggerInstance.Msg("  Solo sessions only. Off whenever another player is connected.");
         }
@@ -502,13 +505,19 @@ namespace OperatorEcotiThermal.Reflect
                     {
                         _selfTested = true;
                         LoggerInstance.Error("Unity reflection did not resolve after 10s. Self-test follows; "
-                                           + "send this whole block if you are reporting it.");
+                                           + $"the same report is written to {Diag.Location}");
                         U.SelfTest();
+                        Diag.Write("reflection failed after 10s", _status, 0);
                     }
                     return;
                 }
 
-                if (!_selfTested) { _selfTested = true; U.SelfTest(); }
+                if (!_selfTested)
+                {
+                    _selfTested = true;
+                    U.SelfTest();
+                    Diag.Write("reflection resolved", _status, EnemyTracker.Count);
+                }
             }
 
             try
@@ -519,7 +528,12 @@ namespace OperatorEcotiThermal.Reflect
                     LoggerInstance.Msg($"overlay {(_toggle ? "enabled" : "disabled")}");
                 }
                 if (U.GetKeyDown(_opt.StatusKey.Value)) _opt.ShowStatusHud.Value = !_opt.ShowStatusHud.Value;
-                if (U.GetKeyDown(_opt.DumpKey.Value)) EcotiDetector.Dump();
+                if (U.GetKeyDown(_opt.DumpKey.Value))
+                {
+                    EcotiDetector.Dump();
+                    Diag.Write("dump key", _status, EnemyTracker.Count);
+                    LoggerInstance.Msg($"[EcotiThermal] diagnostic written to {Diag.Location}");
+                }
             }
             catch (Exception e) { LoggerInstance.Error($"input failed: {e.Message}"); }
 
@@ -535,6 +549,13 @@ namespace OperatorEcotiThermal.Reflect
             {
                 try { EnemyTracker.Tick(Math.Max(0.05f, _opt.RebuildInterval.Value)); }
                 catch (Exception e) { LoggerInstance.Error($"tracker failed: {e.Message}"); }
+
+                if (!_loggedFirstActivation)
+                {
+                    _loggedFirstActivation = true;
+                    LoggerInstance.Msg($"[EcotiThermal] overlay active — {EnemyTracker.Count} contact(s)");
+                    Diag.Write("first activation", _status, EnemyTracker.Count);
+                }
             }
         }
 

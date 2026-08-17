@@ -2,4 +2,5 @@ bin/
 obj/
 *.user
 reflect/lib/*.dll
+reflect/harness/**/EcotiThermal-diagnostic.txt
 !EcotiThermal.dll
