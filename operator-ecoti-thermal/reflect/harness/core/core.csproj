@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>UnityEngine.CoreModule</AssemblyName>
+    <Nullable>disable</Nullable><LangVersion>latest</LangVersion>
+    <NoWarn>CS0649;CS0414;CS0169;CS0108</NoWarn>
+  </PropertyGroup>
+</Project>

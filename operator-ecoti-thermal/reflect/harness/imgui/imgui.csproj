@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>UnityEngine.IMGUIModule</AssemblyName>
+    <Nullable>disable</Nullable><LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../core/core.csproj" /></ItemGroup>
+</Project>

@@ -6,17 +6,28 @@
     <RootNamespace>OperatorEcotiThermal.Reflect</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <Deterministic>true</Deterministic>
     <DebugType>none</DebugType>
+
+    <!--
+      Explicit compile list. The default glob would also pull in harness/mlmock/Ml.cs — a MOCK
+      MelonLoader that exists only so the harness can run outside the loader — and compile it into
+      the shipped assembly, which then binds to the fake types instead of the real ones and cannot
+      load. Never enable the default items here.
+    -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+  </ItemGroup>
+
   <!--
-    The whole point of this variant: MelonLoader.dll is the ONLY reference. No Il2Cpp interop
-    assemblies, so no game install is needed to build it. Every Unity call is resolved at runtime
-    by reflection in U.cs.
+    MelonLoader.dll is the ONLY reference: no Il2Cpp interop assemblies, so no game install is
+    needed to build. Every Unity call is resolved at runtime by reflection in src/U.cs.
+    Fetch it with the snippet in README.md if lib/ is empty.
   -->
   <ItemGroup>
     <Reference Include="lib\MelonLoader.dll" Private="false" />

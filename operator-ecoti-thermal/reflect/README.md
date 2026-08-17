@@ -39,3 +39,30 @@ dotnet build -c Release
 ```
 
 No game required. Output lands in `bin/Release/net6.0/EcotiThermal.dll`.
+
+## Harness
+
+`harness/run.sh` runs the reflection layer against mock UnityEngine and OPERATOR assemblies shaped
+like Il2CppInterop's output — same type names, same member kinds (field vs property), same
+signatures. Needs only the .NET SDK; no game, no MelonLoader.
+
+```bash
+cd harness && ./run.sh      # 30/30 expected
+```
+
+It verifies:
+
+- module force-load, **including the by-path fallback** — `UnityEngine.IMGUIModule` is copied into
+  the output without being referenced, so finding it is the thing under test
+- type and member resolution, boxed-struct construction and field reads through reflection
+- the solo gate across all four connection states, including a player joining and leaving mid-session
+- quad-tube discrimination (2 lenses vs 4), dead and friendly filtering, ECOTI name matching
+- the projection maths: a 1.8 m contact at 10 m yields a 144 px box (1.8 / 10 × 800 focal),
+  at 40 m a 36 px box, both centred correctly; contacts behind the camera are rejected
+
+It cannot verify that real Il2CppInterop names things this way, or that native marshalling behaves.
+Those still need a live build.
+
+Note `EnableDefaultCompileItems` is **false** in the csproj on purpose. The default glob would pull
+`harness/mlmock/Ml.cs` — a mock MelonLoader that exists only so the harness can run outside the
+loader — into the shipped assembly, which would then bind to fake types and fail to load.

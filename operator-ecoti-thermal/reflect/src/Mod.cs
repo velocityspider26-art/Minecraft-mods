@@ -263,6 +263,13 @@ namespace OperatorEcotiThermal.Reflect
             var reference = Probe.Instance<object>(brain, "MyTeamIdentifierReference");
             if (reference == null) return int.MinValue;
 
+            // The toolkit describes TeamIdentifierReference as a back-pointer wrapper, but whether
+            // MyTeamIdentifierReference hands back the wrapper or the TeamIdentifier itself is not
+            // documented. Try TeamID directly first, then unwrap — one of the two is right and this
+            // costs a single failed lookup either way.
+            var direct2 = Probe.Instance(reference, "TeamID", int.MinValue);
+            if (direct2 != int.MinValue) return direct2;
+
             var identifier = Probe.Instance<object>(reference, "teamIdentifier")
                              ?? Probe.Instance<object>(reference, "TeamIdentifier");
             return identifier == null ? int.MinValue : Probe.Instance(identifier, "TeamID", int.MinValue);
@@ -478,7 +485,7 @@ namespace OperatorEcotiThermal.Reflect
         {
             if (_opt == null) return;
 
-            if (!U.Ready)
+            if (!U.CoreReady)
             {
                 // Unity's assemblies are not loaded at melon init, so resolution is retried until
                 // it takes, then reported once.
@@ -572,7 +579,7 @@ namespace OperatorEcotiThermal.Reflect
 
         public override void OnGUI()
         {
-            if (_opt == null || !U.Ready) return;
+            if (_opt == null || !U.CanDraw) return;
 
             try
             {

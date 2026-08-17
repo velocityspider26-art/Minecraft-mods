@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using MelonLoader;
 
@@ -25,7 +26,14 @@ namespace OperatorEcotiThermal.Reflect
     /// </summary>
     internal static class U
     {
+        /// <summary>Everything resolved: tracking works and the overlay can draw.</summary>
         public static bool Ready { get; private set; }
+
+        /// <summary>Camera, transforms and Vector3 resolved — gates and tracking can run.</summary>
+        public static bool CoreReady { get; private set; }
+
+        /// <summary>IMGUI resolved — draw calls will land.</summary>
+        public static bool CanDraw { get; private set; }
 
         // Types
         private static Type _tInput, _tTime, _tScreen, _tCamera, _tGUI, _tTexture2D,
@@ -72,6 +80,48 @@ namespace OperatorEcotiThermal.Reflect
 
         private static readonly List<string> _moduleReport = new List<string>();
 
+        /// <summary>
+        /// Directories worth probing for an interop assembly, derived from ones already loaded.
+        ///
+        /// Assembly.Load(simpleName) is not enough on its own: on .NET Core it resolves through the
+        /// host's dependency context, not by scanning a directory, so it throws FileNotFoundException
+        /// for an assembly sitting right next to the ones already loaded. Taking the directory of a
+        /// loaded interop assembly and loading siblings by path is what actually works.
+        /// </summary>
+        private static IEnumerable<string> ProbeDirectories()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                string dir = null;
+                try
+                {
+                    var n = asm.GetName().Name;
+                    if (n == null) continue;
+                    if (!n.StartsWith("UnityEngine", StringComparison.OrdinalIgnoreCase)
+                        && !n.StartsWith("Il2Cpp", StringComparison.OrdinalIgnoreCase)
+                        && !n.StartsWith("Assembly-CSharp", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    if (string.IsNullOrEmpty(asm.Location)) continue;   // dynamic or in-memory
+                    dir = Path.GetDirectoryName(asm.Location);
+                }
+                catch { }
+
+                if (!string.IsNullOrEmpty(dir) && seen.Add(dir)) yield return dir;
+            }
+
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            if (!string.IsNullOrEmpty(baseDir) && seen.Add(baseDir)) yield return baseDir;
+
+            // MelonLoader's standard layout, relative to the game root.
+            if (!string.IsNullOrEmpty(baseDir))
+            {
+                var interop = Path.Combine(baseDir, "MelonLoader", "Il2CppAssemblies");
+                if (seen.Add(interop)) yield return interop;
+            }
+        }
+
         private static void ForceLoadUnityModules()
         {
             _moduleReport.Clear();
@@ -87,16 +137,40 @@ namespace OperatorEcotiThermal.Reflect
 
                 if (already) { _moduleReport.Add($"  loaded    {name}"); continue; }
 
+                if (TryLoadByName(name)) { _moduleReport.Add($"  by-name   {name}"); continue; }
+
+                var loadedPath = TryLoadByPath(name);
+                if (loadedPath != null) { _moduleReport.Add($"  by-path   {name}  <- {loadedPath}"); continue; }
+
+                _moduleReport.Add($"  NOT FOUND {name}");
+            }
+        }
+
+        private static bool TryLoadByName(string name)
+        {
+            try { return Assembly.Load(name) != null; }
+            catch { return false; }
+        }
+
+        private static string TryLoadByPath(string name)
+        {
+            foreach (var dir in ProbeDirectories())
+            {
+                string file;
                 try
                 {
-                    Assembly.Load(name);
-                    _moduleReport.Add($"  forced    {name}");
+                    file = Path.Combine(dir, name + ".dll");
+                    if (!File.Exists(file)) continue;
                 }
-                catch (Exception e)
+                catch { continue; }
+
+                try
                 {
-                    _moduleReport.Add($"  NOT FOUND {name}  ({e.GetType().Name})");
+                    if (Assembly.LoadFrom(file) != null) return dir;
                 }
+                catch { /* wrong architecture, native stub, or already loaded under another identity */ }
             }
+            return null;
         }
 
         private static Type Find(string full)
@@ -156,15 +230,13 @@ namespace OperatorEcotiThermal.Reflect
             _tKeyCode   = Find("UnityEngine.KeyCode");
             _tObject    = Find("UnityEngine.Object");
 
-            // The engine assemblies are not loaded until Unity itself is up, so a total miss here
-            // simply means "too early" rather than "broken". Init is retried until it succeeds.
-            // The report is built either way, so a permanent miss is still diagnosable.
-            if (_tCamera == null || _tGUI == null || _tVector3 == null)
-            {
-                BuildReport();
-                return false;
-            }
-
+            // Deliberately NOT returning early on a missing type.
+            //
+            // An earlier version bailed here if Camera, GUI or Vector3 was null, which meant one
+            // missing type left every other member unresolved and reported as MISS. The report then
+            // blamed twenty members when one had failed, and tracking died alongside drawing even
+            // though it shares none of the same members. Resolve everything that can be resolved,
+            // report honestly, and let the Ready/CoreReady split decide what is usable.
             const BindingFlags PubStatic = BindingFlags.Public | BindingFlags.Static;
             const BindingFlags PubInst = BindingFlags.Public | BindingFlags.Instance;
 
@@ -194,11 +266,12 @@ namespace OperatorEcotiThermal.Reflect
                 _boundsSize   = _tBounds.GetProperty("size", PubInst);
             }
 
-            _vx = _tVector3.GetField("x", PubInst);
-            _vy = _tVector3.GetField("y", PubInst);
-            _vz = _tVector3.GetField("z", PubInst);
+            // Null-conditional throughout now that a missing type no longer short-circuits Init.
+            _vx = _tVector3?.GetField("x", PubInst);
+            _vy = _tVector3?.GetField("y", PubInst);
+            _vz = _tVector3?.GetField("z", PubInst);
 
-            _ctorVector3 = _tVector3.GetConstructor(new[] { typeof(float), typeof(float), typeof(float) });
+            _ctorVector3 = _tVector3?.GetConstructor(new[] { typeof(float), typeof(float), typeof(float) });
             _ctorRect    = _tRect?.GetConstructor(new[] { typeof(float), typeof(float), typeof(float), typeof(float) });
             _ctorColor   = _tColor?.GetConstructor(new[] { typeof(float), typeof(float), typeof(float), typeof(float) });
 
@@ -225,11 +298,20 @@ namespace OperatorEcotiThermal.Reflect
                 _label = _tGUI.GetMethod("Label", PubStatic, null, new[] { _tRect, typeof(string) }, null);
             }
 
-            Ready = _worldToScreen != null && _ctorRect != null && _ctorColor != null
-                    && _drawTexture != null && _whiteTexture != null && _guiColor != null;
+            // Two separate readiness answers, because the failures are independent and so are the
+            // consequences. Tracking shares no members with drawing, so a missing GUI should still
+            // leave the gate chain running and reporting contact counts to the log — that is what
+            // turns "nothing happens" into "everything works except the draw call".
+            CoreReady = _worldToScreen != null && _ctorVector3 != null && _vx != null
+                        && _camTransform != null && _cameraMain != null;
+
+            CanDraw = _ctorRect != null && _ctorColor != null && _drawTexture != null
+                      && _whiteTexture != null && _guiColor != null;
+
+            Ready = CoreReady && CanDraw;
 
             BuildReport();
-            return Ready;
+            return CoreReady;
         }
 
         private static void BuildReport()
@@ -289,7 +371,7 @@ namespace OperatorEcotiThermal.Reflect
 
             // If resolution failed, the list of assemblies that ARE present is the thing that
             // identifies why. Printed only on failure, since it is long.
-            if (!Ready)
+            if (!CoreReady || !CanDraw)
             {
                 MelonLogger.Msg("Loaded assemblies (UnityEngine* / Il2Cpp*):");
                 var names = new List<string>();
@@ -306,7 +388,9 @@ namespace OperatorEcotiThermal.Reflect
                 foreach (var n in names) MelonLogger.Msg("  " + n);
             }
 
-            MelonLogger.Msg($"  => overlay {(Ready ? "CAN" : "CANNOT")} draw");
+            MelonLogger.Msg($"  => tracking {(CoreReady ? "OK" : "BROKEN")}, drawing {(CanDraw ? "OK" : "BROKEN")}");
+            if (CoreReady && !CanDraw)
+                MelonLogger.Msg("     IMGUI is unavailable. Gates and tracking still run and report to this log.");
             MelonLogger.Msg("══════════════════════════════════════════");
         }
 
