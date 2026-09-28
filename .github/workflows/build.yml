@@ -22,9 +22,12 @@ jobs:
         with:
           gradle-version: '9.2.1'
 
-      - name: Unpack source
+      - name: Reconstruct and unpack source
         run: |
-          unzip -q crashtest-poc-source.zip -d work
+          cat parts/part-* | base64 -d > source.zip
+          unzip -t source.zip
+          mkdir -p work
+          unzip -q source.zip -d work
 
       - name: Wire Sable 2.0.5 dependency
         run: |
@@ -32,9 +35,15 @@ jobs:
           from pathlib import Path
           p = Path('work/crashtest/build.gradle')
           s = p.read_text()
-          s = s.replace('repositories {\n    // Add the Maven repository that hosts your exact Sable 2.0.5 artifact here, if you use Maven.\n    // The PoC deliberately does not guess a repository URL or artifact coordinate.\n}', 'repositories {\n    maven { url = uri("https://www.cursemaven.com") }\n}')
-          marker = 'dependencies {\n'
-          s = s.replace(marker, marker + '    implementation "curse.maven:sable-1312371:8673825"\n', 1)
+          old = '''repositories {
+    // Add the Maven repository that hosts your exact Sable 2.0.5 artifact here, if you use Maven.
+    // The PoC deliberately does not guess a repository URL or artifact coordinate.
+}'''
+          new = '''repositories {
+    maven { url = uri("https://www.cursemaven.com") }
+}'''
+          s = s.replace(old, new)
+          s = s.replace('dependencies {\n', 'dependencies {\n    implementation "curse.maven:sable-1312371:8673825"\n', 1)
           p.write_text(s)
           PY
 
