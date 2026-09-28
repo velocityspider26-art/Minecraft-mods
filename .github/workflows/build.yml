@@ -2,7 +2,8 @@ name: CrashTest CI
 
 on:
   push:
-    branches: [crashtest-ci]
+    branches:
+      - crashtest-ci
 
 jobs:
   build:
@@ -15,43 +16,33 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
 
-      - name: Setup Gradle 9.2.1
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.2.1'
 
-      - name: Reconstruct and unpack source
-        run: |
-          cat parts/part-* | base64 -d > source.zip
-          unzip -t source.zip
-          mkdir -p work
-          unzip -q source.zip -d work
+      - name: Reconstruct source
+        run: cat parts/part-* | base64 -d > source.zip
 
-      - name: Wire Sable 2.0.5 dependency
+      - name: Test source archive
+        run: unzip -t source.zip
+
+      - name: Unpack source
+        run: mkdir -p work && unzip -q source.zip -d work
+
+      - name: Wire Sable dependency
+        shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('work/crashtest/build.gradle')
-          s = p.read_text()
-          old = '''repositories {
-    // Add the Maven repository that hosts your exact Sable 2.0.5 artifact here, if you use Maven.
-    // The PoC deliberately does not guess a repository URL or artifact coordinate.
-}'''
-          new = '''repositories {
-    maven { url = uri("https://www.cursemaven.com") }
-}'''
-          s = s.replace(old, new)
-          s = s.replace('dependencies {\n', 'dependencies {\n    implementation "curse.maven:sable-1312371:8673825"\n', 1)
-          p.write_text(s)
-          PY
+          sed -i '/repositories {/a\    maven { url = uri("https://www.cursemaven.com") }' work/crashtest/build.gradle
+          sed -i '/dependencies {/a\    implementation "curse.maven:sable-1312371:8673825"' work/crashtest/build.gradle
 
       - name: Build
         working-directory: work/crashtest
         run: gradle build --stacktrace
 
-      - name: Upload mod jar
+      - name: Upload jar
         if: always()
         uses: actions/upload-artifact@v4
         with:
