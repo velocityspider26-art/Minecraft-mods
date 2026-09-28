@@ -32,11 +32,20 @@ jobs:
       - name: Unpack source
         run: mkdir -p work && unzip -q source.zip -d work
 
-      - name: Wire Sable dependency
+      - name: Wire official Sable compile dependencies
         shell: bash
         run: |
-          sed -i '/repositories {/a\    maven { url = uri("https://www.cursemaven.com") }' work/crashtest/build.gradle
-          sed -i '/dependencies {/a\    implementation "curse.maven:sable-1312371:8673825"' work/crashtest/build.gradle
+          sed -i '/repositories {/a\    maven { url = uri("https://maven.ryanhcode.dev/releases") }' work/crashtest/build.gradle
+          sed -i '/dependencies {/a\    implementation "dev.ryanhcode.sable:sable-common-1.21.1:2.0.5"\n    implementation "dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:1.6.0"' work/crashtest/build.gradle
+
+      - name: Use Sable common event API
+        shell: bash
+        run: |
+          sed -i '/import dev.crashtest.crash.CrashImpactManager;/a\import dev.ryanhcode.sable.platform.SableEventPlatform;' work/crashtest/src/main/java/dev/crashtest/CrashTestMod.java
+          sed -i 's/NeoForge.EVENT_BUS.addListener(CrashImpactManager::onPostPhysicsTick);/SableEventPlatform.INSTANCE.onPostPhysicsTick(CrashImpactManager::onPostPhysicsTick);/' work/crashtest/src/main/java/dev/crashtest/CrashTestMod.java
+          sed -i '/import dev.ryanhcode.sable.neoforge.event.ForgeSablePostPhysicsTickEvent;/d' work/crashtest/src/main/java/dev/crashtest/crash/CrashImpactManager.java
+          sed -i 's/public static void onPostPhysicsTick(final ForgeSablePostPhysicsTickEvent event) {/public static void onPostPhysicsTick(final SubLevelPhysicsSystem system, final double timeStep) {/' work/crashtest/src/main/java/dev/crashtest/crash/CrashImpactManager.java
+          sed -i '/final SubLevelPhysicsSystem system = event.getPhysicsSystem();/d' work/crashtest/src/main/java/dev/crashtest/crash/CrashImpactManager.java
 
       - name: Build
         working-directory: work/crashtest
