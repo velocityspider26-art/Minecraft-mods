@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           sed -i '/repositories {/a\    maven { url = uri("https://maven.ryanhcode.dev/releases") }' work/crashtest/build.gradle
-          sed -i '/dependencies {/a\    implementation "dev.ryanhcode.sable:sable-common-1.21.1:2.0.5"\n    implementation "dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:1.6.0"' work/crashtest/build.gradle
+          sed -i '/dependencies {/a\    implementation("dev.ryanhcode.sable:sable-common-1.21.1:2.0.5") { transitive = false }\n    implementation("dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:1.6.0") { transitive = false }' work/crashtest/build.gradle
 
       - name: Use Sable common event API
         shell: bash
@@ -49,7 +49,7 @@ jobs:
 
       - name: Build
         working-directory: work/crashtest
-        run: gradle build --stacktrace
+        run: gradle build --no-configuration-cache --stacktrace
 
       - name: Upload jar
         if: always()
