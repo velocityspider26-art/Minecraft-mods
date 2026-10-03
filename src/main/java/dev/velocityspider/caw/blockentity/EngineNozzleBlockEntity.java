@@ -1,8 +1,6 @@
 package dev.velocityspider.caw.blockentity;
 
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
-import dev.ryanhcode.sable.api.physics.force.ForceGroups;
-import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.velocityspider.caw.block.EngineComponentBlock;
@@ -50,7 +48,6 @@ public final class EngineNozzleBlockEntity extends BlockEntity implements BlockE
 
         Direction exhaustDirection = state.getValue(DirectionalBlock.FACING);
         Optional<EngineChain> chainResult = EngineChain.scan(level, pos, exhaustDirection);
-
         nozzle.chainValid = chainResult.isPresent();
 
         int signal = 0;
@@ -82,20 +79,24 @@ public final class EngineNozzleBlockEntity extends BlockEntity implements BlockE
                 : 0.0;
 
         nozzle.tickCounter++;
-
         if ((nozzle.tickCounter & 1) == 0) {
             nozzle.setChanged();
             level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
         }
     }
 
+    /**
+     * Sable calls this in its physics loop (potentially multiple times per game tick).
+     * Applying the impulse here is critical: impulses queued from Minecraft's normal
+     * block-entity tick can be cleared before Sable integrates the body.
+     */
     @Override
     public void sable$physicsTick(
             ServerSubLevel subLevel,
             RigidBodyHandle handle,
             double timeStep
     ) {
-        if (!chainValid || cachedThrustNewtons <= 0.0 || spool <= 0.0001) {
+        if (!chainValid || cachedThrustNewtons <= 0.0 || spool <= 0.0001 || handle == null) {
             return;
         }
 
@@ -107,32 +108,26 @@ public final class EngineNozzleBlockEntity extends BlockEntity implements BlockE
         Direction exhaustDirection = state.getValue(DirectionalBlock.FACING);
         Direction craftThrustDirection = exhaustDirection.getOpposite();
 
-        Vector3d point = new Vector3d(
+        // Sable's handle expects the point and impulse in sub-level local space.
+        Vector3d localPoint = new Vector3d(
                 worldPosition.getX() + 0.5,
                 worldPosition.getY() + 0.5,
                 worldPosition.getZ() + 0.5
         );
 
-        Vector3d impulse = new Vector3d(
+        Vector3d localImpulse = new Vector3d(
                 craftThrustDirection.getStepX(),
                 craftThrustDirection.getStepY(),
                 craftThrustDirection.getStepZ()
-        ).mul(cachedThrustNewtons * timeStep);
+        ).mul(cachedThrustNewtons * Math.max(0.0, timeStep));
 
-        QueuedForceGroup propulsion =
-                subLevel.getOrCreateQueuedForceGroup(ForceGroups.PROPULSION.get());
-
-        propulsion.applyAndRecordPointForce(point, impulse);
+        handle.applyImpulseAtPoint(localPoint, localImpulse);
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.putDouble("CAWSpool", spool);
-        tag.putBoolean("CAWChainValid", chainValid);
-        tag.putInt("CAWSignal", lastSignal);
-        tag.putDouble("CAWFlow", flowMultiplier);
-        tag.putDouble("CAWThrustN", cachedThrustNewtons);
+        writeSyncData(tag);
     }
 
     @Override
@@ -148,12 +143,16 @@ public final class EngineNozzleBlockEntity extends BlockEntity implements BlockE
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
+        writeSyncData(tag);
+        return tag;
+    }
+
+    private void writeSyncData(CompoundTag tag) {
         tag.putDouble("CAWSpool", spool);
         tag.putBoolean("CAWChainValid", chainValid);
         tag.putInt("CAWSignal", lastSignal);
         tag.putDouble("CAWFlow", flowMultiplier);
         tag.putDouble("CAWThrustN", cachedThrustNewtons);
-        return tag;
     }
 
     @Override
