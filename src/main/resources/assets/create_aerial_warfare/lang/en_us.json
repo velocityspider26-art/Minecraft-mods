@@ -1,0 +1,8 @@
+{
+  "block.create_aerial_warfare.engine_inlet": "Jet Engine Inlet",
+  "block.create_aerial_warfare.engine_fan": "Jet Engine Fan",
+  "block.create_aerial_warfare.engine_compressor": "Jet Engine Compressor",
+  "block.create_aerial_warfare.engine_combustor": "Jet Engine Combustor",
+  "block.create_aerial_warfare.engine_turbine": "Jet Engine Turbine",
+  "block.create_aerial_warfare.engine_nozzle": "Jet Engine Nozzle"
+}
