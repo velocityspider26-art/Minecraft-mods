@@ -1,5 +1,6 @@
 package dev.velocityspider.caw.block;
 
+import com.mojang.serialization.MapCodec;
 import dev.velocityspider.caw.blockentity.EngineNozzleBlockEntity;
 import dev.velocityspider.caw.engine.EngineComponentType;
 import dev.velocityspider.caw.engine.EngineTier;
@@ -14,8 +15,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 public final class EngineNozzleBlock extends EngineComponentBlock implements EntityBlock {
+    public static final MapCodec<EngineNozzleBlock> CODEC = simpleCodec(EngineNozzleBlock::new);
+
     public EngineNozzleBlock(Properties properties) {
         super(EngineComponentType.NOZZLE, EngineTier.NORMAL, properties);
+    }
+
+    @Override
+    public MapCodec<EngineNozzleBlock> codec() {
+        return CODEC;
     }
 
     @Override
