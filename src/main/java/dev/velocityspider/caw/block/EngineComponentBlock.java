@@ -13,11 +13,12 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 
-public class EngineComponentBlock extends DirectionalBlock {
+/** Shared directional behavior for every modular jet-engine stage. */
+public abstract class EngineComponentBlock extends DirectionalBlock {
     private final EngineComponentType componentType;
     private final EngineTier tier;
 
-    public EngineComponentBlock(EngineComponentType componentType, EngineTier tier, Properties properties) {
+    protected EngineComponentBlock(EngineComponentType componentType, EngineTier tier, Properties properties) {
         super(properties);
         this.componentType = componentType;
         this.tier = tier;
