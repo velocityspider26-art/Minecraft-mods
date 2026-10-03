@@ -1,10 +1,12 @@
 package dev.velocityspider.caw.registry;
 
 import dev.velocityspider.caw.CreateAerialWarfare;
-import dev.velocityspider.caw.block.EngineComponentBlock;
+import dev.velocityspider.caw.block.EngineCombustorBlock;
+import dev.velocityspider.caw.block.EngineCompressorBlock;
+import dev.velocityspider.caw.block.EngineFanBlock;
+import dev.velocityspider.caw.block.EngineInletBlock;
 import dev.velocityspider.caw.block.EngineNozzleBlock;
-import dev.velocityspider.caw.engine.EngineComponentType;
-import dev.velocityspider.caw.engine.EngineTier;
+import dev.velocityspider.caw.block.EngineTurbineBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -21,47 +23,23 @@ public final class ModBlocks {
                 .sound(SoundType.METAL);
     }
 
-    public static final DeferredBlock<EngineComponentBlock> ENGINE_INLET =
-            BLOCKS.registerBlock(
-                    "engine_inlet",
-                    props -> new EngineComponentBlock(EngineComponentType.INLET, EngineTier.NORMAL, props),
-                    engineProperties()
-            );
+    public static final DeferredBlock<EngineInletBlock> ENGINE_INLET =
+            BLOCKS.registerBlock("engine_inlet", EngineInletBlock::new, engineProperties());
 
-    public static final DeferredBlock<EngineComponentBlock> ENGINE_FAN =
-            BLOCKS.registerBlock(
-                    "engine_fan",
-                    props -> new EngineComponentBlock(EngineComponentType.FAN, EngineTier.NORMAL, props),
-                    engineProperties()
-            );
+    public static final DeferredBlock<EngineFanBlock> ENGINE_FAN =
+            BLOCKS.registerBlock("engine_fan", EngineFanBlock::new, engineProperties());
 
-    public static final DeferredBlock<EngineComponentBlock> ENGINE_COMPRESSOR =
-            BLOCKS.registerBlock(
-                    "engine_compressor",
-                    props -> new EngineComponentBlock(EngineComponentType.COMPRESSOR, EngineTier.NORMAL, props),
-                    engineProperties()
-            );
+    public static final DeferredBlock<EngineCompressorBlock> ENGINE_COMPRESSOR =
+            BLOCKS.registerBlock("engine_compressor", EngineCompressorBlock::new, engineProperties());
 
-    public static final DeferredBlock<EngineComponentBlock> ENGINE_COMBUSTOR =
-            BLOCKS.registerBlock(
-                    "engine_combustor",
-                    props -> new EngineComponentBlock(EngineComponentType.COMBUSTOR, EngineTier.NORMAL, props),
-                    engineProperties()
-            );
+    public static final DeferredBlock<EngineCombustorBlock> ENGINE_COMBUSTOR =
+            BLOCKS.registerBlock("engine_combustor", EngineCombustorBlock::new, engineProperties());
 
-    public static final DeferredBlock<EngineComponentBlock> ENGINE_TURBINE =
-            BLOCKS.registerBlock(
-                    "engine_turbine",
-                    props -> new EngineComponentBlock(EngineComponentType.TURBINE, EngineTier.NORMAL, props),
-                    engineProperties()
-            );
+    public static final DeferredBlock<EngineTurbineBlock> ENGINE_TURBINE =
+            BLOCKS.registerBlock("engine_turbine", EngineTurbineBlock::new, engineProperties());
 
     public static final DeferredBlock<EngineNozzleBlock> ENGINE_NOZZLE =
-            BLOCKS.registerBlock(
-                    "engine_nozzle",
-                    EngineNozzleBlock::new,
-                    engineProperties()
-            );
+            BLOCKS.registerBlock("engine_nozzle", EngineNozzleBlock::new, engineProperties());
 
     private ModBlocks() {}
 
