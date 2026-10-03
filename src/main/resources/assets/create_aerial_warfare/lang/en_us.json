@@ -1,4 +1,5 @@
 {
+  "itemGroup.create_aerial_warfare.caw": "Create Aerial Warfare",
   "block.create_aerial_warfare.engine_inlet": "Jet Engine Inlet",
   "block.create_aerial_warfare.engine_fan": "Jet Engine Fan",
   "block.create_aerial_warfare.engine_compressor": "Jet Engine Compressor",
