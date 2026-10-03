@@ -3,6 +3,7 @@ package dev.velocityspider.caw;
 import com.mojang.logging.LogUtils;
 import dev.velocityspider.caw.registry.ModBlockEntities;
 import dev.velocityspider.caw.registry.ModBlocks;
+import dev.velocityspider.caw.registry.ModCreativeTabs;
 import dev.velocityspider.caw.registry.ModItems;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -17,5 +18,6 @@ public final class CreateAerialWarfare {
         ModBlocks.register(modBus);
         ModItems.register(modBus);
         ModBlockEntities.register(modBus);
+        ModCreativeTabs.register(modBus);
     }
 }
