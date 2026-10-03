@@ -5,26 +5,49 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
- * Runtime-only Sable bridge so CAW can compile without bundling Sable as a hard dependency.
- * If Sable is installed, thrust is applied at the actual nozzle point on the sub-level rigid body.
+ * Runtime Sable bridge with no hard Sable dependency.
+ *
+ * CAW now mirrors Sable's own BlockEntitySubLevelPropellerActor path:
+ * ServerSubLevel -> PROPULSION queued-force group -> applyAndRecordPointForce.
+ * The old direct RigidBodyHandle path remains only as a fallback.
  */
 public final class SablePhysicsBridge {
     private static final String SERVER_SUB_LEVEL = "dev.ryanhcode.sable.sublevel.ServerSubLevel";
+    private static final String FORCE_GROUP = "dev.ryanhcode.sable.api.physics.force.ForceGroup";
+    private static final String FORCE_GROUPS = "dev.ryanhcode.sable.api.physics.force.ForceGroups";
+    private static final String QUEUED_FORCE_GROUP = "dev.ryanhcode.sable.api.physics.force.QueuedForceGroup";
     private static final String RIGID_BODY_HANDLE = "dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle";
 
     private static boolean lookupAttempted;
-    private static boolean available;
+    private static boolean queuedForceAvailable;
+    private static boolean handleFallbackAvailable;
 
     private static Class<?> serverSubLevelClass;
+
+    private static Object propulsionForceGroup;
+    private static Method getOrCreateQueuedForceGroup;
+    private static Method applyAndRecordPointForce;
+
     private static Method rigidBodyOf;
     private static Method applyImpulseAtPoint;
 
+    private static boolean loggedWrongLevel;
+    private static boolean loggedSuccessfulThrust;
+
     private SablePhysicsBridge() {}
 
+    /**
+     * Applies one physics-step worth of propulsion at the nozzle's local block position.
+     * Position and force are intentionally left in sub-level local space, matching Sable's
+     * own propeller actor implementation.
+     */
     public static boolean applyThrustImpulse(
             Level level,
             BlockPos nozzlePos,
@@ -37,26 +60,70 @@ public final class SablePhysicsBridge {
 
         ensureLookup();
 
-        if (!available || !serverSubLevelClass.isInstance(level)) {
+        if (serverSubLevelClass == null || !serverSubLevelClass.isInstance(level)) {
+            if (!loggedWrongLevel) {
+                loggedWrongLevel = true;
+                CreateAerialWarfare.LOGGER.warn(
+                        "CAW jet is ticking outside a Sable ServerSubLevel; physics thrust cannot be applied here"
+                );
+            }
             return false;
         }
 
-        try {
-            Object handle = rigidBodyOf.invoke(null, level);
-            if (handle == null) {
-                return false;
+        Vector3d localPoint = new Vector3d(
+                nozzlePos.getX() + 0.5,
+                nozzlePos.getY() + 0.5,
+                nozzlePos.getZ() + 0.5
+        );
+        Vector3d localImpulse = new Vector3d(
+                localThrustDirection.getStepX(),
+                localThrustDirection.getStepY(),
+                localThrustDirection.getStepZ()
+        ).mul(impulseNewtonSeconds);
+
+        // Preferred path: exactly the same queued propulsion mechanism Sable uses for
+        // its built-in propeller/nozzle integrations.
+        if (queuedForceAvailable) {
+            try {
+                Object queue = getOrCreateQueuedForceGroup.invoke(level, propulsionForceGroup);
+                if (queue != null) {
+                    applyAndRecordPointForce.invoke(queue, localPoint, localImpulse);
+                    logFirstSuccess("queued propulsion force");
+                    return true;
+                }
+            } catch (ReflectiveOperationException ex) {
+                queuedForceAvailable = false;
+                CreateAerialWarfare.LOGGER.error(
+                        "CAW Sable queued propulsion bridge failed; trying rigid-body fallback",
+                        ex
+                );
             }
+        }
 
-            Vec3 localPoint = Vec3.atCenterOf(nozzlePos);
-            Vec3 localDirection = Vec3.atLowerCornerOf(localThrustDirection.getNormal());
-            Vec3 localImpulse = localDirection.scale(impulseNewtonSeconds);
+        // Compatibility fallback for Sable builds where the queued-force API has moved.
+        if (handleFallbackAvailable) {
+            try {
+                Object handle = rigidBodyOf.invoke(null, level);
+                if (handle != null) {
+                    Vec3 point = new Vec3(localPoint.x, localPoint.y, localPoint.z);
+                    Vec3 impulse = new Vec3(localImpulse.x, localImpulse.y, localImpulse.z);
+                    applyImpulseAtPoint.invoke(handle, point, impulse);
+                    logFirstSuccess("RigidBodyHandle fallback");
+                    return true;
+                }
+            } catch (ReflectiveOperationException ex) {
+                handleFallbackAvailable = false;
+                CreateAerialWarfare.LOGGER.error("CAW Sable rigid-body fallback failed", ex);
+            }
+        }
 
-            applyImpulseAtPoint.invoke(handle, localPoint, localImpulse);
-            return true;
-        } catch (ReflectiveOperationException ex) {
-            CreateAerialWarfare.LOGGER.warn("CAW lost Sable thrust integration at runtime", ex);
-            available = false;
-            return false;
+        return false;
+    }
+
+    private static void logFirstSuccess(String path) {
+        if (!loggedSuccessfulThrust) {
+            loggedSuccessfulThrust = true;
+            CreateAerialWarfare.LOGGER.info("CAW jet thrust is reaching Sable through {}", path);
         }
     }
 
@@ -68,20 +135,57 @@ public final class SablePhysicsBridge {
 
         try {
             serverSubLevelClass = Class.forName(SERVER_SUB_LEVEL);
-            Class<?> rigidBodyHandleClass = Class.forName(RIGID_BODY_HANDLE);
+        } catch (ClassNotFoundException ex) {
+            CreateAerialWarfare.LOGGER.warn("CAW could not find Sable ServerSubLevel; physics integration disabled");
+            return;
+        }
 
+        // Sable-native queued propulsion path.
+        try {
+            Class<?> forceGroupClass = Class.forName(FORCE_GROUP);
+            Class<?> forceGroupsClass = Class.forName(FORCE_GROUPS);
+            Class<?> queuedForceGroupClass = Class.forName(QUEUED_FORCE_GROUP);
+
+            Field propulsionField = forceGroupsClass.getField("PROPULSION");
+            Object registryObject = propulsionField.get(null);
+            Method registryGet = registryObject.getClass().getMethod("get");
+            propulsionForceGroup = registryGet.invoke(registryObject);
+
+            getOrCreateQueuedForceGroup = serverSubLevelClass.getMethod(
+                    "getOrCreateQueuedForceGroup",
+                    forceGroupClass
+            );
+            applyAndRecordPointForce = queuedForceGroupClass.getMethod(
+                    "applyAndRecordPointForce",
+                    Vector3dc.class,
+                    Vector3dc.class
+            );
+
+            queuedForceAvailable = propulsionForceGroup != null;
+            if (queuedForceAvailable) {
+                CreateAerialWarfare.LOGGER.info("CAW detected Sable queued propulsion API");
+            }
+        } catch (ReflectiveOperationException ex) {
+            queuedForceAvailable = false;
+            CreateAerialWarfare.LOGGER.warn(
+                    "CAW could not bind Sable queued propulsion API; will try fallback",
+                    ex
+            );
+        }
+
+        // Older/fallback direct handle path.
+        try {
+            Class<?> rigidBodyHandleClass = Class.forName(RIGID_BODY_HANDLE);
             rigidBodyOf = rigidBodyHandleClass.getMethod("of", serverSubLevelClass);
             applyImpulseAtPoint = rigidBodyHandleClass.getMethod(
                     "applyImpulseAtPoint",
                     Vec3.class,
                     Vec3.class
             );
-
-            available = true;
-            CreateAerialWarfare.LOGGER.info("CAW detected compatible Sable physics; jet thrust bridge enabled");
+            handleFallbackAvailable = true;
         } catch (ReflectiveOperationException ex) {
-            available = false;
-            CreateAerialWarfare.LOGGER.info("CAW did not detect compatible Sable physics; thrust bridge dormant");
+            handleFallbackAvailable = false;
+            CreateAerialWarfare.LOGGER.warn("CAW could not bind Sable RigidBodyHandle fallback", ex);
         }
     }
 }
