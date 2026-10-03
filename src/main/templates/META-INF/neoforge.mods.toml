@@ -6,11 +6,8 @@ license="${mod_license}"
 modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
-description='''
-Create Aerial Warfare adds modular aircraft propulsion and aerial-warfare systems.
-CAW Core v0.1 provides a redstone-throttled modular jet engine with optional inlet,
-spool dynamics, runtime exhaust, and Sable rigid-body thrust integration when available.
-'''
+description='''Create Aerial Warfare adds modular aircraft propulsion and aerial-warfare systems.
+CAW Core v0.3 uses Sable physics-tick propulsion actors and a client-side mesh exhaust renderer rather than particle exhaust.'''
 
 [[dependencies.${mod_id}]]
 modId="neoforge"
@@ -28,7 +25,7 @@ side="BOTH"
 
 [[dependencies.${mod_id}]]
 modId="sable"
-type="optional"
-versionRange="[0,)"
+type="required"
+versionRange="[2.0.3,3.0.0)"
 ordering="AFTER"
 side="BOTH"
