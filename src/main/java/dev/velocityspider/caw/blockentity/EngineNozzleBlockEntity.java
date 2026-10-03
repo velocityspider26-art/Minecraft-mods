@@ -46,13 +46,17 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
 
         int signal = 0;
         double target = 0.0;
-        double inletMultiplier = 1.0;
+        double flowMultiplier = 1.0;
+        double exhaustMultiplier = 1.0;
 
         if (chainResult.isPresent()) {
             EngineChain chain = chainResult.get();
             signal = chain.strongestRedstoneSignal(level);
             target = EngineMath.redstoneTarget(signal);
-            inletMultiplier = chain.inletMultiplier();
+
+            double intakeMultiplier = chain.intakeMultiplier(level);
+            exhaustMultiplier = chain.exhaustMultiplier(level);
+            flowMultiplier = intakeMultiplier * exhaustMultiplier;
         }
 
         nozzle.lastSignal = signal;
@@ -68,7 +72,7 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
                 tier = component.tier();
             }
 
-            double thrustN = EngineMath.thrustNewtons(nozzle.spool, inletMultiplier, tier);
+            double thrustN = EngineMath.thrustNewtons(nozzle.spool, flowMultiplier, tier);
             double impulseNs = EngineMath.impulseNewtonSeconds(thrustN, TICK_SECONDS);
 
             // Newton's third law: the vehicle is pushed opposite the exhaust stream.
@@ -82,7 +86,8 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
                 && nozzle.chainValid
                 && nozzle.spool > 0.10
                 && (nozzle.tickCounter & 1) == 0) {
-            ExhaustPlume.emit(serverLevel, pos, exhaustDirection, nozzle.spool);
+            // A blocked nozzle visibly chokes the plume instead of showing full exhaust.
+            ExhaustPlume.emit(serverLevel, pos, exhaustDirection, nozzle.spool * exhaustMultiplier);
         }
     }
 
