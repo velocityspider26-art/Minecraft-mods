@@ -14,9 +14,9 @@ import java.lang.reflect.Method;
 /**
  * Runtime Sable bridge with no hard Sable dependency.
  *
- * CAW now mirrors Sable's own BlockEntitySubLevelPropellerActor path:
+ * CAW mirrors Sable's own BlockEntitySubLevelPropellerActor path:
  * ServerSubLevel -> PROPULSION queued-force group -> applyAndRecordPointForce.
- * The old direct RigidBodyHandle path remains only as a fallback.
+ * The direct RigidBodyHandle path remains as a fallback.
  */
 public final class SablePhysicsBridge {
     private static final String SERVER_SUB_LEVEL = "dev.ryanhcode.sable.sublevel.ServerSubLevel";
@@ -24,17 +24,16 @@ public final class SablePhysicsBridge {
     private static final String FORCE_GROUPS = "dev.ryanhcode.sable.api.physics.force.ForceGroups";
     private static final String QUEUED_FORCE_GROUP = "dev.ryanhcode.sable.api.physics.force.QueuedForceGroup";
     private static final String RIGID_BODY_HANDLE = "dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle";
+    private static final String REGISTRY_OBJECT = "foundry.veil.platform.registry.RegistryObject";
 
     private static boolean lookupAttempted;
     private static boolean queuedForceAvailable;
     private static boolean handleFallbackAvailable;
 
     private static Class<?> serverSubLevelClass;
-
     private static Object propulsionForceGroup;
     private static Method getOrCreateQueuedForceGroup;
     private static Method applyAndRecordPointForce;
-
     private static Method rigidBodyOf;
     private static Method applyImpulseAtPoint;
 
@@ -43,11 +42,6 @@ public final class SablePhysicsBridge {
 
     private SablePhysicsBridge() {}
 
-    /**
-     * Applies one physics-step worth of propulsion at the nozzle's local block position.
-     * Position and force are intentionally left in sub-level local space, matching Sable's
-     * own propeller actor implementation.
-     */
     public static boolean applyThrustImpulse(
             Level level,
             BlockPos nozzlePos,
@@ -81,8 +75,6 @@ public final class SablePhysicsBridge {
                 localThrustDirection.getStepZ()
         ).mul(impulseNewtonSeconds);
 
-        // Preferred path: exactly the same queued propulsion mechanism Sable uses for
-        // its built-in propeller/nozzle integrations.
         if (queuedForceAvailable) {
             try {
                 Object queue = getOrCreateQueuedForceGroup.invoke(level, propulsionForceGroup);
@@ -100,7 +92,6 @@ public final class SablePhysicsBridge {
             }
         }
 
-        // Compatibility fallback for Sable builds where the queued-force API has moved.
         if (handleFallbackAvailable) {
             try {
                 Object handle = rigidBodyOf.invoke(null, level);
@@ -140,15 +131,15 @@ public final class SablePhysicsBridge {
             return;
         }
 
-        // Sable-native queued propulsion path.
         try {
             Class<?> forceGroupClass = Class.forName(FORCE_GROUP);
             Class<?> forceGroupsClass = Class.forName(FORCE_GROUPS);
             Class<?> queuedForceGroupClass = Class.forName(QUEUED_FORCE_GROUP);
+            Class<?> registryObjectClass = Class.forName(REGISTRY_OBJECT);
 
             Field propulsionField = forceGroupsClass.getField("PROPULSION");
             Object registryObject = propulsionField.get(null);
-            Method registryGet = registryObject.getClass().getMethod("get");
+            Method registryGet = registryObjectClass.getMethod("get");
             propulsionForceGroup = registryGet.invoke(registryObject);
 
             getOrCreateQueuedForceGroup = serverSubLevelClass.getMethod(
@@ -173,7 +164,6 @@ public final class SablePhysicsBridge {
             );
         }
 
-        // Older/fallback direct handle path.
         try {
             Class<?> rigidBodyHandleClass = Class.forName(RIGID_BODY_HANDLE);
             rigidBodyOf = rigidBodyHandleClass.getMethod("of", serverSubLevelClass);
