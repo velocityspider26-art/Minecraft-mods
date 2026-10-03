@@ -39,8 +39,9 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
             return;
         }
 
-        Direction direction = state.getValue(DirectionalBlock.FACING);
-        Optional<EngineChain> chainResult = EngineChain.scan(level, pos, direction);
+        // FACING is the direction the exhaust leaves the nozzle.
+        Direction exhaustDirection = state.getValue(DirectionalBlock.FACING);
+        Optional<EngineChain> chainResult = EngineChain.scan(level, pos, exhaustDirection);
         nozzle.chainValid = chainResult.isPresent();
 
         int signal = 0;
@@ -70,7 +71,9 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
             double thrustN = EngineMath.thrustNewtons(nozzle.spool, inletMultiplier, tier);
             double impulseNs = EngineMath.impulseNewtonSeconds(thrustN, TICK_SECONDS);
 
-            SablePhysicsBridge.applyThrustImpulse(level, pos, direction, impulseNs);
+            // Newton's third law: the vehicle is pushed opposite the exhaust stream.
+            Direction craftThrustDirection = exhaustDirection.getOpposite();
+            SablePhysicsBridge.applyThrustImpulse(level, pos, craftThrustDirection, impulseNs);
         }
 
         nozzle.tickCounter++;
@@ -79,7 +82,7 @@ public final class EngineNozzleBlockEntity extends BlockEntity {
                 && nozzle.chainValid
                 && nozzle.spool > 0.10
                 && (nozzle.tickCounter & 1) == 0) {
-            ExhaustPlume.emit(serverLevel, pos, direction, nozzle.spool);
+            ExhaustPlume.emit(serverLevel, pos, exhaustDirection, nozzle.spool);
         }
     }
 
