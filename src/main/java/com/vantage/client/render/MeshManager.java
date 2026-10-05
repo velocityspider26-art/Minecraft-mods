@@ -248,12 +248,21 @@ public final class MeshManager implements LodWorld.Listener {
     /** Frees meshes that the current plan does not use, least recently planned first. */
     private void evict(GeometryArena arena, int needQuads, long planId) {
         List<Entry> candidates = new ArrayList<>();
+        List<long[]> order = new ArrayList<>();
         for (Entry e : this.entries.values()) {
-            if (e.offset >= 0 && e.lastPlanned < planId) {
+            long planned = e.lastPlanned;
+            if (e.offset >= 0 && planned < planId) {
+                order.add(new long[]{planned, candidates.size()});
                 candidates.add(e);
             }
         }
-        candidates.sort(Comparator.comparingLong(e -> e.lastPlanned));
+        // lastPlanned is written by the planner thread meanwhile; sort a snapshot.
+        order.sort(Comparator.comparingLong(o -> o[0]));
+        List<Entry> sorted = new ArrayList<>(candidates.size());
+        for (long[] o : order) {
+            sorted.add(candidates.get((int) o[1]));
+        }
+        candidates = sorted;
         long freed = 0;
         for (Entry e : candidates) {
             if (freed >= needQuads * 4L) {

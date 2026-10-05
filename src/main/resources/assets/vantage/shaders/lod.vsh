@@ -7,12 +7,16 @@ layout(std430, binding = 0) readonly buffer Quads {
     uvec2 quads[];
 };
 
+// Per visual id: 6 face colours (RGBA8, Direction order), class, unused.
+layout(std430, binding = 1) readonly buffer Visuals {
+    uint visuals[];
+};
+
 // Per section: origin relative to the camera anchor block, and level | mask<<8.
 layout(location = 0) in ivec4 aSection;
 
 uniform mat4 uViewProj;
 uniform vec3 uCamFrac;
-uniform usamplerBuffer uVisuals;
 uniform sampler2D uLightmap;
 
 out vec3 vRel;
@@ -46,7 +50,12 @@ void main() {
     vRel = vec3(rel) - uCamFrac;
     gl_Position = uViewProj * vec4(vRel, 1.0);
 
-    vec4 color = unpackUnorm4x8(texelFetch(uVisuals, vid * 8 + face).r);
+    vec4 color = unpackUnorm4x8(visuals[vid * 8 + face]);
+#ifdef LEVEL_COLORS
+    const vec3 LEVEL_TINT[7] = vec3[7](vec3(0.2, 0.9, 0.2), vec3(0.95, 0.9, 0.2), vec3(1.0, 0.55, 0.1), vec3(0.9, 0.15, 0.1),
+            vec3(0.85, 0.2, 0.85), vec3(0.2, 0.35, 1.0), vec3(0.2, 0.9, 0.95));
+    color.rgb = LEVEL_TINT[min(level, 6)];
+#endif
     vec3 light = texelFetch(uLightmap, ivec2(block, sky), 0).rgb;
     vColor = vec4(color.rgb * light * SHADE[face], color.a);
 }

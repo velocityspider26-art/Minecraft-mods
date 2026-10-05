@@ -223,7 +223,9 @@ public final class Mesher {
         if (ca == VisualClass.OPAQUE) {
             draw = cb != VisualClass.OPAQUE && lit;
         } else {
-            draw = (cb == VisualClass.AIR && lit) || (cb == VisualClass.TRANSLUCENT && Voxel.vid(b) != Voxel.vid(a));
+            // Never between two translucent voxels: water of neighbouring biomes differs only in
+            // tint, and walls along biome cells would show through the surface as dark boxes.
+            draw = cb == VisualClass.AIR && lit;
         }
         return draw ? 1 + (Voxel.vid(a) | (Voxel.light(b) << 20)) : 0;
     }
@@ -237,7 +239,12 @@ public final class Mesher {
         int x = idx & 31, z = (idx >> 5) & 31, y = idx >> 10;
         for (int dy = 1; dy <= 2 && y + dy < Lod.SIZE; dy++) {
             int above = slice[sliceIndex(face, x, y + dy, z)];
-            if (this.classOfVoxel(above) != VisualClass.OPAQUE) {
+            byte c = this.classOfVoxel(above);
+            if (c == VisualClass.TRANSLUCENT) {
+                // Under water a crack is hidden by the water surface; a skirt would show through it.
+                return 0;
+            }
+            if (c == VisualClass.AIR) {
                 return 1 + (Voxel.vid(a) | (Voxel.light(above) << 20));
             }
         }

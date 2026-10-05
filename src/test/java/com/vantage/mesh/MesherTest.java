@@ -212,13 +212,16 @@ class MesherTest {
         int b = border ? slice(n, f, x, y, z, 0) : v[Lod.index(nx, ny, nz)];
         byte cb = TABLE.classOf(Voxel.vid(b));
         boolean lit = !skyCull || Voxel.light(b) != 0;
-        boolean draw = ca == VisualClass.OPAQUE ? cb != VisualClass.OPAQUE && lit
-                : (cb == VisualClass.AIR && lit) || (cb == VisualClass.TRANSLUCENT && Voxel.vid(b) != Voxel.vid(a));
+        boolean draw = ca == VisualClass.OPAQUE ? cb != VisualClass.OPAQUE && lit : cb == VisualClass.AIR && lit;
         int lightFrom = b;
         if (!draw && border && f >= 2 && ca == VisualClass.OPAQUE && cb == VisualClass.OPAQUE) {
             for (int dy = 1; dy <= 2 && y + dy < 32; dy++) {
                 int above = slice(n, f, x, y, z, dy);
-                if (TABLE.classOf(Voxel.vid(above)) != VisualClass.OPAQUE) {
+                byte c = TABLE.classOf(Voxel.vid(above));
+                if (c == VisualClass.TRANSLUCENT) {
+                    break;
+                }
+                if (c == VisualClass.AIR) {
                     draw = true;
                     lightFrom = above;
                     break;

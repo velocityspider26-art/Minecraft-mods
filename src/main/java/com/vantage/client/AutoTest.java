@@ -22,8 +22,18 @@ import java.util.Locale;
 public final class AutoTest {
     private static final boolean ENABLED = Boolean.getBoolean("vantage.autotest");
     private static final long SETTLE_MS = Long.getLong("vantage.autotest.settleMs", 240_000L);
-    private static final float[][] VIEWS = {{0f, 8f}, {90f, 8f}, {180f, 8f}, {270f, 8f}, {45f, 35f}};
+    private static final float[][] VIEWS = {{0f, 8f}, {90f, 8f}, {180f, 8f}, {270f, 8f}, {45f, 35f}, {0f, 89.9f}};
     private static final int HEIGHT = Integer.getInteger("vantage.autotest.height", 150);
+    private static final long FLIGHT_MS = 30_000;
+    private static final double FLIGHT_SPEED = Double.parseDouble(System.getProperty("vantage.autotest.flightSpeed", "30"));
+    private static final int COMPARE_RD = Integer.getInteger("vantage.autotest.compareRd", 0);
+    private static int compareStage;
+    private static long compareAt;
+    private static long compareMeasureAt = -1;
+    private static int originalRd;
+    private static long flightStart = -1;
+    private static net.minecraft.world.phys.Vec3 flightOrigin;
+    private static long lastFlightLog = -1;
 
     private static long joinedAt = -1;
     private static int stage = -1;
@@ -93,8 +103,77 @@ public final class AutoTest {
             return;
         }
         player.setDeltaMovement(0, 0, 0);
+        if (view >= VIEWS.length && COMPARE_RD > 0 && compareStage < 2) {
+            // Vanilla-only at a large render distance, same viewpoint as view 0, for a cost comparison.
+            if (compareStage == 0) {
+                compareStage = 1;
+                compareAt = now;
+                originalRd = mc.options.renderDistance().get();
+                mc.options.renderDistance().set(COMPARE_RD);
+                mc.options.broadcastOptions();
+                lodSuppressed = true;
+                player.setYRot(VIEWS[0][0]);
+                player.setXRot(VIEWS[0][1]);
+                frameNanos.clear();
+                Vantage.LOGGER.info("[autotest] comparing with vanilla render distance {}", COMPARE_RD);
+                return;
+            }
+            int expected = (int) (0.8 * Math.PI * COMPARE_RD * COMPARE_RD);
+            boolean loaded = mc.level.getChunkSource().getLoadedChunksCount() >= expected
+                    && mc.levelRenderer.hasRenderedAllSections() && now - compareAt > 20_000;
+            if (loaded || now - compareAt > 360_000) {
+                if (compareMeasureAt < 0) {
+                    compareMeasureAt = now;
+                    frameNanos.clear();
+                    return;
+                }
+                if (now - compareMeasureAt < 6_000) {
+                    return;
+                }
+                logFrames();
+                Screenshot.grab(mc.gameDirectory, "vantage_vanilla_rd" + COMPARE_RD + ".png", mc.getMainRenderTarget(),
+                        msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+                Vantage.LOGGER.info("[autotest] vanilla rd{}: {} chunks loaded, sections {}", COMPARE_RD,
+                        mc.level.getChunkSource().getLoadedChunksCount(), mc.levelRenderer.getSectionStatistics());
+                mc.options.renderDistance().set(originalRd);
+                mc.options.broadcastOptions();
+                lodSuppressed = false;
+                compareStage = 2;
+                frameNanos.clear();
+            }
+            return;
+        }
         if (view >= VIEWS.length) {
-            logFrames();
+            if (flightStart < 0) {
+                logFrames();
+                frameNanos.clear();
+                flightStart = now;
+                flightOrigin = player.position();
+                lodSuppressed = false;
+                Vantage.LOGGER.info("[autotest] flight start at {}", player.blockPosition());
+            }
+            long t = now - flightStart;
+            if (t < FLIGHT_MS) {
+                // Fly south at FLIGHT_SPEED blocks per second, looking ahead.
+                double dist = t / 1000.0 * FLIGHT_SPEED;
+                player.setPos(flightOrigin.x, HEIGHT, flightOrigin.z + dist);
+                player.setYRot(0f);
+                player.setXRot(10f);
+                player.yRotO = 0f;
+                player.xRotO = 10f;
+                if (t / 2000 != lastFlightLog) {
+                    lastFlightLog = t / 2000;
+                    logFrames();
+                    frameNanos.clear();
+                    logStats(String.format(Locale.ROOT, "flight %.0fm", dist));
+                }
+                return;
+            }
+            if (t < FLIGHT_MS + 20_000 && !settled()) {
+                return;
+            }
+            Screenshot.grab(mc.gameDirectory, "vantage_after_flight.png", mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+            logStats("after flight");
             Vantage.LOGGER.info("[autotest] finished");
             mc.stop();
             return;
@@ -105,9 +184,11 @@ public final class AutoTest {
         player.yRotO = v[0];
         player.xRotO = v[1];
         long since = now - stageAt;
-        // stage 0: LOD on, wait, shoot; stage 1: LOD off, wait, shoot.
+        // stage 0: LOD on, wait, shoot; stage 1: LOD off, wait, shoot. Waits for vanilla to finish
+        // building the sections that came into view so its own holes do not show up.
         lodSuppressed = stage == 1;
-        if (since > 4_000) {
+        boolean vanillaReady = mc.levelRenderer.hasRenderedAllSections();
+        if (since > 4_000 && (vanillaReady || since > 30_000)) {
             String name = String.format(Locale.ROOT, "vantage_view%d_%s.png", view, stage == 0 ? "on" : "off");
             Screenshot.grab(mc.gameDirectory, name, mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
             logFrames();
@@ -142,10 +223,31 @@ public final class AutoTest {
         }
         LodRenderer r = s.renderer();
         RegionImporter imp = s.importer();
-        Vantage.LOGGER.info("[autotest] {}: sections={} draws={} quads={} cpu={}ms plan={} visited={} planMs={} gpuMiB={} meshes={} residentQuads={} jobs={} meshing={} uploads={} cache={} dirty={} import={}/{} visuals={} fps={}",
+        int[] perLevel = new int[7];
+        double[] nearest = new double[7];
+        java.util.Arrays.fill(nearest, Double.MAX_VALUE);
+        var plan = s.planner.plan();
+        var cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        for (var e : plan.entries) {
+            int l = com.vantage.core.SectionKey.level(e.key);
+            perLevel[l]++;
+            int span = com.vantage.core.Lod.sectionBlocks(l);
+            double cx = (com.vantage.core.SectionKey.x(e.key) + 0.5) * span - cam.x;
+            double cz = (com.vantage.core.SectionKey.z(e.key) + 0.5) * span - cam.z;
+            nearest[l] = Math.min(nearest[l], Math.sqrt(cx * cx + cz * cz) - span * 0.7071);
+        }
+        StringBuilder levels = new StringBuilder();
+        for (int l = 0; l < 7; l++) {
+            if (perLevel[l] > 0) {
+                levels.append(String.format(Locale.ROOT, " L%d=%d(>%.0f)", l, perLevel[l], nearest[l]));
+            }
+        }
+        Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={}", label, levels, s.coverage.current().size());
+        Vantage.LOGGER.info("[autotest] {}: sections={} draws={} quads={} cpu={}ms build={}ms plan={} visited={} planMs={} gpuMiB={} meshes={} residentQuads={} jobs={} meshing={} uploads={} cache={} dirty={} import={}/{} visuals={} fps={}",
                 label,
                 r == null ? -1 : r.lastSections, r == null ? -1 : r.lastDraws, r == null ? -1 : r.lastQuads,
                 r == null ? -1 : String.format(Locale.ROOT, "%.2f", r.lastCpuMillis),
+                r == null ? -1 : String.format(Locale.ROOT, "%.2f", r.lastBuildMillis),
                 s.planner.plan().entries.length, s.planner.plan().visited, String.format(Locale.ROOT, "%.1f", s.planner.plan().nanos / 1e6),
                 r == null ? -1 : r.gpuBytesUsed() >> 20, s.meshes.residentMeshes(), s.meshes.residentQuads(),
                 s.pool.queued(), s.meshes.inFlight(), s.meshes.pendingUploads(), s.world.cachedSections(), s.world.dirtyCount(),

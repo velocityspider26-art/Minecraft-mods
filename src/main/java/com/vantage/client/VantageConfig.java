@@ -17,7 +17,7 @@ public final class VantageConfig {
     public static final ModConfigSpec.DoubleValue DETAIL = BUILDER
             .comment("Largest size, in pixels, that one LOD voxel may appear on screen before a finer level is used.",
                     "Lower = sharper but more triangles; higher = faster.")
-            .defineInRange("pixelsPerVoxel", 2.0, 0.5, 16.0);
+            .defineInRange("pixelsPerVoxel", 3.0, 0.5, 16.0);
 
     public static final ModConfigSpec.BooleanValue CAVE_CULLING = BUILDER
             .comment("Drop unlit caves and buried blocks from LOD data. They can never be seen from a distance,",

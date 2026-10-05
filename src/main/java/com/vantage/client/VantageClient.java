@@ -212,8 +212,8 @@ public final class VantageClient {
             return;
         }
         Planner.Plan plan = s.planner.plan();
-        right.add(String.format(Locale.ROOT, "[Vantage] %d sections, %d draws, %.1fk quads, %.2f ms",
-                r.lastSections, r.lastDraws, r.lastQuads / 1000.0, r.lastCpuMillis));
+        right.add(String.format(Locale.ROOT, "[Vantage] %d sections, %d draws, %.1fk quads, cpu %.2f ms (+gl %.2f ms)",
+                r.lastSections, r.lastDraws, r.lastQuads / 1000.0, r.lastBuildMillis, r.lastCpuMillis - r.lastBuildMillis));
         right.add(String.format(Locale.ROOT, "[Vantage] plan %d (%d visited, %.1f ms)",
                 plan.entries.length, plan.visited, plan.nanos / 1e6));
         right.add(String.format(Locale.ROOT, "[Vantage] GPU %d/%d MiB, %d meshes, %.1fM quads",

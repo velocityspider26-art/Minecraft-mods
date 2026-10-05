@@ -26,7 +26,7 @@ Press F3 to see Vantage's statistics on the right side of the debug screen.
 |---|---|---|
 | `enabled` | true | Turn LODs on/off |
 | `renderDistance` | 256 | LOD distance in chunks (16–4096) |
-| `pixelsPerVoxel` | 2.0 | Detail. Lower = sharper but more triangles |
+| `pixelsPerVoxel` | 3.0 | Detail. Lower = sharper but more triangles |
 | `caveCulling` | true | Drop unlit caves and buried blocks (cannot be seen from far away; saves a lot) |
 | `importExistingChunks` | true | Singleplayer background import of the save |
 | `workerThreads` | 0 (auto) | Background threads |

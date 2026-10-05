@@ -17,6 +17,8 @@ void main() {
     float z = uReverseZ == 1 ? d : d * 2.0 - 1.0;
     vec4 view = uInvLodProj * vec4(ndc, z, 1.0);
     view /= view.w;
+    // Nudge LODs slightly away so vanilla wins wherever both draw the same surface.
+    view.xyz *= 1.003;
     vec4 clip = uVanillaProj * view;
     gl_FragDepth = clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 0.99999994);
 }

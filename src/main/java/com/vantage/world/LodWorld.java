@@ -320,15 +320,19 @@ public final class LodWorld implements AutoCloseable {
         if (bytes <= this.memoryBudget) {
             return;
         }
-        List<LodSection> candidates = new ArrayList<>();
+        // Access times keep changing on other threads; sort on a snapshot of them.
+        List<long[]> candidates = new ArrayList<>();
+        List<LodSection> sections = new ArrayList<>();
         for (LodSection s : this.cache.values()) {
             if (s.evictable()) {
-                candidates.add(s);
+                candidates.add(new long[]{s.lastAccess, sections.size()});
+                sections.add(s);
             }
         }
-        candidates.sort(Comparator.comparingLong(s -> s.lastAccess));
+        candidates.sort(Comparator.comparingLong(c -> c[0]));
         long target = this.memoryBudget * 3 / 4;
-        for (LodSection s : candidates) {
+        for (long[] c : candidates) {
+            LodSection s = sections.get((int) c[1]);
             if (bytes <= target) {
                 break;
             }

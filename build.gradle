@@ -59,6 +59,10 @@ neoForge {
             if (project.hasProperty('vantageAutotest')) {
                 systemProperty 'vantage.autotest', 'true'
                 programArguments.addAll '--quickPlaySingleplayer', 'world', '--width', '1280', '--height', '720'
+                // Extra flags for debugging, e.g. -PvantageJvmArgs="-Dvantage.debug.levelColors=true"
+                if (project.hasProperty('vantageJvmArgs')) {
+                    jvmArguments.addAll(project.property('vantageJvmArgs').toString().split(' ').findAll { !it.isEmpty() })
+                }
             }
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
@@ -202,6 +206,8 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     maxHeapSize = '1G'
+    // Forward -Dvantage.* flags (used by debug-only tests).
+    systemProperties System.getProperties().findAll { it.key.toString().startsWith('vantage.') }
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.

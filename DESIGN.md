@@ -82,12 +82,32 @@ render thread: upload (budgeted) → frustum cull → 1 multi-draw-indirect per 
   A fullscreen pass then writes LOD depth into the vanilla depth buffer
   (converted to vanilla's projection) so clouds and translucent geometry sort
   correctly against far terrain.
-* Fragments inside chunk columns vanilla is already drawing are discarded
-  using a small coverage texture, so LODs never overlap real chunks.
+* A small per-chunk coverage texture tells the LOD shader where vanilla is
+  drawing. It has two bits per chunk column: *loaded* (vanilla will draw it)
+  hides LOD water there, and *built* (vanilla has built the column's surface)
+  hides all LOD geometry. Columns vanilla has loaded but not built yet — the
+  outer ring, whose neighbours are missing, or areas that just came into view —
+  stay covered by solid LODs, so LODs also fill vanilla's loading holes.
+* LOD depth written into vanilla's buffer is pushed 0.3% further away, so
+  wherever both draw the same surface vanilla wins and nothing z-fights.
 * Vanilla terrain fog is pushed out to the LOD distance; LODs apply their own
   fog that fades into the vanilla fog colour.
 * Requires OpenGL 4.3 (any Windows/Linux GPU from the last ~10 years). macOS
   (OpenGL 4.1) is not supported.
+
+## Testing
+
+* Unit tests cover the mesher (checked face-by-face against a brute-force
+  reference on random voxel fields), mipping, storage, the allocator, the LOD
+  world update path, and chunk decoding with real Minecraft block containers.
+* `./gradlew runClient -PvantageAutotest` drives the real game headlessly
+  (it was developed against Mesa's llvmpipe software OpenGL): it waits for LODs
+  to build, takes LOD-on/off screenshots from several angles, flies across the
+  world to stress streaming, and logs timings. `-Dvantage.debug.levelColors=true`
+  tints LODs by detail level.
+
+Pitfall found this way: `PalettedContainer.getAll` yields each *distinct* state
+once, not every voxel; chunk sections must be read voxel by voxel.
 
 ## Threads and budgets
 

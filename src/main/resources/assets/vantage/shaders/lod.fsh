@@ -9,20 +9,31 @@ uniform vec2 uFogRange;
 #ifdef MASKED
 // Chunks vanilla is drawing: LOD fragments there are discarded.
 uniform usampler2D uCoverage;
-uniform ivec4 uCoverageInfo; // origin chunk x, origin chunk z, size, unused
+uniform ivec4 uCoverageInfo; // origin chunk x, origin chunk z, size, coverage bit that hides this pass
 uniform ivec3 uAnchor;
 uniform vec3 uCamFrac;
 #endif
 
 out vec4 fragColor;
 
+#ifdef MASKED
+const float SEAM = 0.25;
+
+bool covered(vec2 local) {
+    ivec2 chunk = (uAnchor.xz + ivec2(floor(local))) >> 4;
+    ivec2 cell = chunk - uCoverageInfo.xy;
+    return all(greaterThanEqual(cell, ivec2(0))) && all(lessThan(cell, ivec2(uCoverageInfo.z)))
+            && (texelFetch(uCoverage, cell, 0).r & uint(uCoverageInfo.w)) != 0u;
+}
+#endif
+
 void main() {
 #ifdef MASKED
+    // Discard only well inside covered columns, so LODs overlap vanilla by a sliver and no
+    // pixel cracks open along the seam (vanilla wins the overlap through the depth nudge).
     vec3 local = vRel + uCamFrac;
-    ivec2 chunk = (uAnchor.xz + ivec2(floor(local.xz))) >> 4;
-    ivec2 cell = chunk - uCoverageInfo.xy;
-    if (all(greaterThanEqual(cell, ivec2(0))) && all(lessThan(cell, ivec2(uCoverageInfo.z)))
-            && texelFetch(uCoverage, cell, 0).r != 0u) {
+    if (covered(local.xz + vec2(SEAM, SEAM)) && covered(local.xz + vec2(-SEAM, SEAM))
+            && covered(local.xz + vec2(SEAM, -SEAM)) && covered(local.xz + vec2(-SEAM, -SEAM))) {
         discard;
     }
 #endif

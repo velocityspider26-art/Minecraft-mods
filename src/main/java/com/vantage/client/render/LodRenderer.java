@@ -43,10 +43,10 @@ import java.nio.IntBuffer;
  */
 public final class LodRenderer implements AutoCloseable {
     private static final int MAX_GROUP_QUADS = Lod.VOLUME;
-    private static final int UNIT_VISUALS = 9;
     private static final int UNIT_LIGHTMAP = 10;
     private static final int UNIT_AUX = 11;
     private static final float NEAR = 0.5f;
+    private static final boolean NO_DEPTH_TRANSFER = Boolean.getBoolean("vantage.debug.noDepthTransfer");
 
     public final GlCaps caps;
     private final ShaderProgram program;
@@ -59,7 +59,6 @@ public final class LodRenderer implements AutoCloseable {
     private final int commandBuffer;
     private final int emptyVao;
     private final int visualBuffer;
-    private final int visualTexture;
     private int visualCount;
     private int visualRevision = -1;
     private final int coverageTexture;
@@ -86,11 +85,13 @@ public final class LodRenderer implements AutoCloseable {
     public int lastDraws;
     public long lastQuads;
     public double lastCpuMillis;
+    /** Time spent choosing and encoding draws on the CPU, excluding the GL calls themselves. */
+    public double lastBuildMillis;
 
     private LodRenderer(GlCaps caps, long maxGeometryBytes) {
         this.caps = caps;
         this.reverseZ = caps.clipControl;
-        String common = "#define VANTAGE 1\n";
+        String common = "#define VANTAGE 1\n" + (Boolean.getBoolean("vantage.debug.levelColors") ? "#define LEVEL_COLORS 1\n" : "");
         this.program = ShaderProgram.load("lod.vsh", "lod.fsh", common);
         this.maskedProgram = ShaderProgram.load("lod.vsh", "lod.fsh", common + "#define MASKED 1\n");
         this.depthProgram = ShaderProgram.load("fullscreen.vsh", "depth_transfer.fsh", common);
@@ -122,7 +123,6 @@ public final class LodRenderer implements AutoCloseable {
         MemoryUtil.memFree(idx);
 
         this.visualBuffer = GL15C.glGenBuffers();
-        this.visualTexture = GL11C.glGenTextures();
         this.coverageTexture = GL11C.glGenTextures();
         int prevActive = GlStateManager._getActiveTexture();
         GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_AUX);
@@ -187,7 +187,8 @@ public final class LodRenderer implements AutoCloseable {
         this.frustum.set(this.cullMatrix, false);
 
         long quads = this.buildCommands(plan, world, ax, ay, az, fx, fy, fz);
-        this.lastCpuMillis = (System.nanoTime() - t0) / 1e6;
+        this.lastBuildMillis = (System.nanoTime() - t0) / 1e6;
+        this.lastCpuMillis = this.lastBuildMillis;
         if (this.lastDraws == 0) {
             return;
         }
@@ -344,8 +345,6 @@ public final class LodRenderer implements AutoCloseable {
 
         GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_LIGHTMAP);
         Minecraft.getInstance().gameRenderer.lightTexture().turnOnLightLayer();
-        GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_VISUALS);
-        GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, this.visualTexture);
         GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_AUX);
         GlStateManager._bindTexture(this.coverageTexture);
 
@@ -356,6 +355,7 @@ public final class LodRenderer implements AutoCloseable {
 
         GL30C.glBindVertexArray(this.vao);
         GL30C.glBindBufferBase(GL43C.GL_SHADER_STORAGE_BUFFER, 0, this.arena.buffer());
+        GL30C.glBindBufferBase(GL43C.GL_SHADER_STORAGE_BUFFER, 1, this.visualBuffer);
 
         for (int pass = 0; pass < 2; pass++) {
             boolean translucent = pass == 1;
@@ -372,7 +372,8 @@ public final class LodRenderer implements AutoCloseable {
                 }
                 ShaderProgram p = m == 1 ? this.maskedProgram : this.program;
                 GL20C.glUseProgram(p.id);
-                this.setUniforms(p, fog, fogStart, fogEnd, ax, ay, az, fx, fy, fz);
+                this.setUniforms(p, fog, fogStart, fogEnd, ax, ay, az, fx, fy, fz,
+                        translucent ? CoverageMap.LOADED : CoverageMap.BUILT);
                 GL43C.glMultiDrawElementsIndirect(GL11C.GL_TRIANGLES, GL11C.GL_UNSIGNED_INT, (long) starts[list] * 4, count, 20);
             }
         }
@@ -380,6 +381,7 @@ public final class LodRenderer implements AutoCloseable {
         GlStateManager._depthMask(true);
 
         GL30C.glBindBufferBase(GL43C.GL_SHADER_STORAGE_BUFFER, 0, 0);
+        GL30C.glBindBufferBase(GL43C.GL_SHADER_STORAGE_BUFFER, 1, 0);
         GL15C.glBindBuffer(GL40C.GL_DRAW_INDIRECT_BUFFER, 0);
         if (this.reverseZ) {
             GL45C.glClipControl(GL20C.GL_LOWER_LEFT, GL45C.GL_NEGATIVE_ONE_TO_ONE);
@@ -387,6 +389,27 @@ public final class LodRenderer implements AutoCloseable {
 
         // Write LOD depth into vanilla's depth buffer, in vanilla's projection.
         GL30C.glBindFramebuffer(GL30C.GL_FRAMEBUFFER, main.frameBufferId);
+        if (!NO_DEPTH_TRANSFER) {
+            this.transferDepth(frame);
+        }
+
+        // Restore what Minecraft expects.
+        GlStateManager._colorMask(true, true, true, true);
+        GlStateManager._depthFunc(GL11C.GL_LEQUAL);
+        GlStateManager._enableCull();
+        GlStateManager._bindTexture(0);
+        GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_LIGHTMAP);
+        GlStateManager._bindTexture(0);
+        GlStateManager._activeTexture(prevActive);
+        GL30C.glBindVertexArray(prevVao);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, prevArray);
+        GL20C.glUseProgram(prevProgram);
+        GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, prevDrawFb);
+        GL30C.glBindFramebuffer(GL30C.GL_READ_FRAMEBUFFER, prevReadFb);
+    }
+
+    /** Re-projects LOD depth into the bound (vanilla) framebuffer's depth buffer. */
+    private void transferDepth(Frame frame) {
         GlStateManager._colorMask(false, false, false, false);
         GlStateManager._depthFunc(GL11C.GL_ALWAYS);
         GlStateManager._disableCull();
@@ -402,30 +425,14 @@ public final class LodRenderer implements AutoCloseable {
         }
         GL30C.glBindVertexArray(this.emptyVao);
         GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
-
-        // Restore what Minecraft expects.
-        GlStateManager._colorMask(true, true, true, true);
-        GlStateManager._depthFunc(GL11C.GL_LEQUAL);
-        GlStateManager._enableCull();
-        GlStateManager._bindTexture(0);
-        GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_VISUALS);
-        GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, 0);
-        GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_LIGHTMAP);
-        GlStateManager._bindTexture(0);
-        GlStateManager._activeTexture(prevActive);
-        GL30C.glBindVertexArray(prevVao);
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, prevArray);
-        GL20C.glUseProgram(prevProgram);
-        GL30C.glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, prevDrawFb);
-        GL30C.glBindFramebuffer(GL30C.GL_READ_FRAMEBUFFER, prevReadFb);
     }
 
-    private void setUniforms(ShaderProgram p, float[] fog, float fogStart, float fogEnd, int ax, int ay, int az, float fx, float fy, float fz) {
+    private void setUniforms(ShaderProgram p, float[] fog, float fogStart, float fogEnd, int ax, int ay, int az, float fx, float fy, float fz,
+                             int coverageBit) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             GL20C.glUniformMatrix4fv(p.uniform("uViewProj"), false, this.viewProj.get(stack.mallocFloat(16)));
         }
         GL20C.glUniform3f(p.uniform("uCamFrac"), fx, fy, fz);
-        GL20C.glUniform1i(p.uniform("uVisuals"), UNIT_VISUALS);
         GL20C.glUniform1i(p.uniform("uLightmap"), UNIT_LIGHTMAP);
         GL20C.glUniform4f(p.uniform("uFogColor"), fog[0], fog[1], fog[2], fog[3]);
         GL20C.glUniform2f(p.uniform("uFogRange"), fogStart, fogEnd);
@@ -433,7 +440,7 @@ public final class LodRenderer implements AutoCloseable {
         if (cov >= 0) {
             CoverageMap.Snapshot c = this.uploadedCoverage;
             GL20C.glUniform1i(cov, UNIT_AUX);
-            GL20C.glUniform4i(p.uniform("uCoverageInfo"), c.originX(), c.originZ(), c.size(), 0);
+            GL20C.glUniform4i(p.uniform("uCoverageInfo"), c.originX(), c.originZ(), c.size(), coverageBit);
             GL20C.glUniform3i(p.uniform("uAnchor"), ax, ay, az);
         }
     }
@@ -492,15 +499,9 @@ public final class LodRenderer implements AutoCloseable {
             System.arraycopy(e.colors(), 0, data, vid * 8, 6);
             data[vid * 8 + 6] = e.cls();
         }
-        GL15C.glBindBuffer(GL31C.GL_TEXTURE_BUFFER, this.visualBuffer);
-        GL15C.glBufferData(GL31C.GL_TEXTURE_BUFFER, data, GL15C.GL_DYNAMIC_DRAW);
-        GL15C.glBindBuffer(GL31C.GL_TEXTURE_BUFFER, 0);
-        int prevActive = GlStateManager._getActiveTexture();
-        GlStateManager._activeTexture(GL13C.GL_TEXTURE0 + UNIT_VISUALS);
-        GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, this.visualTexture);
-        GL31C.glTexBuffer(GL31C.GL_TEXTURE_BUFFER, GL30C.GL_R32UI, this.visualBuffer);
-        GL11C.glBindTexture(GL31C.GL_TEXTURE_BUFFER, 0);
-        GlStateManager._activeTexture(prevActive);
+        GL15C.glBindBuffer(GL31C.GL_COPY_WRITE_BUFFER, this.visualBuffer);
+        GL15C.glBufferData(GL31C.GL_COPY_WRITE_BUFFER, data, GL15C.GL_DYNAMIC_DRAW);
+        GL15C.glBindBuffer(GL31C.GL_COPY_WRITE_BUFFER, 0);
         this.visualCount = size;
         this.visualRevision = revision;
     }
@@ -552,7 +553,6 @@ public final class LodRenderer implements AutoCloseable {
         GL15C.glDeleteBuffers(this.instanceBuffer);
         GL15C.glDeleteBuffers(this.commandBuffer);
         GL15C.glDeleteBuffers(this.visualBuffer);
-        GlStateManager._deleteTexture(this.visualTexture);
         GlStateManager._deleteTexture(this.coverageTexture);
         if (this.depthTexture != 0) {
             GlStateManager._deleteTexture(this.depthTexture);
