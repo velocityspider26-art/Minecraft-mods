@@ -11,8 +11,11 @@ package com.vantage.core;
  *   <li>Within a layer, opaque beats translucent, then the most common visual id wins.</li>
  *   <li>{@link Voxel#FILLER_VID} (hidden space) only wins when there is nothing else.</li>
  * </ol>
- * Air and translucent results keep the brightest light of the non-opaque children, so a face
- * next to them is lit as brightly as its brightest part.
+ * Air results keep the brightest light of the non-opaque children, so a face next to them is lit
+ * as brightly as its brightest part. Translucent results (water) keep the darkest light of their
+ * translucent children: faces looking into water are sea floors and underwater slopes, lit like
+ * the deep water right above them. Eight unknown children stay unknown; otherwise unknown
+ * children count as sky-lit air.
  *
  * <p>Instances keep scratch state and are not thread-safe; use one per worker.
  */
@@ -27,8 +30,13 @@ public final class Mipper {
 
     /** Children are indexed {@code dx | dz << 1 | dy << 2}, matching {@link SectionKey#child}. */
     public int reduce(int[] c) {
+        if ((c[0] & c[1] & c[2] & c[3] & c[4] & c[5] & c[6] & c[7] & Voxel.UNKNOWN_FLAG) != 0) {
+            return Voxel.UNKNOWN_AIR;
+        }
         int maxBlock = 0;
         int maxSky = 0;
+        int minBlock = 15;
+        int minSky = 15;
         for (int i = 0; i < 8; i++) {
             int v = c[i];
             byte k = this.table.classOf(Voxel.vid(v));
@@ -36,6 +44,10 @@ public final class Mipper {
             if (k != VisualClass.OPAQUE) {
                 maxBlock = Math.max(maxBlock, Voxel.blockLight(v));
                 maxSky = Math.max(maxSky, Voxel.skyLight(v));
+            }
+            if (k == VisualClass.TRANSLUCENT) {
+                minBlock = Math.min(minBlock, Voxel.blockLight(v));
+                minSky = Math.min(minSky, Voxel.skyLight(v));
             }
         }
         int fallback = -1;
@@ -68,7 +80,7 @@ public final class Mipper {
                     }
                     continue;
                 }
-                return this.cls[chosen] == VisualClass.OPAQUE ? vid : Voxel.pack(vid, maxBlock, maxSky);
+                return this.cls[chosen] == VisualClass.OPAQUE ? vid : Voxel.pack(vid, minBlock, minSky);
             }
         }
         if (fallback >= 0) {

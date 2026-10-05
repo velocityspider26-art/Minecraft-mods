@@ -67,6 +67,9 @@ public final class RegionImporter implements AutoCloseable {
     private volatile int chunksDone;
     private volatile int chunksTotal;
     private volatile boolean scanning;
+    /** Region headers of the save (chunk locations), by region; for {@link #pendingAt}. */
+    private volatile Map<Long, int[]> savedChunks = Map.of();
+    private volatile boolean firstPassDone;
     private final Registry<Biome> biomes;
     private final Holder<Biome> plains;
     private final int minSection;
@@ -100,6 +103,20 @@ public final class RegionImporter implements AutoCloseable {
         return this.scanning;
     }
 
+    /**
+     * True while the first pass over the save is still running and the save holds the chunk at
+     * this block position: distant generation leaves such places to the import.
+     */
+    public boolean pendingAt(int blockX, int blockZ) {
+        if (this.firstPassDone) {
+            return false;
+        }
+        int cx = blockX >> 4;
+        int cz = blockZ >> 4;
+        int[] header = this.savedChunks.get(((long) (cx >> 5) << 32) | ((cz >> 5) & 0xFFFFFFFFL));
+        return header != null && header[(cx & 31) | ((cz & 31) << 5)] != 0;
+    }
+
     private void loop() {
         long lastScan = 0;
         while (this.running) {
@@ -115,6 +132,7 @@ public final class RegionImporter implements AutoCloseable {
                 Vantage.LOGGER.error("Vantage world import failed", t);
             } finally {
                 this.scanning = false;
+                this.firstPassDone = true;
                 this.saveLog();
             }
         }
@@ -134,10 +152,13 @@ public final class RegionImporter implements AutoCloseable {
 
         int total = 0;
         List<int[]> headers = new ArrayList<>();
+        Map<Long, int[]> saved = new HashMap<>();
         for (Path f : files) {
             int[] header = readHeader(f);
             headers.add(header);
             if (header != null) {
+                String[] parts = f.getFileName().toString().split("\\.");
+                saved.put(((long) Integer.parseInt(parts[1]) << 32) | (Integer.parseInt(parts[2]) & 0xFFFFFFFFL), header);
                 for (int i = 0; i < 1024; i++) {
                     if (header[i] != 0) {
                         total++;
@@ -145,6 +166,7 @@ public final class RegionImporter implements AutoCloseable {
                 }
             }
         }
+        this.savedChunks = saved;
         this.chunksTotal = total;
         int done = 0;
         for (int fi = 0; fi < files.size() && this.running; fi++) {

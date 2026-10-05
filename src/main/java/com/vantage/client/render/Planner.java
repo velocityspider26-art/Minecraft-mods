@@ -16,8 +16,9 @@ import java.util.concurrent.locks.LockSupport;
  * <p>Starting from the coarsest level it walks down the octree, refining a section while one of
  * its voxels would cover more than the configured number of pixels at its distance. A section is
  * only replaced by its children once all of them have meshes, so refinement never opens holes.
- * Sections that vanilla fully covers are skipped; ones it partly covers are flagged so the
- * renderer discards fragments inside vanilla's area.
+ * Sections that vanilla fully covers (and is close enough to draw) are skipped; ones it partly
+ * covers are flagged so the renderer discards fragments inside vanilla's area. Sections nothing
+ * is known about are handed to the distant generator, when there is one.
  *
  * <p>The plan depends on camera position only (never rotation), so it stays valid while looking
  * around; frustum culling happens per frame on the render thread.
@@ -42,14 +43,23 @@ public final class Planner implements AutoCloseable {
         }
     }
 
-    /** Planner inputs, published by the render thread each frame. */
+    /**
+     * Planner inputs, published by the render thread each frame. {@code vanillaFar} is the far
+     * plane of vanilla's projection: vanilla draws nothing beyond it, covered or not.
+     */
     public record View(double x, double y, double z, double renderDistance, double radiansPerPixel, double pixelsPerVoxel,
-                       CoverageMap.Snapshot coverage) {
+                       double vanillaFar, CoverageMap.Snapshot coverage) {
+    }
+
+    /** Fills in sections nothing is known about. */
+    public interface Generator {
+        void request(long key, double priority);
     }
 
     private final LodWorld world;
     private final MeshManager meshes;
     private final Thread thread;
+    private volatile Generator generator;
     private volatile boolean running = true;
     private volatile View view;
     private volatile Plan plan = Plan.EMPTY;
@@ -80,6 +90,10 @@ public final class Planner implements AutoCloseable {
         this.view = view;
     }
 
+    public void setGenerator(Generator generator) {
+        this.generator = generator;
+    }
+
     private void loop() {
         View last = null;
         long lastRun = 0;
@@ -96,6 +110,7 @@ public final class Planner implements AutoCloseable {
                     || last.coverage().version() != now.coverage().version()
                     || last.renderDistance() != now.renderDistance()
                     || last.pixelsPerVoxel() != now.pixelsPerVoxel()
+                    || last.vanillaFar() != now.vanillaFar()
                     || Math.abs(last.radiansPerPixel() - now.radiansPerPixel()) > 1e-6
                     || meshesChanged
                     || t - lastRun > 1_000_000_000L;
@@ -175,19 +190,24 @@ public final class Planner implements AutoCloseable {
         if (horizontal > this.v.renderDistance()) {
             return;
         }
-        if (this.world.content(key) != LodWorld.PRESENT) {
-            return;
-        }
+        double dy = axisDistance(this.v.y(), by0, by0 + span);
+        double dist = Math.sqrt(horizontal * horizontal + dy * dy);
         CoverageMap.Snapshot cov = this.v.coverage();
         int cx0 = SectionKey.x(key) * (span >> 4);
         int cz0 = SectionKey.z(key) * (span >> 4);
         int cx1 = cx0 + (span >> 4) - 1;
         int cz1 = cz0 + (span >> 4) - 1;
-        if (cov.allCovered(cx0, cz0, cx1, cz1)) {
+        if (this.vanillaDrawsAll(key, cx0, cz0, cx1, cz1)) {
             return;
         }
-        double dy = axisDistance(this.v.y(), by0, by0 + span);
-        double dist = Math.sqrt(horizontal * horizontal + dy * dy);
+        int content = this.world.content(key);
+        Generator gen = this.generator;
+        if (gen != null && (LodWorld.kind(content) == LodWorld.ABSENT || LodWorld.incomplete(content))) {
+            gen.request(key, dist);
+        }
+        if (LodWorld.kind(content) != LodWorld.PRESENT) {
+            return;
+        }
 
         MeshManager.Entry self = this.meshes.entry(key);
         self.lastPlanned = this.planId;
@@ -197,9 +217,25 @@ public final class Planner implements AutoCloseable {
             int count = 0;
             boolean allReady = true;
             int ys = this.world.verticalSections(level - 1);
+            Generator g = this.generator;
             for (int i = 0; i < 8; i++) {
                 long c = SectionKey.child(key, i);
-                if (SectionKey.y(c) >= ys || !this.childWorthVisiting(c)) {
+                if (SectionKey.y(c) >= ys) {
+                    continue;
+                }
+                int state = this.childState(c);
+                if (state == CHILD_SKIP) {
+                    continue;
+                }
+                if (g != null && (LodWorld.kind(state) == LodWorld.ABSENT || LodWorld.incomplete(state))) {
+                    g.request(c, dist);
+                }
+                if (LodWorld.kind(state) == LodWorld.ABSENT && g != null) {
+                    // Keep drawing this section until the child exists.
+                    allReady = false;
+                    continue;
+                }
+                if (LodWorld.kind(state) != LodWorld.PRESENT) {
                     continue;
                 }
                 kids[count++] = c;
@@ -225,7 +261,7 @@ public final class Planner implements AutoCloseable {
         if (self.ready()) {
             if (self.drawable()) {
                 this.drawn.add(self);
-                this.drawnMasked.add(cov.anyCovered(cx0, cz0, cx1, cz1));
+                this.drawnMasked.add(dist < this.v.vanillaFar() && cov.anyCovered(cx0, cz0, cx1, cz1));
                 this.drawnDist.add(dist);
             }
             if (self.stale()) {
@@ -236,7 +272,10 @@ public final class Planner implements AutoCloseable {
         }
     }
 
-    private boolean childWorthVisiting(long key) {
+    private static final int CHILD_SKIP = -1;
+
+    /** {@link #CHILD_SKIP} if a child is out of range or vanilla's, else its {@link LodWorld#content}. */
+    private int childState(long key) {
         int level = SectionKey.level(key);
         int span = Lod.sectionBlocks(level);
         double bx0 = (double) SectionKey.x(key) * span;
@@ -244,14 +283,29 @@ public final class Planner implements AutoCloseable {
         double dx = axisDistance(this.v.x(), bx0, bx0 + span);
         double dz = axisDistance(this.v.z(), bz0, bz0 + span);
         if (Math.sqrt(dx * dx + dz * dz) > this.v.renderDistance()) {
-            return false;
-        }
-        if (this.world.content(key) != LodWorld.PRESENT) {
-            return false;
+            return CHILD_SKIP;
         }
         int cx0 = SectionKey.x(key) * (span >> 4);
         int cz0 = SectionKey.z(key) * (span >> 4);
-        return !this.v.coverage().allCovered(cx0, cz0, cx0 + (span >> 4) - 1, cz0 + (span >> 4) - 1);
+        if (this.vanillaDrawsAll(key, cx0, cz0, cx0 + (span >> 4) - 1, cz0 + (span >> 4) - 1)) {
+            return CHILD_SKIP;
+        }
+        return this.world.content(key);
+    }
+
+    /** True if vanilla covers the whole section and is near enough to draw all of it. */
+    private boolean vanillaDrawsAll(long key, int cx0, int cz0, int cx1, int cz1) {
+        if (!this.v.coverage().allCovered(cx0, cz0, cx1, cz1)) {
+            return false;
+        }
+        int span = Lod.sectionBlocks(SectionKey.level(key));
+        double bx0 = (double) SectionKey.x(key) * span;
+        double bz0 = (double) SectionKey.z(key) * span;
+        double by0 = this.world.minY + (double) SectionKey.y(key) * span;
+        double fx = Math.max(Math.abs(this.v.x() - bx0), Math.abs(this.v.x() - bx0 - span));
+        double fy = Math.max(Math.abs(this.v.y() - by0), Math.abs(this.v.y() - by0 - span));
+        double fz = Math.max(Math.abs(this.v.z() - bz0), Math.abs(this.v.z() - bz0 - span));
+        return Math.sqrt(fx * fx + fy * fy + fz * fz) < this.v.vanillaFar();
     }
 
     private static double axisDistance(double p, double min, double max) {

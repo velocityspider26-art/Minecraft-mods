@@ -24,6 +24,15 @@ class SectionKeyTest {
     }
 
     @Test
+    void noneIsNeverAValidSection() {
+        assertEquals(15, SectionKey.level(SectionKey.NONE));
+        assertEquals(true, Lod.MAX_LEVEL < 15);
+        long top = SectionKey.of(Lod.MAX_LEVEL, -1, 255, -1);
+        assertEquals(Lod.MAX_LEVEL, SectionKey.level(top));
+        assertEquals(-1, SectionKey.x(top));
+    }
+
+    @Test
     void childrenOfParentIncludeSelf() {
         long k = SectionKey.of(2, -7, 3, 12);
         long p = SectionKey.parent(k);

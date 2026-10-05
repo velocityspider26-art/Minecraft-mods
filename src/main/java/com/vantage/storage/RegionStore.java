@@ -25,7 +25,8 @@ import java.util.Map;
  * <ul>
  *   <li>{@code 0} — absent</li>
  *   <li>bit 63 set — uniform section, low 32 bits are the voxel value (no sectors used)</li>
- *   <li>bit 62 set — blob: bits 0..31 first sector, bits 32..55 byte length</li>
+ *   <li>bit 62 set — blob: bits 0..31 first sector, bits 32..55 byte length; bit 61 set if some
+ *       voxel columns are unknown, bit 60 set if every voxel is air</li>
  * </ul>
  * A rewrite always goes to free sectors before the index is updated, so a crash leaves either the
  * old or the new version, never a torn one.
@@ -37,6 +38,8 @@ public final class RegionStore implements AutoCloseable {
     private static final int FIXED_HEADER = 16;
     private static final long UNIFORM_BIT = 1L << 63;
     private static final long BLOB_BIT = 1L << 62;
+    private static final long INCOMPLETE_BIT = 1L << 61;
+    private static final long AIR_BIT = 1L << 60;
     private static final int MAX_CACHED_REGIONS = 2048;
     private static final int MAX_OPEN_CHANNELS = 48;
     private static final long CHANNEL_IDLE_NANOS = 5_000_000_000L;
@@ -68,6 +71,16 @@ public final class RegionStore implements AutoCloseable {
         return entry != 0;
     }
 
+    /** For blob entries: some voxel columns are unknown. */
+    public static boolean isIncomplete(long entry) {
+        return (entry & BLOB_BIT) != 0 && (entry & INCOMPLETE_BIT) != 0;
+    }
+
+    /** For blob entries: every voxel is air. */
+    public static boolean isAllAir(long entry) {
+        return (entry & BLOB_BIT) != 0 && (entry & AIR_BIT) != 0;
+    }
+
     /** Index entry for a section; loads the region index on first use. */
     public long entry(long key) {
         Region r = this.region(key);
@@ -91,10 +104,14 @@ public final class RegionStore implements AutoCloseable {
     }
 
     public void writeBlob(long key, byte[] blob) throws IOException {
+        this.writeBlob(key, blob, false, false);
+    }
+
+    public void writeBlob(long key, byte[] blob, boolean allAir, boolean incomplete) throws IOException {
         Region r = this.region(key);
         int slot = r.slot(key);
         if (slot >= 0) {
-            r.write(slot, BLOB_BIT, blob);
+            r.write(slot, BLOB_BIT | (allAir ? AIR_BIT : 0) | (incomplete ? INCOMPLETE_BIT : 0), blob);
         }
     }
 

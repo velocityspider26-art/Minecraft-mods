@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.FogRenderer;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL13C;
@@ -78,6 +79,7 @@ public final class LodRenderer implements AutoCloseable {
     private final Matrix4f lodProj = new Matrix4f();
     private final Matrix4f viewProj = new Matrix4f();
     private final Matrix4f cullMatrix = new Matrix4f();
+    private final Vector3f viewDir = new Vector3f();
     private final FrustumIntersection frustum = new FrustumIntersection();
 
     // statistics, read by the debug overlay
@@ -161,8 +163,22 @@ public final class LodRenderer implements AutoCloseable {
         meshes.processResults(this.arena, budgetBytes, planId);
     }
 
+    /**
+     * Per-frame inputs.
+     *
+     * @param renderDistance LOD distance in blocks (horizontal)
+     * @param fogStart       fraction of it where the edge fade begins
+     * @param hazeDensity    haze per block at sea level
+     * @param hazeHeight     scale height of the atmosphere in blocks
+     * @param seaLevel       height where the air is densest
+     * @param bendStart      horizontal distance where planet curvature starts
+     * @param curvature      {@code 1 / (2 * planet radius)}, 0 for a flat world
+     * @param vanillaFar     vanilla's far plane: it draws nothing beyond it
+     * @param hazeColor      haze colour {@code 0xRRGGBB}, or -1 for the game's fog colour
+     */
     public record Frame(Matrix4f modelView, Matrix4f projection, double camX, double camY, double camZ,
-                        float renderDistance, float fogStart) {
+                        float renderDistance, float fogStart, float hazeDensity, float hazeHeight, float seaLevel,
+                        float bendStart, float curvature, float vanillaFar, int hazeColor) {
     }
 
     public void render(Frame frame, Planner.Plan plan, LodWorld world, VisualRegistry visuals, CoverageMap.Snapshot coverage) {
@@ -181,12 +197,13 @@ public final class LodRenderer implements AutoCloseable {
 
         this.buildProjection(frame.projection());
         this.viewProj.set(this.lodProj).mul(frame.modelView());
+        frame.modelView().positiveZ(this.viewDir).negate();
         this.cullMatrix.set(frame.projection());
         setDepthRows(this.cullMatrix, 1f, frame.renderDistance() * 2f + 4096f);
         this.cullMatrix.mul(frame.modelView());
         this.frustum.set(this.cullMatrix, false);
 
-        long quads = this.buildCommands(plan, world, ax, ay, az, fx, fy, fz);
+        long quads = this.buildCommands(plan, world, ax, ay, az, fx, fy, fz, frame.bendStart(), frame.curvature());
         this.lastBuildMillis = (System.nanoTime() - t0) / 1e6;
         this.lastCpuMillis = this.lastBuildMillis;
         if (this.lastDraws == 0) {
@@ -219,7 +236,8 @@ public final class LodRenderer implements AutoCloseable {
         m.m02(-a * w0).m12(-a * w1).m22(-a * w2).m32(-a * w3 + b);
     }
 
-    private long buildCommands(Planner.Plan plan, LodWorld world, int ax, int ay, int az, float fx, float fy, float fz) {
+    private long buildCommands(Planner.Plan plan, LodWorld world, int ax, int ay, int az, float fx, float fy, float fz,
+                               float bendStart, float curvature) {
         this.instances.clear();
         this.visibleEntries.clear();
         for (IntArrayList c : this.commands) {
@@ -239,6 +257,15 @@ public final class LodRenderer implements AutoCloseable {
             int oz = (int) ((long) SectionKey.z(key) * span - az);
             float mnx = ox + (e.minX << level) - fx, mny = oy + (e.minY << level) - fy, mnz = oz + (e.minZ << level) - fz;
             float mxx = ox + (e.maxX << level) - fx, mxy = oy + (e.maxY << level) - fy, mxz = oz + (e.maxZ << level) - fz;
+            if (curvature > 0f) {
+                // The vertex shader lowers terrain with distance; move the bounds the same way.
+                float nx = Math.max(0f, Math.max(mnx, -mxx)), nz = Math.max(0f, Math.max(mnz, -mxz));
+                float far = (float) Math.sqrt(Math.max(mnx * mnx, mxx * mxx) + Math.max(mnz * mnz, mxz * mxz));
+                float near = (float) Math.sqrt(nx * nx + nz * nz);
+                float bn = Math.max(near - bendStart, 0f), bf = Math.max(far - bendStart, 0f);
+                mny -= bf * bf * curvature;
+                mxy -= bn * bn * curvature;
+            }
             if (!this.frustum.testAab(mnx, mny, mnz, mxx, mxy, mxz)) {
                 continue;
             }
@@ -350,8 +377,10 @@ public final class LodRenderer implements AutoCloseable {
 
         FogRenderer.levelFogColor();
         float[] fog = RenderSystem.getShaderFogColor();
-        float fogEnd = frame.renderDistance();
-        float fogStart = fogEnd * frame.fogStart();
+        if (frame.hazeColor() >= 0) {
+            int c = frame.hazeColor();
+            fog = new float[]{(c >> 16 & 0xFF) / 255f, (c >> 8 & 0xFF) / 255f, (c & 0xFF) / 255f, 1f};
+        }
 
         GL30C.glBindVertexArray(this.vao);
         GL30C.glBindBufferBase(GL43C.GL_SHADER_STORAGE_BUFFER, 0, this.arena.buffer());
@@ -372,8 +401,7 @@ public final class LodRenderer implements AutoCloseable {
                 }
                 ShaderProgram p = m == 1 ? this.maskedProgram : this.program;
                 GL20C.glUseProgram(p.id);
-                this.setUniforms(p, fog, fogStart, fogEnd, ax, ay, az, fx, fy, fz,
-                        translucent ? CoverageMap.LOADED : CoverageMap.BUILT);
+                this.setUniforms(p, frame, fog, ax, ay, az, fx, fy, fz, translucent ? CoverageMap.LOADED : CoverageMap.BUILT);
                 GL43C.glMultiDrawElementsIndirect(GL11C.GL_TRIANGLES, GL11C.GL_UNSIGNED_INT, (long) starts[list] * 4, count, 20);
             }
         }
@@ -427,7 +455,7 @@ public final class LodRenderer implements AutoCloseable {
         GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3);
     }
 
-    private void setUniforms(ShaderProgram p, float[] fog, float fogStart, float fogEnd, int ax, int ay, int az, float fx, float fy, float fz,
+    private void setUniforms(ShaderProgram p, Frame frame, float[] fog, int ax, int ay, int az, float fx, float fy, float fz,
                              int coverageBit) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             GL20C.glUniformMatrix4fv(p.uniform("uViewProj"), false, this.viewProj.get(stack.mallocFloat(16)));
@@ -435,7 +463,11 @@ public final class LodRenderer implements AutoCloseable {
         GL20C.glUniform3f(p.uniform("uCamFrac"), fx, fy, fz);
         GL20C.glUniform1i(p.uniform("uLightmap"), UNIT_LIGHTMAP);
         GL20C.glUniform4f(p.uniform("uFogColor"), fog[0], fog[1], fog[2], fog[3]);
-        GL20C.glUniform2f(p.uniform("uFogRange"), fogStart, fogEnd);
+        GL20C.glUniform4f(p.uniform("uHaze"), frame.hazeDensity(), frame.hazeHeight(), frame.seaLevel(), (float) frame.camY());
+        GL20C.glUniform2f(p.uniform("uEdge"), frame.renderDistance() * frame.fogStart(), frame.renderDistance());
+        GL20C.glUniform2f(p.uniform("uBend"), frame.bendStart(), frame.curvature());
+        GL20C.glUniform1f(p.uniform("uVanillaFar"), frame.vanillaFar());
+        GL20C.glUniform3f(p.uniform("uViewDir"), this.viewDir.x, this.viewDir.y, this.viewDir.z);
         int cov = p.uniform("uCoverage");
         if (cov >= 0) {
             CoverageMap.Snapshot c = this.uploadedCoverage;

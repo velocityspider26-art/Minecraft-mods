@@ -18,8 +18,12 @@ layout(location = 0) in ivec4 aSection;
 uniform mat4 uViewProj;
 uniform vec3 uCamFrac;
 uniform sampler2D uLightmap;
+// Planet curvature: drop = max(horizontal distance - x, 0)^2 * y; y = 0 keeps the world flat.
+uniform vec2 uBend;
+uniform vec3 uViewDir;
 
 out vec3 vRel;
+out float vViewDepth;
 flat out vec4 vColor;
 
 // Face order follows Minecraft's Direction: down, up, north, south, west, east.
@@ -47,14 +51,24 @@ void main() {
 
     int level = aSection.w & 0xFF;
     ivec3 rel = aSection.xyz + (p << level);
-    vRel = vec3(rel) - uCamFrac;
-    gl_Position = uViewProj * vec4(vRel, 1.0);
+    vec3 pos = vec3(rel) - uCamFrac;
+    if (face == 1 && level > 0 && visuals[vid * 8 + 6] == 2u) {
+        // Coarse voxels round water surfaces up to their top; the sea's surface is the block below
+        // that boundary at every level, so this keeps levels from leaving a crack between them.
+        pos.y -= 1.0;
+    }
+    float bend = max(length(pos.xz) - uBend.x, 0.0);
+    pos.y -= bend * bend * uBend.y;
+    vRel = pos;
+    vViewDepth = dot(pos, uViewDir);
+    gl_Position = uViewProj * vec4(pos, 1.0);
 
     vec4 color = unpackUnorm4x8(visuals[vid * 8 + face]);
 #ifdef LEVEL_COLORS
-    const vec3 LEVEL_TINT[7] = vec3[7](vec3(0.2, 0.9, 0.2), vec3(0.95, 0.9, 0.2), vec3(1.0, 0.55, 0.1), vec3(0.9, 0.15, 0.1),
-            vec3(0.85, 0.2, 0.85), vec3(0.2, 0.35, 1.0), vec3(0.2, 0.9, 0.95));
-    color.rgb = LEVEL_TINT[min(level, 6)];
+    const vec3 LEVEL_TINT[11] = vec3[11](vec3(0.2, 0.9, 0.2), vec3(0.95, 0.9, 0.2), vec3(1.0, 0.55, 0.1), vec3(0.9, 0.15, 0.1),
+            vec3(0.85, 0.2, 0.85), vec3(0.2, 0.35, 1.0), vec3(0.2, 0.9, 0.95), vec3(1.0, 1.0, 1.0), vec3(0.55, 0.55, 0.55),
+            vec3(0.45, 0.25, 0.1), vec3(0.1, 0.1, 0.1));
+    color.rgb = LEVEL_TINT[min(level, 10)];
 #endif
     vec3 light = texelFetch(uLightmap, ivec2(block, sky), 0).rgb;
     vColor = vec4(color.rgb * light * SHADE[face], color.a);

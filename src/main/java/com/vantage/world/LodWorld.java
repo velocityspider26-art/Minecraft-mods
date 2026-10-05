@@ -27,6 +27,17 @@ public final class LodWorld implements AutoCloseable {
     public static final int ABSENT = 0;
     public static final int EMPTY = 1;
     public static final int PRESENT = 2;
+    /** Flag on {@link #EMPTY} and {@link #PRESENT}: some voxel columns are still unknown. */
+    public static final int INCOMPLETE = 4;
+
+    /** {@link #ABSENT}, {@link #EMPTY} or {@link #PRESENT}, without flags. */
+    public static int kind(int content) {
+        return content & 3;
+    }
+
+    public static boolean incomplete(int content) {
+        return (content & INCOMPLETE) != 0;
+    }
 
     /** Receives every section change. {@code borderMask} has bit {@code f} set when face {@code f} was touched. */
     public interface Listener {
@@ -120,23 +131,30 @@ public final class LodWorld implements AutoCloseable {
         }
     }
 
-    /** {@link #ABSENT}, {@link #EMPTY} (all air) or {@link #PRESENT}. Cheap; safe from any thread. */
+    /**
+     * {@link #ABSENT} (nothing known), {@link #EMPTY} (only air) or {@link #PRESENT}, the last two
+     * possibly with {@link #INCOMPLETE}. Cheap; safe from any thread.
+     */
     public int content(long key) {
         if (SectionKey.y(key) >= this.verticalSections(SectionKey.level(key))) {
             return ABSENT;
         }
         LodSection s = this.cache.get(key);
         if (s != null) {
-            return s.isUniformAir() ? EMPTY : PRESENT;
+            if (s.isUniformUnknown()) {
+                return ABSENT;
+            }
+            return (s.isAllAir() ? EMPTY : PRESENT) | (s.isIncomplete() ? INCOMPLETE : 0);
         }
         long e = this.store.entry(key);
         if (!RegionStore.isPresent(e)) {
             return ABSENT;
         }
-        if (RegionStore.isUniform(e) && Voxel.isAir(RegionStore.uniformValue(e))) {
-            return EMPTY;
+        if (RegionStore.isUniform(e)) {
+            int v = RegionStore.uniformValue(e);
+            return Voxel.isUnknown(v) ? ABSENT : Voxel.isAir(v) ? EMPTY : PRESENT;
         }
-        return PRESENT;
+        return (RegionStore.isAllAir(e) ? EMPTY : PRESENT) | (RegionStore.isIncomplete(e) ? INCOMPLETE : 0);
     }
 
     private LodSection load(long key, boolean create) {
@@ -195,6 +213,52 @@ public final class LodWorld implements AutoCloseable {
         }
     }
 
+    /**
+     * Stores generated voxels for a whole column of sections at {@code level}, but only where
+     * nothing is known yet. {@code sections[y]} is a full section or {@code null}, in which case
+     * {@code uniforms[y]} is its value.
+     */
+    public void fillGenerated(int level, int x, int z, int[][] sections, int[] uniforms) {
+        for (int y = 0; y < sections.length; y++) {
+            long key = SectionKey.of(level, x, y, z);
+            LodSection s = this.acquire(key, true);
+            boolean changed;
+            try {
+                changed = s.fillUnknown(sections[y], uniforms[y]);
+            } finally {
+                this.release(s);
+            }
+            if (changed) {
+                // Neighbours drew walls towards the unknown space; they must remesh too.
+                this.listener.onSectionChanged(key, 0x3F);
+            }
+        }
+    }
+
+    /**
+     * Which voxel columns of the section column at {@code level} nothing is known about, as a
+     * 32×32 mask indexed {@code z * 32 + x}; null if none.
+     */
+    public boolean[] unknownColumns(int level, int x, int z) {
+        LodSection s = this.acquire(SectionKey.of(level, x, 0, z), true);
+        try {
+            boolean[] mask = null;
+            for (int vz = 0; vz < Lod.SIZE; vz++) {
+                for (int vx = 0; vx < Lod.SIZE; vx++) {
+                    if (s.bottomUnknown(vx, vz)) {
+                        if (mask == null) {
+                            mask = new boolean[Lod.AREA];
+                        }
+                        mask[vz * Lod.SIZE + vx] = true;
+                    }
+                }
+            }
+            return mask;
+        } finally {
+            this.release(s);
+        }
+    }
+
     static int borderMask(int ox, int oy, int oz, int size) {
         int m = 0;
         if (oy == 0) m |= 1;
@@ -240,7 +304,7 @@ public final class LodWorld implements AutoCloseable {
                 LodSection dst = this.acquire(parent, true);
                 boolean changed;
                 try {
-                    changed = dst.writeCube(half, 0, 16, ox, oy, oz);
+                    changed = dst.writeCube(half, 0, 16, ox, oy, oz, true);
                 } finally {
                     this.release(dst);
                 }
@@ -305,7 +369,14 @@ public final class LodWorld implements AutoCloseable {
                     if (u != null) {
                         this.store.writeUniform(s.key, u);
                     } else {
-                        this.store.writeBlob(s.key, SectionCodec.encode(snap.data()));
+                        int[] d = snap.data();
+                        boolean allAir = true;
+                        boolean incomplete = false;
+                        for (int i = 0; i < Lod.VOLUME; i++) {
+                            allAir &= Voxel.isAir(d[i]);
+                            incomplete |= i < Lod.AREA && Voxel.isUnknown(d[i]);
+                        }
+                        this.store.writeBlob(s.key, SectionCodec.encode(d), allAir, incomplete);
                     }
                 }
             } catch (IOException e) {

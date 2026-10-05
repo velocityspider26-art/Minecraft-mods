@@ -27,6 +27,9 @@ import java.util.Arrays;
  */
 public final class ColumnVoxelizer {
     private static final int VOLUME = 4096;
+    @SuppressWarnings("unchecked")
+    private static final ColumnSource.Section EMPTY_SECTION = new ColumnSource.Section(
+            new BlockState[]{net.minecraft.world.level.block.Blocks.AIR.defaultBlockState()}, null, new Holder[64], null, null);
 
     private final VisualRegistry registry;
     private final VisualAnalyzer analyzer;
@@ -53,7 +56,8 @@ public final class ColumnVoxelizer {
         for (int i = 0; i < n; i++) {
             ColumnSource.Section s = src.sections[i];
             if (s == null) {
-                continue;
+                // Saves leave out empty sections: they are air, and known to be.
+                s = EMPTY_SECTION;
             }
             vox[i] = new int[VOLUME];
             cls[i] = new byte[VOLUME];
@@ -74,6 +78,7 @@ public final class ColumnVoxelizer {
                     }
                 }
             }
+            this.fillFloodedCaves(vox, cls);
         }
         if (caveCulling) {
             this.fillEnclosed(vox, cls);
@@ -210,6 +215,34 @@ public final class ColumnVoxelizer {
             }
         }
         return state;
+    }
+
+    /**
+     * Unlit water under a ceiling (flooded caves, aquifers) becomes filler, top down per column.
+     * Open seas stay: their dark depths sit under more water, not under rock.
+     */
+    private void fillFloodedCaves(int[][] vox, byte[][] cls) {
+        for (int xz = 0; xz < 256; xz++) {
+            boolean ceiling = false;
+            for (int i = vox.length - 1; i >= 0; i--) {
+                if (vox[i] == null) {
+                    ceiling = false;
+                    continue;
+                }
+                int[] v = vox[i];
+                byte[] c = cls[i];
+                for (int y = 15; y >= 0; y--) {
+                    int k = (y << 8) | xz;
+                    byte cl = c[k];
+                    if (cl == VisualClass.TRANSLUCENT && ceiling && Voxel.light(v[k]) == 0) {
+                        v[k] = Voxel.FILLER_VID;
+                        c[k] = VisualClass.OPAQUE;
+                    } else {
+                        ceiling = cl == VisualClass.OPAQUE;
+                    }
+                }
+            }
+        }
     }
 
     private void fillEnclosed(int[][] vox, byte[][] cls) {

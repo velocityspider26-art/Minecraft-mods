@@ -4,13 +4,16 @@ package com.vantage.core;
  * Packs a section address {@code (level, x, y, z)} into a {@code long}.
  *
  * <pre>
- * bits 60..62  level (0..7)
+ * bits 60..63  level (0..15)
  * bits 52..59  y     (0..255, relative to the dimension floor)
  * bits 26..51  x     (signed 26 bits)
  * bits  0..25  z     (signed 26 bits)
  * </pre>
  */
 public final class SectionKey {
+    /** Not a section (level 15 is never used). */
+    public static final long NONE = -1L;
+
     private SectionKey() {
     }
 
@@ -22,7 +25,7 @@ public final class SectionKey {
     }
 
     public static int level(long key) {
-        return (int) (key >>> 60) & 0x7;
+        return (int) (key >>> 60);
     }
 
     public static int y(long key) {

@@ -102,7 +102,7 @@ public final class MeshManager implements LodWorld.Listener {
         for (int face = 0; face < 6; face++) {
             if ((borderMask & (1 << face)) != 0) {
                 long n = neighbour(key, face);
-                if (n != Long.MIN_VALUE) {
+                if (n != SectionKey.NONE) {
                     this.bump(n);
                 }
             }
@@ -119,13 +119,13 @@ public final class MeshManager implements LodWorld.Listener {
         }
     }
 
-    /** Neighbour across a face, or {@link Long#MIN_VALUE} below the world floor. */
+    /** Neighbour across a face, or {@link SectionKey#NONE} below the world floor. */
     static long neighbour(long key, int face) {
         int dx = face == 4 ? -1 : face == 5 ? 1 : 0;
         int dy = face == 0 ? -1 : face == 1 ? 1 : 0;
         int dz = face == 2 ? -1 : face == 3 ? 1 : 0;
         if (SectionKey.y(key) + dy < 0) {
-            return Long.MIN_VALUE;
+            return SectionKey.NONE;
         }
         return SectionKey.offset(key, dx, dy, dz);
     }
@@ -164,7 +164,7 @@ public final class MeshManager implements LodWorld.Listener {
             int height = this.world.verticalSections(SectionKey.level(e.key));
             for (int face = 0; face < 6; face++) {
                 long n = neighbour(e.key, face);
-                if (n == Long.MIN_VALUE) {
+                if (n == SectionKey.NONE) {
                     neighbours[face] = Mesher.SOLID_SLICE;
                     continue;
                 }

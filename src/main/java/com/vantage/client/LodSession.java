@@ -1,6 +1,7 @@
 package com.vantage.client;
 
 import com.vantage.Vantage;
+import com.vantage.client.gen.DistantGenerator;
 import com.vantage.client.ingest.ChunkCapture;
 import com.vantage.client.ingest.ColumnSource;
 import com.vantage.client.ingest.ColumnVoxelizer;
@@ -12,6 +13,7 @@ import com.vantage.client.render.MeshManager;
 import com.vantage.client.render.Planner;
 import com.vantage.client.visual.VisualAnalyzer;
 import com.vantage.client.visual.VisualRegistry;
+import com.vantage.storage.DataVersion;
 import com.vantage.util.WorkerPool;
 import com.vantage.world.LodWorld;
 import com.vantage.world.VoxelColumn;
@@ -47,6 +49,7 @@ public final class LodSession implements AutoCloseable {
     public final boolean caveCulling;
     private final ThreadLocal<ColumnVoxelizer> voxelizers;
     private @Nullable RegionImporter importer;
+    private @Nullable DistantGenerator generator;
     private @Nullable LodRenderer renderer;
     private boolean rendererFailed;
     private volatile double camX, camY, camZ;
@@ -78,11 +81,20 @@ public final class LodSession implements AutoCloseable {
         Minecraft mc = Minecraft.getInstance();
         Path dir = mc.gameDirectory.toPath().resolve(Vantage.MODID).resolve(worldId(mc, level)).resolve(dimensionFolder(level.dimension()));
         Vantage.LOGGER.info("Opening LOD data in {}", dir);
+        DataVersion.prepare(dir);
         LodSession session = new LodSession(level, dir);
         MinecraftServer server = mc.getSingleplayerServer();
         if (server != null && VantageConfig.IMPORT_SAVES.get()) {
             Path regionDir = net.minecraft.world.level.dimension.DimensionType.getStorageFolder(level.dimension(), server.getWorldPath(LevelResource.ROOT)).resolve("region");
             session.importer = new RegionImporter(session, level, regionDir, dir.resolve("imported.bin"));
+        }
+        if (server != null && VantageConfig.DISTANT_GENERATION.get()) {
+            session.generator = DistantGenerator.create(session.world, session.pool, session.visuals,
+                    level.registryAccess().registryOrThrow(Registries.BIOME), server.getLevel(level.dimension()));
+            if (session.generator != null) {
+                session.generator.setImporter(session.importer);
+            }
+            session.planner.setGenerator(session.generator);
         }
         return session;
     }
@@ -91,7 +103,10 @@ public final class LodSession implements AutoCloseable {
         MinecraftServer server = mc.getSingleplayerServer();
         if (server != null) {
             Path root = server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
-            return "sp_" + sanitize(root.getFileName() == null ? "world" : root.getFileName().toString());
+            // The seed tells apart a new world that reuses a deleted world's folder name.
+            long seed = it.unimi.dsi.fastutil.HashCommon.mix(server.getWorldData().worldGenOptions().seed());
+            return "sp_" + sanitize(root.getFileName() == null ? "world" : root.getFileName().toString())
+                    + "_" + Long.toHexString(seed & 0xFFFFFFFFL);
         }
         ServerData data = mc.getCurrentServer();
         String host = data != null ? data.ip : "unknown";
@@ -169,12 +184,19 @@ public final class LodSession implements AutoCloseable {
         return this.importer;
     }
 
+    public @Nullable DistantGenerator generator() {
+        return this.generator;
+    }
+
     @Override
     public void close() {
         Vantage.LOGGER.info("Closing LOD data for {}", this.dimension.location());
         this.ingest.clear();
         if (this.importer != null) {
             this.importer.close();
+        }
+        if (this.generator != null) {
+            this.generator.close();
         }
         this.planner.close();
         this.pool.close();

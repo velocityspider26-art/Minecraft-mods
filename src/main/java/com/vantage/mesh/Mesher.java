@@ -216,9 +216,13 @@ public final class Mesher {
         return vid == 0 ? VisualClass.AIR : this.table.classOf(vid);
     }
 
-    /** Returns {@code 1 + (vid | light << 20)} if a face must be drawn, else 0. */
+    /**
+     * Returns {@code 1 + (vid | light << 20)} if a face must be drawn, else 0. With sky culling,
+     * faces looking into unlit air are dropped (caves); faces looking into unlit water are kept,
+     * since a dark sea floor is what makes deep water look deep.
+     */
     private static int faceKey(int a, byte ca, int b, byte cb, boolean skyCull) {
-        boolean lit = !skyCull || Voxel.light(b) != 0;
+        boolean lit = !skyCull || Voxel.light(b) != 0 || cb == VisualClass.TRANSLUCENT;
         boolean draw;
         if (ca == VisualClass.OPAQUE) {
             draw = cb != VisualClass.OPAQUE && lit;

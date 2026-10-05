@@ -61,8 +61,48 @@ class LodWorldTest {
             assertEquals(4, Voxel.vid(s4.get(Lod.index(3, 4, (-5) & 31))));
             assertEquals(0, Voxel.vid(s4.get(Lod.index(3, 5, (-5) & 31))));
             assertTrue(changed.contains(SectionKey.of(4, 0, 0, -1)));
-            assertEquals(LodWorld.PRESENT, w.content(SectionKey.of(0, 1, 2, -3)));
+            // Only one of the four chunks in that section is known.
+            assertEquals(LodWorld.PRESENT | LodWorld.INCOMPLETE, w.content(SectionKey.of(0, 1, 2, -3)));
             assertEquals(LodWorld.ABSENT, w.content(SectionKey.of(0, 50, 2, 50)));
+        }
+    }
+
+    @Test
+    void generatedDataNeverReplacesRealData(@TempDir Path dir) {
+        try (LodWorld w = new LodWorld(dir, -64, 384, true, TABLE, 64L << 20)) {
+            w.insert(column(0, 0, 24)); // real data in the first 16x16 corner of section (0,0)
+            long key = SectionKey.of(0, 0, 2, 0);
+            boolean[] unknown = w.unknownColumns(0, 0, 0);
+            assertTrue(unknown != null && !unknown[0] && unknown[31 * 32 + 31]);
+            int[][] gen = new int[w.verticalSections(0)][];
+            int[] uniforms = new int[gen.length];
+            for (int y = 0; y < gen.length; y++) {
+                uniforms[y] = 7; // "generated" opaque everywhere
+            }
+            w.fillGenerated(0, 0, 0, gen, uniforms);
+            LodSection.Snapshot s = w.snapshot(key);
+            assertEquals(0, Voxel.vid(s.get(Lod.index(0, 6, 0))), "real air above real ground stays");
+            assertEquals(4, Voxel.vid(s.get(Lod.index(0, 5, 0))), "real ground stays");
+            assertEquals(7, Voxel.vid(s.get(Lod.index(20, 6, 20))), "unknown space was filled");
+            assertEquals(null, w.unknownColumns(0, 0, 0));
+            assertEquals(LodWorld.PRESENT, w.content(key));
+            // Real data arriving later wins over generated data.
+            w.insert(column(1, 1, 24));
+            s = w.snapshot(key);
+            assertEquals(0, Voxel.vid(s.get(Lod.index(20, 6, 20))));
+        }
+    }
+
+    @Test
+    void mipsKeepGeneratedTerrainWhereNothingFinerIsKnown(@TempDir Path dir) {
+        try (LodWorld w = new LodWorld(dir, -64, 384, true, TABLE, 64L << 20)) {
+            w.fillGenerated(5, 0, 0, new int[][]{null}, new int[]{8});
+            w.insert(column(0, 0, 24));
+            w.processPendingMips();
+            LodSection.Snapshot s5 = w.snapshot(SectionKey.of(5, 0, 0, 0));
+            assertEquals(4, Voxel.vid(s5.get(Lod.index(0, 2, 0))), "mipped from the real chunk");
+            assertEquals(8, Voxel.vid(s5.get(Lod.index(31, 2, 31))), "generated where no chunk is known");
+            assertEquals(LodWorld.PRESENT, w.content(SectionKey.of(5, 0, 0, 0)));
         }
     }
 
@@ -83,7 +123,8 @@ class LodWorldTest {
             assertEquals(4, Voxel.vid(s0.get(Lod.index(0, 5, 0))));
             LodSection.Snapshot s6 = w.snapshot(SectionKey.of(6, 0, 0, 0));
             assertEquals(4, Voxel.vid(s6.get(Lod.index(0, 1, 0))));
-            assertEquals(LodWorld.EMPTY, w.content(SectionKey.of(0, 0, 11, 0)));
+            // Known sky over one chunk, unknown elsewhere: nothing to draw, but not complete.
+            assertEquals(LodWorld.EMPTY | LodWorld.INCOMPLETE, w.content(SectionKey.of(0, 0, 11, 0)));
         }
     }
 

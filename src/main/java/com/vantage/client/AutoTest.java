@@ -28,6 +28,16 @@ public final class AutoTest {
     private static final double FLIGHT_SPEED = Double.parseDouble(System.getProperty("vantage.autotest.flightSpeed", "30"));
     private static final int COMPARE_RD = Integer.getInteger("vantage.autotest.compareRd", 0);
     private static final boolean DIMENSION_HOP = Boolean.getBoolean("vantage.autotest.dimensionHop");
+    /** Climb straight up instead of the views and flight, shooting the ground at several heights. */
+    private static final boolean ASCENT = Boolean.getBoolean("vantage.autotest.ascent");
+    private static final int[] ALTITUDES = {150, 400, 1000, 2500, 6000, 15000};
+    private static final float[] ASCENT_PITCH = {25f, 70f};
+    private static int ascentIndex = -1;
+    private static int ascentShot;
+    private static long ascentAt;
+    private static long ascentLog;
+    private static int startX;
+    private static int startZ;
     /** Switch Vantage off at join and back on shortly after, as if from the config screen. */
     private static final boolean TOGGLE = Boolean.getBoolean("vantage.autotest.toggle");
     private static long toggleAt = -1;
@@ -70,6 +80,9 @@ public final class AutoTest {
     }
 
     private static void onTick(ClientTickEvent.Post event) {
+        if (finished) {
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null) {
@@ -81,6 +94,8 @@ public final class AutoTest {
             stageAt = now;
             mc.options.hideGui = true;
             Vantage.LOGGER.info("[autotest] joined world at {}", player.blockPosition());
+            startX = player.getBlockX();
+            startZ = player.getBlockZ();
             if (TOGGLE) {
                 VantageConfig.ENABLED.set(false);
                 VantageClient.closeSession();
@@ -119,6 +134,10 @@ public final class AutoTest {
             return;
         }
         player.setDeltaMovement(0, 0, 0);
+        if (ASCENT) {
+            ascent(mc, player, now);
+            return;
+        }
         if (view >= VIEWS.length && COMPARE_RD > 0 && compareStage < 2) {
             // Vanilla-only at a large render distance, same viewpoint as view 0, for a cost comparison.
             if (compareStage == 0) {
@@ -260,7 +279,52 @@ public final class AutoTest {
         }
     }
 
+    private static void ascent(Minecraft mc, LocalPlayer player, long now) {
+        String name = player.getGameProfile().getName();
+        if (ascentIndex < 0) {
+            ascentIndex = 0;
+            ascentAt = now;
+            frameNanos.clear();
+            command(mc, "tp " + name + " " + startX + " " + ALTITUDES[0] + " " + startZ);
+            return;
+        }
+        int alt = ALTITUDES[ascentIndex];
+        float pitch = ASCENT_PITCH[ascentShot];
+        player.setYRot(0f);
+        player.setXRot(pitch);
+        player.yRotO = 0f;
+        player.xRotO = pitch;
+        long since = now - ascentAt;
+        boolean ready = since > 8_000 && Math.abs(player.getY() - alt) < 2 && (settled() || since > 150_000)
+                && (mc.levelRenderer.hasRenderedAllSections() || since > 60_000);
+        if (!ready) {
+            if (now - ascentLog > 10_000) {
+                ascentLog = now;
+                logStats("ascent y=" + alt + " waiting");
+            }
+            return;
+        }
+        String shot = String.format(Locale.ROOT, "vantage_ascent_%05d_%02d.png", alt, (int) pitch);
+        Screenshot.grab(mc.gameDirectory, shot, mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+        logFrames();
+        logStats(shot);
+        frameNanos.clear();
+        ascentAt = now;
+        if (++ascentShot < ASCENT_PITCH.length) {
+            return;
+        }
+        ascentShot = 0;
+        if (++ascentIndex >= ALTITUDES.length) {
+            finish(mc);
+            return;
+        }
+        command(mc, "tp " + name + " " + startX + " " + ALTITUDES[ascentIndex] + " " + startZ);
+    }
+
+    private static boolean finished;
+
     private static void finish(Minecraft mc) {
+        finished = true;
         Vantage.LOGGER.info("[autotest] finished");
         mc.stop();
     }
@@ -279,8 +343,9 @@ public final class AutoTest {
         }
         RegionImporter imp = s.importer();
         boolean importing = imp != null && (imp.scanning() || imp.total() == 0);
+        var gen = s.generator();
         return !importing && s.pool.queued() == 0 && s.meshes.inFlight() == 0 && s.meshes.pendingUploads() == 0
-                && s.ingest.pending() == 0;
+                && s.ingest.pending() == 0 && (gen == null || gen.queued() == 0);
     }
 
     private static void logStats(String label) {
@@ -291,8 +356,8 @@ public final class AutoTest {
         }
         LodRenderer r = s.renderer();
         RegionImporter imp = s.importer();
-        int[] perLevel = new int[7];
-        double[] nearest = new double[7];
+        int[] perLevel = new int[com.vantage.core.Lod.LEVELS];
+        double[] nearest = new double[com.vantage.core.Lod.LEVELS];
         java.util.Arrays.fill(nearest, Double.MAX_VALUE);
         var plan = s.planner.plan();
         var cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
@@ -305,12 +370,15 @@ public final class AutoTest {
             nearest[l] = Math.min(nearest[l], Math.sqrt(cx * cx + cz * cz) - span * 0.7071);
         }
         StringBuilder levels = new StringBuilder();
-        for (int l = 0; l < 7; l++) {
+        for (int l = 0; l < com.vantage.core.Lod.LEVELS; l++) {
             if (perLevel[l] > 0) {
                 levels.append(String.format(Locale.ROOT, " L%d=%d(>%.0f)", l, perLevel[l], nearest[l]));
             }
         }
-        Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={}", label, levels, s.coverage.current().size());
+        var gen = s.generator();
+        Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={} generated={} ({} ms each, {} queued)", label, levels,
+                s.coverage.current().size(), gen == null ? 0 : gen.generatedSections(),
+                gen == null ? 0 : String.format(Locale.ROOT, "%.1f", gen.averageMillis()), gen == null ? 0 : gen.queued());
         Vantage.LOGGER.info("[autotest] {}: sections={} draws={} quads={} cpu={}ms build={}ms plan={} visited={} planMs={} gpuMiB={} meshes={} residentQuads={} jobs={} meshing={} uploads={} cache={} dirty={} import={}/{} visuals={} fps={}",
                 label,
                 r == null ? -1 : r.lastSections, r == null ? -1 : r.lastDraws, r == null ? -1 : r.lastQuads,

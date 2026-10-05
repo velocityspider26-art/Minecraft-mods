@@ -7,7 +7,8 @@ package com.vantage.core;
  * bits  0..19  visual id (0 = air)
  * bits 20..23  block light
  * bits 24..27  sky light
- * bits 28..31  reserved, always 0
+ * bit  28      unknown: never ingested or generated (always air)
+ * bits 29..31  reserved, always 0
  * </pre>
  *
  * Opaque voxels always carry light 0; only air and translucent voxels keep light, because a
@@ -18,8 +19,13 @@ public final class Voxel {
     public static final int VID_MASK = (1 << VID_BITS) - 1;
     public static final int MAX_VID = VID_MASK;
 
-    /** Air that has never been ingested. Assumed sky-lit so faces bordering it stay visible. */
-    public static final int UNKNOWN_AIR = pack(0, 0, 15);
+    public static final int UNKNOWN_FLAG = 1 << 28;
+
+    /**
+     * Space nothing is known about yet. It counts as sky-lit air, so faces bordering it stay
+     * visible, and distant generation may fill it; real data always replaces it.
+     */
+    public static final int UNKNOWN_AIR = pack(0, 0, 15) | UNKNOWN_FLAG;
 
     /**
      * Reserved visual id for space that can never be seen from a distance: buried blocks and unlit
@@ -53,6 +59,10 @@ public final class Voxel {
 
     public static boolean isAir(int voxel) {
         return (voxel & VID_MASK) == 0;
+    }
+
+    public static boolean isUnknown(int voxel) {
+        return (voxel & UNKNOWN_FLAG) != 0;
     }
 
     public static int withLight(int voxel, int light) {

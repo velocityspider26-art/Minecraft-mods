@@ -14,6 +14,18 @@ class MipperTest {
     }
 
     @Test
+    void unknownStaysUnknownOnlyWhenAllChildrenAre() {
+        Mipper m = new Mipper(TABLE);
+        int u = Voxel.UNKNOWN_AIR;
+        assertEquals(u, m.reduce(kids(u, u, u, u, u, u, u, u)));
+        // Mixed with known air: known, sky-lit air.
+        int r = m.reduce(kids(u, u, u, u, u, u, u, Voxel.pack(0, 0, 3)));
+        assertEquals(Voxel.pack(0, 0, 15), r);
+        // Mixed with ground: the ground.
+        assertEquals(5, m.reduce(kids(5, u, u, u, u, u, u, u)));
+    }
+
+    @Test
     void allAirKeepsBrightestLight() {
         Mipper m = new Mipper(TABLE);
         int r = m.reduce(kids(Voxel.pack(0, 3, 2), Voxel.pack(0, 0, 9), 0, 0, 0, 0, Voxel.pack(0, 7, 1), 0));
@@ -37,11 +49,12 @@ class MipperTest {
     }
 
     @Test
-    void translucentKeepsLightOfNonOpaqueChildren() {
+    void translucentTakesLightOfItsDeepestWater() {
         Mipper m = new Mipper(TABLE);
-        int water = Voxel.pack(10, 0, 12);
-        int r = m.reduce(kids(3, 3, 3, 3, water, water, AIR15, AIR15));
-        assertEquals(Voxel.pack(10, 0, 15), r);
+        int shallow = Voxel.pack(10, 0, 14);
+        int deep = Voxel.pack(10, 0, 9);
+        int r = m.reduce(kids(deep, deep, 3, 3, shallow, shallow, AIR15, AIR15));
+        assertEquals(Voxel.pack(10, 0, 9), r);
     }
 
     @Test

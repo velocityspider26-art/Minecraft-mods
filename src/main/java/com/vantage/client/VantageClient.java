@@ -1,6 +1,8 @@
 package com.vantage.client;
 
 import com.vantage.Vantage;
+import com.vantage.api.VantageApi;
+import com.vantage.client.gen.DistantGenerator;
 import com.vantage.client.ingest.RegionImporter;
 import com.vantage.client.render.LodRenderer;
 import com.vantage.client.render.Planner;
@@ -8,6 +10,8 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.FogRenderer;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
@@ -190,20 +194,30 @@ public final class VantageClient {
         if (renderer == null) {
             return;
         }
-        float renderDistance = VantageConfig.RENDER_DISTANCE.get() * 16f;
+        float seaLevel = mc.level.getSeaLevel();
+        Sky sky = sky(mc.level.dimension());
+        float renderDistance = lodDistance(pos.y, seaLevel, sky.radius());
+        float vanillaFar = mc.gameRenderer.getDepthFar();
         int height = Math.max(1, mc.getMainRenderTarget().height);
         double tanHalfFov = 1.0 / Math.max(1e-3, Math.abs(event.getProjectionMatrix().m11()));
         double radiansPerPixel = 2.0 * Math.atan(tanHalfFov) / height;
         s.planner.setView(new Planner.View(pos.x, pos.y, pos.z, renderDistance, radiansPerPixel,
-                VantageConfig.DETAIL.get(), s.coverage.current()));
+                VantageConfig.DETAIL.get(), vanillaFar, s.coverage.current()));
 
         Planner.Plan plan = s.planner.plan();
         renderer.upload(s.meshes, (long) VantageConfig.UPLOAD_BUDGET_KB.get() << 10, plan.id);
         if (!lodVisible(camera)) {
             return;
         }
+        int radius = sky.radius();
+        float fogStart = VantageConfig.FOG_START.get().floatValue();
+        if (radius > 0) {
+            // The horizon hides the end of the data already; only fade the last mountain tops.
+            fogStart = Math.max(fogStart, 0.95f);
+        }
         LodRenderer.Frame frame = new LodRenderer.Frame(event.getModelViewMatrix(), event.getProjectionMatrix(),
-                pos.x, pos.y, pos.z, renderDistance, VantageConfig.FOG_START.get().floatValue());
+                pos.x, pos.y, pos.z, renderDistance, fogStart, sky.hazeDensity(), sky.hazeHeight(), seaLevel,
+                mc.options.getEffectiveRenderDistance() * 16f, radius > 0 ? 0.5f / radius : 0f, vanillaFar, sky.hazeColor());
         renderer.render(frame, plan, s.world, s.visuals, s.coverage.current());
     }
 
@@ -217,10 +231,46 @@ public final class VantageClient {
         if (r == null) {
             return;
         }
-        float renderDistance = VantageConfig.RENDER_DISTANCE.get() * 16f;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return;
+        }
+        float renderDistance = lodDistance(event.getCamera().getPosition().y, mc.level.getSeaLevel(), sky(mc.level.dimension()).radius());
         event.setNearPlaneDistance(renderDistance * VantageConfig.FOG_START.get().floatValue());
         event.setFarPlaneDistance(renderDistance);
         event.setCanceled(true);
+    }
+
+    /**
+     * LOD distance in blocks for a camera at height {@code y}: the configured distance on the
+     * ground, more when flying high so the ground reaches the horizon; with planet curvature, out
+     * to the horizon (and the mountains peeking over it).
+     */
+    static float lodDistance(double y, float seaLevel, int radius) {
+        double altitude = Math.max(0.0, y - seaLevel);
+        // On a planet nothing past the horizon (plus the mountains peeking over it) can show.
+        double reach = radius > 0 ? horizon(radius, altitude) + horizon(radius, 256)
+                : VantageConfig.ALTITUDE_VIEW.get() * altitude;
+        double base = VantageConfig.RENDER_DISTANCE.get() * 16.0;
+        return (float) Math.min(Math.max(base, reach), VantageConfig.MAX_RENDER_DISTANCE * 16.0);
+    }
+
+    /** Planet look in effect: set by another mod through {@link VantageApi}, else from the config. */
+    record Sky(int radius, float hazeDensity, float hazeHeight, int hazeColor) {
+    }
+
+    static Sky sky(ResourceKey<Level> dimension) {
+        VantageApi.Planet p = VantageApi.planet(dimension);
+        if (p != null) {
+            return new Sky(p.radius(), p.hazeDistance() == 0 ? 0f : 1f / p.hazeDistance(), p.atmosphereHeight(), p.hazeColor());
+        }
+        return new Sky(VantageConfig.PLANET_RADIUS.get(), 1f / VantageConfig.HAZE_DISTANCE.get(),
+                VantageConfig.ATMOSPHERE_HEIGHT.get(), -1);
+    }
+
+    /** Distance to the horizon from {@code h} blocks above the surface of a planet of radius {@code r}. */
+    private static double horizon(double r, double h) {
+        return Math.sqrt(2.0 * r * h + h * h);
     }
 
     private static void onDebugText(CustomizeGuiOverlayEvent.DebugText event) {
@@ -250,6 +300,16 @@ public final class VantageClient {
         RegionImporter imp = s.importer();
         if (imp != null && imp.total() > 0) {
             right.add(String.format(Locale.ROOT, "[Vantage] import %d/%d chunks%s", imp.done(), imp.total(), imp.scanning() ? "" : " (idle)"));
+        }
+        DistantGenerator gen = s.generator();
+        if (gen != null) {
+            right.add(String.format(Locale.ROOT, "[Vantage] generated %d sections (%.1f ms each), %d queued",
+                    gen.generatedSections(), gen.averageMillis(), gen.queued()));
+        }
+        Vec3 cam = mc.gameRenderer.getMainCamera().getPosition();
+        if (mc.level != null) {
+            right.add(String.format(Locale.ROOT, "[Vantage] distance %.1f km",
+                    lodDistance(cam.y, mc.level.getSeaLevel(), sky(mc.level.dimension()).radius()) / 1000.0));
         }
     }
 }
