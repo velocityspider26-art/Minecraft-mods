@@ -2,6 +2,9 @@ package com.vantage.client;
 
 import com.vantage.Vantage;
 import com.vantage.api.VantageApi;
+import com.vantage.client.net.ClientTerrain;
+import com.vantage.net.PlanetInfo;
+import com.vantage.net.VantageNetwork;
 import com.vantage.client.gen.DistantGenerator;
 import com.vantage.client.ingest.RegionImporter;
 import com.vantage.client.render.LodRenderer;
@@ -9,6 +12,7 @@ import com.vantage.client.render.Planner;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.DimensionSpecialEffects;
 import net.minecraft.client.renderer.FogRenderer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -52,7 +56,9 @@ public final class VantageClient {
         NeoForge.EVENT_BUS.addListener(VantageClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(VantageClient::onRenderStage);
         NeoForge.EVENT_BUS.addListener(VantageClient::onRenderFog);
+        NeoForge.EVENT_BUS.addListener(VantageClient::onFogColor);
         NeoForge.EVENT_BUS.addListener(VantageClient::onDebugText);
+        VantageNetwork.setClientHandler(ClientTerrain.INSTANCE);
         AutoTest.init();
     }
 
@@ -83,6 +89,7 @@ public final class VantageClient {
             return;
         }
         closeSession();
+        ClientTerrain.INSTANCE.reset(false);
         openSession(level, false);
     }
 
@@ -121,6 +128,7 @@ public final class VantageClient {
 
     private static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         closeSession();
+        ClientTerrain.INSTANCE.reset(true);
     }
 
     static void closeSession() {
@@ -150,6 +158,7 @@ public final class VantageClient {
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {
+        ClientTerrain.INSTANCE.expire(15_000);
         ClientLevel level = Minecraft.getInstance().level;
         boolean enabled = VantageConfig.ENABLED.get();
         if (enabled && !wasEnabled && session == null && level != null) {
@@ -201,8 +210,10 @@ public final class VantageClient {
         int height = Math.max(1, mc.getMainRenderTarget().height);
         double tanHalfFov = 1.0 / Math.max(1e-3, Math.abs(event.getProjectionMatrix().m11()));
         double radiansPerPixel = 2.0 * Math.atan(tanHalfFov) / height;
+        // Vanilla skips chunk sections further above or below the camera than its render distance.
+        float vanillaVertical = mc.options.getEffectiveRenderDistance() * 16f;
         s.planner.setView(new Planner.View(pos.x, pos.y, pos.z, renderDistance, radiansPerPixel,
-                VantageConfig.DETAIL.get(), vanillaFar, s.coverage.current()));
+                VantageConfig.DETAIL.get(), vanillaFar, vanillaVertical, s.coverage.current()));
 
         Planner.Plan plan = s.planner.plan();
         renderer.upload(s.meshes, (long) VantageConfig.UPLOAD_BUDGET_KB.get() << 10, plan.id);
@@ -217,8 +228,53 @@ public final class VantageClient {
         }
         LodRenderer.Frame frame = new LodRenderer.Frame(event.getModelViewMatrix(), event.getProjectionMatrix(),
                 pos.x, pos.y, pos.z, renderDistance, fogStart, sky.hazeDensity(), sky.hazeHeight(), seaLevel,
-                mc.options.getEffectiveRenderDistance() * 16f, radius > 0 ? 0.5f / radius : 0f, vanillaFar, sky.hazeColor());
+                mc.options.getEffectiveRenderDistance() * 16f, radius > 0 ? 0.5f / radius : 0f, vanillaFar, vanillaVertical,
+                // Seen from space the air still glows in daylight: haze keeps the colour of the sky down there.
+                sky.hazeColor() >= 0 ? sky.hazeColor() : groundFogColor);
         renderer.render(frame, plan, s.world, s.visuals, s.coverage.current());
+    }
+
+    /** Set while vanilla works out the fog colour (see FogRendererMixin). Render thread. */
+    public static boolean computingFogColor;
+    /** The fog colour before the space sky darkened it ({@code 0xRRGGBB}), or -1. Render thread. */
+    private static int groundFogColor = -1;
+
+    private static void onFogColor(ViewportEvent.ComputeFogColor event) {
+        float d = spaceDarkness(event.getCamera().getPosition().y);
+        if (d <= 0f) {
+            groundFogColor = -1;
+            return;
+        }
+        groundFogColor = rgb(event.getRed()) << 16 | rgb(event.getGreen()) << 8 | rgb(event.getBlue());
+        event.setRed(event.getRed() * (1f - d));
+        event.setGreen(event.getGreen() * (1f - d));
+        event.setBlue(event.getBlue() * (1f - d));
+    }
+
+    private static int rgb(float c) {
+        return Mth.clamp(Math.round(c * 255f), 0, 255);
+    }
+
+    /**
+     * How far the sky has faded to black for a camera at height {@code y}: 0 inside the atmosphere,
+     * then rising from three atmosphere scale heights above sea level, nearly 1 two scale heights
+     * later. Air too thin to scatter sunlight leaves a black sky with stars, even by day.
+     */
+    public static float spaceDarkness(double y) {
+        Minecraft mc = Minecraft.getInstance();
+        ClientLevel level = mc.level;
+        if (level == null || !VantageConfig.SPACE_SKY.get() || !VantageConfig.ENABLED.get()
+                || level.effects().skyType() != DimensionSpecialEffects.SkyType.NORMAL
+                || mc.gameRenderer.getMainCamera().getFluidInCamera() != FogType.NONE) {
+            return 0f;
+        }
+        Sky sky = sky(level.dimension());
+        if (sky.hazeDensity() <= 0f) {
+            // No air at all: whoever made this place draws its sky.
+            return 0f;
+        }
+        double scaleHeights = (y - level.getSeaLevel()) / sky.hazeHeight();
+        return (float) Mth.clamp(1.0 - Math.exp(3.0 - scaleHeights), 0.0, 1.0);
     }
 
     private static void onRenderFog(ViewportEvent.RenderFog event) {
@@ -264,8 +320,10 @@ public final class VantageClient {
         if (p != null) {
             return new Sky(p.radius(), p.hazeDistance() == 0 ? 0f : 1f / p.hazeDistance(), p.atmosphereHeight(), p.hazeColor());
         }
-        return new Sky(VantageConfig.PLANET_RADIUS.get(), 1f / VantageConfig.HAZE_DISTANCE.get(),
-                VantageConfig.ATMOSPHERE_HEIGHT.get(), -1);
+        // A Vantage Planet world: curve the distant terrain exactly like the world wraps.
+        PlanetInfo info = ClientTerrain.INSTANCE.planet(dimension);
+        int radius = info != null && info.radius() > 0 ? info.radius() : VantageConfig.PLANET_RADIUS.get();
+        return new Sky(radius, 1f / VantageConfig.HAZE_DISTANCE.get(), VantageConfig.ATMOSPHERE_HEIGHT.get(), -1);
     }
 
     /** Distance to the horizon from {@code h} blocks above the surface of a planet of radius {@code r}. */

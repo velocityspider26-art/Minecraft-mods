@@ -2,6 +2,11 @@ package com.vantage.client;
 
 import com.vantage.Vantage;
 import com.vantage.client.gen.DistantGenerator;
+import com.vantage.client.gen.LocalSource;
+import com.vantage.client.gen.RemoteSource;
+import com.vantage.client.net.ClientTerrain;
+import com.vantage.net.PlanetInfo;
+import net.minecraft.server.level.ServerLevel;
 import com.vantage.client.ingest.ChunkCapture;
 import com.vantage.client.ingest.ColumnSource;
 import com.vantage.client.ingest.ColumnVoxelizer;
@@ -49,7 +54,7 @@ public final class LodSession implements AutoCloseable {
     public final boolean caveCulling;
     private final ThreadLocal<ColumnVoxelizer> voxelizers;
     private @Nullable RegionImporter importer;
-    private @Nullable DistantGenerator generator;
+    private volatile @Nullable DistantGenerator generator;
     private @Nullable LodRenderer renderer;
     private boolean rendererFailed;
     private volatile double camX, camY, camZ;
@@ -89,12 +94,16 @@ public final class LodSession implements AutoCloseable {
             session.importer = new RegionImporter(session, level, regionDir, dir.resolve("imported.bin"));
         }
         if (server != null && VantageConfig.DISTANT_GENERATION.get()) {
-            session.generator = DistantGenerator.create(session.world, session.pool, session.visuals,
-                    level.registryAccess().registryOrThrow(Registries.BIOME), server.getLevel(level.dimension()));
-            if (session.generator != null) {
-                session.generator.setImporter(session.importer);
+            ServerLevel serverLevel = server.getLevel(level.dimension());
+            if (serverLevel != null) {
+                try {
+                    session.useGenerator(new DistantGenerator(session.world, session.pool, session.visuals,
+                            new LocalSource(serverLevel, level.registryAccess().registryOrThrow(Registries.BIOME), session::importer)));
+                    Vantage.LOGGER.info("Distant terrain generation on for {} (local)", level.dimension().location());
+                } catch (RuntimeException e) {
+                    Vantage.LOGGER.warn("Distant terrain generation unavailable for {}: {}", level.dimension().location(), e.toString());
+                }
             }
-            session.planner.setGenerator(session.generator);
         }
         return session;
     }
@@ -158,8 +167,22 @@ public final class LodSession implements AutoCloseable {
         this.world.insert(column);
     }
 
+    private void useGenerator(DistantGenerator generator) {
+        this.generator = generator;
+        this.planner.setGenerator(generator);
+    }
+
     /** Main thread, every client tick. */
     public void tick(ClientLevel level) {
+        if (this.generator == null && Minecraft.getInstance().getSingleplayerServer() == null && VantageConfig.DISTANT_GENERATION.get()) {
+            // On a server: once it says it answers terrain requests, ask it for unexplored land.
+            PlanetInfo info = ClientTerrain.INSTANCE.planet(this.dimension);
+            if (info != null && info.servesTerrain()) {
+                this.useGenerator(new DistantGenerator(this.world, this.pool, this.visuals,
+                        new RemoteSource(this.dimension, level.registryAccess().registryOrThrow(Registries.BIOME), info)));
+                Vantage.LOGGER.info("Distant terrain generation on for {} (from the server)", this.dimension.location());
+            }
+        }
         this.ingest.tick(level);
         Minecraft mc = Minecraft.getInstance();
         var cam = mc.gameRenderer.getMainCamera();

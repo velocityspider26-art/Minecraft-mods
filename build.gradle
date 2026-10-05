@@ -55,10 +55,16 @@ neoForge {
         client {
             client()
 
-            // ./gradlew runClient -PvantageAutotest : scripted screenshot run (see AutoTest)
+            // ./gradlew runClient -PvantageAutotest : scripted screenshot run (see AutoTest), in the
+            // singleplayer world -PvantageWorld (default "world") or on the server -PvantageServer
             if (project.hasProperty('vantageAutotest')) {
                 systemProperty 'vantage.autotest', 'true'
-                programArguments.addAll '--quickPlaySingleplayer', 'world', '--width', '1280', '--height', '720'
+                if (project.hasProperty('vantageServer')) {
+                    programArguments.addAll '--quickPlayMultiplayer', project.property('vantageServer').toString()
+                } else {
+                    programArguments.addAll '--quickPlaySingleplayer', project.findProperty('vantageWorld')?.toString() ?: 'world'
+                }
+                programArguments.addAll '--width', '1280', '--height', '720'
                 // Extra flags for debugging, e.g. -PvantageJvmArgs="-Dvantage.debug.levelColors=true"
                 if (project.hasProperty('vantageJvmArgs')) {
                     jvmArguments.addAll(project.property('vantageJvmArgs').toString().split(' ').findAll { !it.isEmpty() })

@@ -1,4 +1,4 @@
-package com.vantage.client.gen;
+package com.vantage.gen;
 
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;

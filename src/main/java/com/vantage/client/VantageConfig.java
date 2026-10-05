@@ -48,6 +48,11 @@ public final class VantageConfig {
                     "blocks above sea level.")
             .defineInRange("atmosphereHeight", 1200, 50, 1_000_000);
 
+    public static final ModConfigSpec.BooleanValue SPACE_SKY = BUILDER
+            .comment("High above the atmosphere (from about three atmosphere heights up) the sky fades to black and",
+                    "the stars come out, while the ground below keeps its haze. Turn off if another mod draws the sky there.")
+            .define("spaceSky", true);
+
     public static final ModConfigSpec.IntValue PLANET_RADIUS = BUILDER
             .comment("Bend distant terrain down like the surface of a planet with this radius in blocks, with a real",
                     "horizon past which terrain is hidden. 0 = flat like vanilla. Try 100000 for a big planet or",

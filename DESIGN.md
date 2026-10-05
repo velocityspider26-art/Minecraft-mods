@@ -61,10 +61,12 @@ sea floors seen through it stay as dark as deep water should be. Eight unknown
 children stay unknown, and a mip never overwrites known (e.g. generated) data
 with unknown.
 
-## Distant generation (singleplayer)
+## Distant generation
 
-Where nothing has been explored, terrain is made straight from the integrated
-server's world generator, without generating chunks:
+Where nothing has been explored, terrain is made straight from the world
+generator, without generating chunks. In singleplayer (and for the host of a LAN
+or Essential game) the client runs it against the integrated server's
+generator; other players ask the server (see *Multiplayer* below):
 
 * **Height** — the noise router's final density function, re-wired once per
   worker: holder and marker indirections removed, and functions the generator
@@ -85,6 +87,64 @@ server's world generator, without generating chunks:
   so coverage appears coarse-first. Generation only ever fills unknown voxels,
   and chunk data always overwrites it. While the save's first import pass runs,
   places the save already has are left to the import.
+
+## Multiplayer
+
+The client cannot run the world generator on a server: it has neither the seed
+nor the server's datapacks. So a server with Vantage answers for it:
+
+* On joining and on every dimension change the server sends `planet_info`: does
+  it answer terrain requests, the planet radius (Vantage Planet worlds), sea
+  level and base rock. Payloads are registered as optional, so players without
+  Vantage can join a Vantage server and the other way round.
+* The client's generator then sends `terrain_request`s: LOD level, section
+  column, and a 1024-bit mask of the voxel columns still unknown. The server
+  samples them with the same column sampler as singleplayer and answers with
+  `terrain_columns`: one height (short) and palette index (byte) per column,
+  plus per palette biome how it looks from afar (top, under, seabed and leaves
+  block states, tree cover, tree height), since biome features are not synced
+  to clients. About 3 KB per section column.
+* The server works on a small daemon thread pool at low priority (default a
+  quarter of the cores, 1–4), allows each player 24 waiting requests (more get
+  `busy`), and refuses requests for other dimensions or more than 600 km away.
+  The client keeps at most 16 requests in flight and gives up on any answer
+  older than 15 s. Answers are turned into voxels on the client's own workers.
+
+## Vantage Planet
+
+A world type (`vantage:planet`): `NoiseBasedChunkGenerator` with noise settings
+built in code from the planet's parameters. The overworld recipe is kept as is
+(terrain splines, base 3D noise, caves, aquifers, ore veins, surface rules,
+the multi-noise biome table), but the five climate inputs — continentalness,
+erosion, weirdness, temperature, humidity — come from one density function
+type, `vantage:planet_climate`, instead of vanilla's noises. Everything that
+reads climate (terrain height, biomes, structures, Vantage's distant terrain)
+follows it.
+
+* **Wrapping** — climate noise is sampled on a cylinder of the planet's
+  radius (x becomes an angle), so the world repeats every `2·π·r` blocks
+  east-west with no seam. Latitude is linear in z; past a pole it comes back
+  down the other side.
+* **Continents** — fractal noise with domain warp, shifted so the requested
+  share of the surface ends up under water (calibrated against generated
+  heights: low coasts, rivers and lakes count too). Below continentalness
+  -1.05 vanilla's terrain rises again (mushroom islands); planet oceans level
+  off towards -1.0 instead, with rare islands added back where a sparse noise
+  peaks far out at sea.
+* **Mountain ranges** — erosion drops to its mountain values along the zero
+  lines of a second warped noise, giving long winding chains.
+* **Climate belts** — in Minecraft's biome table "hot" means desert, so the
+  temperature profile peaks in the subtropics (~20°), not at the equator; the
+  equator is warm and, with humidity following the wind belts (wet tropics,
+  dry subtropics, wet mid-latitudes, dry poles), mostly jungle.
+* Climate values are cached per thread and column, and the five functions are
+  wrapped in `flat_cache`, so one column costs one evaluation of the model.
+* Noises are ordinary `worldgen/noise` entries (`vantage:planet_*`), seeded
+  per world by `RandomState` like vanilla's.
+
+Tests build the generator from vanilla's registries plus the mod's noise files
+and check ocean share, mountain heights, biome belts, wrapping, and that the
+distant-terrain sampler matches the real heightmap.
 
 ## Pipeline
 
@@ -131,9 +191,18 @@ render thread: upload (budgeted) → frustum cull → 1 multi-draw-indirect per 
   vertices are lowered by `d²/2R` (beyond vanilla's area), culling bounds move
   with them, and fragments the planet would hide (the view ray dipping below the
   bent sea level) are discarded, which gives a real horizon.
-* Vanilla clips everything past its far plane (4× its render distance). The
-  coverage mask only discards LOD fragments vanilla actually draws, so flying
-  above that height never opens a hole under the player.
+* Vanilla clips everything past its far plane (4× its render distance), and
+  its section graph never reaches chunk sections more than its render distance
+  (in blocks) above or below the camera's section: flying a few hundred blocks
+  up, vanilla draws none of its own chunks. The planner and the coverage mask
+  only leave to vanilla what it actually draws (inside the far plane and
+  within that vertical band, decided per fragment in the shader), so no hole
+  opens under the player at any height.
+* Space sky: from three atmosphere scale heights above sea level the sky and
+  fog colours fade to black and stars come out (mixins on the sky colour and
+  star brightness, plus the fog colour event). The haze on LOD terrain keeps
+  the undarkened fog colour, so seen from orbit the planet keeps a bright
+  limb.
 * Other mods can set the planet radius, haze and haze colour per dimension
   through `com.vantage.api.VantageApi`.
 * Requires OpenGL 4.3 (any Windows/Linux GPU from the last ~10 years). macOS

@@ -1,4 +1,4 @@
-package com.vantage.client.gen;
+package com.vantage.gen;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

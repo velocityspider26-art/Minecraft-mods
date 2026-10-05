@@ -30,8 +30,10 @@ public final class AutoTest {
     private static final boolean DIMENSION_HOP = Boolean.getBoolean("vantage.autotest.dimensionHop");
     /** Climb straight up instead of the views and flight, shooting the ground at several heights. */
     private static final boolean ASCENT = Boolean.getBoolean("vantage.autotest.ascent");
-    private static final int[] ALTITUDES = {150, 400, 1000, 2500, 6000, 15000};
+    private static final int[] ALTITUDES = altitudes(System.getProperty("vantage.autotest.altitudes", "150,400,1000,2500,6000,15000"));
     private static final float[] ASCENT_PITCH = {25f, 70f};
+    /** Also shoot every ascent view with Vantage off, to tell its artifacts from vanilla's. */
+    private static final boolean ASCENT_COMPARE = Boolean.getBoolean("vantage.autotest.ascentCompare");
     private static int ascentIndex = -1;
     private static int ascentShot;
     private static long ascentAt;
@@ -60,6 +62,10 @@ public final class AutoTest {
     static volatile boolean lodSuppressed;
 
     private AutoTest() {
+    }
+
+    private static int[] altitudes(String list) {
+        return java.util.Arrays.stream(list.split(",")).map(String::trim).filter(x -> !x.isEmpty()).mapToInt(Integer::parseInt).toArray();
     }
 
     public static void init() {
@@ -101,16 +107,14 @@ public final class AutoTest {
                 VantageClient.closeSession();
                 toggleAt = now + 5_000;
             }
-            var server = mc.getSingleplayerServer();
-            if (server != null) {
-                String name = player.getGameProfile().getName();
-                // Spectator: flies, no gravity, no hand in screenshots. Raised so trees do not block the view.
-                server.execute(() -> {
-                    server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "gamemode spectator " + name);
-                    server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
-                            "tp " + name + " " + player.getBlockX() + " " + HEIGHT + " " + player.getBlockZ());
-                });
-            }
+            String name = player.getGameProfile().getName();
+            // Spectator: flies, no gravity, no hand in screenshots. Raised so trees do not block the view.
+            // On a server this needs operator rights.
+            command(mc, "gamemode spectator " + name);
+            // Same light in every run.
+            command(mc, "gamerule doDaylightCycle false");
+            command(mc, "time set 6000");
+            command(mc, "tp " + name + " " + player.getBlockX() + " " + HEIGHT + " " + player.getBlockZ());
         }
         if (mc.screen != null) {
             mc.setScreen(null);
@@ -289,13 +293,17 @@ public final class AutoTest {
             return;
         }
         int alt = ALTITUDES[ascentIndex];
-        float pitch = ASCENT_PITCH[ascentShot];
+        int perPitch = ASCENT_COMPARE ? 2 : 1;
+        float pitch = ASCENT_PITCH[ascentShot / perPitch];
+        boolean off = ascentShot % perPitch == 1;
+        lodSuppressed = off;
         player.setYRot(0f);
         player.setXRot(pitch);
         player.yRotO = 0f;
         player.xRotO = pitch;
         long since = now - ascentAt;
-        boolean ready = since > 8_000 && Math.abs(player.getY() - alt) < 2 && (settled() || since > 150_000)
+        boolean ready = off ? since > 3_000 && (mc.levelRenderer.hasRenderedAllSections() || since > 30_000)
+                : since > 8_000 && Math.abs(player.getY() - alt) < 2 && (settled() || since > 150_000)
                 && (mc.levelRenderer.hasRenderedAllSections() || since > 60_000);
         if (!ready) {
             if (now - ascentLog > 10_000) {
@@ -304,13 +312,13 @@ public final class AutoTest {
             }
             return;
         }
-        String shot = String.format(Locale.ROOT, "vantage_ascent_%05d_%02d.png", alt, (int) pitch);
+        String shot = String.format(Locale.ROOT, "vantage_ascent_%05d_%02d%s.png", alt, (int) pitch, off ? "_off" : "");
         Screenshot.grab(mc.gameDirectory, shot, mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
         logFrames();
         logStats(shot);
         frameNanos.clear();
         ascentAt = now;
-        if (++ascentShot < ASCENT_PITCH.length) {
+        if (++ascentShot < ASCENT_PITCH.length * perPitch) {
             return;
         }
         ascentShot = 0;
@@ -333,6 +341,8 @@ public final class AutoTest {
         var server = mc.getSingleplayerServer();
         if (server != null) {
             server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command));
+        } else if (mc.getConnection() != null) {
+            mc.getConnection().sendCommand(command);
         }
     }
 
@@ -376,6 +386,7 @@ public final class AutoTest {
             }
         }
         var gen = s.generator();
+        Vantage.LOGGER.info("[autotest] {} vanilla: {}", label, Minecraft.getInstance().levelRenderer.getSectionStatistics());
         Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={} generated={} ({} ms each, {} queued)", label, levels,
                 s.coverage.current().size(), gen == null ? 0 : gen.generatedSections(),
                 gen == null ? 0 : String.format(Locale.ROOT, "%.1f", gen.averageMillis()), gen == null ? 0 : gen.queued());

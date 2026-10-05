@@ -48,6 +48,7 @@ public final class LodRenderer implements AutoCloseable {
     private static final int UNIT_AUX = 11;
     private static final float NEAR = 0.5f;
     private static final boolean NO_DEPTH_TRANSFER = Boolean.getBoolean("vantage.debug.noDepthTransfer");
+    private static final boolean NO_DRAW = Boolean.getBoolean("vantage.debug.noLodDraw");
 
     public final GlCaps caps;
     private final ShaderProgram program;
@@ -174,14 +175,19 @@ public final class LodRenderer implements AutoCloseable {
      * @param bendStart      horizontal distance where planet curvature starts
      * @param curvature      {@code 1 / (2 * planet radius)}, 0 for a flat world
      * @param vanillaFar     vanilla's far plane: it draws nothing beyond it
+     * @param vanillaVertical vanilla draws no chunk section more than this many blocks above or
+     *                        below the camera's
      * @param hazeColor      haze colour {@code 0xRRGGBB}, or -1 for the game's fog colour
      */
     public record Frame(Matrix4f modelView, Matrix4f projection, double camX, double camY, double camZ,
                         float renderDistance, float fogStart, float hazeDensity, float hazeHeight, float seaLevel,
-                        float bendStart, float curvature, float vanillaFar, int hazeColor) {
+                        float bendStart, float curvature, float vanillaFar, float vanillaVertical, int hazeColor) {
     }
 
     public void render(Frame frame, Planner.Plan plan, LodWorld world, VisualRegistry visuals, CoverageMap.Snapshot coverage) {
+        if (NO_DRAW) {
+            return;
+        }
         long t0 = System.nanoTime();
         RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
         this.ensureFramebuffer(main);
@@ -467,6 +473,7 @@ public final class LodRenderer implements AutoCloseable {
         GL20C.glUniform2f(p.uniform("uEdge"), frame.renderDistance() * frame.fogStart(), frame.renderDistance());
         GL20C.glUniform2f(p.uniform("uBend"), frame.bendStart(), frame.curvature());
         GL20C.glUniform1f(p.uniform("uVanillaFar"), frame.vanillaFar());
+        GL20C.glUniform2f(p.uniform("uVanillaRows"), (float) (Math.floor(frame.camY() / 16.0) * 16.0), frame.vanillaVertical());
         GL20C.glUniform3f(p.uniform("uViewDir"), this.viewDir.x, this.viewDir.y, this.viewDir.z);
         int cov = p.uniform("uCoverage");
         if (cov >= 0) {

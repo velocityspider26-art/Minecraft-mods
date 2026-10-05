@@ -11,8 +11,10 @@ uniform vec4 uHaze;
 uniform vec2 uEdge;
 // Planet curvature (see lod.vsh); y = 0 when flat.
 uniform vec2 uBend;
-// Vanilla draws nothing farther than this along the view direction.
+// Vanilla draws nothing farther than this along the view direction,
 uniform float uVanillaFar;
+// nor chunk sections more than y blocks above or below the camera's section (origin y at x).
+uniform vec2 uVanillaRows;
 
 #ifdef MASKED
 // Chunks vanilla is drawing: LOD fragments there are discarded.
@@ -65,7 +67,11 @@ void main() {
     // pixel cracks open along the seam (vanilla wins the overlap through the depth nudge).
     // Vanilla clips everything past its far plane, so LODs stay there even inside its area.
     vec3 local = vRel + uCamFrac;
-    if (vViewDepth < uVanillaFar && covered(local.xz + vec2(SEAM, SEAM)) && covered(local.xz + vec2(-SEAM, SEAM))
+    // A face on a section boundary may be either section's; trust vanilla only if it draws both.
+    float y = float(uAnchor.y) + local.y;
+    vec2 rows = floor(vec2(y - 0.5, y + 0.5) / 16.0) * 16.0 - uVanillaRows.x;
+    bool vanillaRow = all(lessThanEqual(abs(rows), vec2(uVanillaRows.y)));
+    if (vanillaRow && vViewDepth < uVanillaFar && covered(local.xz + vec2(SEAM, SEAM)) && covered(local.xz + vec2(-SEAM, SEAM))
             && covered(local.xz + vec2(SEAM, -SEAM)) && covered(local.xz + vec2(-SEAM, -SEAM))) {
         discard;
     }

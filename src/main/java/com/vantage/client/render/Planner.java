@@ -45,10 +45,17 @@ public final class Planner implements AutoCloseable {
 
     /**
      * Planner inputs, published by the render thread each frame. {@code vanillaFar} is the far
-     * plane of vanilla's projection: vanilla draws nothing beyond it, covered or not.
+     * plane of vanilla's projection: vanilla draws nothing beyond it, covered or not. Nor does it
+     * draw chunk sections more than {@code vanillaVertical} blocks above or below the camera's
+     * (its render distance in blocks), so flying high its own chunks vanish from under you.
      */
     public record View(double x, double y, double z, double renderDistance, double radiansPerPixel, double pixelsPerVoxel,
-                       double vanillaFar, CoverageMap.Snapshot coverage) {
+                       double vanillaFar, double vanillaVertical, CoverageMap.Snapshot coverage) {
+        /** True if vanilla draws chunk sections with origins from {@code y0} to {@code y1} (multiples of 16). */
+        boolean vanillaRows(double y0, double y1) {
+            double cam = Math.floor(this.y / 16.0) * 16.0;
+            return y0 >= cam - this.vanillaVertical && y1 <= cam + this.vanillaVertical;
+        }
     }
 
     /** Fills in sections nothing is known about. */
@@ -111,6 +118,7 @@ public final class Planner implements AutoCloseable {
                     || last.renderDistance() != now.renderDistance()
                     || last.pixelsPerVoxel() != now.pixelsPerVoxel()
                     || last.vanillaFar() != now.vanillaFar()
+                    || last.vanillaVertical() != now.vanillaVertical()
                     || Math.abs(last.radiansPerPixel() - now.radiansPerPixel()) > 1e-6
                     || meshesChanged
                     || t - lastRun > 1_000_000_000L;
@@ -261,7 +269,7 @@ public final class Planner implements AutoCloseable {
         if (self.ready()) {
             if (self.drawable()) {
                 this.drawn.add(self);
-                this.drawnMasked.add(dist < this.v.vanillaFar() && cov.anyCovered(cx0, cz0, cx1, cz1));
+                this.drawnMasked.add(dist < this.v.vanillaFar() && this.vanillaRowsAny(by0, span) && cov.anyCovered(cx0, cz0, cx1, cz1));
                 this.drawnDist.add(dist);
             }
             if (self.stale()) {
@@ -295,17 +303,23 @@ public final class Planner implements AutoCloseable {
 
     /** True if vanilla covers the whole section and is near enough to draw all of it. */
     private boolean vanillaDrawsAll(long key, int cx0, int cz0, int cx1, int cz1) {
-        if (!this.v.coverage().allCovered(cx0, cz0, cx1, cz1)) {
+        int span = Lod.sectionBlocks(SectionKey.level(key));
+        double by0 = this.world.minY + (double) SectionKey.y(key) * span;
+        if (!this.v.vanillaRows(by0, by0 + span - 16) || !this.v.coverage().allCovered(cx0, cz0, cx1, cz1)) {
             return false;
         }
-        int span = Lod.sectionBlocks(SectionKey.level(key));
         double bx0 = (double) SectionKey.x(key) * span;
         double bz0 = (double) SectionKey.z(key) * span;
-        double by0 = this.world.minY + (double) SectionKey.y(key) * span;
         double fx = Math.max(Math.abs(this.v.x() - bx0), Math.abs(this.v.x() - bx0 - span));
         double fy = Math.max(Math.abs(this.v.y() - by0), Math.abs(this.v.y() - by0 - span));
         double fz = Math.max(Math.abs(this.v.z() - bz0), Math.abs(this.v.z() - bz0 - span));
         return Math.sqrt(fx * fx + fy * fy + fz * fz) < this.v.vanillaFar();
+    }
+
+    /** True if vanilla may draw any of the chunk sections in {@code [y0, y0 + span)}. */
+    private boolean vanillaRowsAny(double y0, int span) {
+        double cam = Math.floor(this.v.y() / 16.0) * 16.0;
+        return y0 + span - 16 >= cam - this.v.vanillaVertical() && y0 <= cam + this.v.vanillaVertical();
     }
 
     private static double axisDistance(double p, double min, double max) {
