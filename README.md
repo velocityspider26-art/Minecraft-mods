@@ -20,6 +20,15 @@ them, and remembers them between sessions.
 
 Press F3 to see Vantage's statistics on the right side of the debug screen.
 
+### Compatibility
+
+* **Sodium**: works alongside it (tested with Sodium 0.8.13).
+* **Graphics modes**: Fast, Fancy and Fabulous all work.
+* **Shader packs (Iris/Oculus)**: not supported.
+* **The Nether**: Vantage stays off there. Its fog hides everything past about 100 blocks anyway.
+* LODs exist only where chunks have been generated (singleplayer) or loaded (multiplayer). Where
+  explored land ends, the terrain ends in a cut-away edge.
+
 ### Settings (`config/vantage-client.toml`)
 
 | Setting | Default | What it does |

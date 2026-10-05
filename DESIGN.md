@@ -104,7 +104,13 @@ render thread: upload (budgeted) → frustum cull → 1 multi-draw-indirect per 
   (it was developed against Mesa's llvmpipe software OpenGL): it waits for LODs
   to build, takes LOD-on/off screenshots from several angles, flies across the
   world to stress streaming, and logs timings. `-Dvantage.debug.levelColors=true`
-  tints LODs by detail level.
+  tints LODs by detail level. Extra stages: `-Dvantage.autotest.compareRd=N`
+  (vanilla at render distance N, for cost comparisons),
+  `-Dvantage.autotest.dimensionHop=true` (Nether and back) and
+  `-Dvantage.autotest.toggle=true` (switched off at join, back on mid-game).
+  Pass them with `-PvantageJvmArgs="..."`.
+* Checked this way: Fancy and Fabulous graphics, Sodium 0.8.13 alongside
+  Vantage, dimension changes, and switching Vantage on mid-game.
 
 Pitfall found this way: `PalettedContainer.getAll` yields each *distinct* state
 once, not every voxel; chunk sections must be read voxel by voxel.

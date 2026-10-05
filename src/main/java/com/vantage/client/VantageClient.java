@@ -33,6 +33,7 @@ import java.util.Locale;
 /** Connects Vantage to the game: lifecycle, chunk events, rendering, fog and the F3 screen. */
 public final class VantageClient {
     private static @Nullable LodSession session;
+    private static boolean wasEnabled = true;
 
     private VantageClient() {
     }
@@ -78,11 +79,30 @@ public final class VantageClient {
             return;
         }
         closeSession();
-        if (!VantageConfig.ENABLED.get()) {
+        openSession(level, false);
+    }
+
+    /** @param catchUp also queue the chunks that are already loaded (Vantage was switched on mid-game) */
+    private static void openSession(ClientLevel level, boolean catchUp) {
+        // Always-foggy dimensions (the Nether) hide everything past ~100 blocks, so LODs would never show.
+        if (!VantageConfig.ENABLED.get() || level.effects().isFoggyAt(0, 0)) {
             return;
         }
         try {
-            session = LodSession.open(level);
+            LodSession s = LodSession.open(level);
+            session = s;
+            Player player = Minecraft.getInstance().player;
+            if (catchUp && player != null) {
+                int r = Minecraft.getInstance().options.getEffectiveRenderDistance() + 2;
+                int cx = player.chunkPosition().x, cz = player.chunkPosition().z;
+                for (int x = cx - r; x <= cx + r; x++) {
+                    for (int z = cz - r; z <= cz + r; z++) {
+                        if (level.getChunkSource().hasChunk(x, z)) {
+                            s.ingest.onChunkLoaded(x, z);
+                        }
+                    }
+                }
+            }
         } catch (RuntimeException e) {
             Vantage.LOGGER.error("Vantage failed to start for {}", level.dimension().location(), e);
             session = null;
@@ -99,7 +119,7 @@ public final class VantageClient {
         closeSession();
     }
 
-    private static void closeSession() {
+    static void closeSession() {
         LodSession s = session;
         session = null;
         if (s != null) {
@@ -126,8 +146,13 @@ public final class VantageClient {
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {
-        LodSession s = session;
         ClientLevel level = Minecraft.getInstance().level;
+        boolean enabled = VantageConfig.ENABLED.get();
+        if (enabled && !wasEnabled && session == null && level != null) {
+            openSession(level, true); // just switched on in the config screen
+        }
+        wasEnabled = enabled;
+        LodSession s = session;
         if (s != null && level != null && level.dimension() == s.dimension) {
             s.tick(level);
         }

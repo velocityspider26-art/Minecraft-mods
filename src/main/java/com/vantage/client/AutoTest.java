@@ -27,6 +27,12 @@ public final class AutoTest {
     private static final long FLIGHT_MS = 30_000;
     private static final double FLIGHT_SPEED = Double.parseDouble(System.getProperty("vantage.autotest.flightSpeed", "30"));
     private static final int COMPARE_RD = Integer.getInteger("vantage.autotest.compareRd", 0);
+    private static final boolean DIMENSION_HOP = Boolean.getBoolean("vantage.autotest.dimensionHop");
+    /** Switch Vantage off at join and back on shortly after, as if from the config screen. */
+    private static final boolean TOGGLE = Boolean.getBoolean("vantage.autotest.toggle");
+    private static long toggleAt = -1;
+    private static int hopStage;
+    private static long hopAt;
     private static int compareStage;
     private static long compareAt;
     private static long compareMeasureAt = -1;
@@ -75,6 +81,11 @@ public final class AutoTest {
             stageAt = now;
             mc.options.hideGui = true;
             Vantage.LOGGER.info("[autotest] joined world at {}", player.blockPosition());
+            if (TOGGLE) {
+                VantageConfig.ENABLED.set(false);
+                VantageClient.closeSession();
+                toggleAt = now + 5_000;
+            }
             var server = mc.getSingleplayerServer();
             if (server != null) {
                 String name = player.getGameProfile().getName();
@@ -88,6 +99,11 @@ public final class AutoTest {
         }
         if (mc.screen != null) {
             mc.setScreen(null);
+        }
+        if (toggleAt > 0 && now >= toggleAt) {
+            toggleAt = -1;
+            VantageConfig.ENABLED.set(true);
+            Vantage.LOGGER.info("[autotest] switched Vantage back on");
         }
         if (stage == -1) {
             player.setDeltaMovement(0, 0, 0);
@@ -172,10 +188,50 @@ public final class AutoTest {
             if (t < FLIGHT_MS + 20_000 && !settled()) {
                 return;
             }
-            Screenshot.grab(mc.gameDirectory, "vantage_after_flight.png", mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
-            logStats("after flight");
-            Vantage.LOGGER.info("[autotest] finished");
-            mc.stop();
+            if (hopStage == 0) {
+                Screenshot.grab(mc.gameDirectory, "vantage_after_flight.png", mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+                logStats("after flight");
+                lodSuppressed = true;
+                hopStage = -1;
+                hopAt = now;
+                return;
+            }
+            if (hopStage == -1) {
+                if (now - hopAt < 3_000) {
+                    return;
+                }
+                Screenshot.grab(mc.gameDirectory, "vantage_after_flight_off.png", mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+                lodSuppressed = false;
+                if (!DIMENSION_HOP) {
+                    finish(mc);
+                    return;
+                }
+                // Nether and back: exercises closing and reopening LOD sessions on dimension changes.
+                hopStage = 1;
+                hopAt = now;
+                command(mc, "execute in minecraft:the_nether run tp " + player.getGameProfile().getName() + " 0 80 0");
+                return;
+            }
+            if (hopStage == 1) {
+                if (now - hopAt > 15_000 && mc.level.dimension() == net.minecraft.world.level.Level.NETHER) {
+                    logStats("nether");
+                    hopStage = 2;
+                    hopAt = now;
+                    command(mc, "execute in minecraft:overworld run tp " + player.getGameProfile().getName() + " "
+                            + flightOrigin.x + " " + HEIGHT + " " + (flightOrigin.z + FLIGHT_MS / 1000.0 * FLIGHT_SPEED) + " 0 10");
+                } else if (now - hopAt > 120_000) {
+                    Vantage.LOGGER.error("[autotest] never arrived in the nether");
+                    finish(mc);
+                }
+                return;
+            }
+            if (mc.level.dimension() != net.minecraft.world.level.Level.OVERWORLD || now - hopAt < 20_000
+                    || (!settled() && now - hopAt < 120_000) || !mc.levelRenderer.hasRenderedAllSections()) {
+                return;
+            }
+            Screenshot.grab(mc.gameDirectory, "vantage_after_hop.png", mc.getMainRenderTarget(), msg -> Vantage.LOGGER.info("[autotest] {}", msg.getString()));
+            logStats("after hop");
+            finish(mc);
             return;
         }
         float[] v = VIEWS[view];
@@ -201,6 +257,18 @@ public final class AutoTest {
                 stage = 0;
                 view++;
             }
+        }
+    }
+
+    private static void finish(Minecraft mc) {
+        Vantage.LOGGER.info("[autotest] finished");
+        mc.stop();
+    }
+
+    private static void command(Minecraft mc, String command) {
+        var server = mc.getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command));
         }
     }
 
