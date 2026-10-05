@@ -55,6 +55,12 @@ neoForge {
         client {
             client()
 
+            // ./gradlew runClient -PvantageAutotest : scripted screenshot run (see AutoTest)
+            if (project.hasProperty('vantageAutotest')) {
+                systemProperty 'vantage.autotest', 'true'
+                programArguments.addAll '--quickPlaySingleplayer', 'world', '--width', '1280', '--height', '720'
+            }
+
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
@@ -107,6 +113,12 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    // Run JUnit tests with Minecraft and NeoForge on the classpath.
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 // Sets up a dependency configuration called 'localRuntime'.
@@ -118,6 +130,10 @@ configurations {
 }
 
 dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -181,6 +197,11 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    maxHeapSize = '1G'
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.

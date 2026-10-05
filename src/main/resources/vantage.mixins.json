@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.vantage.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientChunkCacheMixin",
+    "ClientLevelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
