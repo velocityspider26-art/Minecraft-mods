@@ -1,6 +1,7 @@
 package com.vantage.client.ingest;
 
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import com.vantage.world.ColumnSource;
+import com.vantage.world.PaletteDecoder;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
@@ -16,8 +17,6 @@ import net.minecraft.world.level.chunk.PalettedContainerRO;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A copy of a live client chunk, taken on the main thread so workers never touch data the game is
@@ -102,7 +101,7 @@ public final class ChunkCapture {
     public ColumnSource toSource() {
         int n = this.states.length;
         ColumnSource src = new ColumnSource(this.chunkX, this.chunkZ, n, this.lightValid);
-        Decoder decoder = new Decoder();
+        PaletteDecoder decoder = new PaletteDecoder();
         for (int i = 0; i < n; i++) {
             if (this.biomes[i] == null) {
                 continue;
@@ -117,58 +116,5 @@ public final class ChunkCapture {
             src.sections[i] = new ColumnSource.Section(decoder.palette(), decoder.indices(), this.biomes[i], skyData, blockData);
         }
         return src;
-    }
-
-    /**
-     * Turns a block-state container into a palette plus one index per voxel ({@code y<<8|z<<4|x}).
-     * Note: {@code PalettedContainer.getAll} yields each distinct state once, not every voxel, so
-     * the voxels are read one by one.
-     */
-    public static final class Decoder {
-        private final Reference2IntOpenHashMap<BlockState> lookup = new Reference2IntOpenHashMap<>();
-        private final List<BlockState> palette = new ArrayList<>();
-        private short[] indices;
-
-        public Decoder() {
-            this.lookup.defaultReturnValue(-1);
-        }
-
-        public void decode(PalettedContainerRO<BlockState> states) {
-            this.lookup.clear();
-            this.palette.clear();
-            short[] out = new short[4096];
-            BlockState last = null;
-            int lastIndex = 0;
-            for (int y = 0; y < 16; y++) {
-                for (int z = 0; z < 16; z++) {
-                    for (int x = 0; x < 16; x++) {
-                        BlockState state = states.get(x, y, z);
-                        int p;
-                        if (state == last) {
-                            p = lastIndex;
-                        } else {
-                            p = this.lookup.getInt(state);
-                            if (p < 0) {
-                                p = this.palette.size();
-                                this.palette.add(state);
-                                this.lookup.put(state, p);
-                            }
-                            last = state;
-                            lastIndex = p;
-                        }
-                        out[(y << 8) | (z << 4) | x] = (short) p;
-                    }
-                }
-            }
-            this.indices = this.palette.size() == 1 ? null : out;
-        }
-
-        public BlockState[] palette() {
-            return this.palette.toArray(new BlockState[0]);
-        }
-
-        public short[] indices() {
-            return this.indices;
-        }
     }
 }

@@ -49,6 +49,9 @@ public final class ServerTerrain {
     }
 
     public static void init() {
+        if (Boolean.getBoolean("vantage.debug.sandboxBench")) {
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> com.vantage.debug.SandboxBench.start(e.getServer()));
+        }
         NeoForge.EVENT_BUS.addListener(ServerTerrain::onLogin);
         NeoForge.EVENT_BUS.addListener(ServerTerrain::onLogout);
         NeoForge.EVENT_BUS.addListener(ServerTerrain::onChangeDimension);
@@ -64,6 +67,7 @@ public final class ServerTerrain {
 
     private static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         PENDING.remove(event.getEntity().getUUID());
+        DetailService.forget(event.getEntity().getUUID());
     }
 
     private static void onChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
@@ -82,6 +86,7 @@ public final class ServerTerrain {
     }
 
     private static void onStopped(ServerStoppedEvent event) {
+        DetailService.stop();
         SAMPLERS.clear();
         PENDING.clear();
         ExecutorService e = executor;
@@ -98,7 +103,7 @@ public final class ServerTerrain {
         int radius = level.getChunkSource().getGenerator() instanceof PlanetChunkGenerator planet ? planet.planet().radius() : 0;
         ColumnSampler sampler = sampler(level);
         PacketDistributor.sendToPlayer(player, new PlanetInfo(level.dimension(), radius, VantageServerConfig.SERVE_TERRAIN.get(),
-                sampler.seaLevel(), Block.getId(sampler.defaultBlock())));
+                sampler.seaLevel(), Block.getId(sampler.defaultBlock()), DetailService.servedDistance(player)));
     }
 
     /** Network thread. */

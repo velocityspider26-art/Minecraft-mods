@@ -1,4 +1,4 @@
-package com.vantage.client.ingest;
+package com.vantage.world;
 
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;

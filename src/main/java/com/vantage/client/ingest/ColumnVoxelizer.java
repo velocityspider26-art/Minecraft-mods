@@ -5,6 +5,7 @@ import com.vantage.client.visual.VisualRegistry;
 import com.vantage.core.Mipper;
 import com.vantage.core.VisualClass;
 import com.vantage.core.Voxel;
+import com.vantage.world.ColumnSource;
 import com.vantage.world.VoxelColumn;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;

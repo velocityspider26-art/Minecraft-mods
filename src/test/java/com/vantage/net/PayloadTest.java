@@ -89,7 +89,7 @@ class PayloadTest {
 
     @Test
     void planetInfoSurvivesTheTrip() {
-        PlanetInfo p = new PlanetInfo(Level.OVERWORLD, 30000, true, 63, 1);
+        PlanetInfo p = new PlanetInfo(Level.OVERWORLD, 30000, true, 63, 1, 1024);
         assertEquals(p, roundTrip(PlanetInfo.CODEC, p));
     }
 }

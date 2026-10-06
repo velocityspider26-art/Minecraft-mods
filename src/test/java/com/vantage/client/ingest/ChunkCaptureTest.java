@@ -1,5 +1,6 @@
 package com.vantage.client.ingest;
 
+import com.vantage.world.PaletteDecoder;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -35,7 +36,7 @@ class ChunkCaptureTest {
                 }
             }
         }
-        ChunkCapture.Decoder d = new ChunkCapture.Decoder();
+        PaletteDecoder d = new PaletteDecoder();
         d.decode(c.copy());
         BlockState[] palette = d.palette();
         short[] idx = d.indices();
@@ -52,7 +53,7 @@ class ChunkCaptureTest {
         for (int i = 0; i < 4096; i++) {
             c.set(i & 15, i >> 8, (i >> 4) & 15, Blocks.STONE.defaultBlockState());
         }
-        ChunkCapture.Decoder d = new ChunkCapture.Decoder();
+        PaletteDecoder d = new PaletteDecoder();
         d.decode(c);
         assertEquals(1, d.palette().length);
         assertSame(Blocks.STONE.defaultBlockState(), d.palette()[0]);

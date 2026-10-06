@@ -1,5 +1,6 @@
 package com.vantage.client.net;
 
+import com.vantage.net.DetailChunks;
 import com.vantage.net.PlanetInfo;
 import com.vantage.net.TerrainColumns;
 import com.vantage.net.TerrainRequest;
@@ -25,6 +26,7 @@ public final class ClientTerrain implements VantageNetwork.ClientHandler {
 
     private volatile @Nullable PlanetInfo planet;
     private final Map<Long, Pending> pending = new ConcurrentHashMap<>();
+    private volatile @Nullable Consumer<DetailChunks> detail;
 
     private ClientTerrain() {
     }
@@ -32,6 +34,19 @@ public final class ClientTerrain implements VantageNetwork.ClientHandler {
     @Override
     public void planet(PlanetInfo info) {
         this.planet = info;
+    }
+
+    /** Who gets the server's real-terrain answers (the current dimension's), or null. */
+    public void setDetailListener(@Nullable Consumer<DetailChunks> listener) {
+        this.detail = listener;
+    }
+
+    @Override
+    public void detail(DetailChunks chunks) {
+        Consumer<DetailChunks> d = this.detail;
+        if (d != null) {
+            d.accept(chunks);
+        }
     }
 
     /** What the server said about this dimension, or null if it said nothing (no Vantage there). */

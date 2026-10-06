@@ -210,8 +210,9 @@ public final class VantageClient {
         int height = Math.max(1, mc.getMainRenderTarget().height);
         double tanHalfFov = 1.0 / Math.max(1e-3, Math.abs(event.getProjectionMatrix().m11()));
         double radiansPerPixel = 2.0 * Math.atan(tanHalfFov) / height;
-        // Vanilla skips chunk sections further above or below the camera than its render distance.
-        float vanillaVertical = mc.options.getEffectiveRenderDistance() * 16f;
+        // Vanilla skips chunk sections further above or below the camera than its render distance
+        // (Sodium measures a little differently: keep a section's margin).
+        float vanillaVertical = mc.options.getEffectiveRenderDistance() * 16f - 16f;
         s.planner.setView(new Planner.View(pos.x, pos.y, pos.z, renderDistance, radiansPerPixel,
                 VantageConfig.DETAIL.get(), vanillaFar, vanillaVertical, s.coverage.current()));
 
@@ -363,6 +364,10 @@ public final class VantageClient {
         if (gen != null) {
             right.add(String.format(Locale.ROOT, "[Vantage] generated %d sections (%.1f ms each), %d queued",
                     gen.generatedSections(), gen.averageMillis(), gen.queued()));
+        }
+        var detail = s.detail();
+        if (detail != null) {
+            right.add("[Vantage] " + detail.describe());
         }
         Vec3 cam = mc.gameRenderer.getMainCamera().getPosition();
         if (mc.level != null) {

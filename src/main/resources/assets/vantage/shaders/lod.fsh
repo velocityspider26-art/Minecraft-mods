@@ -1,8 +1,11 @@
 #version 430 core
 
 in vec3 vRel;
+in vec3 vLocal;
 in float vViewDepth;
 flat in vec4 vColor;
+flat in int vLevel;
+flat in int vFace;
 
 uniform vec4 uFogColor;
 // Haze: x = density per block at sea level, y = scale height, z = sea level, w = camera y.
@@ -15,12 +18,13 @@ uniform vec2 uBend;
 uniform float uVanillaFar;
 // nor chunk sections more than y blocks above or below the camera's section (origin y at x).
 uniform vec2 uVanillaRows;
+// Camera position, whole blocks.
+uniform ivec3 uAnchor;
 
 #ifdef MASKED
 // Chunks vanilla is drawing: LOD fragments there are discarded.
 uniform usampler2D uCoverage;
 uniform ivec4 uCoverageInfo; // origin chunk x, origin chunk z, size, coverage bit that hides this pass
-uniform ivec3 uAnchor;
 uniform vec3 uCamFrac;
 #endif
 
@@ -36,6 +40,22 @@ bool covered(vec2 local) {
             && (texelFetch(uCoverage, cell, 0).r & uint(uCoverageInfo.w)) != 0u;
 }
 #endif
+
+const ivec3 NORMAL[6] = ivec3[6](ivec3(0, -1, 0), ivec3(0, 1, 0), ivec3(0, 0, -1), ivec3(0, 0, 1), ivec3(-1, 0, 0), ivec3(1, 0, 0));
+
+// Each voxel a slightly different shade, fixed in the world: flat colours read as texture, like
+// the blocks they stand for, instead of paint.
+float voxelShade() {
+    int size = 1 << vLevel;
+    // Half a voxel behind the face: the voxel this face belongs to.
+    ivec3 rel = ivec3(floor(vLocal - vec3(NORMAL[vFace]) * (0.5 * float(size))));
+    ivec3 c = (uAnchor + rel) >> vLevel;
+    uint h = uint(c.x) * 0x8DA6B343u ^ uint(c.y) * 0xD8163841u ^ uint(c.z) * 0xCB1AB31Fu ^ uint(vLevel) * 0x9E3779B9u;
+    h ^= h >> 15u;
+    h *= 0x2C1B3C6Du;
+    h ^= h >> 12u;
+    return 0.94 + 0.12 * float(h & 0xFFFFu) / 65535.0;
+}
 
 // Fraction of the light from this fragment scattered away by air whose density falls off
 // exponentially with height (integrated exactly along the straight view ray).
@@ -81,5 +101,5 @@ void main() {
     }
     float edge = smoothstep(uEdge.x, uEdge.y, length(vRel.xz));
     float fog = max(haze(vRel), edge);
-    fragColor = vec4(mix(vColor.rgb, uFogColor.rgb, fog), vColor.a);
+    fragColor = vec4(mix(vColor.rgb * voxelShade(), uFogColor.rgb, fog), vColor.a);
 }

@@ -1,25 +1,29 @@
 package com.vantage.client;
 
 import com.vantage.Vantage;
+import com.vantage.client.gen.Detail;
+import com.vantage.client.gen.DetailGenerator;
 import com.vantage.client.gen.DistantGenerator;
 import com.vantage.client.gen.LocalSource;
+import com.vantage.client.gen.RemoteDetail;
 import com.vantage.client.gen.RemoteSource;
-import com.vantage.client.net.ClientTerrain;
-import com.vantage.net.PlanetInfo;
-import net.minecraft.server.level.ServerLevel;
 import com.vantage.client.ingest.ChunkCapture;
-import com.vantage.client.ingest.ColumnSource;
 import com.vantage.client.ingest.ColumnVoxelizer;
 import com.vantage.client.ingest.IngestScheduler;
 import com.vantage.client.ingest.RegionImporter;
+import com.vantage.client.net.ClientTerrain;
 import com.vantage.client.render.CoverageMap;
 import com.vantage.client.render.LodRenderer;
 import com.vantage.client.render.MeshManager;
 import com.vantage.client.render.Planner;
 import com.vantage.client.visual.VisualAnalyzer;
 import com.vantage.client.visual.VisualRegistry;
+import com.vantage.gen.WorldGenSandbox;
+import com.vantage.net.PlanetInfo;
 import com.vantage.storage.DataVersion;
 import com.vantage.util.WorkerPool;
+import com.vantage.world.ChunkStates;
+import com.vantage.world.ColumnSource;
 import com.vantage.world.LodWorld;
 import com.vantage.world.VoxelColumn;
 import net.minecraft.client.Minecraft;
@@ -29,6 +33,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
@@ -55,6 +60,10 @@ public final class LodSession implements AutoCloseable {
     private final ThreadLocal<ColumnVoxelizer> voxelizers;
     private @Nullable RegionImporter importer;
     private volatile @Nullable DistantGenerator generator;
+    private volatile @Nullable Detail detail;
+    private final ChunkStates chunkStates;
+    /** Real and generated data for one chunk go in one at a time, so generated never lands on real. */
+    private final Object[] chunkLocks = new Object[64];
     private @Nullable LodRenderer renderer;
     private boolean rendererFailed;
     private volatile double camX, camY, camZ;
@@ -76,6 +85,10 @@ public final class LodSession implements AutoCloseable {
         this.planner = new Planner(this.world, this.meshes);
         this.voxelizers = ThreadLocal.withInitial(() -> new ColumnVoxelizer(this.visuals, sky));
         this.ingest = new IngestScheduler(this::submitCapture);
+        this.chunkStates = new ChunkStates(dir.resolve("chunks.bin"));
+        for (int i = 0; i < this.chunkLocks.length; i++) {
+            this.chunkLocks[i] = new Object();
+        }
         Vec3 pos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         this.camX = pos.x;
         this.camY = pos.y;
@@ -102,6 +115,18 @@ public final class LodSession implements AutoCloseable {
                     Vantage.LOGGER.info("Distant terrain generation on for {} (local)", level.dimension().location());
                 } catch (RuntimeException e) {
                     Vantage.LOGGER.warn("Distant terrain generation unavailable for {}: {}", level.dimension().location(), e.toString());
+                }
+                if (VantageConfig.DETAILED_GENERATION.get()) {
+                    try {
+                        DetailGenerator detail = new DetailGenerator(session, new WorldGenSandbox(serverLevel), VantageConfig.detailThreads(),
+                                VantageConfig.DETAIL_DISTANCE.get(), level.registryAccess().registryOrThrow(Registries.BIOME), session::importer);
+                        session.detail = detail;
+                        session.planner.setDetailer(detail);
+                        Vantage.LOGGER.info("Detailed distant terrain on for {} ({} threads, {} blocks)", level.dimension().location(),
+                                VantageConfig.detailThreads(), VantageConfig.DETAIL_DISTANCE.get());
+                    } catch (RuntimeException e) {
+                        Vantage.LOGGER.warn("Detailed distant terrain unavailable for {}: {}", level.dimension().location(), e.toString());
+                    }
                 }
             }
         }
@@ -161,10 +186,43 @@ public final class LodSession implements AutoCloseable {
         this.pool.submit(Math.sqrt(dx * dx + dz * dz), () -> this.ingest(capture.toSource()));
     }
 
-    /** Voxelizes a column and stores it. Any thread. */
+    /** Voxelizes a real chunk (explored, or from the save) and stores it. Any thread. */
     public void ingest(ColumnSource source) {
         VoxelColumn column = this.voxelizers.get().voxelize(source, this.caveCulling);
-        this.world.insert(column);
+        synchronized (this.chunkLock(source.chunkX, source.chunkZ)) {
+            this.chunkStates.markReal(source.chunkX, source.chunkZ);
+            this.world.insert(column);
+        }
+    }
+
+    /**
+     * Voxelizes a generated chunk and stores it, unless real data for it exists; returns whether it
+     * was stored. Any thread.
+     */
+    public boolean ingestGenerated(ColumnSource source) {
+        if (this.chunkStates.get(source.chunkX, source.chunkZ) == ChunkStates.REAL) {
+            return false;
+        }
+        VoxelColumn column = this.voxelizers.get().voxelize(source, this.caveCulling);
+        synchronized (this.chunkLock(source.chunkX, source.chunkZ)) {
+            if (!this.chunkStates.markGeneratedUnlessReal(source.chunkX, source.chunkZ)) {
+                return false;
+            }
+            this.world.insert(column);
+        }
+        return true;
+    }
+
+    private Object chunkLock(int cx, int cz) {
+        return this.chunkLocks[(int) (it.unimi.dsi.fastutil.HashCommon.mix(net.minecraft.world.level.ChunkPos.asLong(cx, cz)) & (this.chunkLocks.length - 1))];
+    }
+
+    public ChunkStates chunkStates() {
+        return this.chunkStates;
+    }
+
+    public @Nullable Detail detail() {
+        return this.detail;
     }
 
     private void useGenerator(DistantGenerator generator) {
@@ -183,7 +241,23 @@ public final class LodSession implements AutoCloseable {
                 Vantage.LOGGER.info("Distant terrain generation on for {} (from the server)", this.dimension.location());
             }
         }
+        if (this.detail == null && Minecraft.getInstance().getSingleplayerServer() == null && VantageConfig.DETAILED_GENERATION.get()) {
+            // On a server: once it says it sends real terrain, ask it for what is near.
+            PlanetInfo info = ClientTerrain.INSTANCE.planet(this.dimension);
+            if (info != null && info.detailDistance() > 0) {
+                double distance = Math.min(VantageConfig.DETAIL_DISTANCE.get(), info.detailDistance());
+                RemoteDetail remote = new RemoteDetail(this, level, info, distance);
+                this.detail = remote;
+                this.planner.setDetailer(remote);
+                Vantage.LOGGER.info("Detailed distant terrain on for {} (from the server, {} blocks)", this.dimension.location(), distance);
+            }
+        }
+        Detail d = this.detail;
+        if (d != null) {
+            d.tick();
+        }
         this.ingest.tick(level);
+        this.chunkStates.saveIfDue(60_000_000_000L);
         Minecraft mc = Minecraft.getInstance();
         var cam = mc.gameRenderer.getMainCamera();
         this.coverage.update(level, cam.getBlockPosition().getX() >> 4, cam.getBlockPosition().getZ() >> 4,
@@ -221,8 +295,12 @@ public final class LodSession implements AutoCloseable {
         if (this.generator != null) {
             this.generator.close();
         }
+        if (this.detail != null) {
+            this.detail.close();
+        }
         this.planner.close();
         this.pool.close();
+        this.chunkStates.save();
         this.world.close();
         this.visuals.close();
         if (this.renderer != null) {

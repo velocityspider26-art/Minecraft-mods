@@ -23,8 +23,12 @@ uniform vec2 uBend;
 uniform vec3 uViewDir;
 
 out vec3 vRel;
+// Position relative to the camera's anchor block, before curvature: picks the voxel for texture.
+out vec3 vLocal;
 out float vViewDepth;
 flat out vec4 vColor;
+flat out int vLevel;
+flat out int vFace;
 
 // Face order follows Minecraft's Direction: down, up, north, south, west, east.
 // U x V points out of the face, so (0,1,2)(2,3,0) is counter-clockwise from outside.
@@ -51,6 +55,9 @@ void main() {
 
     int level = aSection.w & 0xFF;
     ivec3 rel = aSection.xyz + (p << level);
+    vLocal = vec3(rel);
+    vLevel = level;
+    vFace = face;
     vec3 pos = vec3(rel) - uCamFrac;
     if (face == 1 && level > 0 && visuals[vid * 8 + 6] == 2u) {
         // Coarse voxels round water surfaces up to their top; the sea's surface is the block below

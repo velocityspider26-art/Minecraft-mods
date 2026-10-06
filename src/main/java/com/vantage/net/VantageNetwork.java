@@ -16,6 +16,8 @@ public final class VantageNetwork {
         void columns(TerrainColumns columns);
 
         void planet(PlanetInfo info);
+
+        void detail(DetailChunks chunks);
     }
 
     private static volatile @Nullable ClientHandler client;
@@ -32,8 +34,15 @@ public final class VantageNetwork {
     }
 
     private static void onRegister(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1").optional().executesOn(HandlerThread.NETWORK);
+        PayloadRegistrar registrar = event.registrar("2").optional().executesOn(HandlerThread.NETWORK);
         registrar.playToServer(TerrainRequest.TYPE, TerrainRequest.CODEC, ServerTerrain::handle);
+        registrar.playToServer(DetailRequest.TYPE, DetailRequest.CODEC, DetailService::handle);
+        registrar.playToClient(DetailChunks.TYPE, DetailChunks.CODEC, (payload, context) -> {
+            ClientHandler h = client;
+            if (h != null) {
+                h.detail(payload);
+            }
+        });
         registrar.playToClient(TerrainColumns.TYPE, TerrainColumns.CODEC, (payload, context) -> {
             ClientHandler h = client;
             if (h != null) {

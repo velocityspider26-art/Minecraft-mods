@@ -475,12 +475,12 @@ public final class LodRenderer implements AutoCloseable {
         GL20C.glUniform1f(p.uniform("uVanillaFar"), frame.vanillaFar());
         GL20C.glUniform2f(p.uniform("uVanillaRows"), (float) (Math.floor(frame.camY() / 16.0) * 16.0), frame.vanillaVertical());
         GL20C.glUniform3f(p.uniform("uViewDir"), this.viewDir.x, this.viewDir.y, this.viewDir.z);
+        GL20C.glUniform3i(p.uniform("uAnchor"), ax, ay, az);
         int cov = p.uniform("uCoverage");
         if (cov >= 0) {
             CoverageMap.Snapshot c = this.uploadedCoverage;
             GL20C.glUniform1i(cov, UNIT_AUX);
             GL20C.glUniform4i(p.uniform("uCoverageInfo"), c.originX(), c.originZ(), c.size(), coverageBit);
-            GL20C.glUniform3i(p.uniform("uAnchor"), ax, ay, az);
         }
     }
 

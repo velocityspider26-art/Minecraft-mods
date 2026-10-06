@@ -31,7 +31,7 @@ public final class AutoTest {
     /** Climb straight up instead of the views and flight, shooting the ground at several heights. */
     private static final boolean ASCENT = Boolean.getBoolean("vantage.autotest.ascent");
     private static final int[] ALTITUDES = altitudes(System.getProperty("vantage.autotest.altitudes", "150,400,1000,2500,6000,15000"));
-    private static final float[] ASCENT_PITCH = {25f, 70f};
+    private static final float[] ASCENT_PITCH = pitches(System.getProperty("vantage.autotest.pitches", "25,70"));
     /** Also shoot every ascent view with Vantage off, to tell its artifacts from vanilla's. */
     private static final boolean ASCENT_COMPARE = Boolean.getBoolean("vantage.autotest.ascentCompare");
     private static int ascentIndex = -1;
@@ -62,6 +62,15 @@ public final class AutoTest {
     static volatile boolean lodSuppressed;
 
     private AutoTest() {
+    }
+
+    private static float[] pitches(String list) {
+        int[] p = altitudes(list);
+        float[] out = new float[p.length];
+        for (int i = 0; i < p.length; i++) {
+            out[i] = p[i];
+        }
+        return out;
     }
 
     private static int[] altitudes(String list) {
@@ -102,6 +111,12 @@ public final class AutoTest {
             Vantage.LOGGER.info("[autotest] joined world at {}", player.blockPosition());
             startX = player.getBlockX();
             startZ = player.getBlockZ();
+            String at = System.getProperty("vantage.autotest.at");
+            if (at != null && at.contains(",")) {
+                // Somewhere else, such as land nobody has explored yet.
+                startX = Integer.parseInt(at.split(",")[0].trim());
+                startZ = Integer.parseInt(at.split(",")[1].trim());
+            }
             if (TOGGLE) {
                 VantageConfig.ENABLED.set(false);
                 VantageClient.closeSession();
@@ -114,7 +129,7 @@ public final class AutoTest {
             // Same light in every run.
             command(mc, "gamerule doDaylightCycle false");
             command(mc, "time set 6000");
-            command(mc, "tp " + name + " " + player.getBlockX() + " " + HEIGHT + " " + player.getBlockZ());
+            command(mc, "tp " + name + " " + startX + " " + HEIGHT + " " + startZ);
         }
         if (mc.screen != null) {
             mc.setScreen(null);
@@ -354,8 +369,9 @@ public final class AutoTest {
         RegionImporter imp = s.importer();
         boolean importing = imp != null && (imp.scanning() || imp.total() == 0);
         var gen = s.generator();
+        var detail = s.detail();
         return !importing && s.pool.queued() == 0 && s.meshes.inFlight() == 0 && s.meshes.pendingUploads() == 0
-                && s.ingest.pending() == 0 && (gen == null || gen.queued() == 0);
+                && s.ingest.pending() == 0 && (gen == null || gen.queued() == 0) && (detail == null || detail.queued() == 0);
     }
 
     private static void logStats(String label) {
@@ -387,9 +403,12 @@ public final class AutoTest {
         }
         var gen = s.generator();
         Vantage.LOGGER.info("[autotest] {} vanilla: {}", label, Minecraft.getInstance().levelRenderer.getSectionStatistics());
-        Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={} generated={} ({} ms each, {} queued)", label, levels,
-                s.coverage.current().size(), gen == null ? 0 : gen.generatedSections(),
-                gen == null ? 0 : String.format(Locale.ROOT, "%.1f", gen.averageMillis()), gen == null ? 0 : gen.queued());
+        var detail = s.detail();
+        Vantage.LOGGER.info("[autotest] {} plan levels:{} coverage={} generated={} ({} ms each, {} queued) real={} ({} ms each, {} queued)",
+                label, levels, s.coverage.current().size(), gen == null ? 0 : gen.generatedSections(),
+                gen == null ? 0 : String.format(Locale.ROOT, "%.1f", gen.averageMillis()), gen == null ? 0 : gen.queued(),
+                detail == null ? 0 : detail.chunks(),
+                detail == null ? 0 : String.format(Locale.ROOT, "%.1f", detail.averageMillis()), detail == null ? 0 : detail.queued());
         Vantage.LOGGER.info("[autotest] {}: sections={} draws={} quads={} cpu={}ms build={}ms plan={} visited={} planMs={} gpuMiB={} meshes={} residentQuads={} jobs={} meshing={} uploads={} cache={} dirty={} import={}/{} visuals={} fps={}",
                 label,
                 r == null ? -1 : r.lastSections, r == null ? -1 : r.lastDraws, r == null ? -1 : r.lastQuads,

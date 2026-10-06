@@ -16,6 +16,12 @@
   "vantage.configuration.hazeDistance.tooltip": "Distance over which air at sea level hides about two thirds of the view. Air thins with height, so from high up the ground stays clear.",
   "vantage.configuration.atmosphereHeight": "Atmosphere height (blocks)",
   "vantage.configuration.atmosphereHeight.tooltip": "Air gets about 2.7x thinner every this many blocks above sea level.",
+  "vantage.configuration.detailedGeneration": "Real-generator terrain nearby",
+  "vantage.configuration.detailedGeneration.tooltip": "Show unexplored land near you as Minecraft's real world generator makes it: real trees, plants, rocks and snow. Singleplayer and game hosts make it themselves; on a server with Vantage the server sends it. Nothing is saved to the world.",
+  "vantage.configuration.detailDistance": "Real-generator distance (blocks)",
+  "vantage.configuration.detailDistance.tooltip": "How far from you unexplored land is made with the real world generator. Further out a faster approximation is used.",
+  "vantage.configuration.detailThreads": "Real-generator threads",
+  "vantage.configuration.detailThreads.tooltip": "Background threads for real-generator terrain. 0 picks automatically.",
   "vantage.configuration.spaceSky": "Space sky",
   "vantage.configuration.spaceSky.tooltip": "High above the atmosphere the sky fades to black and the stars come out. Turn off if another mod draws the sky there.",
   "vantage.configuration.planetRadius": "Planet radius (blocks)",
@@ -42,5 +48,13 @@
   "vantage.configuration.serverThreads": "Server threads",
   "vantage.configuration.serverThreads.tooltip": "Threads answering distant-terrain requests. 0 picks automatically.",
   "vantage.configuration.maxRequestsPerPlayer": "Requests per player",
-  "vantage.configuration.maxRequestsPerPlayer.tooltip": "Most distant-terrain requests one player may have waiting at a time."
+  "vantage.configuration.maxRequestsPerPlayer.tooltip": "Most distant-terrain requests one player may have waiting at a time.",
+  "vantage.configuration.serveDetailedTerrain": "Send real terrain to players",
+  "vantage.configuration.serveDetailedTerrain.tooltip": "Players with Vantage get the real terrain near them: explored chunks as they are, unexplored ones made with the world generator in throwaway chunks (nothing is added to the world). Takes some CPU while players explore.",
+  "vantage.configuration.detailedTerrainDistance": "Real terrain distance (blocks)",
+  "vantage.configuration.detailedTerrainDistance.tooltip": "How far from a player the server sends real terrain.",
+  "vantage.configuration.detailedTerrainThreads": "Real terrain threads",
+  "vantage.configuration.detailedTerrainThreads.tooltip": "Threads making real terrain for players. 0 picks automatically.",
+  "vantage.configuration.detailedTerrainCacheMiB": "Real terrain memory (MiB)",
+  "vantage.configuration.detailedTerrainCacheMiB.tooltip": "Memory for terrain made for players, so the next player asking gets it at once."
 }

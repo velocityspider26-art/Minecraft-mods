@@ -33,6 +33,22 @@ public final class VantageConfig {
                     "Explored chunks always replace it. It never creates chunks or changes your save.")
             .define("distantGeneration", true);
 
+    public static final ModConfigSpec.BooleanValue DETAILED_GENERATION = BUILDER
+            .comment("Show unexplored land near you as Minecraft's real world generator makes it, with the real trees,",
+                    "plants, rocks and snow instead of an approximation. In singleplayer (and when hosting a LAN or",
+                    "Essential game) your game makes it on background threads; on a server with Vantage, the server sends it.",
+                    "Nothing is added to the save.")
+            .define("detailedGeneration", true);
+
+    public static final ModConfigSpec.IntValue DETAIL_DISTANCE = BUILDER
+            .comment("How far from you (in blocks) unexplored land is made with the real world generator. Beyond this",
+                    "the faster approximation is used; trees are too small to see that far anyway.")
+            .defineInRange("detailDistance", 1024, 128, 16384);
+
+    public static final ModConfigSpec.IntValue DETAIL_THREADS = BUILDER
+            .comment("Threads for real-generator terrain. 0 picks a number from your CPU cores.")
+            .defineInRange("detailThreads", 0, 0, 16);
+
     public static final ModConfigSpec.DoubleValue ALTITUDE_VIEW = BUILDER
             .comment("When flying high, LOD terrain reaches at least this many times your height above sea level,",
                     "so the ground stays visible all the way to the horizon. 0 = off.")
@@ -41,7 +57,7 @@ public final class VantageConfig {
     public static final ModConfigSpec.IntValue HAZE_DISTANCE = BUILDER
             .comment("Haze: distance in blocks over which air at sea level hides about two thirds of the view.",
                     "Air thins out with height, so from high up you look down through very little haze.")
-            .defineInRange("hazeDistance", 12000, 500, 10_000_000);
+            .defineInRange("hazeDistance", 24000, 500, 10_000_000);
 
     public static final ModConfigSpec.IntValue ATMOSPHERE_HEIGHT = BUILDER
             .comment("Scale height of the atmosphere in blocks: air (and haze) gets about 2.7x thinner every this many",
@@ -84,7 +100,28 @@ public final class VantageConfig {
             .comment("Where terrain starts fading out towards the end of the LOD distance, as a fraction of it.")
             .defineInRange("fogStart", 0.8, 0.0, 1.0);
 
+    /** Version of the settings' defaults this file has been brought up to; see {@link #migrate}. */
+    private static final ModConfigSpec.IntValue VERSION = BUILDER
+            .comment("Internal: which defaults this file has been updated to. Do not change.")
+            .defineInRange("configVersion", 0, 0, Integer.MAX_VALUE);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
+
+    /**
+     * Moves settings still at an old default to the new one (players who chose a value keep it).
+     * 2: clearer air (haze distance 12000 to 24000).
+     */
+    static void migrate() {
+        int v = VERSION.get();
+        if (v >= 2) {
+            return;
+        }
+        if (HAZE_DISTANCE.get() == 12000) {
+            HAZE_DISTANCE.set(24000);
+        }
+        VERSION.set(2);
+        SPEC.save();
+    }
 
     private VantageConfig() {
     }
@@ -96,5 +133,13 @@ public final class VantageConfig {
         }
         int cores = Runtime.getRuntime().availableProcessors();
         return Math.max(1, Math.min(6, cores / 2 - 1));
+    }
+
+    public static int detailThreads() {
+        int n = DETAIL_THREADS.get();
+        if (n > 0) {
+            return n;
+        }
+        return Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() / 4));
     }
 }

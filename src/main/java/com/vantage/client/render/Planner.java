@@ -63,10 +63,16 @@ public final class Planner implements AutoCloseable {
         void request(long key, double priority);
     }
 
+    /** Replaces approximate terrain in the fine sections near the camera with real terrain. */
+    public interface Detailer {
+        void request(long key, double distance);
+    }
+
     private final LodWorld world;
     private final MeshManager meshes;
     private final Thread thread;
     private volatile Generator generator;
+    private volatile Detailer detailer;
     private volatile boolean running = true;
     private volatile View view;
     private volatile Plan plan = Plan.EMPTY;
@@ -99,6 +105,10 @@ public final class Planner implements AutoCloseable {
 
     public void setGenerator(Generator generator) {
         this.generator = generator;
+    }
+
+    public void setDetailer(Detailer detailer) {
+        this.detailer = detailer;
     }
 
     private void loop() {
@@ -207,6 +217,10 @@ public final class Planner implements AutoCloseable {
         int cz1 = cz0 + (span >> 4) - 1;
         if (this.vanillaDrawsAll(key, cx0, cz0, cx1, cz1)) {
             return;
+        }
+        Detailer detailer = this.detailer;
+        if (detailer != null) {
+            detailer.request(key, dist);
         }
         int content = this.world.content(key);
         Generator gen = this.generator;

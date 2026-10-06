@@ -88,6 +88,52 @@ generator; other players ask the server (see *Multiplayer* below):
   and chunk data always overwrites it. While the save's first import pass runs,
   places the save already has are left to the import.
 
+## Real terrain nearby
+
+Within `detailDistance` (1 km) unexplored land is made the way the game would
+make it, so it has the real trees, plants, rocks and snow. Distant Horizons
+does this by running Minecraft's world generation steps on throwaway proto
+chunks in a stand-in `WorldGenRegion`; Vantage takes the same approach
+(`WorldGenSandbox`, its own code) and makes it cheaper:
+
+* **Batches** of 10×10 chunks, of which the inner 8×8 are kept: features (tree
+  crowns) spill into neighbours, so only chunks whose eight neighbours were
+  decorated too are complete.
+* **Only the band around the surface.** One survey `NoiseChunk` over the whole
+  batch gives Minecraft's quick surface estimate for every 4×4 column group;
+  each chunk's terrain shape is then computed only from 8 blocks under its
+  lowest estimate to 24 above its highest (about 55 blocks instead of 384),
+  by handing Minecraft a noise state sized to that band. The estimate leaves
+  out the finer shape (mountain jaggedness above all), so a chunk whose terrain
+  reaches the band's top, or has a column with nothing solid in it, is made
+  again at full height (about 1% of chunks). Under the band counts as rock.
+* **Nothing that cannot be seen**: cave entrances, noodle caves and the deep
+  cave systems are taken out of the density function (keeping the terrain
+  identical), as are ore veins, carvers, structures and the underground
+  feature steps. Real ores, geodes, dungeons and the like are skipped; dirt,
+  gravel, sand, clay and stone-kind blobs are kept since they show on slopes.
+* **Surface rules** check the biome of every stone block above about the
+  surface estimate, which is slow where mountains rise above it, yet change
+  only the top blocks (at most 8 down in vanilla, more for desert and beach
+  sandstone and badlands bands). Deeper stone is swapped for a look-alike the
+  rules skip, and swapped back before features run.
+* **Features** are placed exactly as `applyBiomeDecoration` seeds them
+  (decoration seed per chunk, feature seed per index and step), so trees stand
+  where the real world will have them; writes are limited to the 3×3 chunks
+  around the one being decorated, as in vanilla.
+* **Light**: sky light straight down (water and leaves dim it); enough for the
+  LOD's cave culling and shading.
+
+Measured on one thread with nothing else running: about 13 ms per kept chunk
+(about 2.5× faster than running every step for the full height). Compared
+block for block with the chunks the server generates for real
+(`-Dvantage.debug.sandboxVerify`), 92% of columns have the same top block at
+the same height; the rest are cave mouths and ravines that are left out, and
+overlapping tree crowns (which of two overlapping trees wins depends on the
+order chunks are decorated in, which varies in vanilla too). Generated chunks
+are marked in `chunks.bin` so they are never made twice, and never overwrite a
+chunk that is real.
+
 ## Multiplayer
 
 The client cannot run the world generator on a server: it has neither the seed
@@ -109,6 +155,22 @@ nor the server's datapacks. So a server with Vantage answers for it:
   `busy`), and refuses requests for other dimensions or more than 600 km away.
   The client keeps at most 16 requests in flight and gives up on any answer
   older than 15 s. Answers are turned into voxels on the client's own workers.
+* Real terrain nearby: `planet_info` also says how far the server sends it.
+  The client sends a `detail_request` per unit of 8×8 chunks (a 64-bit mask of
+  the chunks it has nothing real or generated for), nearest first, at most 3
+  at a time. The server answers each chunk from the best source it has: the
+  loaded chunk (read off-thread, as Minecraft's light engine does), the save
+  (status `features` or later, through the chunk map's IO worker), or else the
+  sandbox above, whose results it keeps (64 MiB) for the next player and
+  makes once even when two players ask at the same time. The answer,
+  `detail_chunks`, carries chunk *skins*: per column the blocks from its top
+  down to where nothing more can be seen (two solid blocks below the lowest
+  neighbouring column's first solid block), as runs, with palettes of block
+  state and biome ids and the surface biome per 4×4 columns. About 1-3 KB a
+  chunk; the client fills stone below, air above, and computes sky light.
+  On a game opened to LAN or Essential, what the host's own game makes is
+  offered to the same cache, and the host's game uses what was made for a
+  friend, so each chunk is made once.
 
 ## Vantage Planet
 
@@ -224,6 +286,12 @@ render thread: upload (budgeted) → frustum cull → 1 multi-draw-indirect per 
   Pass them with `-PvantageJvmArgs="..."`.
 * Checked this way: Fancy and Fabulous graphics, Sodium 0.8.13 alongside
   Vantage, dimension changes, and switching Vantage on mid-game.
+* A server started with `-Dvantage.debug.sandboxBench=true` times the
+  real-terrain generator on batches spread over the world;
+  `-Dvantage.debug.sandboxVerify=N` also has the server generate the first N
+  batches for real and compares every column's top block.
+* Chunk skins are tested for keeping every block that can be seen from
+  outside the ground (`ChunkSkinTest`).
 
 Pitfall found this way: `PalettedContainer.getAll` yields each *distinct* state
 once, not every voxel; chunk sections must be read voxel by voxel.

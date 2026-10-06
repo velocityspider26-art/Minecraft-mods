@@ -5,8 +5,13 @@ terrain far past your normal render distance, so you can lower the vanilla rende
 expensive part) and still see for kilometres — or, flying high, for hundreds of kilometres: the
 ground stays visible under you all the way up, fading into haze at the horizon like real life.
 
+* The land around you, out to a kilometre, is real Minecraft terrain even where nobody has been:
+  Vantage runs Minecraft's own world generator in the background, so you see the actual trees,
+  plants, rocks, rivers and snow that will be there, block for block. Further out a faster
+  approximation takes over, all the way to the horizon.
 * Works in singleplayer and on any server. Also install it on the server (or, for LAN and
-  Essential games, on the host's game) and players get distant terrain they have never explored.
+  Essential games, on the host's game) and players get distant terrain they have never explored,
+  the real terrain near them included.
   Optional on both sides: players without Vantage can still join, and Vantage players can join
   any server.
 * Comes with the **Vantage Planet** world type: Earth-like continents, mountain ranges and climate
@@ -21,11 +26,20 @@ ground stays visible under you all the way up, fading into haze at the horizon l
 3. Set the LOD distance in **Mods → Vantage → Config** (`renderDistance`, default 256 chunks = 4 km).
 
 In singleplayer, Vantage reads every chunk your world has already generated in the background,
-so explored land shows up immediately, and fills in land nobody has explored straight from the
-world generator (terrain shape, biomes, forests, oceans, snow; no buildings), so the ground never
-just ends. Explored chunks always replace generated land, and your save is never touched. In
-multiplayer it builds LODs from chunks as you load them, remembers them between sessions, and,
-if the server has Vantage too, asks the server for the land nobody has explored.
+so explored land shows up immediately, and fills in land nobody has explored from the world
+generator, so the ground never just ends:
+
+* **Near you** (`detailDistance`, 1 km) with Minecraft's real world generator, run in throwaway
+  chunks on background threads: terrain, surface, trees, plants, rocks, lakes and snow come out
+  exactly as the game will make them (only buildings and caves are left out). This is what
+  Distant Horizons does too; Vantage makes only the band of each chunk around the surface, so
+  it is several times faster.
+* **Further out** from a quick sample of the generator's terrain shape and biomes, cheap enough
+  to reach hundreds of kilometres.
+
+Explored chunks always replace generated land, and your save is never touched. In multiplayer
+Vantage builds LODs from chunks as you load them, remembers them between sessions, and, if the
+server has Vantage too, gets the land nobody has explored from the server.
 
 ### The Vantage Planet world type
 
@@ -71,14 +85,23 @@ To give everyone distant terrain in multiplayer, the game that runs the world ne
 * **Open to LAN / Essential**: the host's game is the server, so it already has Vantage. Friends
   who join need Vantage installed to see LODs.
 
-The server samples terrain for players on a few low-priority background threads; it never
-generates chunks or touches the save. Server settings live in `config/vantage-common.toml`:
+Players then get the same as in singleplayer: the real terrain near them (explored chunks as they
+are, from the server's memory or save, and unexplored ones made with the world generator on the
+server, sent as a compact "skin" of what can be seen, a few kilobytes a chunk), and the quick
+approximation further out. Terrain the host's game makes for itself is shared with friends nearby
+instead of being made twice. The server does this on low-priority background threads; it never
+adds chunks to the world or touches the save. Server settings live in
+`config/vantage-common.toml`:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `serveDistantTerrain` | true | Answer players' requests for unexplored terrain |
+| `serveDistantTerrain` | true | Answer players' requests for unexplored terrain far away |
 | `serverThreads` | 0 (auto) | Threads for those requests (auto: a quarter of the cores, 1–4) |
 | `maxRequestsPerPlayer` | 24 | Requests each player may have waiting at once |
+| `serveDetailedTerrain` | true | Send players the real terrain near them |
+| `detailedTerrainDistance` | 1024 | How far from each player, in blocks |
+| `detailedTerrainThreads` | 0 (auto) | Threads making real terrain (auto: one per eight cores, at least one) |
+| `detailedTerrainCacheMiB` | 64 | Memory for terrain made for players, so the next one gets it at once |
 
 ### Flying high (space mods)
 
@@ -111,8 +134,11 @@ Press F3 to see Vantage's statistics on the right side of the debug screen.
 | `enabled` | true | Turn LODs on/off |
 | `renderDistance` | 256 | LOD distance on the ground, in chunks (16–32768) |
 | `distantGeneration` | true | Fill unexplored land from the world generator (singleplayer, or servers with Vantage) |
+| `detailedGeneration` | true | Near you, use Minecraft's real world generator: real trees, plants, rocks and snow |
+| `detailDistance` | 1024 | How far (blocks) the real generator is used; further out the fast approximation |
+| `detailThreads` | 0 (auto) | Threads for the real generator (auto: a quarter of the cores, 1–4) |
 | `altitudeViewFactor` | 8.0 | High up, LODs reach at least this many times your height above sea level |
-| `hazeDistance` | 12000 | Blocks of sea-level air that hide about two thirds of the view |
+| `hazeDistance` | 24000 | Blocks of sea-level air that hide about two thirds of the view |
 | `atmosphereHeight` | 1200 | Air gets ~2.7× thinner every this many blocks up |
 | `spaceSky` | true | High above the atmosphere the sky turns black with stars; turn off if another mod draws the sky there |
 | `planetRadius` | 0 | Bend terrain like a planet of this radius (blocks); 0 = flat. Vantage Planet worlds use their own radius |
@@ -149,7 +175,9 @@ dimension that uses a noise-based (or flat) world generator.
 See [DESIGN.md](DESIGN.md). In short: chunks are converted to compact voxels and averaged into 11
 detail levels (1 to 1024 blocks per voxel), stored compressed on disk, meshed into merged quads on
 background threads, and drawn with one GPU multi-draw call per pass. Only what can actually be
-seen from a distance is kept.
+seen from a distance is kept. Unexplored land near you is made by Minecraft's own generation
+steps in throwaway chunks, unexplored land further out by sampling the generator's terrain
+shape directly.
 
 ## Development
 
@@ -161,7 +189,11 @@ seen from a distance is kept.
   frame timings and quits. `-PvantageWorld=<name>` picks another saved world,
   `-PvantageServer=localhost` joins a server instead (the player needs operator rights there),
   and `-PvantageJvmArgs=-Dvantage.autotest.ascent=true` climbs to 15 km taking screenshots
+  (`-Dvantage.autotest.at=x,z` starts somewhere else)
+* `./gradlew runServer` with `-Dvantage.debug.sandboxBench=true` (add `-Dvantage.debug.sandboxVerify=4`)
+  times the real-terrain generator on its own, and compares what it makes with chunks the server
+  generates for real
 
 Vantage is an original implementation. It was designed after studying how
-[Voxy](https://modrinth.com/mod/voxy) approaches the problem, but contains no Voxy code
-(Voxy's source is all rights reserved).
+[Voxy](https://modrinth.com/mod/voxy) and [Distant Horizons](https://modrinth.com/mod/distanthorizons)
+approach the problem, but contains no code from either.

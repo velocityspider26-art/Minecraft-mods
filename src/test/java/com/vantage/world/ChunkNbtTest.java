@@ -1,4 +1,4 @@
-package com.vantage.client.ingest;
+package com.vantage.world;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +7,7 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class RegionImporterTest {
+class ChunkNbtTest {
     /** Packs like Minecraft's SimpleBitStorage: entries never straddle two longs. */
     private static long[] pack(int[] values, int bits) {
         int perLong = 64 / bits;
@@ -29,22 +29,22 @@ class RegionImporterTest {
                 values[i] = r.nextInt(palette);
                 expected[i] = (short) values[i];
             }
-            assertArrayEquals(expected, RegionImporter.unpack(pack(values, bits), bits, 4096, palette), "bits " + bits);
+            assertArrayEquals(expected, ChunkNbt.unpack(pack(values, bits), bits, 4096, palette), "bits " + bits);
         }
     }
 
     @Test
     void outOfRangeIndicesFallBackToZero() {
         long[] data = pack(new int[]{3, 1, 7}, 4);
-        assertArrayEquals(new short[]{3, 1, 0}, RegionImporter.unpack(data, 4, 3, 4));
+        assertArrayEquals(new short[]{3, 1, 0}, ChunkNbt.unpack(data, 4, 3, 4));
     }
 
     @Test
     void ceilLog2() {
-        assertEquals(0, RegionImporter.ceilLog2(1));
-        assertEquals(1, RegionImporter.ceilLog2(2));
-        assertEquals(2, RegionImporter.ceilLog2(3));
-        assertEquals(4, RegionImporter.ceilLog2(16));
-        assertEquals(5, RegionImporter.ceilLog2(17));
+        assertEquals(0, ChunkNbt.ceilLog2(1));
+        assertEquals(1, ChunkNbt.ceilLog2(2));
+        assertEquals(2, ChunkNbt.ceilLog2(3));
+        assertEquals(4, ChunkNbt.ceilLog2(16));
+        assertEquals(5, ChunkNbt.ceilLog2(17));
     }
 }
