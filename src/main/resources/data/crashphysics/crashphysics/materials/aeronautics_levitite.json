@@ -1,0 +1,10 @@
+{
+  "selector": [
+    "aeronautics:levitite",
+    "aeronautics:levitite_blend",
+    "aeronautics:pearlescent_levitite"
+  ],
+  "strength": 20000000.0,
+  "joint_strength": 2000000.0,
+  "fracture": "brittle"
+}

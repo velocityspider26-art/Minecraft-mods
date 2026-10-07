@@ -1,0 +1,10 @@
+{
+  "selector": [
+    "aeronautics:propeller_bearing",
+    "aeronautics:gyroscopic_propeller_bearing",
+    "aeronautics:steam_vent"
+  ],
+  "strength": 30000000.0,
+  "joint_strength": 6000000.0,
+  "fracture": "ductile"
+}

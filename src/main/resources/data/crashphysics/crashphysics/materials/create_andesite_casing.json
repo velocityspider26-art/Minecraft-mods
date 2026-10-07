@@ -1,0 +1,11 @@
+{
+  "selector": [
+    "create:andesite_casing",
+    "create:andesite_encased_shaft",
+    "create:andesite_encased_cogwheel",
+    "create:andesite_encased_large_cogwheel"
+  ],
+  "strength": 20000000.0,
+  "joint_strength": 4000000.0,
+  "fracture": "ductile"
+}

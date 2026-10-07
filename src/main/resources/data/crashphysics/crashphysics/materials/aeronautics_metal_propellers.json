@@ -1,0 +1,9 @@
+{
+  "selector": [
+    "aeronautics:andesite_propeller",
+    "aeronautics:smart_propeller"
+  ],
+  "strength": 8000000.0,
+  "joint_strength": 2000000.0,
+  "fracture": "ductile"
+}

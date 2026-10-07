@@ -27,7 +27,30 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    mavenCentral()
+    exclusiveContent { // Sable
+        forRepository {
+            maven {
+                url = "https://maven.ryanhcode.dev/releases"
+                name = "RyanHCode Maven"
+            }
+        }
+        filter {
+            includeGroup("dev.ryanhcode.sable")
+            includeGroup("dev.ryanhcode.sable-companion")
+        }
+    }
+    exclusiveContent { // Veil, a library Sable's public classes reference
+        forRepository {
+            maven {
+                url = "https://maven.blamejared.com"
+                name = "BlameJared Maven"
+            }
+        }
+        filter {
+            includeGroupAndSubgroups("foundry.veil")
+        }
+    }
 }
 
 base {
@@ -46,8 +69,7 @@ neoForge {
         minecraftVersion = project.parchment_minecraft_version
     }
 
-    // This line is optional. Access Transformers are automatically detected
-    // accessTransformers = project.files('src/main/resources/META-INF/accesstransformer.cfg')
+    // Access Transformers are automatically detected from src/main/resources/META-INF/accesstransformer.cfg
 
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
@@ -71,6 +93,8 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Separate directory, so test worlds (wiped before every run) never mix with the dev client/server world
+            gameDirectory = project.file('run/gametest')
         }
 
         data {
@@ -118,27 +142,32 @@ configurations {
 }
 
 dependencies {
-    // Example optional mod dependency with JEI
-    // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
-    // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
-    // compileOnly "mezz.jei:jei-${mc_version}-neoforge-api:${jei_version}"
-    // We add the full version to localRuntime, not runtimeOnly, so that we do not publish a dependency on it
-    // localRuntime "mezz.jei:jei-${mc_version}-neoforge:${jei_version}"
+    // Sable provides the physics engine (Rapier) that Create: Aeronautics ships run on.
+    // The NeoForge jar bundles the common classes, the Rapier natives, Sable Companion and Veil via jar-in-jar.
+    compileOnly("dev.ryanhcode.sable:sable-neoforge-${minecraft_version}:${sable_version}") { transitive = false }
+    compileOnly("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_version}") { transitive = false }
+    compileOnly("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") { transitive = false }
+    localRuntime("dev.ryanhcode.sable:sable-neoforge-${minecraft_version}:${sable_version}") { transitive = false }
 
-    // Example mod dependency using a mod jar from ./libs with a flat dir repository
-    // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
-    // The group id is ignored when searching -- in this case, it is "blank"
-    // implementation "blank:coolmod-${mc_version}:${coolmod_version}"
+    // Unit tests for the pure-Java physics core (no Minecraft classes involved)
+    testImplementation("org.junit.jupiter:junit-jupiter:${junit_version}")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 
-    // Example mod dependency using a file as dependency
-    // implementation files("libs/coolmod-${mc_version}-${coolmod_version}.jar")
+// Game tests build their scenarios into the world, so each run starts from a fresh one
+def gameTestWorld = file('run/gametest/world')
+tasks.named('runGameTestServer') {
+    doFirst {
+        gameTestWorld.deleteDir()
+    }
+}
 
-    // Example project dependency using a sister or child project:
-    // implementation project(":myproject")
-
-    // For more info:
-    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
-    // http://www.gradle.org/docs/current/userguide/dependency_management.html
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "failed", "skipped"
+        exceptionFormat "full"
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -149,6 +178,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             loader_version_range   : loader_version_range,
+            sable_version_range    : sable_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

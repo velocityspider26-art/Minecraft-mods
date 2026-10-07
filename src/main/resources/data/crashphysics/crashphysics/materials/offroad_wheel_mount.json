@@ -1,0 +1,6 @@
+{
+  "selector": "offroad:wheel_mount",
+  "strength": 40000000.0,
+  "joint_strength": 8000000.0,
+  "fracture": "ductile"
+}

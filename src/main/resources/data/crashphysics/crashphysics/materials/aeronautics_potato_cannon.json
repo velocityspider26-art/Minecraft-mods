@@ -1,0 +1,6 @@
+{
+  "selector": "aeronautics:mounted_potato_cannon",
+  "strength": 20000000.0,
+  "joint_strength": 4000000.0,
+  "fracture": "ductile"
+}

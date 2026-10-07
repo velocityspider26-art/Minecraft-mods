@@ -1,0 +1,11 @@
+{
+  "selector": [
+    "simulated:swivel_bearing",
+    "simulated:swivel_bearing_link_block",
+    "simulated:torsion_spring",
+    "simulated:spring"
+  ],
+  "strength": 30000000.0,
+  "joint_strength": 6000000.0,
+  "fracture": "ductile"
+}

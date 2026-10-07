@@ -1,0 +1,11 @@
+{
+  "selector": [
+    "#create:windmill_sails",
+    "create:sail_frame",
+    "create:white_sail"
+  ],
+  "density": 80,
+  "strength": 50000.0,
+  "joint_strength": 30000.0,
+  "fracture": "soft"
+}

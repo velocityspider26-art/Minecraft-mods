@@ -1,0 +1,8 @@
+{
+  "selector": "create:blaze_burner",
+  "strength": 10000000.0,
+  "joint_strength": 2000000.0,
+  "fracture": "ductile",
+  "volatility": 1.0,
+  "ignites": true
+}

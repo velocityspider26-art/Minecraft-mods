@@ -1,0 +1,6 @@
+{
+  "selector": "create:copper_casing",
+  "strength": 25000000.0,
+  "joint_strength": 5000000.0,
+  "fracture": "ductile"
+}

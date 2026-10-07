@@ -1,0 +1,6 @@
+{
+  "selector": "offroad:borehead_bearing",
+  "strength": 80000000.0,
+  "joint_strength": 16000000.0,
+  "fracture": "ductile"
+}

@@ -1,0 +1,6 @@
+{
+  "selector": "offroad:rockcutting_wheel",
+  "strength": 200000000.0,
+  "joint_strength": 40000000.0,
+  "fracture": "ductile"
+}

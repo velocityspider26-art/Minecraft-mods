@@ -1,0 +1,11 @@
+{
+  "selector": [
+    "create:brass_casing",
+    "create:brass_encased_shaft",
+    "create:brass_encased_cogwheel",
+    "create:brass_encased_large_cogwheel"
+  ],
+  "strength": 30000000.0,
+  "joint_strength": 6000000.0,
+  "fracture": "ductile"
+}

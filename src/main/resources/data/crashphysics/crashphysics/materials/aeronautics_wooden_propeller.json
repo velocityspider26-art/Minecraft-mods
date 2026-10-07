@@ -1,0 +1,6 @@
+{
+  "selector": "aeronautics:wooden_propeller",
+  "strength": 2000000.0,
+  "joint_strength": 600000.0,
+  "fracture": "fibrous"
+}

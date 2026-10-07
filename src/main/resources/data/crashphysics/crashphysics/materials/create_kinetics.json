@@ -1,0 +1,18 @@
+{
+  "selector": [
+    "create:shaft",
+    "create:cogwheel",
+    "create:large_cogwheel",
+    "create:gearbox",
+    "create:vertical_gearbox",
+    "create:encased_chain_drive",
+    "create:adjustable_chain_gearshift",
+    "create:clutch",
+    "create:gearshift",
+    "create:mechanical_bearing",
+    "create:windmill_bearing"
+  ],
+  "strength": 15000000.0,
+  "joint_strength": 3000000.0,
+  "fracture": "ductile"
+}

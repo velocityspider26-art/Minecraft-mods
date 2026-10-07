@@ -1,0 +1,7 @@
+{
+  "selector": [
+    "minecraft:magma_block",
+    "minecraft:lava_cauldron"
+  ],
+  "ignites": true
+}

@@ -1,0 +1,9 @@
+{
+  "death.attack.crashphysics.g_force": "%1$s didn't survive the crash",
+  "death.attack.crashphysics.g_force.player": "%1$s didn't survive the crash while fleeing %2$s",
+  "crashphysics.configuration.title": "Realistic Crash Physics",
+  "crashphysics.configuration.section.crashphysics.server.toml": "Crash Physics",
+  "crashphysics.configuration.section.crashphysics.server.toml.title": "Crash Physics",
+  "crashphysics.configuration.section.crashphysics.client.toml": "Crash Physics (client)",
+  "crashphysics.configuration.section.crashphysics.client.toml.title": "Crash Physics (client)"
+}
