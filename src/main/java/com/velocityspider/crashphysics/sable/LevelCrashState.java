@@ -30,7 +30,8 @@ public final class LevelCrashState {
 
     private final ServerLevel level;
     final ImpactCollector collector;
-    private final ImpactResolver resolver;
+    final ImpactResolver resolver;
+    private final SweptImpacts sweep;
     private final BlockDamageTracker damage;
     private final Destruction destruction;
     private final CrashEffects effects;
@@ -39,6 +40,7 @@ public final class LevelCrashState {
 
     private long tick;
     private boolean tickStarted;
+    private double substepLength;
     private volatile int blockBreakAllowance = Integer.MAX_VALUE;
 
     private LevelCrashState(final ServerLevel level) {
@@ -49,6 +51,7 @@ public final class LevelCrashState {
         this.collapse = new CollapseHandler(level);
         this.destruction = new Destruction(level, this.damage, this.effects, this.collapse);
         this.resolver = new ImpactResolver(level, this);
+        this.sweep = new SweptImpacts(level, this);
     }
 
     public static LevelCrashState get(final ServerLevel level) {
@@ -109,7 +112,6 @@ public final class LevelCrashState {
 
         final ServerSubLevelContainer container = SubLevelContainer.getContainer(this.level);
         if (container != null) {
-            final Vector3d gravity = DimensionPhysicsData.getGravity(this.level);
             for (final ServerSubLevel subLevel : container.getAllSubLevels()) {
                 if (subLevel.isRemoved()) {
                     continue;
@@ -121,12 +123,19 @@ public final class LevelCrashState {
                 }
 
                 final BodyMotion motion = this.motions.computeIfAbsent(subLevel, BodyMotion::new);
-                motion.sample(handle, dt, gravity, firstSubstep);
+                motion.beginSubstep(handle, firstSubstep);
                 motion.lastSeenTick = this.tick;
             }
         }
 
+        this.substepLength = dt;
         this.collector.beginSubstep(dt);
+
+        // Deal with what fast vehicles are about to hit before Rapier can step past it
+        if (this.collector.active()) {
+            this.sweep.run(system, dt, this.motions.values());
+            this.blockBreakAllowance = this.destruction.remainingBlockBudget();
+        }
     }
 
     /**
@@ -135,6 +144,18 @@ public final class LevelCrashState {
     void postPhysics(final SubLevelPhysicsSystem system) {
         this.resolver.resolve(system, this.collector.drainRecords(), this.collector.drainSkids());
         this.blockBreakAllowance = this.destruction.remainingBlockBudget();
+
+        // How hard each vehicle was decelerated over the sub-step, the crash impulses included
+        final Vector3d gravity = DimensionPhysicsData.getGravity(this.level);
+        for (final BodyMotion motion : this.motions.values()) {
+            if (motion.subLevel.isRemoved()) {
+                continue;
+            }
+            final RigidBodyHandle handle = system.getPhysicsHandle(motion.subLevel);
+            if (handle != null && handle.isValid()) {
+                motion.endSubstep(handle, this.substepLength, gravity);
+            }
+        }
     }
 
     /**

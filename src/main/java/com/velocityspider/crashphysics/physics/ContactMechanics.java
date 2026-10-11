@@ -34,19 +34,21 @@ public final class ContactMechanics {
     }
 
     /**
-     * What one eroding contact does over one step.
+     * What one contact does over one step.
      *
      * @param impulse           momentum removed from the relative motion [N·s]
      * @param targetErosion     depth the target block was penetrated by [m]
      * @param projectileErosion length of the projectile block that was crushed [m]
-     * @param dissipatedEnergy  energy turned into crushing, heat and thrown debris [J]
+     * @param dissipatedEnergy  energy taken out of the relative motion: crushing, heat, thrown debris [J]
+     * @param endSpeed          closing speed left at the end of the step [m/s]
      * @param stopped           if the resistance stopped the relative motion within the step
-     * @param targetFailed      if the target block was crushed through before the step ended
+     * @param targetFailed      if the target block gave way before the step ended
      * @param projectileFailed  if the projectile block was crushed through before the step ended
+     * @param knockedOut        if the target gave way by being knocked out whole rather than crushed
      */
-    public record Step(double impulse, double targetErosion, double projectileErosion, double dissipatedEnergy, boolean stopped,
-                       boolean targetFailed, boolean projectileFailed) {
-        public static final Step NONE = new Step(0.0, 0.0, 0.0, 0.0, false, false, false);
+    public record Step(double impulse, double targetErosion, double projectileErosion, double dissipatedEnergy, double endSpeed,
+                       boolean stopped, boolean targetFailed, boolean projectileFailed, boolean knockedOut) {
+        public static final Step NONE = new Step(0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, false);
 
         /**
          * @return if the contact carries on into the material, rather than being brought to rest by it within the step
@@ -54,6 +56,39 @@ public final class ContactMechanics {
         public boolean goesThrough() {
             return this.targetFailed || this.projectileFailed || !this.stopped;
         }
+    }
+
+    /**
+     * A block with nothing behind it (a wall one block thick, a post, a tree trunk) is held in place only by its joints
+     * to the blocks beside it. If the contact can push harder than those joints hold, and has the energy to stretch
+     * them until they let go, the block is knocked out whole and carried along: the vehicle loses the work done on the
+     * joints, then shares its momentum with the block (a perfectly inelastic collision).
+     *
+     * @param shareMassKg   the part of the vehicle's mass behind this contact [kg]
+     * @param closingSpeed  [m/s]
+     * @param contactForce  the largest force the contact can transmit before one of the two blocks starts crushing [N]
+     * @param shearCapacity force the target's joints to the blocks beside it can take [N]
+     * @param shearTravel   how far the joints stretch before they let go [m]
+     * @param blockMassKg   mass of the target block [kg]
+     * @return the step if the block is knocked out, {@link Step#NONE} if it holds
+     */
+    public static Step knockOut(final double shareMassKg, final double closingSpeed, final double contactForce,
+                                final double shearCapacity, final double shearTravel, final double blockMassKg) {
+        if (!(closingSpeed > 0.0) || !(shareMassKg > 0.0) || !(contactForce > shearCapacity)) {
+            return Step.NONE;
+        }
+
+        final double kinetic = 0.5 * shareMassKg * closingSpeed * closingSpeed;
+        final double work = shearCapacity * shearTravel;
+        if (!(kinetic > work)) {
+            return Step.NONE;
+        }
+
+        final double afterJoints = Math.sqrt(2.0 * (kinetic - work) / shareMassKg);
+        final double carried = afterJoints * shareMassKg / (shareMassKg + Math.max(0.0, blockMassKg));
+        final double impulse = shareMassKg * (closingSpeed - carried);
+        final double dissipated = kinetic - 0.5 * shareMassKg * carried * carried;
+        return new Step(impulse, 0.0, 0.0, dissipated, carried, false, true, false, true);
     }
 
     /**
@@ -155,7 +190,7 @@ public final class ContactMechanics {
 
         final double impulse = effectiveMassKg * (closingSpeed - v);
         final double dissipated = 0.5 * effectiveMassKg * (closingSpeed * closingSpeed - v * v);
-        return new Step(impulse, targetErosion, projectileErosion, dissipated, stopped, targetFailed, projectileFailed);
+        return new Step(impulse, targetErosion, projectileErosion, dissipated, v, stopped, targetFailed, projectileFailed, false);
     }
 
     private static final double FAILURE_TOLERANCE = 1.0e-9;

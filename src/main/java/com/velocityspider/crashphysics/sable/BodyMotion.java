@@ -8,16 +8,17 @@ import org.joml.Vector3d;
 import org.joml.Vector3dc;
 
 /**
- * The motion of one vehicle, sampled before every physics sub-step.
+ * The motion of one vehicle, sampled around every physics sub-step.
  * <p>
- * Rapier can't be queried while it is stepping (that re-enters its locks), so contact callbacks work from this
- * snapshot. Comparing consecutive snapshots also gives the accelerations a crash puts on the structure and the crew.
+ * Rapier can't be queried while it is stepping (that re-enters its locks), so contact callbacks work from the snapshot
+ * taken before the step. Comparing it with the velocities after the step (and after the crash impulses applied around
+ * it) gives the accelerations a crash puts on the structure and the crew.
  */
 public final class BodyMotion {
     final ServerSubLevel subLevel;
 
     /**
-     * World-space velocities at the start of the current sub-step [m/s], [rad/s]
+     * World-space velocities the current sub-step starts from [m/s], [rad/s]. After the sub-step, the velocities it ended with.
      */
     final Vector3d linear = new Vector3d();
     final Vector3d angular = new Vector3d();
@@ -27,9 +28,12 @@ public final class BodyMotion {
      */
     final Pose3d pose = new Pose3d();
 
-    private final Vector3d previousLinear = new Vector3d();
-    private final Vector3d previousAngular = new Vector3d();
-    private boolean hasPrevious;
+    /**
+     * Velocities before anything acted on the vehicle in the current sub-step
+     */
+    private final Vector3d stepStartLinear = new Vector3d();
+    private final Vector3d stepStartAngular = new Vector3d();
+    private boolean stepStarted;
 
     /**
      * Velocity at the start of the game tick, used to throw loose riders
@@ -38,7 +42,7 @@ public final class BodyMotion {
     private boolean hasTickStart;
 
     /**
-     * If this vehicle had a contact during the sub-step that is currently running (set from inside the step)
+     * If this vehicle hit something hard during the current sub-step
      */
     boolean contactThisSubstep;
 
@@ -57,51 +61,75 @@ public final class BodyMotion {
 
     long lastSeenTick;
 
+    private final Vector3d scratchLinear = new Vector3d();
+    private final Vector3d scratchAngular = new Vector3d();
+
     BodyMotion(final ServerSubLevel subLevel) {
         this.subLevel = subLevel;
     }
 
     /**
-     * Reads the current velocities from the physics engine and measures the acceleration since the previous sample.
+     * Reads the velocities and pose a sub-step starts from.
      *
-     * @param handle   rigid body handle
-     * @param dt       time since the previous sample [s]
-     * @param gravity  gravitational acceleration of the dimension [m/s²]
      * @param tickStart if this is the first sub-step of a game tick
      */
-    void sample(final RigidBodyHandle handle, final double dt, final Vector3dc gravity, final boolean tickStart) {
-        // The change since the previous sample happened during the step that just ran
-        final boolean contactDuringStep = this.contactThisSubstep;
-        this.contactThisSubstep = false;
-
-        this.previousLinear.set(this.linear);
-        this.previousAngular.set(this.angular);
-
+    void beginSubstep(final RigidBodyHandle handle, final boolean tickStart) {
         handle.getLinearVelocity(this.linear);
         handle.getAngularVelocity(this.angular);
         this.pose.set(this.subLevel.logicalPose());
+
+        this.stepStartLinear.set(this.linear);
+        this.stepStartAngular.set(this.angular);
+        this.stepStarted = true;
+        this.contactThisSubstep = false;
 
         if (tickStart || !this.hasTickStart) {
             this.tickStartLinear.set(this.linear);
             this.hasTickStart = true;
         }
+    }
 
-        if (this.hasPrevious && dt > 0.0 && contactDuringStep) {
+    /**
+     * Re-reads the velocities after impulses were applied before the step, so contact callbacks see them.
+     */
+    void refreshVelocity(final RigidBodyHandle handle) {
+        handle.getLinearVelocity(this.linear);
+        handle.getAngularVelocity(this.angular);
+    }
+
+    /**
+     * Reads the velocities a sub-step ended with, and if the vehicle hit something, how hard it was decelerated.
+     *
+     * @param dt      sub-step length [s]
+     * @param gravity gravitational acceleration of the dimension [m/s²]
+     */
+    void endSubstep(final RigidBodyHandle handle, final double dt, final Vector3dc gravity) {
+        if (!this.stepStarted) {
+            return;
+        }
+        this.stepStarted = false;
+
+        final Vector3d endLinear = handle.getLinearVelocity(this.scratchLinear);
+        final Vector3d endAngular = handle.getAngularVelocity(this.scratchAngular);
+
+        if (this.contactThisSubstep && dt > 0.0) {
             // Proper acceleration: free fall feels like nothing, so take gravity out of the measured change
-            final double ax = (this.linear.x - this.previousLinear.x) / dt - gravity.x();
-            final double ay = (this.linear.y - this.previousLinear.y) / dt - gravity.y();
-            final double az = (this.linear.z - this.previousLinear.z) / dt - gravity.z();
+            final double ax = (endLinear.x - this.stepStartLinear.x) / dt - gravity.x();
+            final double ay = (endLinear.y - this.stepStartLinear.y) / dt - gravity.y();
+            final double az = (endLinear.z - this.stepStartLinear.z) / dt - gravity.z();
             final double g = Math.sqrt(ax * ax + ay * ay + az * az) / 9.80665;
 
             if (g > this.peakG) {
                 this.peakG = g;
                 this.peakLinearAcceleration.set(ax, ay, az);
-                this.peakAngularAcceleration.set(this.angular).sub(this.previousAngular).div(dt);
-                this.peakAngularVelocity.set(this.angular);
+                this.peakAngularAcceleration.set(endAngular).sub(this.stepStartAngular).div(dt);
+                this.peakAngularVelocity.set(endAngular);
             }
         }
 
-        this.hasPrevious = true;
+        this.linear.set(endLinear);
+        this.angular.set(endAngular);
+        this.contactThisSubstep = false;
     }
 
     public ServerSubLevel subLevel() {

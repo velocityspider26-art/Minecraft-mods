@@ -135,6 +135,33 @@ class ContactMechanicsTest {
     }
 
     @Test
+    void lightBlowLeavesAThinWallStanding() {
+        // 1 t at 5 m/s: 12.5 kJ, but stretching the joints of a brick held on two sides takes 3 MN × 5 cm = 150 kJ
+        assertEquals(ContactMechanics.Step.NONE, ContactMechanics.knockOut(1000.0, 5.0, 1.2e7, 3.0e6, 0.05, 2300.0));
+    }
+
+    @Test
+    void softNoseCrushesBeforeItCanPushTheBlockOut() {
+        // Wood crushes at under 2 MN, so it can never push hard enough to break 3 MN of joints, however fast
+        assertEquals(ContactMechanics.Step.NONE, ContactMechanics.knockOut(8000.0, 40.0, 1.8e6, 3.0e6, 0.05, 2300.0));
+    }
+
+    @Test
+    void hardHitKnocksTheBlockOutAndCarriesItAlong() {
+        final double mass = 8000.0;
+        final double v = 40.0;
+        final ContactMechanics.Step step = ContactMechanics.knockOut(mass, v, 1.3e7, 3.0e6, 0.05, 2300.0);
+
+        assertTrue(step.targetFailed());
+        assertTrue(step.knockedOut());
+        assertTrue(step.goesThrough());
+        // Momentum after the joints let go is shared with the brick
+        final double afterJoints = Math.sqrt(v * v - 2.0 * 3.0e6 * 0.05 / mass);
+        assertEquals(afterJoints * mass / (mass + 2300.0), step.endSpeed(), 1e-9);
+        assertEquals(mass * (v - step.endSpeed()), step.impulse(), 1e-6);
+    }
+
+    @Test
     void reducedMassHandlesStaticTerrain() {
         assertEquals(400.0, ContactMechanics.reducedMass(400.0, Double.POSITIVE_INFINITY));
         assertEquals(400.0, ContactMechanics.reducedMass(Double.POSITIVE_INFINITY, 400.0));

@@ -5,6 +5,7 @@ import com.velocityspider.crashphysics.material.CrashMaterial;
 import com.velocityspider.crashphysics.material.CrashMaterials;
 import com.velocityspider.crashphysics.physics.ContactMechanics;
 import com.velocityspider.crashphysics.physics.MaterialProfile;
+import com.velocityspider.crashphysics.physics.PenetrationSolver;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.physics.mass.MassData;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
@@ -17,8 +18,10 @@ import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -55,6 +58,11 @@ final class ImpactCollector {
      */
     private static final double SKID_SPEED = 6.0;
 
+    /**
+     * How far the joints of a block being knocked out stretch before they let go [m]
+     */
+    static final double SHEAR_TRAVEL = 0.05;
+
     private static final MaterialProfile UNKNOWN = new MaterialProfile(2500.0, 2.0e7, 2.0e6, false);
 
     private final ServerLevel level;
@@ -64,6 +72,8 @@ final class ImpactCollector {
     private List<ContactRecord> records = new ArrayList<>();
     private Long2IntOpenHashMap bodyPairsPrevious = new Long2IntOpenHashMap();
     private Long2IntOpenHashMap bodyPairsCurrent = new Long2IntOpenHashMap();
+    private LongOpenHashSet heldPrevious = new LongOpenHashSet();
+    private LongOpenHashSet heldCurrent = new LongOpenHashSet();
     private final LongOpenHashSet skidPositions = new LongOpenHashSet();
     private final List<SkidMark> skids = new ArrayList<>();
 
@@ -124,6 +134,49 @@ final class ImpactCollector {
         this.bodyPairsPrevious = this.bodyPairsCurrent;
         this.bodyPairsCurrent = previous;
         this.bodyPairsCurrent.clear();
+
+        final LongOpenHashSet held = this.heldPrevious;
+        this.heldPrevious = this.heldCurrent;
+        this.heldCurrent = held;
+        this.heldCurrent.clear();
+    }
+
+    /**
+     * Remembers a contact the swept check dealt with before the step, so a callback for the same two blocks during the
+     * step reuses its verdict, and the load sharing counts it.
+     *
+     * @param held if the swept check left the vehicle to arrive at the obstacle and be stopped there by Rapier
+     */
+    synchronized void markHandled(final ContactRecord record, final boolean held) {
+        final long pairKey = pairKey(record.keyA, record.keyB);
+        this.pairs.put(pairKey, record);
+        this.bodyPairsCurrent.addTo(bodyPairKey(record.vehicleA, record.vehicleB), 1);
+        if (held) {
+            this.heldCurrent.add(pairKey);
+        }
+    }
+
+    /**
+     * @return if the swept check left this contact for Rapier to bring to rest during the previous sub-step
+     */
+    synchronized boolean wasHeld(final long keyA, final long keyB) {
+        return this.heldPrevious.contains(pairKey(keyA, keyB));
+    }
+
+    boolean active() {
+        return this.active;
+    }
+
+    double timeStep() {
+        return this.dt;
+    }
+
+    double minImpactSpeed() {
+        return this.minImpactSpeed;
+    }
+
+    double kgPerSableMass() {
+        return this.kgPerSableMass;
     }
 
     synchronized List<ContactRecord> drainRecords() {
@@ -174,6 +227,10 @@ final class ImpactCollector {
         final ContactRecord cached = this.pairs.get(pairKey);
         if (cached != null && cached.matches(selfKey, otherKey)) {
             return cached.passThrough;
+        }
+        if (this.heldPrevious.contains(pairKey)) {
+            // The swept check already crushed what this contact crushes; Rapier only has to bring it to rest
+            return false;
         }
 
         final ContactRecord record = this.evaluate(selfState, x, y, z, ox, oy, oz, ix, iy, iz, closingSpeed);
@@ -305,12 +362,47 @@ final class ImpactCollector {
         final long bodyPair = bodyPairKey(vehicleA, vehicleB);
         final int sharing = Math.max(1, Math.max(this.bodyPairsPrevious.get(bodyPair), this.bodyPairsCurrent.addTo(bodyPair, 1) + 1));
 
-        // Materials
-        final BlockState resolvedB = unknownB ? Blocks.STONE.defaultBlockState() : stateB;
+        motionA.contactThisSubstep = true;
+        if (motionB != null) {
+            motionB.contactThisSubstep = true;
+        }
+
+        // Terrain with nothing behind it can be knocked out (the normal points out of B, so A pushes it along -n)
+        double knockOutCapacity = Double.POSITIVE_INFINITY;
+        if (vehicleB == null && !unknownB) {
+            final int axis = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz) ? 0 : Math.abs(ny) >= Math.abs(nz) ? 1 : 2;
+            final double along = axis == 0 ? nx : axis == 1 ? ny : nz;
+            knockOutCapacity = this.knockOutCapacity(bx, by, bz, axis, along > 0.0 ? -1 : 1, stateB, null);
+        }
+
+        return this.assess(vehicleA, vehicleB, BlockPos.asLong(ax, ay, az), stateA, BlockPos.asLong(bx, by, bz),
+                unknownB ? Blocks.STONE.defaultBlockState() : stateB, unknownB,
+                px, py, pz, plotAx, plotAy, plotAz, plotBx, plotBy, plotBz, nx, ny, nz, vx, vy, vz, closingSpeed, effectiveMassKg,
+                effectiveMassKg / sharing, knockOutCapacity);
+    }
+
+    /**
+     * What a contact does to the two blocks over the sub-step: whether the weaker one yields, how far each is crushed,
+     * and whether the vehicle gets through.
+     *
+     * @param unknownB          if B couldn't be identified; it is then treated as rigid rock
+     * @param effectiveMassKg   reduced effective mass of the two bodies at the contact, along the normal [kg]
+     * @param shareMassKg       the part of that mass this contact has to stop, when several share the load [kg]
+     * @param knockOutCapacity  how hard B (terrain) can be pushed before it is knocked out whole, infinite if it is
+     *                          backed by solid ground [N]
+     */
+    ContactRecord assess(final ServerSubLevel vehicleA, @Nullable final ServerSubLevel vehicleB,
+                         final long keyA, final BlockState stateA, final long keyB, final BlockState stateB, final boolean unknownB,
+                         final double px, final double py, final double pz,
+                         final double plotAx, final double plotAy, final double plotAz,
+                         final double plotBx, final double plotBy, final double plotBz,
+                         final double nx, final double ny, final double nz,
+                         final double vx, final double vy, final double vz,
+                         final double closingSpeed, final double effectiveMassKg, final double shareMassKg, final double knockOutCapacity) {
         final CrashMaterial materialA = CrashMaterials.get(stateA);
-        final CrashMaterial materialB = CrashMaterials.get(resolvedB);
+        final CrashMaterial materialB = CrashMaterials.get(stateB);
         final MaterialProfile baseA = this.vehicleProfile(stateA, materialA);
-        final MaterialProfile baseB = unknownB ? UNKNOWN : vehicleB != null ? this.vehicleProfile(resolvedB, materialB) : this.terrainProfile(materialB);
+        final MaterialProfile baseB = unknownB ? UNKNOWN : vehicleB != null ? this.vehicleProfile(stateB, materialB) : this.terrainProfile(materialB);
 
         final boolean damageA = this.vehicleDamage && !baseA.unbreakable();
         final boolean damageB = !unknownB && !baseB.unbreakable() && (vehicleB != null ? this.vehicleDamage : this.worldDamage);
@@ -318,16 +410,23 @@ final class ImpactCollector {
         final MaterialProfile profileA = damageA ? baseA : asRigid(baseA);
         final MaterialProfile profileB = damageB ? baseB : asRigid(baseB);
 
-        final double shareMassKg = effectiveMassKg / sharing;
         final double weakerStrength = Math.min(profileA.effectiveStrength(), profileB.effectiveStrength());
         final boolean plastic = ContactMechanics.exceedsElasticLimit(shareMassKg, closingSpeed, weakerStrength, CONTACT_AREA, this.elasticTravel);
 
-        // Step the contact through the sub-step. Each block can only be crushed so far before it fails.
         ContactMechanics.Step step = ContactMechanics.Step.NONE;
-        if (plastic && this.state.canBreakMoreBlocks()) {
-            final long keyA = BlockPos.asLong(ax, ay, az);
-            final long keyB = BlockPos.asLong(bx, by, bz);
-            final double limitB = damageB ? this.remainingDepth(keyB, resolvedB) : Double.POSITIVE_INFINITY;
+
+        // A terrain block with nothing behind it is pushed out of place before it can be crushed, if the contact
+        // pushes harder than its joints to its neighbours hold
+        if (damageB && vehicleB == null && knockOutCapacity < Double.POSITIVE_INFINITY && this.state.canBreakMoreBlocks()) {
+            final PenetrationSolver.Interface iface = PenetrationSolver.solve(closingSpeed, profileA, profileB);
+            final double contactForce = iface.yielding() && Double.isFinite(iface.pressure()) ? iface.pressure() * CONTACT_AREA : Double.POSITIVE_INFINITY;
+            final double blockMassKg = profileB.density() * blockDepth(stateB);
+            step = ContactMechanics.knockOut(shareMassKg, closingSpeed, contactForce, knockOutCapacity, SHEAR_TRAVEL, blockMassKg);
+        }
+
+        // Otherwise step the contact through the sub-step. Each block can only be crushed so far before it fails.
+        if (step == ContactMechanics.Step.NONE && plastic && this.state.canBreakMoreBlocks()) {
+            final double limitB = damageB ? this.remainingDepth(keyB, stateB) : Double.POSITIVE_INFINITY;
             final double limitA = damageA ? this.remainingDepth(keyA, stateA) : Double.POSITIVE_INFINITY;
             step = ContactMechanics.integrate(profileA, profileB, CONTACT_AREA, this.dt, shareMassKg, closingSpeed, limitB, limitA);
         }
@@ -337,17 +436,53 @@ final class ImpactCollector {
         // block that is still there, and Rapier would then throw it back out.
         final boolean passThrough = step != ContactMechanics.Step.NONE && step.goesThrough();
 
-        motionA.contactThisSubstep = true;
-        if (motionB != null) {
-            motionB.contactThisSubstep = true;
-        }
-
         return new ContactRecord(
-                BlockPos.asLong(ax, ay, az), BlockPos.asLong(bx, by, bz), vehicleA, vehicleB,
-                stateA, resolvedB, materialA, materialB, profileA, profileB, damageA, damageB,
+                keyA, keyB, vehicleA, vehicleB,
+                stateA, stateB, materialA, materialB, profileA, profileB, damageA, damageB,
                 px, py, pz, plotAx, plotAy, plotAz, plotBx, plotBy, plotBz, nx, ny, nz, vx, vy, vz,
                 closingSpeed, effectiveMassKg, step, passThrough
         );
+    }
+
+    /**
+     * How hard a terrain block can be pushed along an axis before it is knocked out of place [N]. Infinite if solid
+     * ground is right behind it, since then it can only be crushed; otherwise what its joints to the blocks beside it
+     * can take.
+     *
+     * @param sign   the direction it is pushed in along the axis (+1 or -1)
+     * @param moving blocks being hit at the same time, which move with it rather than hold it in place
+     */
+    double knockOutCapacity(final int x, final int y, final int z, final int axis, final int sign, final BlockState state,
+                            @Nullable final LongSet moving) {
+        final MaterialProfile profile = this.terrainProfile(CrashMaterials.get(state));
+        if (profile.unbreakable()) {
+            return Double.POSITIVE_INFINITY;
+        }
+        final BlockState behind = this.terrainBlock(x + (axis == 0 ? sign : 0), y + (axis == 1 ? sign : 0), z + (axis == 2 ? sign : 0));
+        if (behind == null || isFullBlock(behind, this.level, this.mutablePos)) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        int joints = 0;
+        for (int side = 0; side < 4; side++) {
+            final int offset = side < 2 ? (side == 0 ? 1 : -1) : (side == 2 ? 1 : -1);
+            final int sideAxis = side < 2 ? (axis == 0 ? 1 : 0) : (axis == 2 ? 1 : 2);
+            final int nx = x + (sideAxis == 0 ? offset : 0);
+            final int ny = y + (sideAxis == 1 ? offset : 0);
+            final int nz = z + (sideAxis == 2 ? offset : 0);
+            if (moving != null && moving.contains(BlockPos.asLong(nx, ny, nz))) {
+                continue;
+            }
+            final BlockState neighbor = this.terrainBlock(nx, ny, nz);
+            if (neighbor != null && !neighbor.isAir() && !neighbor.getCollisionShape(this.level, this.mutablePos).isEmpty()) {
+                joints++;
+            }
+        }
+        return joints * profile.effectiveJointStrength() * CONTACT_AREA;
+    }
+
+    private static boolean isFullBlock(final BlockState state, final ServerLevel level, final BlockPos pos) {
+        return !state.isAir() && Block.isShapeFullBlock(state.getCollisionShape(level, pos));
     }
 
     /**
@@ -403,7 +538,7 @@ final class ImpactCollector {
         return dest.set(-vx, -vy, -vz).div(relativeSpeed);
     }
 
-    private double inverseNormalMass(final ServerSubLevel vehicle, final BodyMotion motion, final double plotX, final double plotY, final double plotZ,
+    double inverseNormalMass(final ServerSubLevel vehicle, final BodyMotion motion, final double plotX, final double plotY, final double plotZ,
                                      final double nx, final double ny, final double nz) {
         final MassData mass = vehicle.getMassTracker();
         if (mass == null || mass.isInvalid()) {
@@ -484,13 +619,13 @@ final class ImpactCollector {
         return chunk != null ? chunk.getBlockState(this.mutablePos.set(x, y, z)) : null;
     }
 
-    private static long pairKey(final long a, final long b) {
+    static long pairKey(final long a, final long b) {
         final long low = Math.min(a, b);
         final long high = Math.max(a, b);
         return HashCommon.mix(low) * 31L + HashCommon.mix(high);
     }
 
-    private static long bodyPairKey(final ServerSubLevel a, @Nullable final ServerSubLevel b) {
+    static long bodyPairKey(final ServerSubLevel a, @Nullable final ServerSubLevel b) {
         final long idA = a.getRuntimeId();
         final long idB = b != null ? b.getRuntimeId() : -1;
         return (Math.min(idA, idB) << 32) ^ (Math.max(idA, idB) & 0xFFFFFFFFL);

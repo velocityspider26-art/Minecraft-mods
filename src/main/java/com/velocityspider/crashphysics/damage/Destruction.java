@@ -63,8 +63,11 @@ public final class Destruction {
     private long vehicleBlocksBroken;
     private long jointsTorn;
 
+    /**
+     * @param knockedOut a terrain block knocked out whole; motion is then its velocity [m/s]
+     */
     private record Break(@Nullable ServerSubLevel vehicle, BlockPos pos, BlockState expected, CrashMaterial material,
-                         double motionX, double motionY, double motionZ, double penetrationSpeed, boolean pulverize) {
+                         double motionX, double motionY, double motionZ, double penetrationSpeed, boolean pulverize, boolean knockedOut) {
     }
 
     private record Volatile(double x, double y, double z, float power, boolean fire) {
@@ -105,7 +108,17 @@ public final class Destruction {
      */
     public void breakTerrain(final BlockPos pos, final BlockState expected, final CrashMaterial material,
                              final double motionX, final double motionY, final double motionZ, final double penetrationSpeed) {
-        this.queue.add(new Break(null, pos.immutable(), expected, material, motionX, motionY, motionZ, penetrationSpeed, false));
+        this.queue.add(new Break(null, pos.immutable(), expected, material, motionX, motionY, motionZ, penetrationSpeed, false, false));
+    }
+
+    /**
+     * Queues a terrain block that was knocked out whole, e.g. out of a wall: it flies off with the vehicle.
+     *
+     * @param velocityX velocity it is knocked out with [m/s]
+     */
+    public void knockOutTerrain(final BlockPos pos, final BlockState expected, final CrashMaterial material,
+                                final double velocityX, final double velocityY, final double velocityZ) {
+        this.queue.add(new Break(null, pos.immutable(), expected, material, velocityX, velocityY, velocityZ, 0.0, false, true));
     }
 
     /**
@@ -114,7 +127,7 @@ public final class Destruction {
      * @param pulverize if the block is destroyed outright instead of possibly flying off as wreckage
      */
     public void breakVehicleBlock(final ServerSubLevel vehicle, final BlockPos plotPos, final BlockState expected, final CrashMaterial material, final boolean pulverize) {
-        this.queue.add(new Break(vehicle, plotPos.immutable(), expected, material, 0.0, 0.0, 0.0, 0.0, pulverize));
+        this.queue.add(new Break(vehicle, plotPos.immutable(), expected, material, 0.0, 0.0, 0.0, 0.0, pulverize, false));
     }
 
     /**
@@ -171,7 +184,12 @@ public final class Destruction {
         final boolean throwIt = ejecta != null && CrashConfig.EJECTA.getAsBoolean() && entry.penetrationSpeed > 3.0
                 && this.flyingDebris < this.maxFlyingDebris && this.random.nextDouble() < CrashConfig.EJECTA_CHANCE.getAsDouble();
 
-        if (throwIt) {
+        if (entry.knockedOut && this.flyingDebris < this.maxFlyingDebris && !current.hasBlockEntity()) {
+            // The whole block flies off ahead of the vehicle
+            this.level.levelEvent(LevelEvent.PARTICLES_DESTROY_BLOCK, entry.pos, Block.getId(current));
+            this.level.setBlock(entry.pos, current.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
+            this.throwKnockedOut(current, x, y, z, entry.motionX, entry.motionY, entry.motionZ);
+        } else if (throwIt) {
             this.level.levelEvent(LevelEvent.PARTICLES_DESTROY_BLOCK, entry.pos, Block.getId(current));
             this.level.setBlock(entry.pos, current.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
             this.throwEjecta(entry, ejecta, x, y, z);
@@ -218,6 +236,31 @@ public final class Destruction {
 
         this.level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, current), world.x, world.y, world.z, 10, 0.35, 0.35, 0.35, 0.2);
         this.handleVolatile(current, entry.material, world.x, world.y, world.z);
+    }
+
+    private void throwKnockedOut(final BlockState state, final double x, final double y, final double z,
+                                 final double velocityX, final double velocityY, final double velocityZ) {
+        final Vector3d velocity = new Vector3d(velocityX, velocityY, velocityZ);
+        if (!velocity.isFinite()) {
+            velocity.zero();
+        }
+        // Not every block leaves at quite the same speed and angle
+        final double scatter = 0.08 * velocity.length() + 0.5;
+        velocity.add((this.random.nextDouble() - 0.5) * scatter, this.random.nextDouble() * scatter * 0.6, (this.random.nextDouble() - 0.5) * scatter);
+        if (velocity.length() > MAX_DEBRIS_SPEED) {
+            velocity.normalize(MAX_DEBRIS_SPEED);
+        }
+
+        // Start it just clear of the face it was pushed through, or it would land straight back on the block below
+        final double speed = velocity.length();
+        final double clear = speed > 0.1 ? 0.6 / speed : 0.0;
+        final FallingBlockEntity block = new FallingBlockEntity(this.level, x + velocity.x * clear, y - 0.5 + Math.max(0.0, velocity.y * clear) + 0.05,
+                z + velocity.z * clear, state);
+        block.dropItem = this.random.nextDouble() < CrashConfig.DROP_CHANCE.getAsDouble();
+        block.setHurtsEntities(1.0f, 20);
+        block.setDeltaMovement(velocity.x / 20.0, velocity.y / 20.0, velocity.z / 20.0);
+        this.level.addFreshEntity(block);
+        this.flyingDebris++;
     }
 
     private void throwEjecta(final Break entry, final BlockState ejecta, final double x, final double y, final double z) {

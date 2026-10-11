@@ -191,6 +191,63 @@ public final class CrashGameTests {
         });
     }
 
+    /**
+     * An iron ram flying at a one block thick brick wall from well away covers most of a block per physics step, which
+     * on its own Rapier would let it skip straight through. The wall has to stop it or break: at this speed the bricks
+     * in its way are knocked out and it carries on through the hole, slower.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_wall")
+    public static void fastRamBreaksThroughAThinWall(final GameTestHelper helper) {
+        scenario(helper, 7, 30, area -> {
+            area.fill(0, 0, 0, 31, GROUND_TOP, 15, Blocks.STONE.defaultBlockState());
+            area.fill(12, GROUND_TOP + 1, 5, 12, GROUND_TOP + 11, 10, Blocks.STONE_BRICKS.defaultBlockState());
+            final ServerSubLevel ram = area.assemble(area.fill(2, GROUND_TOP + 6, 7, 3, GROUND_TOP + 7, 8, Blocks.IRON_BLOCK.defaultBlockState()));
+            launch(ram, 35.0, 0.0, 0.0);
+            return new Run(Counters.of(area.level), ram);
+        }, (area, run) -> {
+            final long broken = Counters.of(area.level).terrain - run.before.terrain;
+            final double x = run.vehicle.logicalPose().position().x() - area.origin.getX();
+            final double speed = velocity(run.vehicle).x;
+            CrashPhysics.LOGGER.info("[gametest] thin wall: {} bricks knocked out, ram now at x = {} doing {} m/s", broken,
+                    String.format("%.1f", x), String.format("%.1f", speed));
+            helper.assertTrue(broken >= 4, "the ram should have knocked a hole in the wall, but only " + broken + " bricks went");
+            helper.assertTrue(x > 14.0, "the ram should be through the wall, but it is at x = " + x);
+            helper.assertTrue(speed > 5.0 && speed < 34.0, "the ram should carry on through, slowed by the wall, but it is doing " + speed + " m/s");
+        });
+    }
+
+    /**
+     * The same ram at a walking pace against a thick wall: nothing breaks, and it comes to rest against the wall
+     * instead of bouncing back off it.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_thick_wall")
+    public static void slowRamIsStoppedByAThickWall(final GameTestHelper helper) {
+        scenario(helper, 8, 40, area -> {
+            area.fill(0, 0, 0, 23, GROUND_TOP, 15, Blocks.STONE.defaultBlockState());
+            area.fill(12, GROUND_TOP + 1, 4, 14, GROUND_TOP + 8, 11, Blocks.STONE_BRICKS.defaultBlockState());
+            final ServerSubLevel ram = area.assemble(area.fill(8, GROUND_TOP + 1, 7, 9, GROUND_TOP + 2, 8, Blocks.IRON_BLOCK.defaultBlockState()));
+            launch(ram, 6.0, 0.0, 0.0);
+            return new Run(Counters.of(area.level), ram);
+        }, (area, run) -> {
+            final long broken = Counters.of(area.level).terrain - run.before.terrain;
+            final double x = run.vehicle.logicalPose().position().x() - area.origin.getX();
+            final double speed = velocity(run.vehicle).x;
+            CrashPhysics.LOGGER.info("[gametest] thick wall: {} bricks broken, ram at x = {} doing {} m/s", broken,
+                    String.format("%.2f", x), String.format("%.2f", speed));
+            helper.assertTrue(broken == 0, "a slow ram shouldn't break a thick wall, but " + broken + " bricks broke");
+            helper.assertTrue(x > 10.0 && x < 11.2, "the ram should rest against the wall, but it is at x = " + x);
+            helper.assertTrue(Math.abs(speed) < 1.0, "the ram should have stopped, but it is doing " + speed + " m/s");
+        });
+    }
+
+    private record Run(Counters before, ServerSubLevel vehicle) {
+    }
+
+    private static Vector3d velocity(final ServerSubLevel vehicle) {
+        final RigidBodyHandle handle = RigidBodyHandle.of(vehicle);
+        return handle != null ? handle.getLinearVelocity(new Vector3d()) : new Vector3d();
+    }
+
     private record Counters(long terrain, long vehicle, long torn) {
         static Counters of(final ServerLevel level) {
             final Destruction destruction = LevelCrashState.get(level).destruction();

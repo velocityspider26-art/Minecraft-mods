@@ -15,6 +15,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -40,11 +41,13 @@ public final class StructuralAnalyzer {
     private static final float EDGE_WEIGHT = 0.25f;
 
     /**
-     * Don't re-analyse the same vehicle every tick of a long crash
+     * Don't re-analyse the same vehicle every tick of a long crash, unless it is hit much harder than last time
      */
     private static final long COOLDOWN_TICKS = 4;
+    private static final double HARDER_HIT = 1.25;
 
     private static final Reference2LongOpenHashMap<ServerSubLevel> LAST_ANALYSIS = new Reference2LongOpenHashMap<>();
+    private static final Reference2DoubleOpenHashMap<ServerSubLevel> LAST_LOAD = new Reference2DoubleOpenHashMap<>();
 
     static {
         final List<int[]> offsets = new ArrayList<>();
@@ -74,16 +77,19 @@ public final class StructuralAnalyzer {
                                final Vector3dc linearAcceleration, final Vector3dc angularAcceleration, final Vector3dc angularVelocity,
                                final LongSet impactBlocks) {
         final long now = state.tick();
+        final double load = linearAcceleration.length() + angularAcceleration.length();
         synchronized (LAST_ANALYSIS) {
             if (LAST_ANALYSIS.containsKey(vehicle)) {
                 final long last = LAST_ANALYSIS.getLong(vehicle);
-                if (now >= last && now - last < COOLDOWN_TICKS) {
+                if (now >= last && now - last < COOLDOWN_TICKS && load < LAST_LOAD.getDouble(vehicle) * HARDER_HIT) {
                     return;
                 }
             }
             LAST_ANALYSIS.put(vehicle, now);
+            LAST_LOAD.put(vehicle, load);
             if (LAST_ANALYSIS.size() > 256) {
                 LAST_ANALYSIS.reference2LongEntrySet().removeIf(entry -> entry.getKey().isRemoved());
+                LAST_LOAD.reference2DoubleEntrySet().removeIf(entry -> entry.getKey().isRemoved());
             }
         }
 
