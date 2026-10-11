@@ -16,9 +16,10 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
  * Hooks crash physics into Sable's physics loop and the game tick.
  * <pre>
  * every game tick, for each physics sub-step:
- *     pre-physics   sample every vehicle's velocity and pose
+ *     pre-physics   sample every vehicle's velocity and pose, then sweep fast vehicles against the terrain and
+ *                   deal with what they are about to hit ({@link SweptImpacts})
  *     Rapier step   collision callbacks decide which contacts are crushing material ({@link ImpactCollector})
- *     post-physics  apply resisting forces, damage, debris ({@link ImpactResolver})
+ *     post-physics  apply resisting forces, damage, debris ({@link ImpactResolver}); measure decelerations
  * end of tick:      crew g-forces, structural failure, collapses, explosions, sounds
  * </pre>
  */
