@@ -79,10 +79,19 @@ neoForge {
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Visual check: ./gradlew runClient -Pdemo joins the dev server straight away
+            if (project.hasProperty('demo')) {
+                programArguments.addAll '--quickPlayMultiplayer', 'localhost:25565', '--width', '1280', '--height', '720'
+            }
         }
 
         server {
             server()
+            // Visual check: ./gradlew runServer -Pdemo lets the scenarios be started with /test run
+            if (project.hasProperty('demo')) {
+                systemProperty 'neoforge.enableGameTest', 'true'
+                systemProperty 'crashphysics.demo', 'true'
+            }
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }

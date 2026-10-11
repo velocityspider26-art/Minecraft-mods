@@ -5,6 +5,7 @@ import com.velocityspider.crashphysics.config.CrashClientConfig;
 import com.velocityspider.crashphysics.config.CrashConfig;
 import com.velocityspider.crashphysics.material.MaterialDataLoader;
 import com.velocityspider.crashphysics.network.CameraShakePayload;
+import com.velocityspider.crashphysics.network.CrashFxPayload;
 import com.velocityspider.crashphysics.sable.CrashTickHandler;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
@@ -36,8 +37,10 @@ public class CrashPhysics {
     }
 
     private static void registerPayloads(final RegisterPayloadHandlersEvent event) {
-        // Optional, so vanilla clients and clients without the mod can still join; they just don't get camera shake
-        event.registrar("1").optional().playToClient(CameraShakePayload.TYPE, CameraShakePayload.STREAM_CODEC, CameraShakePayload::handle);
+        // Optional, so vanilla clients and clients without the mod can still join; they get plain particles and no camera shake
+        event.registrar("1").optional()
+                .playToClient(CameraShakePayload.TYPE, CameraShakePayload.STREAM_CODEC, CameraShakePayload::handle)
+                .playToClient(CrashFxPayload.TYPE, CrashFxPayload.STREAM_CODEC, CrashFxPayload::handle);
     }
 
     private static void addReloadListeners(final AddReloadListenerEvent event) {

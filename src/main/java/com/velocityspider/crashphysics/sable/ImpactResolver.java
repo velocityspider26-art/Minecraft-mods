@@ -79,7 +79,8 @@ final class ImpactResolver {
         if (!record.crushing) {
             // Hard, but nothing gave way: Rapier stops it. Still worth a sound.
             final double energy = ContactMechanics.kineticEnergy(record.effectiveMassKg, record.closingSpeed);
-            this.state.effects().recordImpact(record.vehicleA, record.px, record.py, record.pz, energy * 0.5, record.materialA.fracture(), record.materialB.fracture(), record.stateB);
+            this.state.effects().recordImpact(record.vehicleA, record.px, record.py, record.pz, energy * 0.5, record.materialA.fracture(), record.materialB.fracture(), record.stateB,
+                record.vx, record.vy, record.vz);
             return;
         }
 
@@ -87,7 +88,8 @@ final class ImpactResolver {
             this.applyResistance(system, record, step);
         }
 
-        this.state.effects().recordImpact(record.vehicleA, record.px, record.py, record.pz, step.dissipatedEnergy(), record.materialA.fracture(), record.materialB.fracture(), record.stateB);
+        this.state.effects().recordImpact(record.vehicleA, record.px, record.py, record.pz, step.dissipatedEnergy(), record.materialA.fracture(), record.materialB.fracture(), record.stateB,
+                record.vx, record.vy, record.vz);
 
         if (CrashConfig.DEBUG_LOGGING.getAsBoolean()) {
             CrashPhysics.LOGGER.info("Impact{} {} -> {} at {} m/s: {} kJ, crushed {} m into B and {} m of A, {}",

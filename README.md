@@ -18,6 +18,9 @@ ram punches through a wall and carries on, and loads that are too big tear vehic
   splashdown does nothing. Under water, every leading face is slowed by drag, ½·ρ·Cd·A·v², so sinking wreckage
   reaches a realistic terminal speed. Lava works the same way at three times the density. Floating itself is
   Sable's buoyancy.
+- **Waves.** The water surface moves. A splash sends out rings, a ship pushes up a bow wave and drags a V-shaped wake
+  with foam behind it, and boats, swimmers and anything falling in leave ripples. Waves travel at about 2 m/s,
+  bounce off shores and walls, and die out over a few seconds.
 - **Crumpling.** Whichever side is weaker gives way. A wooden hull hitting stone is crushed while the stone stays;
   a steel ram drives into soft ground without a scratch. Blocks crack first, and break once crushed far enough.
 - **Breaking through.** A block with open air behind it (a house wall, a post, a tree trunk) is held only by its
@@ -33,8 +36,19 @@ ram punches through a wall and carries on, and loads that are too big tear vehic
 - **Wreckage.** Broken vehicle blocks fly off with the vehicle's momentum, or are pulverised at high speed.
 - **Crew.** Riders take damage from g-forces. Seated riders survive about 25 g, people standing loose about 10 g.
   Loose riders keep going when the vehicle stops.
-- **Effects.** Material-appropriate impact sounds, dust and debris particles, camera shake for nearby players, skid
-  marks in grass and snow. Destroyed burners and engines can explode or start fires.
+- **Effects.**
+  - Impact sounds that match the materials, heard as late as sound would take to arrive (343 m/s). A big crash far
+    away is a distant boom a second or two after you see it.
+  - Metal hitting stone or metal throws white-hot sparks and glowing fragments.
+  - A hard landing on soil sends a ring of dust rolling out from under the whole vehicle, clods flying, and a dust
+    cloud rising.
+  - Wrecks from big crashes smoulder: smoke rises from them for up to 45 seconds, with a tall column you can see from
+    far away.
+  - Hitting water throws up a crown of droplets, and a column of spray with mist over it if the hit is big.
+  - Ships moving through water throw spray off the bow; vehicles sinking or moving under water trail bubbles.
+  - Camera shake for nearby players, skid marks in grass and snow. Destroyed burners and engines can explode or
+    start fires.
+  - Small bumps stay quiet: smoke, sparks and booms need a real impact speed, not just a heavy vehicle.
 
 ## How it works
 
@@ -60,12 +74,29 @@ default).
 
 ## Performance
 
-- A vehicle flying with nothing but air around it costs almost nothing: the pre-step sweep first checks whether the
-  space it is moving through holds anything at all, a whole chunk section at a time.
-- Each vehicle's block layout is gathered once, skipping empty chunk sections, and then updated block by block as
-  crashes break pieces off, rather than rescanned.
-- Soil is moved as blocks, not thrown as entities, except in very fast impacts.
-- Velocities are only read back after a physics step for vehicles that actually hit something.
+Measured with a 1,300 block wooden ship (`./gradlew runGameTestServer -Pbench`):
+
+| Situation | Crash physics per tick |
+|---|---|
+| Flying low and fast over the ground | 0.1 ms |
+| Cruising through water | 0.4 ms |
+| Sitting on the ground, engines running | under 0.1 ms (Sable's own physics is about 3 ms) |
+| Crashing into a field and breaking up | about 1.5 ms on average, at most about 25 ms in the worst tick |
+
+How:
+
+- A vehicle flying with nothing but air around it costs almost nothing. The pre-step sweep first checks the world's
+  heightmap: a vehicle, or any single block of it, that is above everything it could reach in the next step is skipped.
+- Only the outermost blocks facing the way a vehicle moves are swept for hits or feel water drag. The inside of a hull
+  doesn't. Blocks too slow to tunnel through anything are left to Rapier.
+- Each vehicle's shape is gathered once and then kept up to date from Sable's block change events, so even huge ships
+  are never rescanned.
+- Breaking blocks has a time budget per tick (15 ms by default). What doesn't fit carries over to the next tick.
+  Blocks that gave way but haven't been removed yet already count as gone for the physics, so the crash plays out the
+  same either way.
+- Flying debris is capped (96 pieces in the air at once by default), and loose sections are found with a short search
+  that goes downwards first.
+- Waves are simulated only where something disturbed the water, near the player, and only on clients.
 
 ## Requirements
 
@@ -88,10 +119,12 @@ Server settings are in `crashphysics-server.toml` (per world, under `serverconfi
 | physics | `elasticTravel` | 0.02 m | Flex before crushing starts (higher = more forgiving landings) |
 | physics | `breakDepth` | 0.35 | Fraction of a block that must be crushed before it breaks |
 | physics | `plowFriction` | 0.6 | Friction while ploughing through material |
-| structure | `structuralFailure` / `structuralMinG` / `maxStructuralBlocks` | true / 5 g / 8000 | Tearing vehicles apart under crash loads |
+| structure | `structuralFailure` / `structuralMinG` / `maxStructuralBlocks` | true / 8 g / 8000 | Tearing vehicles apart under crash loads |
+| structure | `structureResponseTime` | 0.08 s | Time over which crash accelerations are averaged before loading the structure (higher = sturdier) |
 | crew | `crewInjury`, `seatedToleranceG`, `standingToleranceG`, `crewDamageScale`, `throwLooseCrew` | true, 25, 10, 8, true | G-force injuries |
 | debris | `ejecta`, `ejectaChance`, `ejectaSpeedFactor` | true, 0.55, 0.35 | Material thrown out of craters |
-| debris | `maxFlyingDebrisPerTick`, `vehicleDebrisChance`, `dropChance` | 48, 0.4, 0.2 | Wreckage and drops |
+| debris | `maxFlyingDebrisPerTick`, `vehicleDebrisChance`, `dropChance` | 24, 0.4, 0.2 | Wreckage and drops |
+| debris | `maxLiveDebris` | 96 | Most falling-block debris in the air at once; past this, broken blocks just shatter |
 | debris | `collapse` / `maxCollapseBlocks` | true / 800 | Loose sections falling down |
 | debris | `displaceSoil` | true | Dug-out soil is shoved into rims and berms instead of disappearing |
 | debris | `slumping` | true | Loose crater and trench walls slump to a stable slope |
@@ -100,10 +133,23 @@ Server settings are in `crashphysics-server.toml` (per world, under `serverconfi
 | water | `dragCoefficient` | 1.0 | Drag coefficient of a block face in a liquid |
 | effects | `skidMarks`, `fireAndExplosions`, `soundVolume`, `cameraShake` | true, true, 1.0, true | Effects |
 | limits | `maxBlocksBrokenPerTick` | 600 | Destruction budget per tick per dimension |
+| limits | `maxBreakingMillisPerTick` | 15 ms | Time crashes may spend breaking blocks per tick per dimension |
 | limits | `damageMemorySeconds` | 90 | How long cracks are remembered |
 | limits | `debugLogging` | false | Logs every damaging impact |
 
-Clients can turn camera shake off or scale it in `crashphysics-client.toml`.
+Each player can adjust the effects in `crashphysics-client.toml`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `cameraShake` / `cameraShakeStrength` | true / 1.0 | Camera shake from nearby crashes |
+| `waterWaves` | true | Waves on water surfaces |
+| `waveRange` | 96 | How far from you waves are simulated and drawn [blocks] |
+| `waveStrength` | 1.0 | Wave height multiplier |
+| `particleAmount` | 1.0 | Multiplier for sparks, spray, dust and smoke |
+| `soundDelay` | true | Far-away crashes are heard late, as sound travels at 343 m/s |
+
+Players without the mod installed can still join a server running it. They get plain particles and sounds, but no
+waves, smoke, delayed sound or camera shake.
 
 ## Materials (datapacks)
 
@@ -154,7 +200,10 @@ Create blocks. Every field except `selector` is optional:
   land as blocks and stay where they land.
 - Vehicles larger than about 200,000 blocks of plot volume skip the structural check and the pre-step sweep, for
   performance.
-- Camera shake and crew injuries are implemented but have only been tested without a client.
+- Waves are drawn as a layer over Minecraft's own water rather than by reshaping it. Crests rise above the surface,
+  while troughs are shown by shading because the vanilla surface would hide them. Shader packs may draw this layer
+  differently.
+- Crew injuries have only been tested without a client.
 
 ## Development
 
@@ -168,9 +217,13 @@ Create blocks. Every field except `selector` is optional:
   - an iron ram punches through a plank wall;
   - a sled leaves tracks in grass;
   - ramming a tower brings its top down;
-  - a fast ram breaks through a thin brick wall from a distance;
+  - a fast ram breaks through a thin brick wall from a distance and flies on through the hole;
   - a slow ram stops dead against a thick wall;
   - a shallow crash ploughs a trench with berms;
   - a fast plunge into water smashes a wooden hull;
-  - a slow splashdown is harmless and the hull floats.
+  - a slow splashdown is harmless and the hull floats;
+  - a drone with wool wings set down from one block up is unharmed;
+  - the same drone slamming into rock at 35 m/s is wrecked.
+- `./gradlew runGameTestServer -Pbench` runs the performance benchmarks instead and logs where the time goes;
+  `-Pjfr=<file>` adds a Java Flight Recorder profile.
 - `./gradlew build` produces `build/libs/crashphysics-<version>.jar`.

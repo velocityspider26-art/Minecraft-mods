@@ -575,18 +575,19 @@ final class SweptImpacts {
             }
 
             // Under water (or lava), its front faces push the liquid aside
-            if (drag) {
-                final double frontX = c.x + v.x / speed * 0.45;
-                final double frontY = c.y + v.y / speed * 0.45;
-                final double frontZ = c.z + v.z / speed * 0.45;
-                final BlockState around = this.terrainAt(this.cursor.set(Mth.floor(frontX), Mth.floor(frontY), Mth.floor(frontZ)));
-                if (around != null && !around.getFluidState().isEmpty()) {
+            final double frontX = c.x + v.x / speed * 0.45;
+            final double frontY = c.y + v.y / speed * 0.45;
+            final double frontZ = c.z + v.z / speed * 0.45;
+            final BlockState around = this.terrainAt(this.cursor.set(Mth.floor(frontX), Mth.floor(frontY), Mth.floor(frontZ)));
+            if (around != null && !around.getFluidState().isEmpty()) {
+                if (drag) {
                     final double density = around.getFluidState().is(FluidTags.LAVA) ? 3100.0 : 1000.0;
                     final double force = 0.5 * density * dragCoefficient * frontArea * speed * speed;
                     this.dragForce.sub(v.x / speed * force, v.y / speed * force, v.z / speed * force);
                     this.dragPoint.add(c.x * force, c.y * force, c.z * force);
                     this.dragWeight += force;
                 }
+                this.waterEffects(motion.subLevel, around, frontX, frontY, frontZ, v);
             }
 
             // Slower than this Rapier's own contacts catch everything
@@ -598,6 +599,22 @@ final class SweptImpacts {
             }
 
             this.sweepBlock(block, c.x, c.y, c.z, extentX, extentY, extentZ, dx, dy, dz, dt, minSpeed);
+        }
+    }
+
+    /**
+     * A leading face moving through water: at the surface it makes a wake, deeper down it trails bubbles.
+     */
+    private void waterEffects(final ServerSubLevel vehicle, final BlockState around, final double x, final double y, final double z, final Vector3d v) {
+        final double horizontal = Math.sqrt(v.x * v.x + v.z * v.z);
+        final BlockState above = this.terrainAt(this.neighbor.set(Mth.floor(x), Mth.floor(y) + 1, Mth.floor(z)));
+        if (above == null || above.getFluidState().isEmpty()) {
+            if (horizontal > 0.8 || Math.abs(v.y) > 1.5) {
+                final double surface = Mth.floor(y) + around.getFluidState().getOwnHeight();
+                this.state.effects().wake(vehicle, x, surface, z, v.x, v.z, 1.0);
+            }
+        } else if (v.length() > 1.5 && this.state.tick() % 4 == 0) {
+            this.state.effects().bubbles(vehicle, x, y, z, 2);
         }
     }
 

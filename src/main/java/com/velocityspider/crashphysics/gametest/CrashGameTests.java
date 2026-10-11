@@ -52,6 +52,11 @@ public final class CrashGameTests {
      * Profiling runs ({@code ./gradlew runGameTestServer -Pbench}) only run the benchmarks, normal runs skip them
      */
     private static final boolean BENCH = Boolean.getBoolean("crashphysics.bench");
+
+    /**
+     * Started by hand with /test run on a dev server, to watch: every scenario runs
+     */
+    private static final boolean DEMO = Boolean.getBoolean("crashphysics.demo");
     private static final Vector3d NO_THRUST = new Vector3d();
 
     private CrashGameTests() {
@@ -447,7 +452,7 @@ public final class CrashGameTests {
      */
     private static void benchmark(final GameTestHelper helper, final int index, final String label, final int warmupTicks, final int measureTicks,
                                   @Nullable final Vector3d cruise, final Function<Area, ServerSubLevel> setup) {
-        if (!BENCH) {
+        if (!BENCH && !DEMO) {
             helper.succeed();
             return;
         }
@@ -527,7 +532,7 @@ public final class CrashGameTests {
      */
     private static <T> void scenario(final GameTestHelper helper, final int index, final int runTicks,
                                      final Function<Area, T> setup, final BiConsumer<Area, T> check) {
-        if (BENCH) {
+        if (BENCH && !DEMO) {
             helper.succeed();
             return;
         }
