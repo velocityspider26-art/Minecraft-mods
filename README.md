@@ -7,9 +7,17 @@ ram punches through a wall and carries on, and loads that are too big tear vehic
 ## What happens in a crash
 
 - **Craters and trenches.** Hitting the ground fast enough crushes it. How deep depends on speed, angle, the vehicle's
-  mass, and what the ground is made of: soft dirt and sand give way easily, rock barely marks. A steep dive digs a
-  crater; a shallow slide digs a long trench and throws a bow wave of dirt ahead of it. Dug-out material is thrown out
-  as falling blocks and builds a rim. Crater floors turn to coarse dirt, and grass and snow on top are crushed.
+  mass, and what the ground is made of: soft dirt and sand give way easily, rock barely marks. Soil isn't deleted,
+  it's shoved out of the way. A dive pushes it out all round into a raised rim; a shallow slide ploughs a trench with a
+  bow wave ahead and berms along both sides. Very fast impacts also blast some of it out as flying debris. Afterwards
+  the loose walls slump until they are no steeper than soil can stand, so craters settle into bowls over a few
+  seconds. Crater floors turn to coarse dirt, and grass and snow on top are crushed.
+- **Water.** Water has no strength, only inertia, so hitting it fast is like hitting a wall. Slamming flat into the
+  surface puts a short pressure peak on the hull, several times ½ρv². Above a block's strength it cracks, and at twice
+  its strength it shatters: wooden hulls break up above roughly 45 m/s, and metal holds to over 100 m/s. A gentle
+  splashdown does nothing. Under water, every leading face is slowed by drag, ½·ρ·Cd·A·v², so sinking wreckage
+  reaches a realistic terminal speed. Lava works the same way at three times the density. Floating itself is
+  Sable's buoyancy.
 - **Crumpling.** Whichever side is weaker gives way. A wooden hull hitting stone is crushed while the stone stays;
   a steel ram drives into soft ground without a scratch. Blocks crack first, and break once crushed far enough.
 - **Breaking through.** A block with open air behind it (a house wall, a post, a tree trunk) is held only by its
@@ -50,6 +58,15 @@ sweep. Each contact is solved with a physical model rather than hit points:
 Everything uses SI units. Block masses come from Sable (planks 500 kg, stone 2 t, metal blocks 4 t per block by
 default).
 
+## Performance
+
+- A vehicle flying with nothing but air around it costs almost nothing: the pre-step sweep first checks whether the
+  space it is moving through holds anything at all, a whole chunk section at a time.
+- Each vehicle's block layout is gathered once, skipping empty chunk sections, and then updated block by block as
+  crashes break pieces off, rather than rescanned.
+- Soil is moved as blocks, not thrown as entities, except in very fast impacts.
+- Velocities are only read back after a physics step for vehicles that actually hit something.
+
 ## Requirements
 
 - Minecraft 1.21.1, NeoForge 21.1.228 or newer
@@ -76,6 +93,11 @@ Server settings are in `crashphysics-server.toml` (per world, under `serverconfi
 | debris | `ejecta`, `ejectaChance`, `ejectaSpeedFactor` | true, 0.55, 0.35 | Material thrown out of craters |
 | debris | `maxFlyingDebrisPerTick`, `vehicleDebrisChance`, `dropChance` | 48, 0.4, 0.2 | Wreckage and drops |
 | debris | `collapse` / `maxCollapseBlocks` | true / 800 | Loose sections falling down |
+| debris | `displaceSoil` | true | Dug-out soil is shoved into rims and berms instead of disappearing |
+| debris | `slumping` | true | Loose crater and trench walls slump to a stable slope |
+| water | `waterImpacts` | true | Hitting water or lava fast is a real impact (hull damage, braking) |
+| water | `waterDrag` | true | Vehicles moving through water or lava are slowed by it |
+| water | `dragCoefficient` | 1.0 | Drag coefficient of a block face in a liquid |
 | effects | `skidMarks`, `fireAndExplosions`, `soundVolume`, `cameraShake` | true, true, 1.0, true | Effects |
 | limits | `maxBlocksBrokenPerTick` | 600 | Destruction budget per tick per dimension |
 | limits | `damageMemorySeconds` | 90 | How long cracks are remembered |
@@ -139,7 +161,7 @@ Create blocks. Every field except `selector` is optional:
 - `./gradlew test` runs the unit tests of the physics core (penetration, contact stepping, knock-outs, structural
   solver, crew loads, ejecta).
 - `./gradlew runGameTestServer` runs in-game tests against the real Sable engine on a fresh world each time:
-  - a dive into dirt digs a crater;
+  - a dive into dirt digs a crater with a rim, and conserves the soil;
   - a dive into stone crumples the hull;
   - a gentle landing does nothing;
   - a hard impact tears an overhanging arm off;
@@ -147,5 +169,8 @@ Create blocks. Every field except `selector` is optional:
   - a sled leaves tracks in grass;
   - ramming a tower brings its top down;
   - a fast ram breaks through a thin brick wall from a distance;
-  - a slow ram stops dead against a thick wall.
+  - a slow ram stops dead against a thick wall;
+  - a shallow crash ploughs a trench with berms;
+  - a fast plunge into water smashes a wooden hull;
+  - a slow splashdown is harmless and the hull floats.
 - `./gradlew build` produces `build/libs/crashphysics-<version>.jar`.

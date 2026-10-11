@@ -14,6 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.level.Level;
@@ -47,11 +48,15 @@ public final class Destruction {
     private final BlockDamageTracker damage;
     private final CrashEffects effects;
     private final CollapseHandler collapse;
+    private final SoilMover soil;
     private final RandomSource random = RandomSource.create();
     private final RandomGenerator ejectaRandom = new java.util.SplittableRandom();
 
     private final ArrayDeque<Break> queue = new ArrayDeque<>();
     private final List<Volatile> volatiles = new ArrayList<>();
+
+    @Nullable
+    private java.util.function.BiConsumer<ServerSubLevel, BlockPos> vehicleBlockRemoved;
 
     private int blocksBroken;
     private int flyingDebris;
@@ -79,11 +84,20 @@ public final class Destruction {
     public record Skid(BlockPos pos, BlockState state, BlockState into, double speed) {
     }
 
-    public Destruction(final ServerLevel level, final BlockDamageTracker damage, final CrashEffects effects, final CollapseHandler collapse) {
+    public Destruction(final ServerLevel level, final BlockDamageTracker damage, final CrashEffects effects, final CollapseHandler collapse,
+                       final SoilMover soil) {
         this.level = level;
         this.damage = damage;
         this.effects = effects;
         this.collapse = collapse;
+        this.soil = soil;
+    }
+
+    /**
+     * Gets told about every vehicle block crash damage removes.
+     */
+    public void onVehicleBlockRemoved(final java.util.function.BiConsumer<ServerSubLevel, BlockPos> listener) {
+        this.vehicleBlockRemoved = listener;
     }
 
     public void beginTick() {
@@ -184,7 +198,25 @@ public final class Destruction {
         final boolean throwIt = ejecta != null && CrashConfig.EJECTA.getAsBoolean() && entry.penetrationSpeed > 3.0
                 && this.flyingDebris < this.maxFlyingDebris && this.random.nextDouble() < CrashConfig.EJECTA_CHANCE.getAsDouble();
 
-        if (entry.knockedOut && this.flyingDebris < this.maxFlyingDebris && !current.hasBlockEntity()) {
+        final boolean granular = entry.material.fracture() == FractureMode.GRANULAR && !current.hasBlockEntity();
+        if (granular && !entry.knockedOut && CrashConfig.DISPLACE_SOIL.getAsBoolean()) {
+            // Soil is shoved aside, not destroyed: fast impacts throw some of it, the rest builds the rim or berms
+            this.level.levelEvent(LevelEvent.PARTICLES_DESTROY_BLOCK, entry.pos, Block.getId(current));
+            this.level.setBlock(entry.pos, current.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
+            final BlockState displaced = ejecta != null ? ejecta : current;
+            this.soil.markDug(entry.pos);
+            // Slower impacts bulldoze soil aside; only fast ones blast it out ballistically
+            final double throwChance = CrashConfig.EJECTA.getAsBoolean()
+                    ? CrashConfig.EJECTA_CHANCE.getAsDouble() * Mth.clamp((entry.penetrationSpeed - 15.0) / 40.0, 0.0, 1.0) : 0.0;
+            if (this.flyingDebris < this.maxFlyingDebris && this.random.nextDouble() < throwChance) {
+                this.throwEjecta(entry, displaced, x, y, z);
+            } else if (!this.soil.compacts() && !this.soil.displace(entry.pos, displaced, entry.motionX, entry.motionY, entry.motionZ)
+                    && CrashConfig.EJECTA.getAsBoolean() && this.flyingDebris < this.maxFlyingDebris) {
+                // Nowhere to put it next to the hole: it gets thrown clear instead
+                this.throwEjecta(entry, displaced, x, y, z);
+            }
+            this.soil.seed(entry.pos);
+        } else if (entry.knockedOut && this.flyingDebris < this.maxFlyingDebris && !current.hasBlockEntity()) {
             // The whole block flies off ahead of the vehicle
             this.level.levelEvent(LevelEvent.PARTICLES_DESTROY_BLOCK, entry.pos, Block.getId(current));
             this.level.setBlock(entry.pos, current.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
@@ -236,6 +268,9 @@ public final class Destruction {
 
         this.level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, current), world.x, world.y, world.z, 10, 0.35, 0.35, 0.35, 0.2);
         this.handleVolatile(current, entry.material, world.x, world.y, world.z);
+        if (this.vehicleBlockRemoved != null) {
+            this.vehicleBlockRemoved.accept(vehicle, entry.pos);
+        }
     }
 
     private void throwKnockedOut(final BlockState state, final double x, final double y, final double z,

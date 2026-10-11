@@ -55,18 +55,26 @@ public final class CrashGameTests {
     @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_dirt")
     public static void diveIntoDirtDigsACrater(final GameTestHelper helper) {
         scenario(helper, 0, 120, area -> {
-            area.fill(0, 0, 0, 15, GROUND_TOP, 15, Blocks.DIRT.defaultBlockState());
-            final ServerSubLevel vehicle = area.assemble(area.fill(6, 16, 6, 8, 18, 8, Blocks.OAK_PLANKS.defaultBlockState()));
+            area.fill(0, 0, 0, 31, GROUND_TOP, 31, Blocks.DIRT.defaultBlockState());
+            final ServerSubLevel vehicle = area.assemble(area.fill(14, 16, 14, 16, 18, 16, Blocks.OAK_PLANKS.defaultBlockState()));
             launch(vehicle, 0.0, -30.0, 0.0);
-            return Counters.of(area.level);
-        }, (area, before) -> {
+            return new SoilRun(Counters.of(area.level), area.countSolid(0, 31, 0, GROUND_TOP + 6, 0, 31));
+        }, (area, run) -> {
             final Counters after = Counters.of(area.level);
-            final long dug = after.terrain - before.terrain;
-            final long hull = after.vehicle - before.vehicle;
-            CrashPhysics.LOGGER.info("[gametest] dirt dive: {} ground blocks dug out, {} hull blocks lost", dug, hull);
+            final long dug = after.terrain - run.before.terrain;
+            final long hull = after.vehicle - run.before.vehicle;
+            final int rim = area.countAbove(0, 31, 0, 31, GROUND_TOP);
+            final int lost = run.soil - area.countSolid(0, 31, 0, GROUND_TOP + 6, 0, 31);
+            CrashPhysics.LOGGER.info("[gametest] dirt dive: {} ground blocks dug out, {} hull blocks lost, {} piled up into a rim, {} gone for good",
+                    dug, hull, rim, lost);
             helper.assertTrue(dug >= 4, "expected a crater, but only " + dug + " ground blocks were broken");
             helper.assertTrue(hull <= 4, "planks are stronger than dirt, but " + hull + " hull blocks broke");
+            helper.assertTrue(rim >= 2, "the dug-out soil should pile up into a rim, but only " + rim + " blocks did");
+            helper.assertTrue(lost * 2 <= dug, "soil should be shoved aside, not destroyed, but " + lost + " of " + dug + " blocks vanished");
         });
+    }
+
+    private record SoilRun(Counters before, int soil) {
     }
 
     /**
@@ -240,6 +248,69 @@ public final class CrashGameTests {
         });
     }
 
+    /**
+     * Coming in shallow, a heavy vehicle ploughs a trench and shoves the soil out into berms along both sides.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_trench")
+    public static void shallowCrashPloughsATrench(final GameTestHelper helper) {
+        scenario(helper, 9, 80, area -> {
+            area.fill(0, 0, 0, 47, GROUND_TOP, 15, Blocks.DIRT.defaultBlockState());
+            // A heavy iron sled, 72 t, coming in at about 15 degrees
+            final ServerSubLevel vehicle = area.assemble(area.fill(2, GROUND_TOP + 3, 6, 4, GROUND_TOP + 4, 8, Blocks.IRON_BLOCK.defaultBlockState()));
+            launch(vehicle, 30.0, -8.0, 0.0);
+            return new SoilRun(Counters.of(area.level), area.countSolid(0, 47, 0, GROUND_TOP + 6, 0, 15));
+        }, (area, run) -> {
+            final long dug = Counters.of(area.level).terrain - run.before.terrain;
+            final int berms = area.countAbove(0, 47, 0, 15, GROUND_TOP);
+            final int lost = run.soil - area.countSolid(0, 47, 0, GROUND_TOP + 6, 0, 15);
+            CrashPhysics.LOGGER.info("[gametest] trench: {} ground blocks dug out, {} shoved up alongside, {} gone for good", dug, berms, lost);
+            helper.assertTrue(dug >= 3, "a shallow crash into dirt should plough a trench, but only " + dug + " blocks were dug");
+            helper.assertTrue(berms >= 2, "the ploughed soil should be shoved up beside the trench, but only " + berms + " blocks were");
+            helper.assertTrue(lost * 2 <= dug, "soil should be shoved aside, not destroyed, but " + lost + " of " + dug + " blocks vanished");
+        });
+    }
+
+    /**
+     * Water has no strength, only inertia: hit at speed it has to be shoved aside so fast that it hits like a wall.
+     * A wooden hull plunging in at 65 m/s is smashed and brought up short.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_water_fast")
+    public static void fastPlungeIntoWaterWrecksTheHull(final GameTestHelper helper) {
+        scenario(helper, 10, 30, area -> {
+            area.pool();
+            final ServerSubLevel vehicle = area.assemble(area.fill(6, 14, 6, 8, 16, 8, Blocks.OAK_PLANKS.defaultBlockState()));
+            launch(vehicle, 0.0, -65.0, 0.0);
+            return new Run(Counters.of(area.level), vehicle);
+        }, (area, run) -> {
+            final long hull = Counters.of(area.level).vehicle - run.before.vehicle;
+            final double sinking = run.vehicle.isRemoved() ? 0.0 : -velocity(run.vehicle).y;
+            CrashPhysics.LOGGER.info("[gametest] fast water: {} hull blocks smashed, now sinking at {} m/s", hull, String.format("%.1f", sinking));
+            helper.assertTrue(hull >= 2, "hitting water at 65 m/s should smash a wooden hull, but only " + hull + " blocks broke");
+            helper.assertTrue(sinking < 20.0, "the water should have braked it hard, but it is still going down at " + sinking + " m/s");
+        });
+    }
+
+    /**
+     * Dropping into water slowly does no harm, and a wooden hull stays afloat.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_water_slow")
+    public static void slowDropIntoWaterIsHarmlessAndItFloats(final GameTestHelper helper) {
+        scenario(helper, 11, 20, area -> {
+            area.pool();
+            final ServerSubLevel vehicle = area.assemble(area.fill(6, 12, 6, 8, 13, 8, Blocks.OAK_PLANKS.defaultBlockState()));
+            launch(vehicle, 0.0, -6.0, 0.0);
+            return new Run(Counters.of(area.level), vehicle);
+        }, (area, run) -> {
+            final long hull = Counters.of(area.level).vehicle - run.before.vehicle;
+            final double sinking = -velocity(run.vehicle).y;
+            final double depth = 11.0 - (run.vehicle.logicalPose().position().y() - area.origin.getY());
+            CrashPhysics.LOGGER.info("[gametest] slow water: {} hull blocks broken, sinking at {} m/s, {} m below the surface", hull,
+                    String.format("%.1f", sinking), String.format("%.1f", depth));
+            helper.assertTrue(hull == 0, "a gentle splashdown shouldn't break anything, but " + hull + " blocks broke");
+            helper.assertTrue(depth < 3.0, "a wooden hull should stay afloat, but it is " + depth + " m under");
+        });
+    }
+
     private record Run(Counters before, ServerSubLevel vehicle) {
     }
 
@@ -297,9 +368,49 @@ public final class CrashGameTests {
             return placed;
         }
 
+        /**
+         * A stone basin 16 × 16, full of water 9 deep (surface at y = 11).
+         */
+        void pool() {
+            this.fill(0, 0, 0, 15, 11, 15, Blocks.STONE.defaultBlockState());
+            this.fill(1, 2, 1, 14, 10, 14, Blocks.WATER.defaultBlockState());
+            this.fill(1, 11, 1, 14, 11, 14, Blocks.AIR.defaultBlockState());
+        }
+
         ServerSubLevel assemble(final List<BlockPos> blocks) {
             final BoundingBox3ic bounds = BoundingBox3i.from(blocks).expand(1, 1, 1);
             return SubLevelAssemblyHelper.assembleBlocks(this.level, blocks.getFirst(), blocks, bounds);
+        }
+
+        int countSolid(final int x0, final int x1, final int y0, final int y1, final int z0, final int z1) {
+            int count = 0;
+            for (int x = x0; x <= x1; x++) {
+                for (int y = y0; y <= y1; y++) {
+                    for (int z = z0; z <= z1; z++) {
+                        if (!this.level.getBlockState(this.origin.offset(x, y, z)).isAir()) {
+                            count++;
+                        }
+                    }
+                }
+            }
+            return count;
+        }
+
+        /**
+         * Counts world blocks above a height in a box: in a scenario built on flat ground, that's soil piled up by a crash.
+         */
+        int countAbove(final int x0, final int x1, final int z0, final int z1, final int height) {
+            int count = 0;
+            for (int x = x0; x <= x1; x++) {
+                for (int z = z0; z <= z1; z++) {
+                    for (int y = height + 1; y <= height + 6; y++) {
+                        if (!this.level.getBlockState(this.origin.offset(x, y, z)).isAir()) {
+                            count++;
+                        }
+                    }
+                }
+            }
+            return count;
         }
 
         void forceChunks(final boolean forced) {

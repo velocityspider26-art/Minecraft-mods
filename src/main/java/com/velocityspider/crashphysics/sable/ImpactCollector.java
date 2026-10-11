@@ -3,6 +3,7 @@ package com.velocityspider.crashphysics.sable;
 import com.velocityspider.crashphysics.config.CrashConfig;
 import com.velocityspider.crashphysics.material.CrashMaterial;
 import com.velocityspider.crashphysics.material.CrashMaterials;
+import com.velocityspider.crashphysics.material.FractureMode;
 import com.velocityspider.crashphysics.physics.ContactMechanics;
 import com.velocityspider.crashphysics.physics.MaterialProfile;
 import com.velocityspider.crashphysics.physics.PenetrationSolver;
@@ -62,6 +63,11 @@ final class ImpactCollector {
      * How far the joints of a block being knocked out stretch before they let go [m]
      */
     static final double SHEAR_TRAVEL = 0.05;
+
+    /**
+     * Peak pressure of a flat face slamming into a liquid, as a multiple of ½·ρ·v²
+     */
+    private static final double SLAM_FACTOR = 3.0;
 
     private static final MaterialProfile UNKNOWN = new MaterialProfile(2500.0, 2.0e7, 2.0e6, false);
 
@@ -378,7 +384,7 @@ final class ImpactCollector {
         return this.assess(vehicleA, vehicleB, BlockPos.asLong(ax, ay, az), stateA, BlockPos.asLong(bx, by, bz),
                 unknownB ? Blocks.STONE.defaultBlockState() : stateB, unknownB,
                 px, py, pz, plotAx, plotAy, plotAz, plotBx, plotBy, plotBz, nx, ny, nz, vx, vy, vz, closingSpeed, effectiveMassKg,
-                effectiveMassKg / sharing, knockOutCapacity);
+                effectiveMassKg / sharing, knockOutCapacity, this.dt);
     }
 
     /**
@@ -390,6 +396,8 @@ final class ImpactCollector {
      * @param shareMassKg       the part of that mass this contact has to stop, when several share the load [kg]
      * @param knockOutCapacity  how hard B (terrain) can be pushed before it is knocked out whole, infinite if it is
      *                          backed by solid ground [N]
+     * @param contactTime       how long the contact acts during this sub-step [s]; less than the sub-step for a contact
+     *                          the swept check sees starting part way through it
      */
     ContactRecord assess(final ServerSubLevel vehicleA, @Nullable final ServerSubLevel vehicleB,
                          final long keyA, final BlockState stateA, final long keyB, final BlockState stateB, final boolean unknownB,
@@ -398,17 +406,22 @@ final class ImpactCollector {
                          final double plotBx, final double plotBy, final double plotBz,
                          final double nx, final double ny, final double nz,
                          final double vx, final double vy, final double vz,
-                         final double closingSpeed, final double effectiveMassKg, final double shareMassKg, final double knockOutCapacity) {
+                         final double closingSpeed, final double effectiveMassKg, final double shareMassKg, final double knockOutCapacity,
+                         final double contactTime) {
         final CrashMaterial materialA = CrashMaterials.get(stateA);
         final CrashMaterial materialB = CrashMaterials.get(stateB);
         final MaterialProfile baseA = this.vehicleProfile(stateA, materialA);
-        final MaterialProfile baseB = unknownB ? UNKNOWN : vehicleB != null ? this.vehicleProfile(stateB, materialB) : this.terrainProfile(materialB);
+
+        // Water and lava can't be damaged, but they never hold either: they flow out of the way
+        final boolean liquidB = vehicleB == null && !unknownB && materialB.fracture() == FractureMode.LIQUID;
+        final MaterialProfile baseB = unknownB ? UNKNOWN : vehicleB != null ? this.vehicleProfile(stateB, materialB)
+                : liquidB ? materialB.profile() : this.terrainProfile(materialB);
 
         final boolean damageA = this.vehicleDamage && !baseA.unbreakable();
-        final boolean damageB = !unknownB && !baseB.unbreakable() && (vehicleB != null ? this.vehicleDamage : this.worldDamage);
+        final boolean damageB = !unknownB && !liquidB && !baseB.unbreakable() && (vehicleB != null ? this.vehicleDamage : this.worldDamage);
 
         final MaterialProfile profileA = damageA ? baseA : asRigid(baseA);
-        final MaterialProfile profileB = damageB ? baseB : asRigid(baseB);
+        final MaterialProfile profileB = damageB || liquidB ? baseB : asRigid(baseB);
 
         final double weakerStrength = Math.min(profileA.effectiveStrength(), profileB.effectiveStrength());
         final boolean plastic = ContactMechanics.exceedsElasticLimit(shareMassKg, closingSpeed, weakerStrength, CONTACT_AREA, this.elasticTravel);
@@ -424,17 +437,21 @@ final class ImpactCollector {
             step = ContactMechanics.knockOut(shareMassKg, closingSpeed, contactForce, knockOutCapacity, SHEAR_TRAVEL, blockMassKg);
         }
 
+        if (liquidB) {
+            step = this.slam(profileA, profileB, damageA, keyA, stateA, closingSpeed, shareMassKg, contactTime);
+        }
+
         // Otherwise step the contact through the sub-step. Each block can only be crushed so far before it fails.
-        if (step == ContactMechanics.Step.NONE && plastic && this.state.canBreakMoreBlocks()) {
+        if (step == ContactMechanics.Step.NONE && plastic && !liquidB && this.state.canBreakMoreBlocks()) {
             final double limitB = damageB ? this.remainingDepth(keyB, stateB) : Double.POSITIVE_INFINITY;
             final double limitA = damageA ? this.remainingDepth(keyA, stateA) : Double.POSITIVE_INFINITY;
-            step = ContactMechanics.integrate(profileA, profileB, CONTACT_AREA, this.dt, shareMassKg, closingSpeed, limitB, limitA);
+            step = ContactMechanics.integrate(profileA, profileB, CONTACT_AREA, contactTime, shareMassKg, closingSpeed, limitB, limitA);
         }
 
         // Only let the vehicle carry on into the material if it really gets through it this sub-step. If the material
         // stops it, Rapier keeps the contact: dropping it would let the vehicle sink a whole sub-step's travel into a
         // block that is still there, and Rapier would then throw it back out.
-        final boolean passThrough = step != ContactMechanics.Step.NONE && step.goesThrough();
+        final boolean passThrough = step != ContactMechanics.Step.NONE && (liquidB || step.goesThrough());
 
         return new ContactRecord(
                 keyA, keyB, vehicleA, vehicleB,
@@ -442,6 +459,34 @@ final class ImpactCollector {
                 px, py, pz, plotAx, plotAy, plotAz, plotBx, plotBy, plotBz, nx, ny, nz, vx, vy, vz,
                 closingSpeed, effectiveMassKg, step, passThrough
         );
+    }
+
+    /**
+     * A block of a vehicle hitting the surface of water or lava. The liquid has to be pushed aside, which takes the
+     * momentum of the mass shoved out of the way (½·ρ·v² of pressure on the face). A flat face slamming into the
+     * surface also feels a short pressure peak several times higher, because the liquid can't get out from under it:
+     * that peak is what smashes hulls. Above the block's strength it cracks; at twice its strength it shatters.
+     */
+    private ContactMechanics.Step slam(final MaterialProfile profileA, final MaterialProfile liquid, final boolean damageA,
+                                       final long keyA, final BlockState stateA, final double closingSpeed, final double shareMassKg,
+                                       final double contactTime) {
+        final ContactMechanics.Step flow = ContactMechanics.integrate(asRigid(profileA), liquid, CONTACT_AREA, contactTime, shareMassKg, closingSpeed);
+        if (flow == ContactMechanics.Step.NONE) {
+            return ContactMechanics.Step.NONE;
+        }
+
+        double erosion = 0.0;
+        boolean shattered = false;
+        if (damageA) {
+            final double peak = SLAM_FACTOR * 0.5 * liquid.density() * closingSpeed * closingSpeed;
+            final double overload = peak / profileA.effectiveStrength();
+            if (overload > 1.0) {
+                final double remaining = this.remainingDepth(keyA, stateA);
+                erosion = Math.min(remaining, this.breakDepth * blockDepth(stateA) * (overload - 1.0));
+                shattered = erosion >= remaining;
+            }
+        }
+        return new ContactMechanics.Step(flow.impulse(), 0.0, erosion, flow.dissipatedEnergy(), flow.endSpeed(), false, false, shattered, false);
     }
 
     /**

@@ -36,7 +36,11 @@ public enum FractureMode implements StringRepresentable {
     /**
      * Crops, flowers and other small plants.
      */
-    PLANT;
+    PLANT,
+    /**
+     * Water and lava: no strength at all, only inertia. Slow, it parts gently; fast, it hits like a wall.
+     */
+    LIQUID;
 
     public static final Codec<FractureMode> CODEC = StringRepresentable.fromEnum(FractureMode::values);
 

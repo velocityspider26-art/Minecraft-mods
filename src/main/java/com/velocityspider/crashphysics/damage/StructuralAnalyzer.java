@@ -5,6 +5,7 @@ import com.velocityspider.crashphysics.config.CrashConfig;
 import com.velocityspider.crashphysics.material.CrashMaterials;
 import com.velocityspider.crashphysics.physics.StructuralSolver;
 import com.velocityspider.crashphysics.sable.LevelCrashState;
+import com.velocityspider.crashphysics.util.BlockScan;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.mixinterface.block_properties.BlockStateExtension;
@@ -114,23 +115,20 @@ public final class StructuralAnalyzer {
         index.defaultReturnValue(-1);
         final LongArrayList positions = new LongArrayList();
         final List<BlockState> states = new ArrayList<>();
-        final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
-        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-            for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                    final BlockState blockState = level.getBlockState(pos.set(x, y, z));
-                    if (blockState.isAir() || blockState.getCollisionShape(level, pos).isEmpty()) {
-                        continue;
-                    }
-                    if (positions.size() >= maxBlocks) {
-                        return;
-                    }
-                    index.put(pos.asLong(), positions.size());
-                    positions.add(pos.asLong());
-                    states.add(blockState);
-                }
+        final boolean[] tooBig = {false};
+        BlockScan.solidBlocks(level, bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ(), (x, y, z, blockState) -> {
+            if (positions.size() >= maxBlocks) {
+                tooBig[0] = true;
+                return;
             }
+            final long packed = BlockPos.asLong(x, y, z);
+            index.put(packed, positions.size());
+            positions.add(packed);
+            states.add(blockState);
+        });
+        if (tooBig[0]) {
+            return;
         }
 
         final int count = positions.size();

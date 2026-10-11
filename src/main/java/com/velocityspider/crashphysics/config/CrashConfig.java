@@ -44,6 +44,13 @@ public final class CrashConfig {
     public static final ModConfigSpec.DoubleValue DROP_CHANCE;
     public static final ModConfigSpec.BooleanValue COLLAPSE;
     public static final ModConfigSpec.IntValue MAX_COLLAPSE_BLOCKS;
+    public static final ModConfigSpec.BooleanValue DISPLACE_SOIL;
+    public static final ModConfigSpec.BooleanValue SLUMPING;
+
+    // Water
+    public static final ModConfigSpec.BooleanValue WATER_IMPACTS;
+    public static final ModConfigSpec.BooleanValue WATER_DRAG;
+    public static final ModConfigSpec.DoubleValue DRAG_COEFFICIENT;
 
     // Effects
     public static final ModConfigSpec.BooleanValue SKID_MARKS;
@@ -155,6 +162,24 @@ public final class CrashConfig {
         MAX_COLLAPSE_BLOCKS = BUILDER
                 .comment("The largest loose section [blocks] that can collapse. Anything bigger is assumed to be held up")
                 .defineInRange("maxCollapseBlocks", 800, 1, 100_000);
+        DISPLACE_SOIL = BUILDER
+                .comment("Whether soil a crash digs out is pushed aside into a rim or berms (as in real craters and trenches) instead of disappearing")
+                .define("displaceSoil", true);
+        SLUMPING = BUILDER
+                .comment("Whether loose crater and trench walls (dirt, sand, gravel, snow) slump until they are no steeper than they can stand")
+                .define("slumping", true);
+        BUILDER.pop();
+
+        BUILDER.push("water");
+        WATER_IMPACTS = BUILDER
+                .comment("Whether hitting water or lava fast is a real impact: the liquid has to be pushed out of the way, so at speed it hits like a wall")
+                .define("waterImpacts", true);
+        WATER_DRAG = BUILDER
+                .comment("Whether vehicles moving through water or lava are slowed by it")
+                .define("waterDrag", true);
+        DRAG_COEFFICIENT = BUILDER
+                .comment("Drag coefficient of a block face moving through a liquid (1 for a flat plate)")
+                .defineInRange("dragCoefficient", 1.0, 0.0, 5.0);
         BUILDER.pop();
 
         BUILDER.push("effects");

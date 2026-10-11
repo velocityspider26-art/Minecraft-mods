@@ -146,6 +146,17 @@ public final class CrashEffects {
     }
 
     private void spawnDust(final Impact impact, final double x, final double y, final double z, final double magnitude) {
+        if (impact.dustState != null && !impact.dustState.getFluidState().isEmpty()) {
+            // A wall of spray thrown up and out, then falling back
+            final int count = (int) Mth.clamp(magnitude * 25.0, 10, 300);
+            final double spread = Mth.clamp(0.5 + magnitude * 0.6, 0.5, 4.0);
+            this.level.sendParticles(ParticleTypes.SPLASH, x, y + 0.6, z, count, spread, 0.4, spread, 0.6);
+            this.level.sendParticles(ParticleTypes.BUBBLE, x, y - 0.5, z, count / 2, spread * 0.7, 0.6, spread * 0.7, 0.2);
+            if (magnitude > 2.0) {
+                this.level.sendParticles(ParticleTypes.CLOUD, x, y + 1.0, z, (int) Mth.clamp((magnitude - 2.0) * 15.0, 4, 60), spread, 1.0, spread, 0.05);
+            }
+            return;
+        }
         if (impact.dustState != null) {
             final int count = (int) Mth.clamp(magnitude * 10.0, 4, 120);
             final double spread = Mth.clamp(0.3 + magnitude * 0.4, 0.3, 3.0);
@@ -201,6 +212,7 @@ public final class CrashEffects {
             case SOFT, PLANT -> SoundEvents.WOOL_BREAK;
             case GRANULAR -> SoundEvents.GRAVEL_BREAK;
             case BRITTLE -> SoundEvents.STONE_BREAK;
+            case LIQUID -> SoundEvents.PLAYER_SPLASH_HIGH_SPEED;
         };
     }
 
@@ -212,6 +224,7 @@ public final class CrashEffects {
             case DUCTILE -> SoundEvents.ANVIL_LAND;
             case GLASS -> SoundEvents.GLASS_BREAK;
             case SOFT, PLANT -> SoundEvents.GRASS_BREAK;
+            case LIQUID -> SoundEvents.GENERIC_SPLASH;
         };
     }
 }

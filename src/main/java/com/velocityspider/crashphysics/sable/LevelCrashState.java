@@ -6,6 +6,7 @@ import com.velocityspider.crashphysics.damage.BlockDamageTracker;
 import com.velocityspider.crashphysics.damage.CollapseHandler;
 import com.velocityspider.crashphysics.damage.CrewHandler;
 import com.velocityspider.crashphysics.damage.Destruction;
+import com.velocityspider.crashphysics.damage.SoilMover;
 import com.velocityspider.crashphysics.damage.StructuralAnalyzer;
 import com.velocityspider.crashphysics.effects.CrashEffects;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -36,6 +37,7 @@ public final class LevelCrashState {
     private final Destruction destruction;
     private final CrashEffects effects;
     private final CollapseHandler collapse;
+    private final SoilMover soil;
     private final Reference2ObjectOpenHashMap<ServerSubLevel, BodyMotion> motions = new Reference2ObjectOpenHashMap<>();
 
     private long tick;
@@ -49,9 +51,11 @@ public final class LevelCrashState {
         this.damage = new BlockDamageTracker(level);
         this.effects = new CrashEffects(level);
         this.collapse = new CollapseHandler(level);
-        this.destruction = new Destruction(level, this.damage, this.effects, this.collapse);
+        this.soil = new SoilMover(level);
+        this.destruction = new Destruction(level, this.damage, this.effects, this.collapse, this.soil);
         this.resolver = new ImpactResolver(level, this);
         this.sweep = new SweptImpacts(level, this);
+        this.destruction.onVehicleBlockRemoved((vehicle, pos) -> this.sweep.blockRemoved(vehicle, pos.asLong()));
     }
 
     public static LevelCrashState get(final ServerLevel level) {
@@ -202,6 +206,7 @@ public final class LevelCrashState {
 
             this.destruction.endTick();
             this.collapse.process(this.destruction);
+            this.soil.process();
             this.effects.flush();
             this.damage.expire(this.tick, CrashConfig.DAMAGE_MEMORY_SECONDS.getAsInt() * 20L);
         }

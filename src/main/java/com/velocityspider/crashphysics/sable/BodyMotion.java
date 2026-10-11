@@ -108,11 +108,15 @@ public final class BodyMotion {
             return;
         }
         this.stepStarted = false;
+        if (!this.contactThisSubstep) {
+            // Nothing hit it, so there is no deceleration to measure; the next sub-step reads its velocity anyway
+            return;
+        }
 
         final Vector3d endLinear = handle.getLinearVelocity(this.scratchLinear);
         final Vector3d endAngular = handle.getAngularVelocity(this.scratchAngular);
 
-        if (this.contactThisSubstep && dt > 0.0) {
+        if (dt > 0.0) {
             // Proper acceleration: free fall feels like nothing, so take gravity out of the measured change
             final double ax = (endLinear.x - this.stepStartLinear.x) / dt - gravity.x();
             final double ay = (endLinear.y - this.stepStartLinear.y) / dt - gravity.y();

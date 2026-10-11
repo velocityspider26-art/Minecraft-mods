@@ -3,6 +3,7 @@ package com.velocityspider.crashphysics.material;
 import com.velocityspider.crashphysics.physics.MaterialProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -31,6 +32,12 @@ final class MaterialDefaults {
         }
 
         final SoundType sound = state.getSoundType();
+
+        // Liquids resist only by the mass they have to push out of the way (½ρv²); lava is three times as dense
+        if (!state.getFluidState().isEmpty() && state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()) {
+            final boolean lava = state.getFluidState().is(FluidTags.LAVA);
+            return new CrashMaterial(profile(lava ? 3100 : 1000, 1.0e3, 1.0), FractureMode.LIQUID, null, null, null, 0.0f, lava);
+        }
 
         // Soft things
         if (state.is(BlockTags.LEAVES) || sound == SoundType.AZALEA_LEAVES || sound == SoundType.CHERRY_LEAVES) {

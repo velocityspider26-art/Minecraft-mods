@@ -2,17 +2,21 @@ package com.velocityspider.crashphysics.sable;
 
 import com.velocityspider.crashphysics.CrashPhysics;
 import com.velocityspider.crashphysics.config.CrashConfig;
+import com.velocityspider.crashphysics.util.BlockScan;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.physics.mass.MassData;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -64,7 +68,8 @@ final class SweptImpacts {
      */
     private static final double LEADING_AXIS = 0.2;
 
-    private static final long SHAPE_REFRESH_TICKS = 100;
+    private static final long SHAPE_REFRESH_TICKS = 400;
+    private static final long SHAPE_MIN_AGE = 40;
     private static final int MAX_LEADING_BLOCKS = 4096;
 
     private final ServerLevel level;
@@ -85,6 +90,9 @@ final class SweptImpacts {
     private final Vector3d angular = new Vector3d();
     private final Vector3d plot = new Vector3d();
     private final Vector3d zero = new Vector3d();
+    private final Vector3d dragForce = new Vector3d();
+    private final Vector3d dragPoint = new Vector3d();
+    private double dragWeight;
     private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
     private final BlockPos.MutableBlockPos neighbor = new BlockPos.MutableBlockPos();
 
@@ -92,10 +100,59 @@ final class SweptImpacts {
     private LevelChunk lastChunk;
 
     /**
-     * The blocks a vehicle is made of
+     * The blocks a vehicle is made of, kept up to date as crashes break them
      */
-    private record Shape(LongOpenHashSet solid, long[] surface, double mass, long gatheredTick) {
+    private static final class Shape {
+        final LongOpenHashSet solid = new LongOpenHashSet();
+        /**
+         * Blocks with at least one open face
+         */
+        final LongOpenHashSet surface = new LongOpenHashSet();
+        double mass;
+        long gatheredTick;
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+
+        void add(final int x, final int y, final int z) {
+            this.solid.add(BlockPos.asLong(x, y, z));
+            this.minX = Math.min(this.minX, x);
+            this.minY = Math.min(this.minY, y);
+            this.minZ = Math.min(this.minZ, z);
+            this.maxX = Math.max(this.maxX, x);
+            this.maxY = Math.max(this.maxY, y);
+            this.maxZ = Math.max(this.maxZ, z);
+        }
+
+        boolean onSurface(final long block) {
+            final int x = BlockPos.getX(block);
+            final int y = BlockPos.getY(block);
+            final int z = BlockPos.getZ(block);
+            return !this.solid.contains(BlockPos.asLong(x + 1, y, z)) || !this.solid.contains(BlockPos.asLong(x - 1, y, z))
+                    || !this.solid.contains(BlockPos.asLong(x, y + 1, z)) || !this.solid.contains(BlockPos.asLong(x, y - 1, z))
+                    || !this.solid.contains(BlockPos.asLong(x, y, z + 1)) || !this.solid.contains(BlockPos.asLong(x, y, z - 1));
+        }
+
+        void remove(final long block) {
+            if (!this.solid.remove(block)) {
+                return;
+            }
+            this.surface.remove(block);
+            // Whatever was behind it is now on the outside
+            for (final Direction direction : DIRECTIONS) {
+                final long next = BlockPos.offset(block, direction);
+                if (this.solid.contains(next)) {
+                    this.surface.add(next);
+                }
+            }
+        }
     }
+
+    private static final Direction[] DIRECTIONS = Direction.values();
+
+    /**
+     * Below this a vehicle moving through a liquid isn't slowed noticeably [m/s]
+     */
+    private static final double DRAG_MIN_SPEED = 0.5;
 
     /**
      * One vehicle block about to hit one terrain block. Positions and times are as swept at the start of the sub-step.
@@ -133,7 +190,7 @@ final class SweptImpacts {
             }
             final double speed = motion.linear.length();
             final double spin = motion.angular.length();
-            if (speed < minSpeed && spin < 0.25) {
+            if (speed < DRAG_MIN_SPEED && spin < 0.25) {
                 continue;
             }
 
@@ -143,13 +200,24 @@ final class SweptImpacts {
             }
 
             final Shape shape = this.shape(vehicle);
-            if (shape == null || shape.surface.length == 0) {
+            if (shape == null || shape.surface.isEmpty()) {
                 continue;
             }
 
+            // Nothing but air anywhere near where it is going: nothing to hit, nothing to slow it
+            if (!this.anythingNear(motion, shape, speed, spin, dt)) {
+                continue;
+            }
+
+            this.dragForce.zero();
+            this.dragPoint.zero();
+            this.dragWeight = 0.0;
             this.findHits(motion, shape, dt, minSpeed);
             if (!this.hits.isEmpty()) {
                 anything |= this.resolveHits(system, motion, handle, dt, minSpeed);
+            }
+            if (this.dragWeight > 0.0) {
+                this.applyDrag(motion, handle, dt);
             }
         }
 
@@ -161,6 +229,71 @@ final class SweptImpacts {
         if (this.shapes.size() > 64 && this.state.tick() % 200 == 0) {
             this.shapes.keySet().removeIf(ServerSubLevel::isRemoved);
         }
+    }
+
+    /**
+     * Forgets a block a crash broke off a vehicle, so the blocks behind it count as its outside straight away.
+     */
+    void blockRemoved(final ServerSubLevel vehicle, final long plotBlock) {
+        final Shape shape = this.shapes.get(vehicle);
+        if (shape != null) {
+            shape.remove(plotBlock);
+        }
+    }
+
+    /**
+     * Checks whether there is anything but air (terrain or liquid) around the space the vehicle sweeps this sub-step.
+     */
+    private boolean anythingNear(final BodyMotion motion, final Shape shape, final double speed, final double spin, final double dt) {
+        final Pose3dc pose = motion.pose;
+        double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+        for (int corner = 0; corner < 8; corner++) {
+            final Vector3d world = pose.transformPosition(this.center.set(
+                    (corner & 1) == 0 ? shape.minX : shape.maxX + 1,
+                    (corner & 2) == 0 ? shape.minY : shape.maxY + 1,
+                    (corner & 4) == 0 ? shape.minZ : shape.maxZ + 1));
+            minX = Math.min(minX, world.x);
+            minY = Math.min(minY, world.y);
+            minZ = Math.min(minZ, world.z);
+            maxX = Math.max(maxX, world.x);
+            maxY = Math.max(maxY, world.y);
+            maxZ = Math.max(maxZ, world.z);
+        }
+        final double radius = 0.5 * Math.sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY) + (maxZ - minZ) * (maxZ - minZ));
+        final double reach = (speed + spin * radius) * dt + 1.0;
+        return BlockScan.anythingIn(this.level, minX - reach, minY - reach, minZ - reach, maxX + reach, maxY + reach, maxZ + reach);
+    }
+
+    /**
+     * Slows a vehicle moving through water or lava: each leading face pushes liquid out of the way, with a force
+     * ½·ρ·Cd·A·v², applied at the centre of pressure so a nose-down plunge also pitches.
+     */
+    private void applyDrag(final BodyMotion motion, final RigidBodyHandle handle, final double dt) {
+        final ServerSubLevel vehicle = motion.subLevel;
+        final MassData massData = vehicle.getMassTracker();
+        final double kgPerSableMass = this.state.collector.kgPerSableMass();
+        if (massData == null || massData.isInvalid() || !(massData.getMass() > 0.0)) {
+            return;
+        }
+
+        // Never more than half the momentum in one step, so it can't reverse the motion
+        final double massKg = massData.getMass() * kgPerSableMass;
+        final double speed = handle.getLinearVelocity(this.linear).length();
+        final Vector3d impulse = this.local.set(this.dragForce).mul(dt);
+        final double limit = 0.5 * massKg * speed;
+        if (impulse.length() > limit) {
+            impulse.normalize(limit);
+        }
+        if (!impulse.isFinite() || impulse.lengthSquared() < 1.0e-12) {
+            return;
+        }
+
+        final Pose3dc pose = motion.pose;
+        final Vector3d point = pose.transformPositionInverse(this.plot.set(this.dragPoint).div(this.dragWeight));
+        pose.transformNormalInverse(impulse.div(kgPerSableMass));
+        handle.applyImpulseAtPoint(point, impulse);
+        motion.refreshVelocity(handle);
     }
 
     /**
@@ -178,8 +311,11 @@ final class SweptImpacts {
         final double extentY = 0.5 * (Math.abs(this.rotation.m01) + Math.abs(this.rotation.m11) + Math.abs(this.rotation.m21));
         final double extentZ = 0.5 * (Math.abs(this.rotation.m02) + Math.abs(this.rotation.m12) + Math.abs(this.rotation.m22));
 
+        final boolean drag = CrashConfig.WATER_DRAG.getAsBoolean();
+        final double dragCoefficient = CrashConfig.DRAG_COEFFICIENT.getAsDouble();
         int leading = 0;
-        for (final long block : shape.surface) {
+        for (final LongIterator iterator = shape.surface.iterator(); iterator.hasNext(); ) {
+            final long block = iterator.nextLong();
             final int bx = BlockPos.getX(block);
             final int by = BlockPos.getY(block);
             final int bz = BlockPos.getZ(block);
@@ -193,13 +329,33 @@ final class SweptImpacts {
                     motion.linear.y + motion.angular.z * rx - motion.angular.x * rz,
                     motion.linear.z + motion.angular.x * ry - motion.angular.y * rx);
             final double speed = v.length();
-            if (speed < minSpeed) {
+            if (speed < DRAG_MIN_SPEED) {
                 continue;
             }
 
             // Only blocks with an open face towards where they are going can hit anything first
             final Vector3d direction = pose.transformNormalInverse(this.local.set(v).div(speed));
-            if (!this.leads(shape, bx, by, bz, direction)) {
+            final double frontArea = this.frontArea(shape, bx, by, bz, direction);
+            if (frontArea <= 0.0) {
+                continue;
+            }
+
+            // Under water (or lava), its front faces push the liquid aside
+            if (drag) {
+                final double frontX = c.x + v.x / speed * 0.45;
+                final double frontY = c.y + v.y / speed * 0.45;
+                final double frontZ = c.z + v.z / speed * 0.45;
+                final BlockState around = this.terrainAt(this.cursor.set(Mth.floor(frontX), Mth.floor(frontY), Mth.floor(frontZ)));
+                if (around != null && !around.getFluidState().isEmpty()) {
+                    final double density = around.getFluidState().is(FluidTags.LAVA) ? 3100.0 : 1000.0;
+                    final double force = 0.5 * density * dragCoefficient * frontArea * speed * speed;
+                    this.dragForce.sub(v.x / speed * force, v.y / speed * force, v.z / speed * force);
+                    this.dragPoint.add(c.x * force, c.y * force, c.z * force);
+                    this.dragWeight += force;
+                }
+            }
+
+            if (speed < minSpeed || !this.leads(shape, bx, by, bz, direction)) {
                 continue;
             }
             if (++leading > MAX_LEADING_BLOCKS) {
@@ -208,6 +364,23 @@ final class SweptImpacts {
 
             this.sweepBlock(block, c.x, c.y, c.z, extentX, extentY, extentZ, v.x * dt, v.y * dt, v.z * dt, dt, minSpeed);
         }
+    }
+
+    /**
+     * The area of a block's open faces facing the way it moves, projected across the motion [m²].
+     */
+    private double frontArea(final Shape shape, final int x, final int y, final int z, final Vector3d direction) {
+        double area = 0.0;
+        if (!shape.solid.contains(BlockPos.asLong(x + (direction.x > 0 ? 1 : -1), y, z))) {
+            area += Math.abs(direction.x);
+        }
+        if (!shape.solid.contains(BlockPos.asLong(x, y + (direction.y > 0 ? 1 : -1), z))) {
+            area += Math.abs(direction.y);
+        }
+        if (!shape.solid.contains(BlockPos.asLong(x, y, z + (direction.z > 0 ? 1 : -1)))) {
+            area += Math.abs(direction.z);
+        }
+        return area;
     }
 
     private boolean leads(final Shape shape, final int x, final int y, final int z, final Vector3d direction) {
@@ -235,6 +408,7 @@ final class SweptImpacts {
         final int x1 = (int) Math.floor(Math.max(maxX, maxX + dx) + TOUCHING);
         final int y1 = (int) Math.floor(Math.max(maxY, maxY + dy) + TOUCHING);
         final int z1 = (int) Math.floor(Math.max(maxZ, maxZ + dz) + TOUCHING);
+        final boolean waterImpacts = CrashConfig.WATER_IMPACTS.getAsBoolean();
 
         for (int x = x0; x <= x1; x++) {
             for (int y = y0; y <= y1; y++) {
@@ -244,10 +418,18 @@ final class SweptImpacts {
                         continue;
                     }
                     final VoxelShape collision = terrain.getCollisionShape(this.level, this.cursor);
-                    if (collision.isEmpty()) {
+                    final AABB box;
+                    final boolean liquid;
+                    if (!collision.isEmpty()) {
+                        box = collision.bounds().move(x, y, z);
+                        liquid = false;
+                    } else if (waterImpacts && !terrain.getFluidState().isEmpty()) {
+                        // The liquid up to its surface
+                        box = new AABB(x, y, z, x + 1, y + terrain.getFluidState().getHeight(this.level, this.cursor), z + 1);
+                        liquid = true;
+                    } else {
                         continue;
                     }
-                    final AABB box = collision.bounds().move(x, y, z);
 
                     // Already touching: Rapier has it
                     if (minX + TOUCHING < box.maxX && maxX - TOUCHING > box.minX
@@ -292,8 +474,9 @@ final class SweptImpacts {
                         continue;
                     }
 
-                    // Hitting a face inside solid ground (between two ground blocks) is just sliding over the ground
-                    if (this.faceIsInternal(x, y, z, box, axis, sign)) {
+                    // Hitting a face inside solid ground (between two ground blocks) is just sliding over the ground,
+                    // and moving from water into more water isn't hitting the surface
+                    if (this.faceIsInternal(x, y, z, box, axis, sign, liquid)) {
                         continue;
                     }
 
@@ -314,7 +497,7 @@ final class SweptImpacts {
         }
     }
 
-    private boolean faceIsInternal(final int x, final int y, final int z, final AABB box, final int axis, final double sign) {
+    private boolean faceIsInternal(final int x, final int y, final int z, final AABB box, final int axis, final double sign, final boolean liquid) {
         // The face being hit, and the cell on the far side of it
         final boolean onBoundary = sign > 0.0
                 ? (axis == 0 ? box.minX == x : axis == 1 ? box.minY == y : box.minZ == z)
@@ -326,7 +509,10 @@ final class SweptImpacts {
         final int step = sign > 0.0 ? -1 : 1;
         this.neighbor.set(x + (axis == 0 ? step : 0), y + (axis == 1 ? step : 0), z + (axis == 2 ? step : 0));
         final BlockState beside = this.terrainAt(this.neighbor);
-        return beside != null && !beside.isAir() && Block.isShapeFullBlock(beside.getCollisionShape(this.level, this.neighbor));
+        if (beside == null || beside.isAir()) {
+            return false;
+        }
+        return liquid ? !beside.getFluidState().isEmpty() : Block.isShapeFullBlock(beside.getCollisionShape(this.level, this.neighbor));
     }
 
     /**
@@ -546,7 +732,7 @@ final class SweptImpacts {
             final ContactRecord record = collector.assess(vehicle, null, hit.vehicleBlock, contact.stateA, hit.terrainBlock, hit.terrain, false,
                     contact.px, contact.py, contact.pz, contact.plotX, contact.plotY, contact.plotZ, contact.px, contact.py, contact.pz,
                     contact.nx, contact.ny, contact.nz, contact.vx, contact.vy, contact.vz, contact.closing,
-                    contact.effectiveMassKg, contact.shareMassKg, capacity);
+                    contact.effectiveMassKg, contact.shareMassKg, capacity, Math.max(dt - hit.time, 0.0));
 
             final boolean holds = !record.crushing || !record.passThrough;
             collector.markHandled(record, holds);
@@ -631,7 +817,8 @@ final class SweptImpacts {
     }
 
     /**
-     * The vehicle's blocks, gathered again whenever its mass changes (a block was added or removed).
+     * The vehicle's blocks. Gathered once, then kept up to date as crashes break blocks off; gathered again now and
+     * then in case something else changed the vehicle (its mass is a cheap way to notice).
      */
     @Nullable
     private Shape shape(final ServerSubLevel vehicle) {
@@ -640,11 +827,20 @@ final class SweptImpacts {
             return null;
         }
         final double mass = massData.getMass();
+        final long now = this.state.tick();
 
         final Shape cached = this.shapes.get(vehicle);
-        if (cached != null && cached.mass == mass && this.state.tick() - cached.gatheredTick < SHAPE_REFRESH_TICKS) {
-            return cached;
+        if (cached != null) {
+            final long age = now - cached.gatheredTick;
+            if (age < SHAPE_REFRESH_TICKS && (cached.mass == mass || age < SHAPE_MIN_AGE)) {
+                return cached.solid.isEmpty() ? null : cached;
+            }
         }
+
+        final Shape shape = new Shape();
+        shape.mass = mass;
+        shape.gatheredTick = now;
+        this.shapes.put(vehicle, shape);
 
         final BoundingBox3ic bounds = vehicle.getPlot().getBoundingBox();
         if (bounds == null) {
@@ -653,37 +849,17 @@ final class SweptImpacts {
         final long volume = (long) (bounds.maxX() - bounds.minX() + 1) * (bounds.maxY() - bounds.minY() + 1) * (bounds.maxZ() - bounds.minZ() + 1);
         final long maxVolume = Math.max(200_000L, CrashConfig.MAX_STRUCTURAL_BLOCKS.getAsInt() * 8L);
         if (volume <= 0 || volume > maxVolume) {
-            this.shapes.put(vehicle, new Shape(new LongOpenHashSet(), new long[0], mass, this.state.tick()));
             return null;
         }
 
-        final LongOpenHashSet solid = new LongOpenHashSet();
-        final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-            for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                    final BlockState blockState = this.level.getBlockState(pos.set(x, y, z));
-                    if (!blockState.isAir() && !blockState.getCollisionShape(this.level, pos).isEmpty()) {
-                        solid.add(pos.asLong());
-                    }
-                }
+        BlockScan.solidBlocks(this.level, bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ(),
+                (x, y, z, blockState) -> shape.add(x, y, z));
+        for (final LongIterator iterator = shape.solid.iterator(); iterator.hasNext(); ) {
+            final long block = iterator.nextLong();
+            if (shape.onSurface(block)) {
+                shape.surface.add(block);
             }
         }
-
-        final LongArrayList surface = new LongArrayList();
-        for (final long block : solid) {
-            final int x = BlockPos.getX(block);
-            final int y = BlockPos.getY(block);
-            final int z = BlockPos.getZ(block);
-            if (!solid.contains(BlockPos.asLong(x + 1, y, z)) || !solid.contains(BlockPos.asLong(x - 1, y, z))
-                    || !solid.contains(BlockPos.asLong(x, y + 1, z)) || !solid.contains(BlockPos.asLong(x, y - 1, z))
-                    || !solid.contains(BlockPos.asLong(x, y, z + 1)) || !solid.contains(BlockPos.asLong(x, y, z - 1))) {
-                surface.add(block);
-            }
-        }
-
-        final Shape shape = new Shape(solid, surface.toLongArray(), mass, this.state.tick());
-        this.shapes.put(vehicle, shape);
-        return shape;
+        return shape.solid.isEmpty() ? null : shape;
     }
 }
