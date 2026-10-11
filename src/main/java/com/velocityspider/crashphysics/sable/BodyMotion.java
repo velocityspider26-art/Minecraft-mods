@@ -60,12 +60,28 @@ public final class BodyMotion {
     final LongOpenHashSet impactBlocks = new LongOpenHashSet();
 
     long lastSeenTick;
+    final long firstSeenTick;
+
+    /**
+     * Velocities at the ends of recent sub-steps with contact, so accelerations can be averaged over the time a
+     * structure (or a body) takes to respond: a rigid contact stops a vehicle within a single physics step, but a frame
+     * flexes and spreads that shock out, so it feels the change in velocity over its response time instead
+     */
+    private static final int HISTORY = 32;
+    private final double[] historyTime = new double[HISTORY];
+    private final double[] historyLinear = new double[HISTORY * 3];
+    private final double[] historyAngular = new double[HISTORY * 3];
+    private int historyCount;
+    private int historyHead;
+    private double clock;
+    private double lastContactTime = Double.NEGATIVE_INFINITY;
 
     private final Vector3d scratchLinear = new Vector3d();
     private final Vector3d scratchAngular = new Vector3d();
 
-    BodyMotion(final ServerSubLevel subLevel) {
+    BodyMotion(final ServerSubLevel subLevel, final long tick) {
         this.subLevel = subLevel;
+        this.firstSeenTick = tick;
     }
 
     /**
@@ -98,12 +114,16 @@ public final class BodyMotion {
     }
 
     /**
-     * Reads the velocities a sub-step ended with, and if the vehicle hit something, how hard it was decelerated.
+     * Reads the velocities a sub-step ended with, and if the vehicle hit something, how hard it was decelerated: the
+     * change in velocity over the last response time, so a short sharp jolt counts as its impulse spread over that
+     * time and a long crash as its average deceleration.
      *
-     * @param dt      sub-step length [s]
-     * @param gravity gravitational acceleration of the dimension [m/s²]
+     * @param dt           sub-step length [s]
+     * @param gravity      gravitational acceleration of the dimension [m/s²]
+     * @param responseTime how long the structure takes to respond to a jolt [s]
      */
-    void endSubstep(final RigidBodyHandle handle, final double dt, final Vector3dc gravity) {
+    void endSubstep(final RigidBodyHandle handle, final double dt, final Vector3dc gravity, final double responseTime) {
+        this.clock += dt;
         if (!this.stepStarted) {
             return;
         }
@@ -112,28 +132,63 @@ public final class BodyMotion {
             // Nothing hit it, so there is no deceleration to measure; the next sub-step reads its velocity anyway
             return;
         }
+        this.contactThisSubstep = false;
 
         final Vector3d endLinear = handle.getLinearVelocity(this.scratchLinear);
         final Vector3d endAngular = handle.getAngularVelocity(this.scratchAngular);
 
-        if (dt > 0.0) {
-            // Proper acceleration: free fall feels like nothing, so take gravity out of the measured change
-            final double ax = (endLinear.x - this.stepStartLinear.x) / dt - gravity.x();
-            final double ay = (endLinear.y - this.stepStartLinear.y) / dt - gravity.y();
-            final double az = (endLinear.z - this.stepStartLinear.z) / dt - gravity.z();
+        // A new crash after a quiet spell: start from the velocity before this step
+        if (this.clock - dt - this.lastContactTime > responseTime + dt) {
+            this.historyCount = 0;
+            this.record(this.clock - dt, this.stepStartLinear, this.stepStartAngular);
+        }
+        this.lastContactTime = this.clock;
+        this.record(this.clock, endLinear, endAngular);
+
+        // Compare with the velocity one response time ago, or as far back as this crash goes
+        int reference = -1;
+        for (int i = 1; i < this.historyCount; i++) {
+            final int index = Math.floorMod(this.historyHead - 1 - i, HISTORY);
+            reference = index;
+            if (this.clock - this.historyTime[index] >= responseTime) {
+                break;
+            }
+        }
+        if (reference >= 0) {
+            final double elapsed = this.clock - this.historyTime[reference];
+            final double window = Math.max(elapsed, Math.max(responseTime, dt));
+            // Proper acceleration: free fall feels like nothing, so take gravity's share of the change out
+            final double ax = (endLinear.x - this.historyLinear[reference * 3] - gravity.x() * elapsed) / window;
+            final double ay = (endLinear.y - this.historyLinear[reference * 3 + 1] - gravity.y() * elapsed) / window;
+            final double az = (endLinear.z - this.historyLinear[reference * 3 + 2] - gravity.z() * elapsed) / window;
             final double g = Math.sqrt(ax * ax + ay * ay + az * az) / 9.80665;
 
             if (g > this.peakG) {
                 this.peakG = g;
                 this.peakLinearAcceleration.set(ax, ay, az);
-                this.peakAngularAcceleration.set(endAngular).sub(this.stepStartAngular).div(dt);
+                this.peakAngularAcceleration.set(
+                        (endAngular.x - this.historyAngular[reference * 3]) / window,
+                        (endAngular.y - this.historyAngular[reference * 3 + 1]) / window,
+                        (endAngular.z - this.historyAngular[reference * 3 + 2]) / window);
                 this.peakAngularVelocity.set(endAngular);
             }
         }
 
         this.linear.set(endLinear);
         this.angular.set(endAngular);
-        this.contactThisSubstep = false;
+    }
+
+    private void record(final double time, final Vector3dc linear, final Vector3dc angular) {
+        final int index = this.historyHead;
+        this.historyTime[index] = time;
+        this.historyLinear[index * 3] = linear.x();
+        this.historyLinear[index * 3 + 1] = linear.y();
+        this.historyLinear[index * 3 + 2] = linear.z();
+        this.historyAngular[index * 3] = angular.x();
+        this.historyAngular[index * 3 + 1] = angular.y();
+        this.historyAngular[index * 3 + 2] = angular.z();
+        this.historyHead = (index + 1) % HISTORY;
+        this.historyCount = Math.min(this.historyCount + 1, HISTORY);
     }
 
     public ServerSubLevel subLevel() {

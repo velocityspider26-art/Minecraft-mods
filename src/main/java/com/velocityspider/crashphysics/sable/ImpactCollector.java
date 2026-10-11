@@ -423,8 +423,12 @@ final class ImpactCollector {
         final MaterialProfile profileA = damageA ? baseA : asRigid(baseA);
         final MaterialProfile profileB = damageB || liquidB ? baseB : asRigid(baseB);
 
-        final double weakerStrength = Math.min(profileA.effectiveStrength(), profileB.effectiveStrength());
-        final boolean plastic = ContactMechanics.exceedsElasticLimit(shareMassKg, closingSpeed, weakerStrength, CONTACT_AREA, this.elasticTravel);
+        // The weaker side gives first, after flexing as far as its kind of material does: cloth and leaves give a long
+        // way before they tear, wood a little, rock and metal hardly at all
+        final boolean aWeaker = profileA.effectiveStrength() <= profileB.effectiveStrength();
+        final double weakerStrength = aWeaker ? profileA.effectiveStrength() : profileB.effectiveStrength();
+        final double flex = this.elasticTravel * flexFactor(aWeaker ? materialA.fracture() : materialB.fracture());
+        final boolean plastic = ContactMechanics.exceedsElasticLimit(shareMassKg, closingSpeed, weakerStrength, CONTACT_AREA, flex);
 
         ContactMechanics.Step step = ContactMechanics.Step.NONE;
 
@@ -612,6 +616,14 @@ final class ImpactCollector {
 
     private MaterialProfile terrainProfile(final CrashMaterial material) {
         return material.profile().scaled(this.strengthMultiplier, this.strengthMultiplier);
+    }
+
+    private static double flexFactor(final FractureMode fracture) {
+        return switch (fracture) {
+            case SOFT, PLANT -> 10.0;
+            case FIBROUS -> 2.0;
+            default -> 1.0;
+        };
     }
 
     private static MaterialProfile asRigid(final MaterialProfile profile) {

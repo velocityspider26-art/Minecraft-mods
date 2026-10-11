@@ -27,6 +27,7 @@ public final class CrashConfig {
     public static final ModConfigSpec.BooleanValue STRUCTURAL_FAILURE;
     public static final ModConfigSpec.DoubleValue STRUCTURAL_MIN_G;
     public static final ModConfigSpec.IntValue MAX_STRUCTURAL_BLOCKS;
+    public static final ModConfigSpec.DoubleValue STRUCTURE_RESPONSE_TIME;
 
     // Crew
     public static final ModConfigSpec.BooleanValue CREW_INJURY;
@@ -113,10 +114,15 @@ public final class CrashConfig {
                 .define("structuralFailure", true);
         STRUCTURAL_MIN_G = BUILDER
                 .comment("Crash decelerations below this [g] never trigger a structural check")
-                .defineInRange("structuralMinG", 5.0, 0.5, 1000.0);
+                .defineInRange("structuralMinG", 8.0, 0.5, 1000.0);
         MAX_STRUCTURAL_BLOCKS = BUILDER
                 .comment("Vehicles with more blocks than this skip the structural check (performance)")
                 .defineInRange("maxStructuralBlocks", 8000, 16, 1_000_000);
+        STRUCTURE_RESPONSE_TIME = BUILDER
+                .comment("How long [s] a vehicle's frame (and its crew) takes to respond to a jolt. The physics engine stops a vehicle within",
+                        "a single physics step; real frames flex and spread that shock out, so crash loads are averaged over this long.",
+                        "Shorter = harsher on structures and crew")
+                .defineInRange("structureResponseTime", 0.08, 0.0, 1.0);
         BUILDER.pop();
 
         BUILDER.push("crew");

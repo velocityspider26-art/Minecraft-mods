@@ -125,7 +125,7 @@ public final class CrashGameTests {
             final List<BlockPos> blocks = new ArrayList<>(area.fill(7, 15, 7, 7, 20, 7, Blocks.OAK_PLANKS.defaultBlockState()));
             blocks.addAll(area.fill(8, 20, 7, 15, 20, 7, Blocks.SPRUCE_PLANKS.defaultBlockState()));
             final ServerSubLevel vehicle = area.assemble(blocks);
-            launch(vehicle, 0.0, -35.0, 0.0);
+            launch(vehicle, 0.0, -45.0, 0.0);
             return Counters.of(area.level);
         }, (area, before) -> {
             final Counters after = Counters.of(area.level);
@@ -309,6 +309,53 @@ public final class CrashGameTests {
             helper.assertTrue(hull == 0, "a gentle splashdown shouldn't break anything, but " + hull + " blocks broke");
             helper.assertTrue(depth < 3.0, "a wooden hull should stay afloat, but it is " + depth + " m under");
         });
+    }
+
+    /**
+     * A drone (a plank body with wool wings mounted high, like sails) set down from one block up. A drop like that
+     * is nothing: its wings have to stay on.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_drone_drop")
+    public static void droneDroppedOneBlockKeepsItsWings(final GameTestHelper helper) {
+        scenario(helper, 12, 60, area -> {
+            area.fill(0, 0, 0, 23, GROUND_TOP, 15, Blocks.DIRT.defaultBlockState());
+            final ServerSubLevel drone = area.assemble(drone(area, GROUND_TOP + 2));
+            return new Run(Counters.of(area.level), drone);
+        }, (area, run) -> {
+            final Counters after = Counters.of(area.level);
+            CrashPhysics.LOGGER.info("[gametest] drone drop: {} blocks broken, {} joints torn", after.vehicle - run.before.vehicle, after.torn - run.before.torn);
+            helper.assertTrue(after.torn == run.before.torn, "a one block drop tore " + (after.torn - run.before.torn) + " joints");
+            helper.assertTrue(after.vehicle == run.before.vehicle, "a one block drop broke " + (after.vehicle - run.before.vehicle) + " blocks");
+        });
+    }
+
+    /**
+     * The same drone slamming into the ground at 35 m/s: its wings are wrecked, torn off by the deceleration or
+     * crushed as the body ploughs in and they hit the ground too.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_drone_crash")
+    public static void droneCrashingHardWrecksItsWings(final GameTestHelper helper) {
+        scenario(helper, 13, 60, area -> {
+            area.fill(0, 0, 0, 23, GROUND_TOP, 15, Blocks.DIRT.defaultBlockState());
+            final ServerSubLevel drone = area.assemble(drone(area, GROUND_TOP + 14));
+            launch(drone, 0.0, -35.0, 0.0);
+            return new Run(Counters.of(area.level), drone);
+        }, (area, run) -> {
+            final Counters after = Counters.of(area.level);
+            CrashPhysics.LOGGER.info("[gametest] drone crash: {} blocks broken, {} joints torn", after.vehicle - run.before.vehicle, after.torn - run.before.torn);
+            final long wrecked = (after.torn - run.before.torn) + (after.vehicle - run.before.vehicle);
+            helper.assertTrue(wrecked >= 4, "a 35 m/s crash should wreck the wings (torn off or crushed), but only " + wrecked + " blocks went");
+        });
+    }
+
+    /**
+     * A 3 × 3 × 3 plank body with five-block wool wings on both sides of its top layer.
+     */
+    private static List<BlockPos> drone(final Area area, final int bottom) {
+        final List<BlockPos> blocks = new ArrayList<>(area.fill(10, bottom, 6, 12, bottom + 2, 8, Blocks.OAK_PLANKS.defaultBlockState()));
+        blocks.addAll(area.fill(5, bottom + 2, 7, 9, bottom + 2, 7, Blocks.WHITE_WOOL.defaultBlockState()));
+        blocks.addAll(area.fill(13, bottom + 2, 7, 17, bottom + 2, 7, Blocks.WHITE_WOOL.defaultBlockState()));
+        return blocks;
     }
 
     private record Run(Counters before, ServerSubLevel vehicle) {

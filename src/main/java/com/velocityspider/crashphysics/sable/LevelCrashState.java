@@ -40,6 +40,11 @@ public final class LevelCrashState {
     private final SoilMover soil;
     private final Reference2ObjectOpenHashMap<ServerSubLevel, BodyMotion> motions = new Reference2ObjectOpenHashMap<>();
 
+    /**
+     * Ticks after a vehicle appears during which crash loads can't tear it apart
+     */
+    private static final long SETTLING_TICKS = 3;
+
     private long tick;
     private boolean tickStarted;
     private double substepLength;
@@ -126,7 +131,11 @@ public final class LevelCrashState {
                     continue;
                 }
 
-                final BodyMotion motion = this.motions.computeIfAbsent(subLevel, BodyMotion::new);
+                BodyMotion motion = this.motions.get(subLevel);
+                if (motion == null) {
+                    motion = new BodyMotion(subLevel, this.tick);
+                    this.motions.put(subLevel, motion);
+                }
                 motion.beginSubstep(handle, firstSubstep);
                 motion.lastSeenTick = this.tick;
             }
@@ -151,13 +160,14 @@ public final class LevelCrashState {
 
         // How hard each vehicle was decelerated over the sub-step, the crash impulses included
         final Vector3d gravity = DimensionPhysicsData.getGravity(this.level);
+        final double responseTime = CrashConfig.STRUCTURE_RESPONSE_TIME.getAsDouble();
         for (final BodyMotion motion : this.motions.values()) {
             if (motion.subLevel.isRemoved()) {
                 continue;
             }
             final RigidBodyHandle handle = system.getPhysicsHandle(motion.subLevel);
             if (handle != null && handle.isValid()) {
-                motion.endSubstep(handle, this.substepLength, gravity);
+                motion.endSubstep(handle, this.substepLength, gravity, responseTime);
             }
         }
     }
@@ -197,7 +207,9 @@ public final class LevelCrashState {
                             motion.peakAngularAcceleration, motion.peakAngularVelocity, motion.tickStartLinear, motion.linear);
                 }
 
-                if (CrashConfig.STRUCTURAL_FAILURE.getAsBoolean() && CrashConfig.VEHICLE_DAMAGE.getAsBoolean()
+                // Just assembled: whatever Sable does while settling it into the world isn't a crash
+                final boolean settling = this.tick - motion.firstSeenTick < SETTLING_TICKS;
+                if (!settling && CrashConfig.STRUCTURAL_FAILURE.getAsBoolean() && CrashConfig.VEHICLE_DAMAGE.getAsBoolean()
                         && motion.peakG >= CrashConfig.STRUCTURAL_MIN_G.getAsDouble() && !motion.impactBlocks.isEmpty() && system != null) {
                     StructuralAnalyzer.analyze(this, motion.subLevel, motion.pose, motion.peakLinearAcceleration,
                             motion.peakAngularAcceleration, motion.peakAngularVelocity, motion.impactBlocks);

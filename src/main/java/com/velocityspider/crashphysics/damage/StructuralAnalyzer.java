@@ -45,6 +45,11 @@ public final class StructuralAnalyzer {
      * Don't re-analyse the same vehicle every tick of a long crash, unless it is hit much harder than last time
      */
     private static final long COOLDOWN_TICKS = 4;
+
+    /**
+     * Every joint carries at least this many times the weight of its own block (eight blocks hanging off it at 10 g)
+     */
+    private static final double MIN_JOINT_LOAD = 80.0;
     private static final double HARDER_HIT = 1.25;
 
     private static final Reference2LongOpenHashMap<ServerSubLevel> LAST_ANALYSIS = new Reference2LongOpenHashMap<>();
@@ -172,8 +177,12 @@ public final class StructuralAnalyzer {
             final BlockState blockState = states.get(i);
             final Double sableMass = ((BlockStateExtension) blockState).sable$getProperty(PhysicsBlockPropertyTypes.MASS.get());
             mass[i] = (sableMass != null ? sableMass : 1.0) * kgPerSableMass;
-            jointStrength[i] = CrashMaterials.get(blockState).profile().effectiveJointStrength() * jointScale;
-            crushStrength[i] = CrashMaterials.get(blockState).profile().effectiveStrength() * crushScale;
+            // Sable gives every block a full block's mass (a sail weighs 250 kg, not the 1 kg real canvas does), so a
+            // joint always holds at least a fair multiple of its block's own weight: nothing built from a material would
+            // stand if its connections couldn't. Real connections are then stronger still where the material is.
+            final double weightFloor = mass[i] * 9.80665 * MIN_JOINT_LOAD;
+            jointStrength[i] = Math.max(CrashMaterials.get(blockState).profile().effectiveJointStrength(), weightFloor) * jointScale;
+            crushStrength[i] = Math.max(CrashMaterials.get(blockState).profile().effectiveStrength(), weightFloor) * crushScale;
 
             position[i * 3] = x + 0.5;
             position[i * 3 + 1] = y + 0.5;
