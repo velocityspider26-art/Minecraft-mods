@@ -95,6 +95,17 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             // Separate directory, so test worlds (wiped before every run) never mix with the dev client/server world
             gameDirectory = project.file('run/gametest')
+            // Profiling: ./gradlew runGameTestServer -Pbench (add -PnoCallbacks for Sable's own cost)
+            if (project.hasProperty('bench')) {
+                systemProperty 'crashphysics.bench', 'true'
+                systemProperty 'crashphysics.profile', 'true'
+            }
+            if (project.hasProperty('jfr')) {
+                jvmArguments.add("-XX:StartFlightRecording=filename=${project.property('jfr')},settings=profile,jdk.ExecutionSample#period=1ms")
+            }
+            if (project.hasProperty('noCallbacks')) {
+                systemProperty 'crashphysics.bench.noCallbacks', 'true'
+            }
         }
 
         data {

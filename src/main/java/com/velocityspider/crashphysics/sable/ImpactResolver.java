@@ -52,7 +52,9 @@ final class ImpactResolver {
         }
 
         // Break blocks now, so the next sub-step already sees the holes
+        final long timer = CrashTimings.begin();
         this.state.destruction().process();
+        CrashTimings.end(CrashTimings.Section.RESOLVE_BREAKING, timer);
     }
 
     private void resolveContacts(final SubLevelPhysicsSystem system, final List<ContactRecord> records) {

@@ -39,6 +39,20 @@ public final class CrashCollisionCallback implements BlockSubLevelCollisionCallb
     @Override
     public double[] onCollision(final int x, final int y, final int z, final int otherX, final int otherY, final int otherZ,
                                 final double x1, final double y1, final double z1, final double impactVelocity, final boolean hasOtherBlock) {
+        if (!CrashTimings.ENABLED) {
+            return this.handle(x, y, z, otherX, otherY, otherZ, x1, y1, z1, impactVelocity, hasOtherBlock);
+        }
+        final long start = System.nanoTime();
+        try {
+            return this.handle(x, y, z, otherX, otherY, otherZ, x1, y1, z1, impactVelocity, hasOtherBlock);
+        } finally {
+            CrashTimings.callbackNanos += System.nanoTime() - start;
+            CrashTimings.callbacks++;
+        }
+    }
+
+    private double[] handle(final int x, final int y, final int z, final int otherX, final int otherY, final int otherZ,
+                            final double x1, final double y1, final double z1, final double impactVelocity, final boolean hasOtherBlock) {
         try {
             if (this.delegate != null) {
                 final double[] delegateResult = this.delegate.onCollision(x, y, z, otherX, otherY, otherZ, x1, y1, z1, impactVelocity, hasOtherBlock);

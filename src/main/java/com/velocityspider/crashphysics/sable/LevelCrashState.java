@@ -17,6 +17,7 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -60,7 +61,6 @@ public final class LevelCrashState {
         this.destruction = new Destruction(level, this.damage, this.effects, this.collapse, this.soil);
         this.resolver = new ImpactResolver(level, this);
         this.sweep = new SweptImpacts(level, this);
-        this.destruction.onVehicleBlockRemoved((vehicle, pos) -> this.sweep.blockRemoved(vehicle, pos.asLong()));
     }
 
     public static LevelCrashState get(final ServerLevel level) {
@@ -111,6 +111,16 @@ public final class LevelCrashState {
      * Called before every physics sub-step.
      */
     void prePhysics(final SubLevelPhysicsSystem system, final double dt) {
+        final long start = CrashTimings.ENABLED ? System.nanoTime() : 0L;
+        this.prePhysicsTimed(system, dt);
+        if (CrashTimings.ENABLED) {
+            final long end = System.nanoTime();
+            CrashTimings.preNanos += end - start;
+            CrashTimings.stepStart = end;
+        }
+    }
+
+    private void prePhysicsTimed(final SubLevelPhysicsSystem system, final double dt) {
         final boolean firstSubstep = !this.tickStarted;
         this.tickStarted = true;
 
@@ -146,8 +156,14 @@ public final class LevelCrashState {
 
         // Deal with what fast vehicles are about to hit before Rapier can step past it
         if (this.collector.active()) {
+            final long sweepStart = CrashTimings.ENABLED ? System.nanoTime() : 0L;
+            final long sweepTimer = CrashTimings.begin();
             this.sweep.run(system, dt, this.motions.values());
+            CrashTimings.end(CrashTimings.Section.SWEEP, sweepTimer);
             this.blockBreakAllowance = this.destruction.remainingBlockBudget();
+            if (CrashTimings.ENABLED) {
+                CrashTimings.sweepNanos += System.nanoTime() - sweepStart;
+            }
         }
     }
 
@@ -155,7 +171,21 @@ public final class LevelCrashState {
      * Called after every physics sub-step, outside of Rapier.
      */
     void postPhysics(final SubLevelPhysicsSystem system) {
+        final long start = CrashTimings.ENABLED ? System.nanoTime() : 0L;
+        if (CrashTimings.ENABLED && CrashTimings.stepStart != 0L) {
+            CrashTimings.stepNanos += start - CrashTimings.stepStart;
+            CrashTimings.stepStart = 0L;
+        }
+        this.postPhysicsTimed(system);
+        if (CrashTimings.ENABLED) {
+            CrashTimings.postNanos += System.nanoTime() - start;
+        }
+    }
+
+    private void postPhysicsTimed(final SubLevelPhysicsSystem system) {
+        final long resolveTimer = CrashTimings.begin();
         this.resolver.resolve(system, this.collector.drainRecords(), this.collector.drainSkids());
+        CrashTimings.end(CrashTimings.Section.RESOLVE, resolveTimer);
         this.blockBreakAllowance = this.destruction.remainingBlockBudget();
 
         // How hard each vehicle was decelerated over the sub-step, the crash impulses included
@@ -176,6 +206,20 @@ public final class LevelCrashState {
      * Called at the end of every game tick of this dimension.
      */
     void endTick() {
+        final long start = CrashTimings.ENABLED ? System.nanoTime() : 0L;
+        this.endTickTimed();
+        if (CrashTimings.ENABLED) {
+            final long end = System.nanoTime();
+            CrashTimings.endTickNanos += end - start;
+            final long total = CrashTimings.total();
+            CrashTimings.endTick(total - this.timedSoFar, this.tick);
+            this.timedSoFar = total;
+        }
+    }
+
+    private long timedSoFar;
+
+    private void endTickTimed() {
         this.tickStarted = false;
 
         if (CrashConfig.isLoaded() && CrashConfig.DEBUG_LOGGING.getAsBoolean() && this.collector.statCallbacks > 0) {
@@ -203,23 +247,35 @@ public final class LevelCrashState {
                 }
 
                 if (CrashConfig.CREW_INJURY.getAsBoolean()) {
+                    final long crewTimer = CrashTimings.begin();
                     CrewHandler.apply(this.level, motion.subLevel, motion.pose, motion.peakG, motion.peakLinearAcceleration,
                             motion.peakAngularAcceleration, motion.peakAngularVelocity, motion.tickStartLinear, motion.linear);
+                    CrashTimings.end(CrashTimings.Section.CREW, crewTimer);
                 }
 
                 // Just assembled: whatever Sable does while settling it into the world isn't a crash
                 final boolean settling = this.tick - motion.firstSeenTick < SETTLING_TICKS;
                 if (!settling && CrashConfig.STRUCTURAL_FAILURE.getAsBoolean() && CrashConfig.VEHICLE_DAMAGE.getAsBoolean()
                         && motion.peakG >= CrashConfig.STRUCTURAL_MIN_G.getAsDouble() && !motion.impactBlocks.isEmpty() && system != null) {
+                    final long structureTimer = CrashTimings.begin();
                     StructuralAnalyzer.analyze(this, motion.subLevel, motion.pose, motion.peakLinearAcceleration,
                             motion.peakAngularAcceleration, motion.peakAngularVelocity, motion.impactBlocks);
+                    CrashTimings.end(CrashTimings.Section.STRUCTURE, structureTimer);
                 }
             }
 
+            long timer = CrashTimings.begin();
             this.destruction.endTick();
+            CrashTimings.end(CrashTimings.Section.DESTRUCTION, timer);
+            timer = CrashTimings.begin();
             this.collapse.process(this.destruction);
+            CrashTimings.end(CrashTimings.Section.COLLAPSE, timer);
+            timer = CrashTimings.begin();
             this.soil.process();
+            CrashTimings.end(CrashTimings.Section.SOIL, timer);
+            timer = CrashTimings.begin();
             this.effects.flush();
+            CrashTimings.end(CrashTimings.Section.EFFECTS, timer);
             this.damage.expire(this.tick, CrashConfig.DAMAGE_MEMORY_SECONDS.getAsInt() * 20L);
         }
 
@@ -228,6 +284,13 @@ public final class LevelCrashState {
         }
         this.motions.values().removeIf(motion -> motion.subLevel.isRemoved() || this.tick - motion.lastSeenTick > 40);
         this.tick++;
+    }
+
+    /**
+     * A block changed somewhere in this dimension, possibly on a vehicle.
+     */
+    void blockChanged(final int x, final int y, final int z, final BlockState oldState, final BlockState newState) {
+        this.sweep.blockChanged(x, y, z, oldState, newState);
     }
 
     public long tick() {

@@ -54,6 +54,19 @@ public final class CrashTickHandler {
         return crashState.collector.onContact(state, x, y, z, ox, oy, oz, ix, iy, iz, impactVelocity, hasOther);
     }
 
+    /**
+     * Called by Sable for every block that changes in a dimension it simulates.
+     */
+    public static void onBlockChanged(final ServerLevel level, final int x, final int y, final int z, final BlockState oldState, final BlockState newState) {
+        if (oldState == newState) {
+            return;
+        }
+        final LevelCrashState crashState = LevelCrashState.getIfPresent(level);
+        if (crashState != null) {
+            crashState.blockChanged(x, y, z, oldState, newState);
+        }
+    }
+
     private static void onPrePhysics(final ForgeSablePrePhysicsTickEvent event) {
         final SubLevelPhysicsSystem system = event.getPhysicsSystem();
         try {

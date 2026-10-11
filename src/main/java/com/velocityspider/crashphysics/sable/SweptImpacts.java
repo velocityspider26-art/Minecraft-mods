@@ -9,8 +9,14 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
+import dev.ryanhcode.sable.Sable;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import it.unimi.dsi.fastutil.longs.Long2ByteMap;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,6 +26,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
@@ -68,13 +75,25 @@ final class SweptImpacts {
      */
     private static final double LEADING_AXIS = 0.2;
 
-    private static final long SHAPE_REFRESH_TICKS = 400;
-    private static final long SHAPE_MIN_AGE = 40;
+    /**
+     * Below this much travel per sub-step a block can't tunnel through anything, and Rapier's own contacts are enough
+     * [blocks]
+     */
+    private static final double CCD_TRAVEL = 0.1;
+
+    /**
+     * Space kept above the highest terrain block of a column before it counts as clear, for thin blocks (carpets,
+     * snow layers) that the heightmap doesn't count [blocks]
+     */
+    private static final int CLEARANCE = 2;
+
     private static final int MAX_LEADING_BLOCKS = 4096;
+    private static final int MAX_COLUMNS = 256 * 256;
 
     private final ServerLevel level;
     private final LevelCrashState state;
     private final Reference2ObjectOpenHashMap<ServerSubLevel, Shape> shapes = new Reference2ObjectOpenHashMap<>();
+    private final Reference2ObjectOpenHashMap<BlockState, double[]> boundsCache = new Reference2ObjectOpenHashMap<>();
     private final List<Hit> hits = new ArrayList<>();
     private final LongOpenHashSet blocked = new LongOpenHashSet();
     private final LongOpenHashSet brokenTerrain = new LongOpenHashSet();
@@ -98,54 +117,139 @@ final class SweptImpacts {
 
     @Nullable
     private LevelChunk lastChunk;
+    private final BlockPos.MutableBlockPos changed = new BlockPos.MutableBlockPos();
 
     /**
-     * The blocks a vehicle is made of, kept up to date as crashes break them
+     * The top of the terrain (or liquid) in each column around the vehicle being swept, from the world's heightmap
+     */
+    private int[] columns = new int[1024];
+    private int columnsX;
+    private int columnsZ;
+    private int columnsWidth;
+    private int columnsDepth;
+
+    /**
+     * The blocks a vehicle is made of, kept up to date block by block as they change
      */
     private static final class Shape {
         final LongOpenHashSet solid = new LongOpenHashSet();
         /**
-         * Blocks with at least one open face
+         * The blocks on the outside, each with the directions it is the outermost block of its row in (one bit per
+         * {@link Direction}): the faces that meet whatever the vehicle runs into
          */
-        final LongOpenHashSet surface = new LongOpenHashSet();
-        double mass;
-        long gatheredTick;
+        final Long2ByteOpenHashMap outer = new Long2ByteOpenHashMap();
+        boolean outerStale = true;
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
 
         void add(final int x, final int y, final int z) {
-            this.solid.add(BlockPos.asLong(x, y, z));
+            if (!this.solid.add(BlockPos.asLong(x, y, z))) {
+                return;
+            }
             this.minX = Math.min(this.minX, x);
             this.minY = Math.min(this.minY, y);
             this.minZ = Math.min(this.minZ, z);
             this.maxX = Math.max(this.maxX, x);
             this.maxY = Math.max(this.maxY, y);
             this.maxZ = Math.max(this.maxZ, z);
-        }
-
-        boolean onSurface(final long block) {
-            final int x = BlockPos.getX(block);
-            final int y = BlockPos.getY(block);
-            final int z = BlockPos.getZ(block);
-            return !this.solid.contains(BlockPos.asLong(x + 1, y, z)) || !this.solid.contains(BlockPos.asLong(x - 1, y, z))
-                    || !this.solid.contains(BlockPos.asLong(x, y + 1, z)) || !this.solid.contains(BlockPos.asLong(x, y - 1, z))
-                    || !this.solid.contains(BlockPos.asLong(x, y, z + 1)) || !this.solid.contains(BlockPos.asLong(x, y, z - 1));
+            this.outerStale = true;
         }
 
         void remove(final long block) {
-            if (!this.solid.remove(block)) {
+            if (!this.solid.remove(block) || this.outerStale) {
                 return;
             }
-            this.surface.remove(block);
-            // Whatever was behind it is now on the outside
+            final byte flags = this.outer.remove(block);
+            if (flags == 0) {
+                return;
+            }
+            // In each row it was the outermost block of, the next one behind it now is
             for (final Direction direction : DIRECTIONS) {
-                final long next = BlockPos.offset(block, direction);
-                if (this.solid.contains(next)) {
-                    this.surface.add(next);
+                final int bit = 1 << direction.ordinal();
+                if ((flags & bit) == 0) {
+                    continue;
+                }
+                long next = block;
+                while (true) {
+                    next = BlockPos.offset(next, direction.getOpposite());
+                    if (!this.contains(next)) {
+                        break;
+                    }
+                    if (this.solid.contains(next)) {
+                        this.outer.put(next, (byte) (this.outer.get(next) | bit));
+                        break;
+                    }
                 }
             }
         }
+
+        private boolean contains(final long block) {
+            final int x = BlockPos.getX(block);
+            final int y = BlockPos.getY(block);
+            final int z = BlockPos.getZ(block);
+            return x >= this.minX && x <= this.maxX && y >= this.minY && y <= this.maxY && z >= this.minZ && z <= this.maxZ;
+        }
+
+        /**
+         * Works out which blocks are the outermost of their rows along each axis.
+         */
+        void rebuildOuter() {
+            this.outer.clear();
+            final Long2IntOpenHashMap lowX = new Long2IntOpenHashMap(), highX = new Long2IntOpenHashMap();
+            final Long2IntOpenHashMap lowY = new Long2IntOpenHashMap(), highY = new Long2IntOpenHashMap();
+            final Long2IntOpenHashMap lowZ = new Long2IntOpenHashMap(), highZ = new Long2IntOpenHashMap();
+            lowX.defaultReturnValue(Integer.MAX_VALUE);
+            lowY.defaultReturnValue(Integer.MAX_VALUE);
+            lowZ.defaultReturnValue(Integer.MAX_VALUE);
+            highX.defaultReturnValue(Integer.MIN_VALUE);
+            highY.defaultReturnValue(Integer.MIN_VALUE);
+            highZ.defaultReturnValue(Integer.MIN_VALUE);
+
+            for (final LongIterator iterator = this.solid.iterator(); iterator.hasNext(); ) {
+                final long block = iterator.nextLong();
+                final int x = BlockPos.getX(block);
+                final int y = BlockPos.getY(block);
+                final int z = BlockPos.getZ(block);
+                final long rowX = BlockPos.asLong(0, y, z);
+                final long rowY = BlockPos.asLong(x, 0, z);
+                final long rowZ = BlockPos.asLong(x, y, 0);
+                if (x < lowX.get(rowX)) lowX.put(rowX, x);
+                if (x > highX.get(rowX)) highX.put(rowX, x);
+                if (y < lowY.get(rowY)) lowY.put(rowY, y);
+                if (y > highY.get(rowY)) highY.put(rowY, y);
+                if (z < lowZ.get(rowZ)) lowZ.put(rowZ, z);
+                if (z > highZ.get(rowZ)) highZ.put(rowZ, z);
+            }
+
+            for (final LongIterator iterator = this.solid.iterator(); iterator.hasNext(); ) {
+                final long block = iterator.nextLong();
+                final int x = BlockPos.getX(block);
+                final int y = BlockPos.getY(block);
+                final int z = BlockPos.getZ(block);
+                final long rowX = BlockPos.asLong(0, y, z);
+                final long rowY = BlockPos.asLong(x, 0, z);
+                final long rowZ = BlockPos.asLong(x, y, 0);
+                int flags = 0;
+                if (x == lowX.get(rowX)) flags |= WEST;
+                if (x == highX.get(rowX)) flags |= EAST;
+                if (y == lowY.get(rowY)) flags |= DOWN;
+                if (y == highY.get(rowY)) flags |= UP;
+                if (z == lowZ.get(rowZ)) flags |= NORTH;
+                if (z == highZ.get(rowZ)) flags |= SOUTH;
+                if (flags != 0) {
+                    this.outer.put(block, (byte) flags);
+                }
+            }
+            this.outerStale = false;
+        }
     }
+
+    private static final int DOWN = 1 << Direction.DOWN.ordinal();
+    private static final int UP = 1 << Direction.UP.ordinal();
+    private static final int NORTH = 1 << Direction.NORTH.ordinal();
+    private static final int SOUTH = 1 << Direction.SOUTH.ordinal();
+    private static final int WEST = 1 << Direction.WEST.ordinal();
+    private static final int EAST = 1 << Direction.EAST.ordinal();
 
     private static final Direction[] DIRECTIONS = Direction.values();
 
@@ -199,8 +303,10 @@ final class SweptImpacts {
                 continue;
             }
 
+            final long shapeTimer = CrashTimings.begin();
             final Shape shape = this.shape(vehicle);
-            if (shape == null || shape.surface.isEmpty()) {
+            CrashTimings.end(CrashTimings.Section.SWEEP_SHAPE, shapeTimer);
+            if (shape == null) {
                 continue;
             }
 
@@ -212,9 +318,13 @@ final class SweptImpacts {
             this.dragForce.zero();
             this.dragPoint.zero();
             this.dragWeight = 0.0;
+            final long findTimer = CrashTimings.begin();
             this.findHits(motion, shape, dt, minSpeed);
+            CrashTimings.end(CrashTimings.Section.SWEEP_FIND, findTimer);
             if (!this.hits.isEmpty()) {
+                final long resolveTimer = CrashTimings.begin();
                 anything |= this.resolveHits(system, motion, handle, dt, minSpeed);
+                CrashTimings.end(CrashTimings.Section.SWEEP_RESOLVE, resolveTimer);
             }
             if (this.dragWeight > 0.0) {
                 this.applyDrag(motion, handle, dt);
@@ -223,21 +333,38 @@ final class SweptImpacts {
 
         if (anything) {
             // Break what gave way now, so it is gone before Rapier steps
+            final long timer = CrashTimings.begin();
             this.state.destruction().process();
+            CrashTimings.end(CrashTimings.Section.SWEEP_BREAKING, timer);
         }
 
-        if (this.shapes.size() > 64 && this.state.tick() % 200 == 0) {
+        if (this.state.tick() % 200 == 0 && !this.shapes.isEmpty()) {
             this.shapes.keySet().removeIf(ServerSubLevel::isRemoved);
         }
     }
 
     /**
-     * Forgets a block a crash broke off a vehicle, so the blocks behind it count as its outside straight away.
+     * Keeps the shape of a vehicle up to date when one of its blocks changes: broken off in a crash, built, mined.
      */
-    void blockRemoved(final ServerSubLevel vehicle, final long plotBlock) {
+    void blockChanged(final int x, final int y, final int z, final BlockState oldState, final BlockState newState) {
+        if (this.shapes.isEmpty()) {
+            return;
+        }
+        final SubLevel subLevel = Sable.HELPER.getContaining(this.level, x >> 4, z >> 4);
+        if (!(subLevel instanceof final ServerSubLevel vehicle)) {
+            return;
+        }
         final Shape shape = this.shapes.get(vehicle);
-        if (shape != null) {
-            shape.remove(plotBlock);
+        if (shape == null) {
+            return;
+        }
+        this.changed.set(x, y, z);
+        final boolean was = !oldState.isAir() && !oldState.getCollisionShape(this.level, this.changed).isEmpty();
+        final boolean is = !newState.isAir() && !newState.getCollisionShape(this.level, this.changed).isEmpty();
+        if (is && !was) {
+            shape.add(x, y, z);
+        } else if (was && !is) {
+            shape.remove(this.changed.asLong());
         }
     }
 
@@ -262,7 +389,80 @@ final class SweptImpacts {
         }
         final double radius = 0.5 * Math.sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY) + (maxZ - minZ) * (maxZ - minZ));
         final double reach = (speed + spin * radius) * dt + 1.0;
-        return BlockScan.anythingIn(this.level, minX - reach, minY - reach, minZ - reach, maxX + reach, maxY + reach, maxZ + reach);
+        if (!BlockScan.anythingIn(this.level, minX - reach, minY - reach, minZ - reach, maxX + reach, maxY + reach, maxZ + reach)) {
+            return false;
+        }
+
+        // Flying over the ground: everything below is further down than it can get this sub-step
+        final int highest = this.gatherColumns(Mth.floor(minX - reach), Mth.floor(minZ - reach), Mth.floor(maxX + reach), Mth.floor(maxZ + reach));
+        return minY - reach < highest + CLEARANCE;
+    }
+
+    /**
+     * Reads the heightmap for a rectangle of columns.
+     *
+     * @return the highest terrain or liquid block in it, or {@link Integer#MAX_VALUE} if it is too big to look at
+     */
+    private int gatherColumns(final int x0, final int z0, final int x1, final int z1) {
+        final int width = x1 - x0 + 1;
+        final int depth = z1 - z0 + 1;
+        if ((long) width * depth > MAX_COLUMNS) {
+            this.columnsWidth = 0;
+            return Integer.MAX_VALUE;
+        }
+        if (this.columns.length < width * depth) {
+            this.columns = new int[Math.max(width * depth, this.columns.length * 2)];
+        }
+        this.columnsX = x0;
+        this.columnsZ = z0;
+        this.columnsWidth = width;
+        this.columnsDepth = depth;
+
+        final int nothing = this.level.getMinBuildHeight() - 64;
+        int highest = nothing;
+        for (int chunkX = x0 >> 4; chunkX <= x1 >> 4; chunkX++) {
+            for (int chunkZ = z0 >> 4; chunkZ <= z1 >> 4; chunkZ++) {
+                final LevelChunk chunk = this.level.getChunkSource().getChunkNow(chunkX, chunkZ);
+                final Heightmap heightmap = chunk != null ? chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.MOTION_BLOCKING) : null;
+                final int fromX = Math.max(x0, chunkX << 4);
+                final int toX = Math.min(x1, (chunkX << 4) + 15);
+                final int fromZ = Math.max(z0, chunkZ << 4);
+                final int toZ = Math.min(z1, (chunkZ << 4) + 15);
+                for (int x = fromX; x <= toX; x++) {
+                    for (int z = fromZ; z <= toZ; z++) {
+                        // Unloaded chunks hold nothing to hit
+                        final int top = heightmap != null ? heightmap.getFirstAvailable(x & 15, z & 15) - 1 : nothing;
+                        this.columns[(x - x0) * depth + (z - z0)] = top;
+                        highest = Math.max(highest, top);
+                    }
+                }
+            }
+        }
+        return highest;
+    }
+
+    /**
+     * @return if the heightmap shows nothing but air in a box of columns from some height up
+     */
+    private boolean clearAbove(final double minX, final double maxX, final double minZ, final double maxZ, final double bottom) {
+        if (this.columnsWidth == 0) {
+            return false;
+        }
+        final int x0 = Mth.floor(minX) - this.columnsX;
+        final int x1 = Mth.floor(maxX) - this.columnsX;
+        final int z0 = Mth.floor(minZ) - this.columnsZ;
+        final int z1 = Mth.floor(maxZ) - this.columnsZ;
+        if (x0 < 0 || z0 < 0 || x1 >= this.columnsWidth || z1 >= this.columnsDepth) {
+            return false;
+        }
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                if (bottom < this.columns[x * this.columnsDepth + z] + CLEARANCE) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -313,9 +513,19 @@ final class SweptImpacts {
 
         final boolean drag = CrashConfig.WATER_DRAG.getAsBoolean();
         final double dragCoefficient = CrashConfig.DRAG_COEFFICIENT.getAsDouble();
+        if (shape.outerStale) {
+            shape.rebuildOuter();
+        }
+        final boolean pending = this.state.destruction().anyPending();
         int leading = 0;
-        for (final LongIterator iterator = shape.surface.iterator(); iterator.hasNext(); ) {
-            final long block = iterator.nextLong();
+        for (final ObjectIterator<Long2ByteMap.Entry> iterator = shape.outer.long2ByteEntrySet().fastIterator(); iterator.hasNext(); ) {
+            final Long2ByteMap.Entry entry = iterator.next();
+            final long block = entry.getLongKey();
+            final int flags = entry.getByteValue();
+            if (pending && this.state.destruction().isPending(block)) {
+                // Already broken, only waiting to be removed
+                continue;
+            }
             final int bx = BlockPos.getX(block);
             final int by = BlockPos.getY(block);
             final int bz = BlockPos.getZ(block);
@@ -333,9 +543,33 @@ final class SweptImpacts {
                 continue;
             }
 
-            // Only blocks with an open face towards where they are going can hit anything first
+            // Nothing but air anywhere along its path
+            final double dx = v.x * dt;
+            final double dy = v.y * dt;
+            final double dz = v.z * dt;
+            if (this.clearAbove(c.x - extentX + Math.min(dx, 0.0) - TOUCHING, c.x + extentX + Math.max(dx, 0.0) + TOUCHING,
+                    c.z - extentZ + Math.min(dz, 0.0) - TOUCHING, c.z + extentZ + Math.max(dz, 0.0) + TOUCHING,
+                    c.y - extentY + Math.min(dy, 0.0) - TOUCHING)) {
+                continue;
+            }
+
+            // How much of its outside faces the way it is going, and whether it leads along an axis: only blocks out in
+            // front can run into anything
             final Vector3d direction = pose.transformNormalInverse(this.local.set(v).div(speed));
-            final double frontArea = this.frontArea(shape, bx, by, bz, direction);
+            double frontArea = 0.0;
+            boolean leads = false;
+            if ((flags & (direction.x > 0.0 ? EAST : WEST)) != 0) {
+                frontArea += Math.abs(direction.x);
+                leads = Math.abs(direction.x) >= LEADING_AXIS;
+            }
+            if ((flags & (direction.y > 0.0 ? UP : DOWN)) != 0) {
+                frontArea += Math.abs(direction.y);
+                leads |= Math.abs(direction.y) >= LEADING_AXIS;
+            }
+            if ((flags & (direction.z > 0.0 ? SOUTH : NORTH)) != 0) {
+                frontArea += Math.abs(direction.z);
+                leads |= Math.abs(direction.z) >= LEADING_AXIS;
+            }
             if (frontArea <= 0.0) {
                 continue;
             }
@@ -355,38 +589,16 @@ final class SweptImpacts {
                 }
             }
 
-            if (speed < minSpeed || !this.leads(shape, bx, by, bz, direction)) {
+            // Slower than this Rapier's own contacts catch everything
+            if (!leads || speed < minSpeed || speed * dt < CCD_TRAVEL) {
                 continue;
             }
             if (++leading > MAX_LEADING_BLOCKS) {
                 break;
             }
 
-            this.sweepBlock(block, c.x, c.y, c.z, extentX, extentY, extentZ, v.x * dt, v.y * dt, v.z * dt, dt, minSpeed);
+            this.sweepBlock(block, c.x, c.y, c.z, extentX, extentY, extentZ, dx, dy, dz, dt, minSpeed);
         }
-    }
-
-    /**
-     * The area of a block's open faces facing the way it moves, projected across the motion [m²].
-     */
-    private double frontArea(final Shape shape, final int x, final int y, final int z, final Vector3d direction) {
-        double area = 0.0;
-        if (!shape.solid.contains(BlockPos.asLong(x + (direction.x > 0 ? 1 : -1), y, z))) {
-            area += Math.abs(direction.x);
-        }
-        if (!shape.solid.contains(BlockPos.asLong(x, y + (direction.y > 0 ? 1 : -1), z))) {
-            area += Math.abs(direction.y);
-        }
-        if (!shape.solid.contains(BlockPos.asLong(x, y, z + (direction.z > 0 ? 1 : -1)))) {
-            area += Math.abs(direction.z);
-        }
-        return area;
-    }
-
-    private boolean leads(final Shape shape, final int x, final int y, final int z, final Vector3d direction) {
-        return (Math.abs(direction.x) >= LEADING_AXIS && !shape.solid.contains(BlockPos.asLong(x + (direction.x > 0 ? 1 : -1), y, z)))
-                || (Math.abs(direction.y) >= LEADING_AXIS && !shape.solid.contains(BlockPos.asLong(x, y + (direction.y > 0 ? 1 : -1), z)))
-                || (Math.abs(direction.z) >= LEADING_AXIS && !shape.solid.contains(BlockPos.asLong(x, y, z + (direction.z > 0 ? 1 : -1))));
     }
 
     /**
@@ -409,32 +621,43 @@ final class SweptImpacts {
         final int y1 = (int) Math.floor(Math.max(maxY, maxY + dy) + TOUCHING);
         final int z1 = (int) Math.floor(Math.max(maxZ, maxZ + dz) + TOUCHING);
         final boolean waterImpacts = CrashConfig.WATER_IMPACTS.getAsBoolean();
+        final boolean pending = this.state.destruction().anyPending();
 
         for (int x = x0; x <= x1; x++) {
             for (int y = y0; y <= y1; y++) {
                 for (int z = z0; z <= z1; z++) {
                     final BlockState terrain = this.terrainAt(this.cursor.set(x, y, z));
-                    if (terrain == null || terrain.isAir()) {
+                    if (terrain == null || terrain.isAir() || (pending && this.state.destruction().isPending(this.cursor.asLong()))) {
                         continue;
                     }
-                    final VoxelShape collision = terrain.getCollisionShape(this.level, this.cursor);
-                    final AABB box;
+                    final double boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ;
                     final boolean liquid;
-                    if (!collision.isEmpty()) {
-                        box = collision.bounds().move(x, y, z);
+                    final double[] bounds = this.collisionBounds(terrain);
+                    if (bounds != null) {
+                        boxMinX = x + bounds[0];
+                        boxMinY = y + bounds[1];
+                        boxMinZ = z + bounds[2];
+                        boxMaxX = x + bounds[3];
+                        boxMaxY = y + bounds[4];
+                        boxMaxZ = z + bounds[5];
                         liquid = false;
                     } else if (waterImpacts && !terrain.getFluidState().isEmpty()) {
                         // The liquid up to its surface
-                        box = new AABB(x, y, z, x + 1, y + terrain.getFluidState().getHeight(this.level, this.cursor), z + 1);
+                        boxMinX = x;
+                        boxMinY = y;
+                        boxMinZ = z;
+                        boxMaxX = x + 1;
+                        boxMaxY = y + terrain.getFluidState().getHeight(this.level, this.cursor);
+                        boxMaxZ = z + 1;
                         liquid = true;
                     } else {
                         continue;
                     }
 
                     // Already touching: Rapier has it
-                    if (minX + TOUCHING < box.maxX && maxX - TOUCHING > box.minX
-                            && minY + TOUCHING < box.maxY && maxY - TOUCHING > box.minY
-                            && minZ + TOUCHING < box.maxZ && maxZ - TOUCHING > box.minZ) {
+                    if (minX + TOUCHING < boxMaxX && maxX - TOUCHING > boxMinX
+                            && minY + TOUCHING < boxMaxY && maxY - TOUCHING > boxMinY
+                            && minZ + TOUCHING < boxMaxZ && maxZ - TOUCHING > boxMinZ) {
                         continue;
                     }
 
@@ -446,8 +669,8 @@ final class SweptImpacts {
                         final double lo = k == 0 ? minX : k == 1 ? minY : minZ;
                         final double hi = k == 0 ? maxX : k == 1 ? maxY : maxZ;
                         final double d = k == 0 ? dx : k == 1 ? dy : dz;
-                        final double boxLo = k == 0 ? box.minX : k == 1 ? box.minY : box.minZ;
-                        final double boxHi = k == 0 ? box.maxX : k == 1 ? box.maxY : box.maxZ;
+                        final double boxLo = k == 0 ? boxMinX : k == 1 ? boxMinY : boxMinZ;
+                        final double boxHi = k == 0 ? boxMaxX : k == 1 ? boxMaxY : boxMaxZ;
 
                         if (Math.abs(d) < 1.0e-9) {
                             if (hi - MIN_SIDE_OVERLAP <= boxLo || lo + MIN_SIDE_OVERLAP >= boxHi) {
@@ -474,6 +697,8 @@ final class SweptImpacts {
                         continue;
                     }
 
+                    final AABB box = new AABB(boxMinX, boxMinY, boxMinZ, boxMaxX, boxMaxY, boxMaxZ);
+
                     // Hitting a face inside solid ground (between two ground blocks) is just sliding over the ground,
                     // and moving from water into more water isn't hitting the surface
                     if (this.faceIsInternal(x, y, z, box, axis, sign, liquid)) {
@@ -497,6 +722,36 @@ final class SweptImpacts {
         }
     }
 
+    /**
+     * The bounds of a block state's collision shape within its cell, or null if it has none. Cached per state, except
+     * for the few blocks whose shape moves around with their position.
+     */
+    @Nullable
+    private double[] collisionBounds(final BlockState state) {
+        if (state.hasOffsetFunction()) {
+            final VoxelShape shape = state.getCollisionShape(this.level, this.cursor);
+            if (shape.isEmpty()) {
+                return null;
+            }
+            final AABB bounds = shape.bounds();
+            return new double[]{bounds.minX, bounds.minY, bounds.minZ, bounds.maxX, bounds.maxY, bounds.maxZ};
+        }
+        double[] bounds = this.boundsCache.get(state);
+        if (bounds == null) {
+            final VoxelShape shape = state.getCollisionShape(this.level, this.cursor);
+            if (shape.isEmpty()) {
+                bounds = NO_BOUNDS;
+            } else {
+                final AABB box = shape.bounds();
+                bounds = new double[]{box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ};
+            }
+            this.boundsCache.put(state, bounds);
+        }
+        return bounds == NO_BOUNDS ? null : bounds;
+    }
+
+    private static final double[] NO_BOUNDS = new double[0];
+
     private boolean faceIsInternal(final int x, final int y, final int z, final AABB box, final int axis, final double sign, final boolean liquid) {
         // The face being hit, and the cell on the far side of it
         final boolean onBoundary = sign > 0.0
@@ -512,7 +767,7 @@ final class SweptImpacts {
         if (beside == null || beside.isAir()) {
             return false;
         }
-        return liquid ? !beside.getFluidState().isEmpty() : Block.isShapeFullBlock(beside.getCollisionShape(this.level, this.neighbor));
+        return liquid ? !beside.getFluidState().isEmpty() : beside.isCollisionShapeFullBlock(this.level, this.neighbor);
     }
 
     /**
@@ -817,29 +1072,16 @@ final class SweptImpacts {
     }
 
     /**
-     * The vehicle's blocks. Gathered once, then kept up to date as crashes break blocks off; gathered again now and
-     * then in case something else changed the vehicle (its mass is a cheap way to notice).
+     * The vehicle's blocks: gathered once, then kept up to date as they change.
      */
     @Nullable
     private Shape shape(final ServerSubLevel vehicle) {
-        final MassData massData = vehicle.getMassTracker();
-        if (massData == null || massData.isInvalid()) {
-            return null;
-        }
-        final double mass = massData.getMass();
-        final long now = this.state.tick();
-
         final Shape cached = this.shapes.get(vehicle);
         if (cached != null) {
-            final long age = now - cached.gatheredTick;
-            if (age < SHAPE_REFRESH_TICKS && (cached.mass == mass || age < SHAPE_MIN_AGE)) {
-                return cached.solid.isEmpty() ? null : cached;
-            }
+            return cached.solid.isEmpty() ? null : cached;
         }
 
         final Shape shape = new Shape();
-        shape.mass = mass;
-        shape.gatheredTick = now;
         this.shapes.put(vehicle, shape);
 
         final BoundingBox3ic bounds = vehicle.getPlot().getBoundingBox();
@@ -854,12 +1096,6 @@ final class SweptImpacts {
 
         BlockScan.solidBlocks(this.level, bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ(),
                 (x, y, z, blockState) -> shape.add(x, y, z));
-        for (final LongIterator iterator = shape.solid.iterator(); iterator.hasNext(); ) {
-            final long block = iterator.nextLong();
-            if (shape.onSurface(block)) {
-                shape.surface.add(block);
-            }
-        }
         return shape.solid.isEmpty() ? null : shape;
     }
 }

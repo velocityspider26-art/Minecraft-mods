@@ -17,6 +17,11 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets = "dev.ryanhcode.sable.physics.impl.rapier.collider.RapierVoxelColliderBakery", remap = false)
 public abstract class RapierVoxelColliderBakeryMixin {
 
+    /**
+     * For profiling only: measures what Sable costs without any crash physics callbacks
+     */
+    private static final boolean NO_CALLBACKS = Boolean.getBoolean("crashphysics.bench.noCallbacks");
+
     @WrapOperation(
             method = "buildPhysicsDataForBlock",
             at = @At(
@@ -29,7 +34,7 @@ public abstract class RapierVoxelColliderBakeryMixin {
         final BlockSubLevelCollisionCallback existing = original.call(state);
 
         // Air and fluids never take part in solid contacts
-        if (state.isAir() || (!state.getFluidState().isEmpty() && state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty())) {
+        if (NO_CALLBACKS || state.isAir() || (!state.getFluidState().isEmpty() && state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty())) {
             return existing;
         }
 

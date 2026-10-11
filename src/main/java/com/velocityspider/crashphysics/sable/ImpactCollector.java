@@ -218,6 +218,12 @@ final class ImpactCollector {
             return false;
         }
 
+        // Either block already gave way and is only waiting to be removed: it is gone, nothing pushes back
+        if (this.state.destruction().anyPending()
+                && (this.state.destruction().isPending(BlockPos.asLong(x, y, z)) || this.state.destruction().isPending(BlockPos.asLong(ox, oy, oz)))) {
+            return true;
+        }
+
         if (closingSpeed < this.minImpactSpeed) {
             if (this.skidMarks) {
                 this.checkSkid(selfState, x, y, z, ox, oz, ix, iy, iz);

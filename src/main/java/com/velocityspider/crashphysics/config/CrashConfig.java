@@ -41,6 +41,7 @@ public final class CrashConfig {
     public static final ModConfigSpec.DoubleValue EJECTA_CHANCE;
     public static final ModConfigSpec.DoubleValue EJECTA_SPEED_FACTOR;
     public static final ModConfigSpec.IntValue MAX_FLYING_DEBRIS_PER_TICK;
+    public static final ModConfigSpec.IntValue MAX_LIVE_DEBRIS;
     public static final ModConfigSpec.DoubleValue VEHICLE_DEBRIS_CHANCE;
     public static final ModConfigSpec.DoubleValue DROP_CHANCE;
     public static final ModConfigSpec.BooleanValue COLLAPSE;
@@ -61,6 +62,7 @@ public final class CrashConfig {
 
     // Limits
     public static final ModConfigSpec.IntValue MAX_BLOCKS_BROKEN_PER_TICK;
+    public static final ModConfigSpec.DoubleValue MAX_BREAKING_MILLIS_PER_TICK;
     public static final ModConfigSpec.IntValue DAMAGE_MEMORY_SECONDS;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
 
@@ -155,7 +157,10 @@ public final class CrashConfig {
                 .defineInRange("ejectaSpeedFactor", 0.35, 0.0, 2.0);
         MAX_FLYING_DEBRIS_PER_TICK = BUILDER
                 .comment("Maximum falling-block entities (ejecta and wreckage) spawned per tick per dimension")
-                .defineInRange("maxFlyingDebrisPerTick", 48, 0, 10000);
+                .defineInRange("maxFlyingDebrisPerTick", 24, 0, 10000);
+        MAX_LIVE_DEBRIS = BUILDER
+                .comment("Maximum falling-block entities from crashes in the air at once per dimension; past this, broken blocks just shatter")
+                .defineInRange("maxLiveDebris", 96, 0, 10000);
         VEHICLE_DEBRIS_CHANCE = BUILDER
                 .comment("Chance that a vehicle block broken in a crash flies off as wreckage instead of being pulverised")
                 .defineInRange("vehicleDebrisChance", 0.4, 0.0, 1.0);
@@ -207,6 +212,10 @@ public final class CrashConfig {
         MAX_BLOCKS_BROKEN_PER_TICK = BUILDER
                 .comment("Maximum blocks broken by crashes per tick per dimension")
                 .defineInRange("maxBlocksBrokenPerTick", 600, 1, 100_000);
+        MAX_BREAKING_MILLIS_PER_TICK = BUILDER
+                .comment("Time crashes may spend breaking blocks per tick per dimension [ms]. When it runs out, the rest waits for the next tick",
+                        "and anything still in the way holds for now. Keeps big crashes from freezing the server")
+                .defineInRange("maxBreakingMillisPerTick", 15.0, 1.0, 1000.0);
         DAMAGE_MEMORY_SECONDS = BUILDER
                 .comment("How long partial damage (cracks) is remembered on a block after its last hit [s]")
                 .defineInRange("damageMemorySeconds", 90, 1, 86_400);

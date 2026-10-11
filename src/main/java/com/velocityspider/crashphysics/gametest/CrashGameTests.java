@@ -2,6 +2,7 @@ package com.velocityspider.crashphysics.gametest;
 
 import com.velocityspider.crashphysics.CrashPhysics;
 import com.velocityspider.crashphysics.damage.Destruction;
+import com.velocityspider.crashphysics.sable.CrashTimings;
 import com.velocityspider.crashphysics.sable.LevelCrashState;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -17,6 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -45,6 +47,12 @@ public final class CrashGameTests {
      * Ticks to let force-loaded chunks start ticking before building
      */
     private static final int SETTLE_TICKS = 10;
+
+    /**
+     * Profiling runs ({@code ./gradlew runGameTestServer -Pbench}) only run the benchmarks, normal runs skip them
+     */
+    private static final boolean BENCH = Boolean.getBoolean("crashphysics.bench");
+    private static final Vector3d NO_THRUST = new Vector3d();
 
     private CrashGameTests() {
     }
@@ -206,7 +214,8 @@ public final class CrashGameTests {
      */
     @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_wall")
     public static void fastRamBreaksThroughAThinWall(final GameTestHelper helper) {
-        scenario(helper, 7, 30, area -> {
+        // Checked while it is still flying clear of the wall, before it lands among the bricks it knocked out
+        scenario(helper, 7, 14, area -> {
             area.fill(0, 0, 0, 31, GROUND_TOP, 15, Blocks.STONE.defaultBlockState());
             area.fill(12, GROUND_TOP + 1, 5, 12, GROUND_TOP + 11, 10, Blocks.STONE_BRICKS.defaultBlockState());
             final ServerSubLevel ram = area.assemble(area.fill(2, GROUND_TOP + 6, 7, 3, GROUND_TOP + 7, 8, Blocks.IRON_BLOCK.defaultBlockState()));
@@ -330,13 +339,13 @@ public final class CrashGameTests {
     }
 
     /**
-     * The same drone slamming into the ground at 35 m/s: its wings are wrecked, torn off by the deceleration or
-     * crushed as the body ploughs in and they hit the ground too.
+     * The same drone slamming into rock at 35 m/s: it is wrecked, the body crushed and the wings torn off or smashed
+     * as they hit too.
      */
     @GameTest(template = EMPTY, timeoutTicks = 300, batch = "crashphysics_drone_crash")
-    public static void droneCrashingHardWrecksItsWings(final GameTestHelper helper) {
+    public static void droneCrashingHardIsWrecked(final GameTestHelper helper) {
         scenario(helper, 13, 60, area -> {
-            area.fill(0, 0, 0, 23, GROUND_TOP, 15, Blocks.DIRT.defaultBlockState());
+            area.fill(0, 0, 0, 23, GROUND_TOP, 15, Blocks.STONE.defaultBlockState());
             final ServerSubLevel drone = area.assemble(drone(area, GROUND_TOP + 14));
             launch(drone, 0.0, -35.0, 0.0);
             return new Run(Counters.of(area.level), drone);
@@ -344,7 +353,7 @@ public final class CrashGameTests {
             final Counters after = Counters.of(area.level);
             CrashPhysics.LOGGER.info("[gametest] drone crash: {} blocks broken, {} joints torn", after.vehicle - run.before.vehicle, after.torn - run.before.torn);
             final long wrecked = (after.torn - run.before.torn) + (after.vehicle - run.before.vehicle);
-            helper.assertTrue(wrecked >= 4, "a 35 m/s crash should wreck the wings (torn off or crushed), but only " + wrecked + " blocks went");
+            helper.assertTrue(wrecked >= 6, "a 35 m/s crash into rock should wreck the drone, but only " + wrecked + " blocks went");
         });
     }
 
@@ -356,6 +365,144 @@ public final class CrashGameTests {
         blocks.addAll(area.fill(5, bottom + 2, 7, 9, bottom + 2, 7, Blocks.WHITE_WOOL.defaultBlockState()));
         blocks.addAll(area.fill(13, bottom + 2, 7, 17, bottom + 2, 7, Blocks.WHITE_WOOL.defaultBlockState()));
         return blocks;
+    }
+
+    /**
+     * Benchmark: a 1,300 block wooden ship sitting on the ground with its engines idling, so it never falls asleep.
+     * Every block on its bottom rests on the ground, so this is what idle contacts cost.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_bench_ground")
+    public static void benchmarkShipOnTheGround(final GameTestHelper helper) {
+        benchmark(helper, 14, "ship idling on the ground", 40, 200, null, area -> {
+            area.fill(0, 0, 0, 63, GROUND_TOP, 31, Blocks.DIRT.defaultBlockState());
+            return area.assemble(hull(area, 4, GROUND_TOP + 1, 4, 40, 4, 20));
+        });
+    }
+
+    /**
+     * Benchmark: a ship cruising through water at 3 m/s.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_bench_water")
+    public static void benchmarkShipCruisingThroughWater(final GameTestHelper helper) {
+        benchmark(helper, 15, "ship cruising through water", 40, 200, new Vector3d(3.0, 0.0, 0.0), area -> {
+            area.fill(0, 0, 0, 63, 10, 31, Blocks.STONE.defaultBlockState());
+            area.fill(1, 2, 1, 62, 9, 30, Blocks.WATER.defaultBlockState());
+            area.fill(1, 10, 1, 62, 10, 30, Blocks.AIR.defaultBlockState());
+            return area.assemble(hull(area, 3, 9, 6, 28, 4, 16));
+        });
+    }
+
+    /**
+     * Benchmark: a ship flying low and fast over the ground, a few blocks up.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_bench_flight")
+    public static void benchmarkShipFlyingLow(final GameTestHelper helper) {
+        benchmark(helper, 16, "ship flying low over the ground", 60, 36, NO_THRUST, area -> {
+            area.fill(0, 0, 0, 63, GROUND_TOP, 31, Blocks.DIRT.defaultBlockState());
+            final ServerSubLevel ship = area.assemble(hull(area, 2, GROUND_TOP + 5, 8, 24, 3, 14));
+            launch(ship, 15.0, 10.0, 0.0);
+            return ship;
+        });
+    }
+
+    /**
+     * Benchmark: the big ship crashing into a field at 25 m/s, ploughing a trench and breaking up.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_bench_crash")
+    public static void benchmarkShipCrashing(final GameTestHelper helper) {
+        // The first crash warms up the JVM (class loading, JIT), like any crash after the first in a real game
+        benchmark(helper, 17, "big ship crashing into a field", 150, 100, NO_THRUST, area -> {
+            area.fill(0, 0, 0, 63, GROUND_TOP, 31, Blocks.DIRT.defaultBlockState());
+            area.fill(0, GROUND_TOP, 0, 63, GROUND_TOP, 31, Blocks.GRASS_BLOCK.defaultBlockState());
+            final ServerSubLevel ship = area.assemble(hull(area, 2, GROUND_TOP + 8, 8, 24, 4, 14));
+            launch(ship, 15.0, -20.0, 0.0);
+            return ship;
+        });
+    }
+
+    /**
+     * A box-shaped hull: a solid bottom and deck with walls between them.
+     */
+    private static List<BlockPos> hull(final Area area, final int x0, final int y0, final int z0, final int length, final int height, final int width) {
+        final List<BlockPos> blocks = new ArrayList<>();
+        final int x1 = x0 + length - 1;
+        final int y1 = y0 + height - 1;
+        final int z1 = z0 + width - 1;
+        blocks.addAll(area.fill(x0, y0, z0, x1, y0, z1, Blocks.OAK_PLANKS.defaultBlockState()));
+        blocks.addAll(area.fill(x0, y1, z0, x1, y1, z1, Blocks.SPRUCE_PLANKS.defaultBlockState()));
+        for (int y = y0 + 1; y < y1; y++) {
+            blocks.addAll(area.fill(x0, y, z0, x1, y, z0, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(x0, y, z1, x1, y, z1, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(x0, y, z0 + 1, x0, y, z1 - 1, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(x1, y, z0 + 1, x1, y, z1 - 1, Blocks.OAK_PLANKS.defaultBlockState()));
+        }
+        return blocks;
+    }
+
+    /**
+     * Builds a scene, lets it run for a while, then measures what crash physics costs per tick.
+     *
+     * @param cruise if not null, the ship is held at this velocity like an engine would; otherwise its engines just
+     *               idle, which keeps it awake. {@link #NO_THRUST} leaves it alone.
+     */
+    private static void benchmark(final GameTestHelper helper, final int index, final String label, final int warmupTicks, final int measureTicks,
+                                  @Nullable final Vector3d cruise, final Function<Area, ServerSubLevel> setup) {
+        if (!BENCH) {
+            helper.succeed();
+            return;
+        }
+        final Area area = new Area(helper.getLevel(), new BlockPos(index * 128, 96, 64));
+        final Area next = new Area(helper.getLevel(), new BlockPos(index * 128, 96, 192));
+        area.forceChunks(true);
+        next.forceChunks(true);
+
+        final int[] tick = {0};
+        final long[] worst = {0L};
+        final long[] last = {0L};
+        final List<ServerSubLevel> ship = new ArrayList<>(1);
+        helper.onEachTick(() -> {
+            final int now = ++tick[0];
+            if (now == SETTLE_TICKS) {
+                ship.add(setup.apply(area));
+                return;
+            }
+            if (now > SETTLE_TICKS && cruise != NO_THRUST && !ship.getFirst().isRemoved()) {
+                final RigidBodyHandle handle = RigidBodyHandle.of(ship.getFirst());
+                if (handle != null && handle.isValid()) {
+                    if (cruise != null) {
+                        final Vector3d velocity = handle.getLinearVelocity(new Vector3d());
+                        handle.addLinearAndAngularVelocity(new Vector3d(cruise.x - velocity.x, 0.0, cruise.z - velocity.z), new Vector3d());
+                    } else {
+                        handle.applyLinearAndAngularImpulse(new Vector3d(0.0, 1.0e-4, 0.0), new Vector3d(), true);
+                    }
+                }
+            }
+            if (now == SETTLE_TICKS + warmupTicks) {
+                if (cruise == NO_THRUST) {
+                    // Do it again next door, this time measured
+                    ship.set(0, setup.apply(next));
+                }
+                CrashTimings.reset();
+                worst[0] = 0L;
+                last[0] = 0L;
+            } else if (now > SETTLE_TICKS + warmupTicks) {
+                final long total = CrashTimings.total();
+                worst[0] = Math.max(worst[0], total - last[0]);
+                last[0] = total;
+            }
+            if (now == SETTLE_TICKS + warmupTicks + measureTicks) {
+                CrashTimings.report(label, measureTicks);
+                final int debris = area.level.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class,
+                                new net.minecraft.world.phys.AABB(next.origin).inflate(96)).size();
+                CrashPhysics.LOGGER.info("[timings] {}: worst tick {} ms, {} falling blocks in the air", label,
+                        String.format("%.3f", worst[0] / 1.0e6), debris);
+                CrashPhysics.LOGGER.info("[timings] {}: ship at {}, moving at {} m/s", label, ship.getFirst().logicalPose().position(),
+                        String.format("%.2f", velocity(ship.getFirst()).length()));
+                area.forceChunks(false);
+                next.forceChunks(false);
+                helper.succeed();
+            }
+        });
     }
 
     private record Run(Counters before, ServerSubLevel vehicle) {
@@ -380,6 +527,10 @@ public final class CrashGameTests {
      */
     private static <T> void scenario(final GameTestHelper helper, final int index, final int runTicks,
                                      final Function<Area, T> setup, final BiConsumer<Area, T> check) {
+        if (BENCH) {
+            helper.succeed();
+            return;
+        }
         final Area area = new Area(helper.getLevel(), new BlockPos(index * 128, 96, 64));
         area.forceChunks(true);
 

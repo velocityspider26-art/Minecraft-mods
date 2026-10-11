@@ -9,6 +9,7 @@ import com.velocityspider.crashphysics.material.FractureMode;
 import com.velocityspider.crashphysics.physics.Ejecta;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
@@ -55,13 +56,23 @@ public final class Destruction {
     private final ArrayDeque<Break> queue = new ArrayDeque<>();
     private final List<Volatile> volatiles = new ArrayList<>();
 
-    @Nullable
-    private java.util.function.BiConsumer<ServerSubLevel, BlockPos> vehicleBlockRemoved;
-
     private int blocksBroken;
     private int flyingDebris;
     private int maxBlocks = 600;
-    private int maxFlyingDebris = 48;
+    private int maxFlyingDebris = 24;
+    private int maxLiveDebris = 96;
+    private long breakingNanos;
+    private long maxBreakingNanos = Long.MAX_VALUE;
+
+    /**
+     * Blocks that have given way and are queued to be broken: as far as the physics is concerned they are gone
+     */
+    private final LongOpenHashSet pending = new LongOpenHashSet();
+
+    /**
+     * Debris thrown by crashes that is still in the air
+     */
+    private final ArrayDeque<FallingBlockEntity> liveDebris = new ArrayDeque<>();
 
     // Lifetime totals, for tests and debugging
     private long terrainBroken;
@@ -93,18 +104,15 @@ public final class Destruction {
         this.soil = soil;
     }
 
-    /**
-     * Gets told about every vehicle block crash damage removes.
-     */
-    public void onVehicleBlockRemoved(final java.util.function.BiConsumer<ServerSubLevel, BlockPos> listener) {
-        this.vehicleBlockRemoved = listener;
-    }
-
     public void beginTick() {
         this.blocksBroken = 0;
         this.flyingDebris = 0;
+        this.breakingNanos = 0;
         this.maxBlocks = CrashConfig.MAX_BLOCKS_BROKEN_PER_TICK.getAsInt();
         this.maxFlyingDebris = CrashConfig.MAX_FLYING_DEBRIS_PER_TICK.getAsInt();
+        this.maxLiveDebris = CrashConfig.MAX_LIVE_DEBRIS.getAsInt();
+        this.maxBreakingNanos = (long) (CrashConfig.MAX_BREAKING_MILLIS_PER_TICK.getAsDouble() * 1.0e6);
+        this.liveDebris.removeIf(entity -> entity.isRemoved());
     }
 
     /**
@@ -115,6 +123,30 @@ public final class Destruction {
     }
 
     /**
+     * @return if a block (terrain, or a vehicle block in its plot) has given way and is only waiting to be removed
+     */
+    public boolean isPending(final long pos) {
+        return !this.pending.isEmpty() && this.pending.contains(pos);
+    }
+
+    public boolean anyPending() {
+        return !this.pending.isEmpty();
+    }
+
+    /**
+     * @return if another piece of debris may be thrown: there's room this tick, and not too much in the air already
+     */
+    private boolean canThrowDebris() {
+        return this.flyingDebris < this.maxFlyingDebris && this.liveDebris.size() < this.maxLiveDebris;
+    }
+
+    private void launched(final FallingBlockEntity debris) {
+        this.level.addFreshEntity(debris);
+        this.liveDebris.add(debris);
+        this.flyingDebris++;
+    }
+
+    /**
      * Queues a terrain block that was crushed through.
      *
      * @param motionX          direction the vehicle was moving (for where the rubble goes)
@@ -122,7 +154,7 @@ public final class Destruction {
      */
     public void breakTerrain(final BlockPos pos, final BlockState expected, final CrashMaterial material,
                              final double motionX, final double motionY, final double motionZ, final double penetrationSpeed) {
-        this.queue.add(new Break(null, pos.immutable(), expected, material, motionX, motionY, motionZ, penetrationSpeed, false, false));
+        this.enqueue(new Break(null, pos.immutable(), expected, material, motionX, motionY, motionZ, penetrationSpeed, false, false));
     }
 
     /**
@@ -132,7 +164,7 @@ public final class Destruction {
      */
     public void knockOutTerrain(final BlockPos pos, final BlockState expected, final CrashMaterial material,
                                 final double velocityX, final double velocityY, final double velocityZ) {
-        this.queue.add(new Break(null, pos.immutable(), expected, material, velocityX, velocityY, velocityZ, 0.0, false, true));
+        this.enqueue(new Break(null, pos.immutable(), expected, material, velocityX, velocityY, velocityZ, 0.0, false, true));
     }
 
     /**
@@ -141,15 +173,23 @@ public final class Destruction {
      * @param pulverize if the block is destroyed outright instead of possibly flying off as wreckage
      */
     public void breakVehicleBlock(final ServerSubLevel vehicle, final BlockPos plotPos, final BlockState expected, final CrashMaterial material, final boolean pulverize) {
-        this.queue.add(new Break(vehicle, plotPos.immutable(), expected, material, 0.0, 0.0, 0.0, 0.0, pulverize, false));
+        this.enqueue(new Break(vehicle, plotPos.immutable(), expected, material, 0.0, 0.0, 0.0, 0.0, pulverize, false));
+    }
+
+    private void enqueue(final Break entry) {
+        this.queue.add(entry);
+        this.pending.add(entry.pos.asLong());
     }
 
     /**
-     * Breaks queued blocks, within this tick's budget.
+     * Breaks queued blocks, within this tick's budget. What doesn't fit waits for the next tick; the physics already
+     * treats it as gone.
      */
     public void process() {
-        while (!this.queue.isEmpty() && this.blocksBroken < this.maxBlocks) {
+        while (!this.queue.isEmpty() && this.blocksBroken < this.maxBlocks && this.breakingNanos < this.maxBreakingNanos) {
             final Break entry = this.queue.poll();
+            this.pending.remove(entry.pos.asLong());
+            final long start = System.nanoTime();
             try {
                 if (entry.vehicle == null) {
                     this.breakTerrainNow(entry);
@@ -158,6 +198,10 @@ public final class Destruction {
                 }
             } catch (final RuntimeException e) {
                 CrashPhysics.LOGGER.error("Failed to break {} at {}", entry.expected, entry.pos, e);
+            }
+            this.breakingNanos += System.nanoTime() - start;
+            if (this.breakingNanos >= this.maxBreakingNanos && CrashConfig.DEBUG_LOGGING.getAsBoolean()) {
+                CrashPhysics.LOGGER.info("[crashphysics] breaking time used up after {} blocks this tick, {} left for later", this.blocksBroken, this.queue.size());
             }
         }
     }
@@ -196,7 +240,7 @@ public final class Destruction {
 
         final BlockState ejecta = entry.material.ejecta();
         final boolean throwIt = ejecta != null && CrashConfig.EJECTA.getAsBoolean() && entry.penetrationSpeed > 3.0
-                && this.flyingDebris < this.maxFlyingDebris && this.random.nextDouble() < CrashConfig.EJECTA_CHANCE.getAsDouble();
+                && this.canThrowDebris() && this.random.nextDouble() < CrashConfig.EJECTA_CHANCE.getAsDouble();
 
         final boolean granular = entry.material.fracture() == FractureMode.GRANULAR && !current.hasBlockEntity();
         if (granular && !entry.knockedOut && CrashConfig.DISPLACE_SOIL.getAsBoolean()) {
@@ -208,15 +252,15 @@ public final class Destruction {
             // Slower impacts bulldoze soil aside; only fast ones blast it out ballistically
             final double throwChance = CrashConfig.EJECTA.getAsBoolean()
                     ? CrashConfig.EJECTA_CHANCE.getAsDouble() * Mth.clamp((entry.penetrationSpeed - 15.0) / 40.0, 0.0, 1.0) : 0.0;
-            if (this.flyingDebris < this.maxFlyingDebris && this.random.nextDouble() < throwChance) {
+            if (this.canThrowDebris() && this.random.nextDouble() < throwChance) {
                 this.throwEjecta(entry, displaced, x, y, z);
             } else if (!this.soil.compacts() && !this.soil.displace(entry.pos, displaced, entry.motionX, entry.motionY, entry.motionZ)
-                    && CrashConfig.EJECTA.getAsBoolean() && this.flyingDebris < this.maxFlyingDebris) {
+                    && CrashConfig.EJECTA.getAsBoolean() && this.canThrowDebris()) {
                 // Nowhere to put it next to the hole: it gets thrown clear instead
                 this.throwEjecta(entry, displaced, x, y, z);
             }
             this.soil.seed(entry.pos);
-        } else if (entry.knockedOut && this.flyingDebris < this.maxFlyingDebris && !current.hasBlockEntity()) {
+        } else if (entry.knockedOut && this.canThrowDebris() && !current.hasBlockEntity()) {
             // The whole block flies off ahead of the vehicle
             this.level.levelEvent(LevelEvent.PARTICLES_DESTROY_BLOCK, entry.pos, Block.getId(current));
             this.level.setBlock(entry.pos, current.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
@@ -254,7 +298,7 @@ public final class Destruction {
         final Vector3d world = vehicle.logicalPose().transformPosition(new Vector3d(entry.pos.getX() + 0.5, entry.pos.getY() + 0.5, entry.pos.getZ() + 0.5));
         final FractureMode fracture = entry.material.fracture();
 
-        final boolean wreckage = !entry.pulverize && !current.hasBlockEntity() && this.flyingDebris < this.maxFlyingDebris
+        final boolean wreckage = !entry.pulverize && !current.hasBlockEntity() && this.canThrowDebris()
                 && fracture != FractureMode.GLASS && fracture != FractureMode.SOFT && fracture != FractureMode.PLANT
                 && this.random.nextDouble() < CrashConfig.VEHICLE_DEBRIS_CHANCE.getAsDouble();
 
@@ -268,9 +312,6 @@ public final class Destruction {
 
         this.level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, current), world.x, world.y, world.z, 10, 0.35, 0.35, 0.35, 0.2);
         this.handleVolatile(current, entry.material, world.x, world.y, world.z);
-        if (this.vehicleBlockRemoved != null) {
-            this.vehicleBlockRemoved.accept(vehicle, entry.pos);
-        }
     }
 
     private void throwKnockedOut(final BlockState state, final double x, final double y, final double z,
@@ -294,8 +335,7 @@ public final class Destruction {
         block.dropItem = this.random.nextDouble() < CrashConfig.DROP_CHANCE.getAsDouble();
         block.setHurtsEntities(1.0f, 20);
         block.setDeltaMovement(velocity.x / 20.0, velocity.y / 20.0, velocity.z / 20.0);
-        this.level.addFreshEntity(block);
-        this.flyingDebris++;
+        this.launched(block);
     }
 
     private void throwEjecta(final Break entry, final BlockState ejecta, final double x, final double y, final double z) {
@@ -308,8 +348,7 @@ public final class Destruction {
         rubble.setHurtsEntities(0.5f, 6);
         // Minecraft entity velocities are in blocks per tick
         rubble.setDeltaMovement(velocity[0] / 20.0, velocity[1] / 20.0, velocity[2] / 20.0);
-        this.level.addFreshEntity(rubble);
-        this.flyingDebris++;
+        this.launched(rubble);
     }
 
     private void throwWreckage(final ServerSubLevel vehicle, final BlockState state, final BlockPos plotPos, final Vector3d world) {
@@ -340,8 +379,7 @@ public final class Destruction {
         wreckage.dropItem = true;
         wreckage.setHurtsEntities(2.0f, 40);
         wreckage.setDeltaMovement(velocity.x / 20.0, velocity.y / 20.0, velocity.z / 20.0);
-        this.level.addFreshEntity(wreckage);
-        this.flyingDebris++;
+        this.launched(wreckage);
     }
 
     /**
