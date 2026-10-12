@@ -326,6 +326,94 @@ public final class CrashGameTests {
     }
 
     /**
+     * An open wooden boat carrying 27 iron blocks. Its blocks alone weigh more than the water they displace, so it only
+     * floats because its hull keeps the water out of the space inside it.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_boat")
+    public static void loadedBoatFloatsOnItsHull(final GameTestHelper helper) {
+        scenario(helper, 18, 200, area -> {
+            area.pool();
+            final ServerSubLevel boat = area.assemble(boat(area, false));
+            return new Run(Counters.of(area.level), boat);
+        }, (area, run) -> {
+            final double floor = boatFloor(area, run.vehicle);
+            final double water = LevelCrashState.get(area.level).floodWater(run.vehicle);
+            CrashPhysics.LOGGER.info("[gametest] loaded boat: floor bottom {} m below the surface, {} m³ of water inside",
+                    String.format("%.2f", WATER_SURFACE - floor), String.format("%.1f", water));
+            helper.assertTrue(floor > WATER_SURFACE - 5.0, "the loaded boat should float on its hull, but its floor is " + (WATER_SURFACE - floor) + " m down");
+            helper.assertTrue(water < 2.0, "an intact boat floating level shouldn't take on water, but has " + water + " m³ inside");
+        });
+    }
+
+    /**
+     * The same boat with a hole in its bottom: water pours in, and it goes down.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_boat_holed")
+    public static void holedBoatFloodsAndSinks(final GameTestHelper helper) {
+        scenario(helper, 19, 200, area -> {
+            area.pool();
+            final ServerSubLevel boat = area.assemble(boat(area, true));
+            return new Run(Counters.of(area.level), boat);
+        }, (area, run) -> {
+            final double floor = boatFloor(area, run.vehicle);
+            final double water = LevelCrashState.get(area.level).floodWater(run.vehicle);
+            CrashPhysics.LOGGER.info("[gametest] holed boat: floor bottom {} m below the surface, {} m³ of water inside",
+                    String.format("%.2f", WATER_SURFACE - floor), String.format("%.1f", water));
+            helper.assertTrue(water > 20.0, "water should pour in through the hole, but only " + water + " m³ got in");
+            helper.assertTrue(floor < WATER_SURFACE - 5.0, "the flooded boat should sink, but its floor is only " + (WATER_SURFACE - floor) + " m down");
+        });
+    }
+
+    /**
+     * Height of the water surface in {@link Area#pool()}, relative to the area
+     */
+    private static final double WATER_SURFACE = 10.0 + 8.0 / 9.0;
+
+    /**
+     * A 7 × 7 open boat of planks, four blocks deep, with a 3 × 3 × 3 cube of iron in the middle, built above the pool.
+     *
+     * @param holed with a two-block hole in the bottom
+     */
+    private static List<BlockPos> boat(final Area area, final boolean holed) {
+        // Built where it floats, its floor three blocks under water, so it settles in gently
+        final int floor = 8;
+        final List<BlockPos> blocks = new ArrayList<>(area.fill(4, floor, 4, 10, floor, 10, Blocks.OAK_PLANKS.defaultBlockState()));
+        for (int y = floor + 1; y <= floor + 3; y++) {
+            blocks.addAll(area.fill(4, y, 4, 10, y, 4, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(4, y, 10, 10, y, 10, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(4, y, 5, 4, y, 9, Blocks.OAK_PLANKS.defaultBlockState()));
+            blocks.addAll(area.fill(10, y, 5, 10, y, 9, Blocks.OAK_PLANKS.defaultBlockState()));
+        }
+        blocks.addAll(area.fill(6, floor + 1, 6, 8, floor + 3, 8, Blocks.IRON_BLOCK.defaultBlockState()));
+        // The space inside is open air, not water
+        area.fill(5, floor + 1, 5, 9, floor + 3, 5, Blocks.AIR.defaultBlockState());
+        area.fill(5, floor + 1, 9, 9, floor + 3, 9, Blocks.AIR.defaultBlockState());
+        area.fill(5, floor + 1, 6, 5, floor + 3, 8, Blocks.AIR.defaultBlockState());
+        area.fill(9, floor + 1, 6, 9, floor + 3, 8, Blocks.AIR.defaultBlockState());
+        if (holed) {
+            for (final BlockPos hole : List.of(area.origin.offset(5, floor, 5), area.origin.offset(5, floor, 6))) {
+                area.level.setBlock(hole, Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
+                blocks.remove(hole);
+            }
+        }
+        return blocks;
+    }
+
+    /**
+     * @return the height of the bottom of the boat's floor, relative to the area
+     */
+    private static double boatFloor(final Area area, final ServerSubLevel boat) {
+        // The floor's centre block, at the boat's local (7, 12, 7) from the area's corner
+        final Vector3d floor = boat.logicalPose().transformPosition(new Vector3d(boatOrigin(boat).x + 3.5, boatOrigin(boat).y, boatOrigin(boat).z + 3.5));
+        return floor.y - area.origin.getY();
+    }
+
+    private static Vector3d boatOrigin(final ServerSubLevel boat) {
+        final BoundingBox3ic bounds = boat.getPlot().getBoundingBox();
+        return new Vector3d(bounds.minX() + 1, bounds.minY() + 1, bounds.minZ() + 1);
+    }
+
+    /**
      * A drone (a plank body with wool wings mounted high, like sails) set down from one block up. A drop like that
      * is nothing: its wings have to stay on.
      */

@@ -89,6 +89,7 @@ public final class CrashFxClient {
                 case CrashFxPayload.SOUND -> sound(fx);
                 case CrashFxPayload.BUBBLES -> bubbles(level, fx);
                 case CrashFxPayload.DEBRIS_DUST -> debrisDust(level, fx);
+                case CrashFxPayload.BREACH -> breach(level, fx);
                 default -> {
                 }
             }
@@ -203,6 +204,32 @@ public final class CrashFxClient {
                     drop.setLifetime(15 + RANDOM.nextInt(15));
                 }
             }
+        }
+    }
+
+    /**
+     * Water forcing its way in through a hole in a hull: a jet of spray inside, air bubbling out and the surface
+     * outside sucked down over the hole.
+     */
+    private static void breach(final ClientLevel level, final CrashFxPayload.Fx fx) {
+        final double rate = fx.magnitude();
+        // The jet comes in about as fast as water falls from the height of the water above the hole
+        final double speed = Math.min(0.5, 0.12 + rate * 0.03);
+        final int count = amount(Math.min(10.0, 2.0 + rate));
+        for (int n = 0; n < count; n++) {
+            final Particle drop = spawn(ParticleTypes.SPLASH, fx.x() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.y() + (RANDOM.nextDouble() - 0.5) * 0.6,
+                    fx.z() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.vx() * speed + RANDOM.nextGaussian() * 0.04,
+                    fx.vy() * speed + RANDOM.nextGaussian() * 0.04 + 0.05, fx.vz() * speed + RANDOM.nextGaussian() * 0.04);
+            if (drop != null) {
+                drop.setLifetime(10 + RANDOM.nextInt(10));
+            }
+        }
+        if (RANDOM.nextDouble() < 0.6) {
+            spawn(ParticleTypes.BUBBLE, fx.x() - fx.vx() * 0.6, fx.y() - fx.vy() * 0.6, fx.z() - fx.vz() * 0.6, 0.0, 0.1, 0.0);
+        }
+        final float surface = WaterWaves.surface(level, fx.x(), fx.y() + 1.0, fx.z());
+        if (!Float.isNaN(surface) && surface - fx.y() < 2.5) {
+            WaterWaves.push(fx.x(), surface, fx.z(), 0.8f, (float) Math.min(0.6, 0.05 + rate * 0.02));
         }
     }
 

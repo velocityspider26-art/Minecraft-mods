@@ -24,6 +24,7 @@ public record CrashFxPayload(List<Fx> effects) implements CustomPacketPayload {
     public static final int SOUND = 6;
     public static final int BUBBLES = 7;
     public static final int DEBRIS_DUST = 8;
+    public static final int BREACH = 9;
 
     /**
      * One effect.

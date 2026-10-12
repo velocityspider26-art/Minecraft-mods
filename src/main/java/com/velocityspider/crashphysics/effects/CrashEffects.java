@@ -128,6 +128,22 @@ public final class CrashEffects {
         }
     }
 
+    /**
+     * Water pouring into a hull through a hole.
+     *
+     * @param dx   the way it flows in
+     * @param rate how much flows in [m³/s]
+     */
+    public void breach(final ServerSubLevel vehicle, final double x, final double y, final double z, final double dx, final double dy, final double dz,
+                       final double rate) {
+        final List<CrashFxPayload.Fx> list = this.wakes.computeIfAbsent(vehicle, key -> new ArrayList<>());
+        list.add(new CrashFxPayload.Fx(CrashFxPayload.BREACH, x, y, z, (float) rate, (float) dx, (float) dy, (float) dz, 0));
+        if (this.tick % 15 == 0) {
+            // The gurgle and rush of water flooding in
+            this.play(SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_INSIDE, x, y, z, (float) Mth.clamp(0.4 + rate * 0.1, 0.4, 2.0), 0.7f);
+        }
+    }
+
     public void flush() {
         this.tick++;
         if (!this.impacts.isEmpty()) {

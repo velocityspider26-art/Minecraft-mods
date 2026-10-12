@@ -52,6 +52,8 @@ public final class CrashConfig {
     // Water
     public static final ModConfigSpec.BooleanValue WATER_IMPACTS;
     public static final ModConfigSpec.BooleanValue WATER_DRAG;
+    public static final ModConfigSpec.BooleanValue HULL_BUOYANCY;
+    public static final ModConfigSpec.BooleanValue FLOODING;
     public static final ModConfigSpec.DoubleValue DRAG_COEFFICIENT;
 
     // Effects
@@ -191,6 +193,12 @@ public final class CrashConfig {
         DRAG_COEFFICIENT = BUILDER
                 .comment("Drag coefficient of a block face moving through a liquid (1 for a flat plate)")
                 .defineInRange("dragCoefficient", 1.0, 0.0, 5.0);
+        HULL_BUOYANCY = BUILDER
+                .comment("Whether air walled in by a hull keeps the water out and holds the vehicle up, like a real ship")
+                .define("hullBuoyancy", true);
+        FLOODING = BUILDER
+                .comment("Whether water pours in through holes and low openings in a hull, so holed or swamped ships list and sink")
+                .define("flooding", true);
         BUILDER.pop();
 
         BUILDER.push("effects");

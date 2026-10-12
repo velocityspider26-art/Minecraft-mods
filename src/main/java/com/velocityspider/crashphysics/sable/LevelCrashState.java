@@ -34,6 +34,8 @@ public final class LevelCrashState {
     final ImpactCollector collector;
     final ImpactResolver resolver;
     private final SweptImpacts sweep;
+    private final VehicleShapes shapes;
+    private final HullBuoyancy hulls;
     private final BlockDamageTracker damage;
     private final Destruction destruction;
     private final CrashEffects effects;
@@ -60,7 +62,9 @@ public final class LevelCrashState {
         this.soil = new SoilMover(level);
         this.destruction = new Destruction(level, this.damage, this.effects, this.collapse, this.soil);
         this.resolver = new ImpactResolver(level, this);
+        this.shapes = new VehicleShapes(level);
         this.sweep = new SweptImpacts(level, this);
+        this.hulls = new HullBuoyancy(level, this);
     }
 
     public static LevelCrashState get(final ServerLevel level) {
@@ -164,6 +168,12 @@ public final class LevelCrashState {
             if (CrashTimings.ENABLED) {
                 CrashTimings.sweepNanos += System.nanoTime() - sweepStart;
             }
+
+            // Hulls keeping the water out, and letting it in
+            if (firstSubstep) {
+                this.hulls.evaluate(this.motions.values());
+            }
+            this.hulls.apply(system, dt);
         }
     }
 
@@ -283,6 +293,9 @@ public final class LevelCrashState {
             motion.resetTick();
         }
         this.motions.values().removeIf(motion -> motion.subLevel.isRemoved() || this.tick - motion.lastSeenTick > 40);
+        if (this.tick % 200 == 0) {
+            this.shapes.forgetRemoved();
+        }
         this.tick++;
     }
 
@@ -290,7 +303,18 @@ public final class LevelCrashState {
      * A block changed somewhere in this dimension, possibly on a vehicle.
      */
     void blockChanged(final int x, final int y, final int z, final BlockState oldState, final BlockState newState) {
-        this.sweep.blockChanged(x, y, z, oldState, newState);
+        this.shapes.blockChanged(x, y, z, oldState, newState);
+    }
+
+    VehicleShapes shapes() {
+        return this.shapes;
+    }
+
+    /**
+     * @return the water that has got into a vehicle's hull [m³]
+     */
+    public double floodWater(final ServerSubLevel vehicle) {
+        return this.hulls.water(vehicle);
     }
 
     public long tick() {
