@@ -17,9 +17,11 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -33,13 +35,18 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 /**
- * Waves on water surfaces: splashes send out rings, ships push up bow waves and drag V-shaped wakes behind them, and
- * anything swimming or floating leaves ripples.
+ * Waves on water surfaces: splashes send out rings, ships push up bow waves and drag wakes with foam behind them,
+ * anything swimming or falling in leaves ripples, and rain dimples the water.
  * <p>
- * The surface is a height field on a half-block grid, kept only in tiles of 8 × 8 blocks where something disturbed the
- * water, and stepped with the wave equation (waves travel at about 2 m/s, so anything faster drags a V-shaped wake;
- * they reflect off shores and die out over a few seconds). It is drawn as a lit, water-textured skin over the vanilla water: crests catch the light and foam, troughs
- * darken.
+ * The surface is two height fields on a half-block grid, kept only in tiles of 8 × 8 blocks where something disturbed
+ * the water, and stepped with the wave equation: a long, fast swell and a short, slower chop. Real water waves are
+ * dispersive, long ones outrunning short ones, and the two together give the same look: a splash sends out several
+ * rings, a ship's wake fans out feathered. Waves reflect off shores and die away over a few seconds. Foam is whipped
+ * up where crests get steep and where things churn the water, lingers, spreads and breaks up.
+ * <p>
+ * Where the water is moving, the surface is drawn in its place: lifted slightly so troughs can dip below the calm
+ * level, reflecting the sky more at grazing angles (Fresnel), glinting where a wave face catches the sun, lighter in
+ * thin crests, white with foam. It fades back into the vanilla water at the edges.
  */
 @EventBusSubscriber(modid = CrashPhysics.MODID, value = Dist.CLIENT)
 public final class WaterWaves {
@@ -54,12 +61,14 @@ public final class WaterWaves {
     static final int N = 16;
     static final int TILE_BLOCKS = 8;
 
-    private static final float SPEED = 2.0f;
-    private static final float DAMPING = 0.45f;
-    /**
-     * Pulls the surface back to level, as gravity does: water pushed down or piled up doesn't stay that way [1/s²]
-     */
-    private static final float RESTORE = 3.0f;
+    // The two wave bands: speed [m/s], damping [1/s], pull back to level [1/s²]
+    private static final float SWELL_SPEED = 2.6f;
+    private static final float SWELL_DAMPING = 0.3f;
+    private static final float SWELL_RESTORE = 1.5f;
+    private static final float CHOP_SPEED = 1.1f;
+    private static final float CHOP_DAMPING = 0.9f;
+    private static final float CHOP_RESTORE = 4.0f;
+
     private static final int SUBSTEPS = 2;
     private static final float DT = 0.05f / SUBSTEPS;
     private static final int MAX_TILES = 512;
@@ -71,28 +80,43 @@ public final class WaterWaves {
     private static final float SPREAD = 0.003f;
     private static final float MAX_HEIGHT = 1.5f;
 
+    /**
+     * How far moving water is lifted above the calm surface, so its troughs can be drawn below it [m]
+     */
+    private static final float LIFT = 0.12f;
+
+    /**
+     * Foam decay per tick, and how much of it spreads to the neighbouring cells
+     */
+    private static final float FOAM_KEEP = 0.975f;
+    private static final float FOAM_SPREAD = 0.06f;
+
     private static final Long2ObjectOpenHashMap<Tile> TILES = new Long2ObjectOpenHashMap<>();
     @Nullable
     private static ClientLevel trackedLevel;
     private static final BlockPos.MutableBlockPos CURSOR = new BlockPos.MutableBlockPos();
-
-    // Light falling on the waves, from high up and to one side
-    private static final float LIGHT_X = 0.45f;
-    private static final float LIGHT_Y = 0.80f;
-    private static final float LIGHT_Z = 0.40f;
+    private static final RandomSource RANDOM = RandomSource.create();
+    private static long ticks;
 
     static final class Tile {
         final int tx;
         final int tz;
-        final float[] h = new float[N * N];
-        final float[] v = new float[N * N];
-        final float[] last = new float[N * N];
+        final float[] swell = new float[N * N];
+        final float[] swellSpeed = new float[N * N];
+        final float[] swellLast = new float[N * N];
+        final float[] chop = new float[N * N];
+        final float[] chopSpeed = new float[N * N];
+        final float[] chopLast = new float[N * N];
+        final float[] foam = new float[N * N];
+        final float[] foamLast = new float[N * N];
+        final float[] scratch = new float[N * N];
         /**
          * Height of the water surface in each cell, or NaN where there is no open water
          */
         final float[] base = new float[N * N];
         final int color;
         boolean anyWet;
+        boolean raining;
         int quiet;
         @Nullable
         Tile west, east, north, south;
@@ -116,26 +140,46 @@ public final class WaterWaves {
     }
 
     /**
-     * Pushes the water down (or up, if negative) in a round patch: a splash.
+     * Pushes the water down in a round patch, and whips up foam there: a splash.
      *
      * @param depth how far the middle is pushed down [m]
      */
     public static void displace(final double x, final double y, final double z, final float radius, final float depth) {
-        final float scaled = depth * (float) CrashClientConfig.WAVE_STRENGTH.getAsDouble();
-        apply(x, y, z, radius, scaled, false);
+        final float scaled = depth * strength();
+        apply(x, y, z, radius * 1.5f, scaled * 0.6f, Band.SWELL_HEIGHT);
+        apply(x, y, z, radius, scaled * 0.6f, Band.CHOP_HEIGHT);
+        apply(x, y, z, radius, Math.min(0.8f, depth * 1.2f), Band.FOAM);
     }
 
     /**
-     * Gives the water in a round patch a downward push: something moving through it, applied once per tick.
+     * Gives the water in a round patch a downward push, and churns it: something moving through it, applied once per
+     * tick.
      *
      * @param speed downward speed given to the middle of the patch [m/s]
      */
     public static void push(final double x, final double y, final double z, final float radius, final float speed) {
-        final float scaled = speed * (float) CrashClientConfig.WAVE_STRENGTH.getAsDouble();
-        apply(x, y, z, radius, scaled, true);
+        final float scaled = speed * strength();
+        apply(x, y, z, radius * 1.4f, scaled * 0.5f, Band.SWELL_SPEED);
+        apply(x, y, z, radius, scaled * 0.7f, Band.CHOP_SPEED);
+        apply(x, y, z, radius * 0.7f, Math.min(0.06f, speed * 0.008f), Band.FOAM);
     }
 
-    private static void apply(final double x, final double y, final double z, final float radius, final float amount, final boolean velocity) {
+    /**
+     * A tiny ring: a raindrop or a falling droplet.
+     */
+    public static void ripple(final double x, final double y, final double z, final float depth) {
+        apply(x, y, z, 0.3f, depth * strength(), Band.CHOP_HEIGHT);
+    }
+
+    private static float strength() {
+        return (float) CrashClientConfig.WAVE_STRENGTH.getAsDouble();
+    }
+
+    private enum Band {
+        SWELL_HEIGHT, SWELL_SPEED, CHOP_HEIGHT, CHOP_SPEED, FOAM
+    }
+
+    private static void apply(final double x, final double y, final double z, final float radius, final float amount, final Band band) {
         final ClientLevel level = Minecraft.getInstance().level;
         if (!enabled() || level == null || amount == 0.0f || !inRange(x, z)) {
             return;
@@ -166,12 +210,15 @@ public final class WaterWaves {
                         if (d2 > reach * reach) {
                             continue;
                         }
+                        final float gauss = (float) Math.exp(-d2 * inverse);
                         // Pushed down in the middle, the water it moved piled up in a ring around it: nothing added or lost
-                        final float weight = (float) (Math.exp(-d2 * inverse) - 0.25 * Math.exp(-d2 * inverse * 0.25));
-                        if (velocity) {
-                            tile.v[index] -= amount * weight;
-                        } else {
-                            tile.h[index] = Mth.clamp(tile.h[index] - amount * weight, -MAX_HEIGHT, MAX_HEIGHT);
+                        final float hat = gauss - 0.25f * (float) Math.exp(-d2 * inverse * 0.25);
+                        switch (band) {
+                            case SWELL_HEIGHT -> tile.swell[index] = Mth.clamp(tile.swell[index] - amount * hat, -MAX_HEIGHT, MAX_HEIGHT);
+                            case CHOP_HEIGHT -> tile.chop[index] = Mth.clamp(tile.chop[index] - amount * hat, -MAX_HEIGHT, MAX_HEIGHT);
+                            case SWELL_SPEED -> tile.swellSpeed[index] -= amount * hat;
+                            case CHOP_SPEED -> tile.chopSpeed[index] -= amount * hat;
+                            case FOAM -> tile.foam[index] = Math.min(1.5f, tile.foam[index] + amount * gauss);
                         }
                     }
                 }
@@ -282,55 +329,114 @@ public final class WaterWaves {
         if (minecraft.isPaused()) {
             return;
         }
+        ticks++;
 
         CrashFxClient.rippleEntities(level);
+        rain(level);
         if (TILES.isEmpty()) {
             return;
         }
 
         for (final Tile tile : TILES.values()) {
-            System.arraycopy(tile.h, 0, tile.last, 0, N * N);
+            System.arraycopy(tile.swell, 0, tile.swellLast, 0, N * N);
+            System.arraycopy(tile.chop, 0, tile.chopLast, 0, N * N);
+            System.arraycopy(tile.foam, 0, tile.foamLast, 0, N * N);
         }
         for (int step = 0; step < SUBSTEPS; step++) {
             for (final Tile tile : TILES.values()) {
-                accelerate(tile);
+                accelerate(tile, tile.swell, tile.swellSpeed, SWELL_SPEED, SWELL_DAMPING, SWELL_RESTORE, true);
+                accelerate(tile, tile.chop, tile.chopSpeed, CHOP_SPEED, CHOP_DAMPING, CHOP_RESTORE, false);
             }
             for (final Tile tile : TILES.values()) {
                 for (int index = 0; index < N * N; index++) {
                     if (tile.wet(index)) {
-                        tile.h[index] = Mth.clamp(tile.h[index] + tile.v[index] * DT, -MAX_HEIGHT, MAX_HEIGHT);
+                        tile.swell[index] = Mth.clamp(tile.swell[index] + tile.swellSpeed[index] * DT, -MAX_HEIGHT, MAX_HEIGHT);
+                        tile.chop[index] = Mth.clamp(tile.chop[index] + tile.chopSpeed[index] * DT, -MAX_HEIGHT, MAX_HEIGHT);
                     }
                 }
             }
+        }
+        for (final Tile tile : TILES.values()) {
+            whipFoam(tile);
         }
         spreadAndForget(level);
     }
 
     /**
-     * One step of the wave equation for the velocities: ∂v/∂t = c²∇²h, with damping. Shores reflect.
+     * Rain dimples the water near the player with little rings.
      */
-    private static void accelerate(final Tile tile) {
-        final float k = SPEED * SPEED / (CELL * CELL) * DT;
-        final float keep = 1.0f - DAMPING * DT;
-        final float restore = RESTORE * DT;
+    private static void rain(final ClientLevel level) {
+        if (!level.isRaining()) {
+            return;
+        }
+        final Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        final int radius = 12;
+        if (ticks % 10 == 0) {
+            // Bring the water around the player to life
+            for (int tx = Mth.floor((camera.x - radius) / TILE_BLOCKS); tx <= Mth.floor((camera.x + radius) / TILE_BLOCKS); tx++) {
+                for (int tz = Mth.floor((camera.z - radius) / TILE_BLOCKS); tz <= Mth.floor((camera.z + radius) / TILE_BLOCKS); tz++) {
+                    final int cx = tx * TILE_BLOCKS + TILE_BLOCKS / 2;
+                    final int cz = tz * TILE_BLOCKS + TILE_BLOCKS / 2;
+                    final int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, cx, cz);
+                    if (!level.getFluidState(CURSOR.set(cx, top - 1, cz)).is(FluidTags.WATER)) {
+                        continue;
+                    }
+                    final Tile tile = tile(level, tx, tz, top - 1);
+                    if (tile != null) {
+                        tile.raining = level.isRainingAt(CURSOR.set(cx, top, cz));
+                    }
+                }
+            }
+        }
+        final float intensity = level.getRainLevel(1.0f) * (level.isThundering() ? 1.6f : 1.0f);
+        for (final Tile tile : TILES.values()) {
+            if (!tile.raining || !tile.anyWet) {
+                continue;
+            }
+            final double dx = (tile.tx + 0.5) * TILE_BLOCKS - camera.x;
+            final double dz = (tile.tz + 0.5) * TILE_BLOCKS - camera.z;
+            if (dx * dx + dz * dz > (radius + 8) * (radius + 8)) {
+                continue;
+            }
+            final int drops = (int) (6 * intensity) + (RANDOM.nextFloat() < intensity ? 1 : 0);
+            for (int n = 0; n < drops; n++) {
+                final int index = RANDOM.nextInt(N * N);
+                if (tile.wet(index)) {
+                    tile.chop[index] -= 0.012f * strength();
+                    tile.quiet = 0;
+                }
+            }
+        }
+    }
+
+    /**
+     * One step of the wave equation for the velocities: ∂v/∂t = c²∇²h, with damping and a pull back to level. Shores
+     * reflect.
+     */
+    private static void accelerate(final Tile tile, final float[] height, final float[] speed, final float waveSpeed, final float damping,
+                                   final float restoring, final boolean swell) {
+        final float k = waveSpeed * waveSpeed / (CELL * CELL) * DT;
+        final float keep = 1.0f - damping * DT;
+        final float restore = restoring * DT;
         for (int j = 0; j < N; j++) {
             for (int i = 0; i < N; i++) {
                 final int index = j * N + i;
                 if (!tile.wet(index)) {
                     continue;
                 }
-                final float c = tile.h[index];
-                final float laplacian = sample(tile, i - 1, j, c) + sample(tile, i + 1, j, c) + sample(tile, i, j - 1, c) + sample(tile, i, j + 1, c) - 4.0f * c;
-                tile.v[index] = (tile.v[index] + k * laplacian - restore * c) * keep;
+                final float c = height[index];
+                final float laplacian = sample(tile, i - 1, j, c, swell) + sample(tile, i + 1, j, c, swell)
+                        + sample(tile, i, j - 1, c, swell) + sample(tile, i, j + 1, c, swell) - 4.0f * c;
+                speed[index] = (speed[index] + k * laplacian - restore * c) * keep;
             }
         }
     }
 
     /**
-     * The height of a cell, looking into the neighbouring tiles past the edges. Dry cells and missing tiles mirror the
-     * cell asked from, so waves bounce off shores.
+     * The height of a cell in one band, looking into the neighbouring tiles past the edges. Dry cells and missing tiles
+     * mirror the cell asked from, so waves bounce off shores.
      */
-    private static float sample(final Tile tile, final int i, final int j, final float fallback) {
+    private static float sample(final Tile tile, final int i, final int j, final float fallback, final boolean swell) {
         Tile source = tile;
         int si = i;
         int sj = j;
@@ -351,7 +457,39 @@ public final class WaterWaves {
             return fallback;
         }
         final int index = sj * N + si;
-        return source.wet(index) ? source.h[index] : fallback;
+        return source.wet(index) ? (swell ? source.swell[index] : source.chop[index]) : fallback;
+    }
+
+    /**
+     * Steep, high crests whip up foam; foam spreads a little and slowly breaks up.
+     */
+    private static void whipFoam(final Tile tile) {
+        final float[] foam = tile.foam;
+        final float[] next = tile.scratch;
+        for (int j = 0; j < N; j++) {
+            for (int i = 0; i < N; i++) {
+                final int index = j * N + i;
+                if (!tile.wet(index)) {
+                    next[index] = 0.0f;
+                    continue;
+                }
+                final float h = tile.swell[index] + tile.chop[index];
+                final float right = i + 1 < N && tile.wet(index + 1) ? tile.swell[index + 1] + tile.chop[index + 1] : h;
+                final float down = j + 1 < N && tile.wet(index + N) ? tile.swell[index + N] + tile.chop[index + N] : h;
+                final float steepness = Mth.sqrt((right - h) * (right - h) + (down - h) * (down - h)) / CELL;
+                final float whipped = Math.max(0.0f, steepness - 0.7f) * 0.08f + Math.max(0.0f, h - 0.25f) * 0.15f;
+
+                float around = 0.0f;
+                int count = 0;
+                if (i > 0 && tile.wet(index - 1)) { around += foam[index - 1]; count++; }
+                if (i + 1 < N && tile.wet(index + 1)) { around += foam[index + 1]; count++; }
+                if (j > 0 && tile.wet(index - N)) { around += foam[index - N]; count++; }
+                if (j + 1 < N && tile.wet(index + N)) { around += foam[index + N]; count++; }
+                final float spread = count > 0 ? FOAM_SPREAD * (around / count - foam[index]) : 0.0f;
+                next[index] = Mth.clamp((foam[index] + spread) * FOAM_KEEP + whipped, 0.0f, 1.5f);
+            }
+        }
+        System.arraycopy(next, 0, foam, 0, N * N);
     }
 
     /**
@@ -366,9 +504,11 @@ public final class WaterWaves {
         for (final Tile tile : snapshot) {
             float peak = 0.0f;
             for (int index = 0; index < N * N; index++) {
-                peak = Math.max(peak, Math.abs(tile.h[index]) + Math.abs(tile.v[index]) * 0.2f);
+                final float motion = Math.abs(tile.swell[index]) + Math.abs(tile.chop[index])
+                        + (Math.abs(tile.swellSpeed[index]) + Math.abs(tile.chopSpeed[index])) * 0.2f;
+                peak = Math.max(peak, Math.max(motion, tile.foam[index] * 0.05f));
             }
-            tile.quiet = peak < QUIET ? tile.quiet + 1 : 0;
+            tile.quiet = peak < QUIET && !tile.raining ? tile.quiet + 1 : 0;
 
             if (peak >= SPREAD) {
                 for (int edge = 0; edge < 4; edge++) {
@@ -380,8 +520,10 @@ public final class WaterWaves {
                     float surface = Float.NaN;
                     for (int n = 0; n < N; n++) {
                         final int index = edge == 0 ? n * N : edge == 1 ? n * N + N - 1 : edge == 2 ? n : (N - 1) * N + n;
-                        if (tile.wet(index) && Math.abs(tile.h[index]) + Math.abs(tile.v[index]) * 0.2f > strongest) {
-                            strongest = Math.abs(tile.h[index]) + Math.abs(tile.v[index]) * 0.2f;
+                        final float motion = Math.abs(tile.swell[index]) + Math.abs(tile.chop[index])
+                                + (Math.abs(tile.swellSpeed[index]) + Math.abs(tile.chopSpeed[index])) * 0.2f;
+                        if (tile.wet(index) && motion > strongest) {
+                            strongest = motion;
                             surface = tile.base[index];
                         }
                     }
@@ -410,6 +552,20 @@ public final class WaterWaves {
         }
     }
 
+    // Per-corner scratch for drawing one tile
+    private static final int CORNERS = (N + 1) * (N + 1);
+    private static final float[] HEIGHT = new float[CORNERS];
+    private static final float[] BASE = new float[CORNERS];
+    private static final float[] FOAM = new float[CORNERS];
+    private static final float[] Y = new float[CORNERS];
+    private static final float[] RED = new float[CORNERS];
+    private static final float[] GREEN = new float[CORNERS];
+    private static final float[] BLUE = new float[CORNERS];
+    private static final float[] ALPHA = new float[CORNERS];
+    private static final float[] NX = new float[CORNERS];
+    private static final float[] NY = new float[CORNERS];
+    private static final float[] NZ = new float[CORNERS];
+
     @SubscribeEvent
     static void onRenderLevel(final RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || TILES.isEmpty() || !enabled()) {
@@ -431,8 +587,14 @@ public final class WaterWaves {
         final VertexConsumer consumer = buffers.getBuffer(type);
         final double range = CrashClientConfig.WAVE_RANGE.getAsInt();
 
-        final float[] corners = new float[(N + 1) * (N + 1)];
-        final float[] bases = new float[(N + 1) * (N + 1)];
+        // The sky the water reflects, and the sun that glints off it
+        final Vec3 sky = level.getSkyColor(camera, partial);
+        final float angle = level.getTimeOfDay(partial) * Mth.TWO_PI;
+        final float sunX = -Mth.sin(angle);
+        final float sunY = Mth.cos(angle);
+        final float daylight = Mth.clamp(sunY * 4.0f + 0.2f, 0.0f, 1.0f) * (1.0f - level.getRainLevel(partial) * 0.85f);
+        final float time = (ticks + partial) * 0.05f;
+
         for (final Tile tile : TILES.values()) {
             if (!tile.anyWet) {
                 continue;
@@ -454,36 +616,10 @@ public final class WaterWaves {
             if (!event.getFrustum().isVisible(new AABB(tileX, baseY - 2.0, tileZ, tileX + TILE_BLOCKS, baseY + 2.0, tileZ + TILE_BLOCKS))) {
                 continue;
             }
-
-            // Heights at the cell corners, shared with the neighbouring cells, between the last two ticks
-            for (int cj = 0; cj <= N; cj++) {
-                for (int ci = 0; ci <= N; ci++) {
-                    float sum = 0.0f;
-                    float baseSum = 0.0f;
-                    int count = 0;
-                    for (int k = 0; k < 4; k++) {
-                        final int i = ci - 1 + (k & 1);
-                        final int j = cj - 1 + (k >> 1);
-                        final Tile source = owner(tile, i, j);
-                        if (source == null) {
-                            continue;
-                        }
-                        final int index = Math.floorMod(j, N) * N + Math.floorMod(i, N);
-                        if (!source.wet(index)) {
-                            continue;
-                        }
-                        sum += Mth.lerp(partial, source.last[index], source.h[index]);
-                        baseSum += source.base[index];
-                        count++;
-                    }
-                    corners[cj * (N + 1) + ci] = count > 0 ? sum / count : 0.0f;
-                    bases[cj * (N + 1) + ci] = count > 0 ? baseSum / count : Float.NaN;
-                }
+            if (!shadeTile(tile, partial, camera, (float) sky.x, (float) sky.y, (float) sky.z, sunX, sunY, daylight, time)) {
+                continue;
             }
 
-            final float r = ((tile.color >> 16) & 0xFF) / 255.0f;
-            final float g = ((tile.color >> 8) & 0xFF) / 255.0f;
-            final float b = (tile.color & 0xFF) / 255.0f;
             for (int j = 0; j < N; j++) {
                 for (int i = 0; i < N; i++) {
                     if (!tile.wet(j * N + i)) {
@@ -493,32 +629,172 @@ public final class WaterWaves {
                     final int c10 = c00 + 1;
                     final int c01 = c00 + N + 1;
                     final int c11 = c01 + 1;
-                    final float h00 = corners[c00], h10 = corners[c10], h01 = corners[c01], h11 = corners[c11];
-                    final float slopeX = Math.abs(h10 - h00) + Math.abs(h11 - h01);
-                    final float slopeZ = Math.abs(h01 - h00) + Math.abs(h11 - h10);
-                    final float activity = Math.max(Math.max(Math.abs(h00), Math.abs(h10)), Math.max(Math.abs(h01), Math.abs(h11))) + slopeX + slopeZ;
-                    if (activity < 0.004f) {
+                    if (ALPHA[c00] + ALPHA[c10] + ALPHA[c01] + ALPHA[c11] < 0.01f) {
                         continue;
                     }
-
                     final int blockX = tile.tx * TILE_BLOCKS + (i >> 1);
                     final int blockZ = tile.tz * TILE_BLOCKS + (j >> 1);
                     CURSOR.set(blockX, Mth.floor(tile.base[j * N + i]) + 1, blockZ);
                     final int light = LevelRenderer.getLightColor(level, CURSOR);
                     final float u0 = (i & 1) * 0.5f;
                     final float v0 = (j & 1) * 0.5f;
-                    final double x0 = tileX + i * CELL - camera.x;
-                    final double z0 = tileZ + j * CELL - camera.z;
+                    final float x0 = (float) (tileX + i * CELL - camera.x);
+                    final float z0 = (float) (tileZ + j * CELL - camera.z);
+                    final float cy = (float) camera.y;
 
                     // Up-facing quad, wound the way Minecraft draws block tops
-                    vertex(consumer, pose, sprite, corners, bases, tile, c00, i, j, x0, z0, camera, u0, v0, light, r, g, b);
-                    vertex(consumer, pose, sprite, corners, bases, tile, c01, i, j + 1, x0, z0 + CELL, camera, u0, v0 + 0.5f, light, r, g, b);
-                    vertex(consumer, pose, sprite, corners, bases, tile, c11, i + 1, j + 1, x0 + CELL, z0 + CELL, camera, u0 + 0.5f, v0 + 0.5f, light, r, g, b);
-                    vertex(consumer, pose, sprite, corners, bases, tile, c10, i + 1, j, x0 + CELL, z0, camera, u0 + 0.5f, v0, light, r, g, b);
+                    vertex(consumer, pose, sprite, c00, x0, z0, cy, u0, v0, light);
+                    vertex(consumer, pose, sprite, c01, x0, z0 + CELL, cy, u0, v0 + 0.5f, light);
+                    vertex(consumer, pose, sprite, c11, x0 + CELL, z0 + CELL, cy, u0 + 0.5f, v0 + 0.5f, light);
+                    vertex(consumer, pose, sprite, c10, x0 + CELL, z0, cy, u0 + 0.5f, v0, light);
                 }
             }
         }
         buffers.endBatch(type);
+    }
+
+    /**
+     * Works out the height, normal, colour and opacity of every corner of a tile for this frame.
+     *
+     * @return if any of it is visible
+     */
+    private static boolean shadeTile(final Tile tile, final float partial, final Vec3 camera, final float skyR, final float skyG, final float skyB,
+                                     final float sunX, final float sunY, final float daylight, final float time) {
+        // Heights and foam at the corners, shared with the neighbouring cells, between the last two ticks
+        for (int cj = 0; cj <= N; cj++) {
+            for (int ci = 0; ci <= N; ci++) {
+                float height = 0.0f;
+                float base = 0.0f;
+                float foam = 0.0f;
+                int count = 0;
+                for (int k = 0; k < 4; k++) {
+                    final int i = ci - 1 + (k & 1);
+                    final int j = cj - 1 + (k >> 1);
+                    final Tile source = owner(tile, i, j);
+                    if (source == null) {
+                        continue;
+                    }
+                    final int index = Math.floorMod(j, N) * N + Math.floorMod(i, N);
+                    if (!source.wet(index)) {
+                        continue;
+                    }
+                    height += Mth.lerp(partial, source.swellLast[index] + source.chopLast[index], source.swell[index] + source.chop[index]);
+                    foam += Mth.lerp(partial, source.foamLast[index], source.foam[index]);
+                    base += source.base[index];
+                    count++;
+                }
+                final int corner = cj * (N + 1) + ci;
+                HEIGHT[corner] = count > 0 ? height / count : 0.0f;
+                FOAM[corner] = count > 0 ? foam / count : 0.0f;
+                BASE[corner] = count > 0 ? base / count : Float.NaN;
+            }
+        }
+
+        final float tintR = ((tile.color >> 16) & 0xFF) / 255.0f;
+        final float tintG = ((tile.color >> 8) & 0xFF) / 255.0f;
+        final float tintB = (tile.color & 0xFF) / 255.0f;
+        boolean visible = false;
+        for (int cj = 0; cj <= N; cj++) {
+            for (int ci = 0; ci <= N; ci++) {
+                final int corner = cj * (N + 1) + ci;
+                final float h = HEIGHT[corner];
+                final float base = BASE[corner];
+                if (Float.isNaN(base)) {
+                    ALPHA[corner] = 0.0f;
+                    Y[corner] = 0.0f;
+                    NX[corner] = 0.0f;
+                    NY[corner] = 1.0f;
+                    NZ[corner] = 0.0f;
+                    continue;
+                }
+
+                final float left = ci > 0 ? HEIGHT[corner - 1] : h;
+                final float right = ci < N ? HEIGHT[corner + 1] : h;
+                final float up = cj > 0 ? HEIGHT[corner - (N + 1)] : h;
+                final float down = cj < N ? HEIGHT[corner + (N + 1)] : h;
+                final float gx = (right - left) / (2.0f * CELL);
+                final float gz = (down - up) / (2.0f * CELL);
+                final float steepness = Mth.sqrt(gx * gx + gz * gz);
+
+                // How much this corner is part of the moving water: it fades back into the vanilla surface around it
+                final float activity = Math.abs(h) * 6.0f + steepness * 3.0f + Math.max(0.0f, FOAM[corner] - 0.1f) * 1.5f;
+                final float cover = smoothstep(0.02f, 0.25f, activity);
+                if (cover <= 0.0f) {
+                    ALPHA[corner] = 0.0f;
+                    Y[corner] = base + 0.012f;
+                    NX[corner] = 0.0f;
+                    NY[corner] = 1.0f;
+                    NZ[corner] = 0.0f;
+                    continue;
+                }
+                visible = true;
+
+                // Lifted a little where it moves, so troughs dip below the calm level instead of vanishing under it
+                final float lift = LIFT * cover;
+                Y[corner] = base + 0.012f + lift + Math.max(h, -lift + 0.004f);
+
+                final float length = Mth.sqrt(gx * gx + 1.0f + gz * gz);
+                final float nx = -gx / length;
+                final float ny = 1.0f / length;
+                final float nz = -gz / length;
+                NX[corner] = nx;
+                NY[corner] = ny;
+                NZ[corner] = nz;
+
+                // Looking at the water: more sky is reflected the flatter the angle
+                final float worldX = (float) (tile.tx * TILE_BLOCKS + ci * CELL - camera.x);
+                final float worldZ = (float) (tile.tz * TILE_BLOCKS + cj * CELL - camera.z);
+                final float worldY = (float) (Y[corner] - camera.y);
+                final float distance = Mth.sqrt(worldX * worldX + worldY * worldY + worldZ * worldZ) + 1.0e-4f;
+                final float vx = -worldX / distance;
+                final float vy = -worldY / distance;
+                final float vz = -worldZ / distance;
+                final float facing = Math.max(0.0f, nx * vx + ny * vy + nz * vz);
+                final float grazing = 1.0f - facing;
+                final float fresnel = 0.02f + 0.98f * grazing * grazing * grazing * grazing * grazing;
+
+                // The water itself: darker in the troughs, lighter where a thin crest lets light through
+                final float crest = Mth.clamp(h * 3.0f, 0.0f, 1.0f);
+                final float body = 0.55f + 0.45f * crest + Math.min(0.0f, h) * 1.5f;
+                float red = tintR * body * (1.0f - fresnel) + skyR * fresnel;
+                float green = tintG * body * (1.0f - fresnel) + skyG * fresnel;
+                float blue = tintB * body * (1.0f - fresnel) + skyB * fresnel;
+
+                // The sun glinting off wave faces turned towards it
+                final float twice = 2.0f * (nx * vx + ny * vy + nz * vz);
+                final float rx = twice * nx - vx;
+                final float ry = twice * ny - vy;
+                final float sunDot = Math.max(0.0f, rx * sunX + ry * sunY);
+                final float glint = daylight * (pow(sunDot, 180) * 2.5f + pow(sunDot, 16) * 0.12f);
+                red += glint;
+                green += glint;
+                blue += glint * 0.95f;
+
+                // Foam, broken up into patches and bubbles
+                final float noise = hash(Mth.floor(tile.tx * TILE_BLOCKS * 3 + ci * 1.5f), Mth.floor(tile.tz * TILE_BLOCKS * 3 + cj * 1.5f), (int) (time * 0.5f));
+                // Lacy: thin foam shows only as scattered patches, thick foam as white water
+                final float foam = Mth.clamp((FOAM[corner] - 0.12f - noise * 0.45f) * 2.2f + Math.max(0.0f, steepness - 0.9f) * 0.5f, 0.0f, 1.0f);
+                red = Mth.lerp(foam, red, 0.92f);
+                green = Mth.lerp(foam, green, 0.95f);
+                blue = Mth.lerp(foam, blue, 0.97f);
+
+                // The water texture is drawn over this and darkens it a little
+                RED[corner] = Mth.clamp(red * 1.3f, 0.0f, 1.0f);
+                GREEN[corner] = Mth.clamp(green * 1.3f, 0.0f, 1.0f);
+                BLUE[corner] = Mth.clamp(blue * 1.3f, 0.0f, 1.0f);
+                ALPHA[corner] = Mth.clamp(cover * (0.82f + 0.15f * fresnel) + foam * 0.12f, 0.0f, 0.95f);
+            }
+        }
+        return visible;
+    }
+
+    private static void vertex(final VertexConsumer consumer, final Matrix4f pose, final TextureAtlasSprite sprite, final int corner,
+                               final float x, final float z, final float cameraY, final float u, final float v, final int light) {
+        consumer.addVertex(pose, x, Y[corner] - cameraY, z)
+                .setColor(RED[corner], GREEN[corner], BLUE[corner], ALPHA[corner])
+                .setUv(sprite.getU(u), sprite.getV(v))
+                .setLight(light)
+                .setNormal(NX[corner], NY[corner], NZ[corner]);
     }
 
     @Nullable
@@ -538,46 +814,33 @@ public final class WaterWaves {
         return tile;
     }
 
-    private static void vertex(final VertexConsumer consumer, final Matrix4f pose, final TextureAtlasSprite sprite,
-                               final float[] corners, final float[] bases, final Tile tile, final int corner, final int ci, final int cj,
-                               final double x, final double z, final Vec3 camera, final float u, final float v, final int light,
-                               final float r, final float g, final float b) {
-        final float h = corners[corner];
-        float base = bases[corner];
-        if (Float.isNaN(base)) {
-            base = tile.base[Math.min(cj, N - 1) * N + Math.min(ci, N - 1)];
+    private static float smoothstep(final float edge0, final float edge1, final float x) {
+        final float t = Mth.clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    private static float pow(final float base, final int exponent) {
+        float result = 1.0f;
+        float factor = base;
+        int e = exponent;
+        while (e > 0) {
+            if ((e & 1) != 0) {
+                result *= factor;
+            }
+            factor *= factor;
+            e >>= 1;
         }
+        return result;
+    }
 
-        // Surface slope at this corner, from the corners either side
-        final float left = ci > 0 ? corners[corner - 1] : h;
-        final float right = ci < N ? corners[corner + 1] : h;
-        final float up = cj > 0 ? corners[corner - (N + 1)] : h;
-        final float down = cj < N ? corners[corner + (N + 1)] : h;
-        final float gx = (right - left) / (2.0f * CELL);
-        final float gz = (down - up) / (2.0f * CELL);
-
-        // Lit by the sky: faces tilted towards the light are brighter, troughs and faces turned away are darker
-        final float length = Mth.sqrt(gx * gx + 1.0f + gz * gz);
-        final float facing = (-gx * LIGHT_X + LIGHT_Y - gz * LIGHT_Z) / length;
-        final float shade = Mth.clamp(0.35f + 0.75f * facing + h * 1.2f, 0.3f, 1.5f);
-
-        // Steep, high crests break into foam
-        final float steepness = Mth.sqrt(gx * gx + gz * gz);
-        final float foam = Mth.clamp((h - 0.12f) * 5.0f, 0.0f, 1.0f) * 0.7f + Mth.clamp((steepness - 0.5f) * 1.2f, 0.0f, 0.6f);
-
-        final float red = Mth.clamp(Mth.lerp(foam, r * shade, 0.95f), 0.0f, 1.0f);
-        final float green = Mth.clamp(Mth.lerp(foam, g * shade, 0.97f), 0.0f, 1.0f);
-        final float blue = Mth.clamp(Mth.lerp(foam, b * shade, 1.0f), 0.0f, 1.0f);
-        // Flat water is left to vanilla: only slopes, and crests and troughs, show
-        final float alpha = Mth.clamp(steepness * 3.0f + Math.abs(h) * 2.0f + foam * 0.4f - 0.02f, 0.0f, 0.85f);
-
-        // Troughs can't be drawn below the vanilla water surface, which hides them; their shading shows them instead
-        final float y = base + Math.max(h, 0.0f) + 0.012f;
-        consumer.addVertex(pose, (float) x, (float) (y - camera.y), (float) z)
-                .setColor(red, green, blue, alpha)
-                .setUv(sprite.getU(u), sprite.getV(v))
-                .setLight(light)
-                .setNormal(-gx / length, 1.0f / length, -gz / length);
+    /**
+     * Cheap repeatable noise in [0, 1) for a lattice point.
+     */
+    private static float hash(final int x, final int z, final int t) {
+        int h = x * 374761393 + z * 668265263 + t * 1274126177;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        h ^= h >>> 16;
+        return (h & 0xFFFFFF) / (float) 0x1000000;
     }
 
     /**

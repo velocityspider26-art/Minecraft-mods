@@ -16,11 +16,25 @@ ram punches through a wall and carries on, and loads that are too big tear vehic
   surface puts a short pressure peak on the hull, several times ½ρv². Above a block's strength it cracks, and at twice
   its strength it shatters: wooden hulls break up above roughly 45 m/s, and metal holds to over 100 m/s. A gentle
   splashdown does nothing. Under water, every leading face is slowed by drag, ½·ρ·Cd·A·v², so sinking wreckage
-  reaches a realistic terminal speed. Lava works the same way at three times the density. Floating itself is
-  Sable's buoyancy.
-- **Waves.** The water surface moves. A splash sends out rings, a ship pushes up a bow wave and drags a V-shaped wake
-  with foam behind it, and boats, swimmers and anything falling in leave ripples. Waves travel at about 2 m/s,
-  bounce off shores and walls, and die out over a few seconds.
+  reaches a realistic terminal speed. Lava works the same way at three times the density.
+- **Floating and sinking.** Ships float on their hulls, not just on their blocks. Air walled in by watertight blocks
+  (a floor and four sides of full blocks) keeps the water out, and every cubic metre of it below the waterline holds
+  the ship up with a tonne of lift (Archimedes). That lift acts where the air is, so a lopsided or overloaded hull
+  lists, and an open boat counts as well as a closed one. Water only gets in through openings below the waterline,
+  at the rate the pressure drives it through them (Torricelli: Q = Cd·A·√(2gΔh)). A hole punched in the bottom in a
+  crash floods that compartment, faster the deeper the hole is; the ship settles, lists towards the flooded side,
+  and goes down once it has taken on more water than its reserve buoyancy. An open boat stays dry until it heels far
+  enough for its rim to go under. Water inside drains out again when the hull is lifted clear. Bobbing, rolling and
+  pitching are damped the way the water around a real hull damps them.
+- **Waves.** The water surface moves like a liquid. Waves come in two bands, as on real water: a long, fast swell
+  (about 2.6 m/s) and a short, slower chop (about 1.1 m/s). Long waves outrun short ones, so a splash sends out a
+  train of rings and a ship's wake fans out feathered, with a bow wave ahead and a V behind. Waves bounce off shores
+  and walls and die out over a few seconds. Foam is whipped up where crests get steep and where things churn the
+  water; it lingers, drifts apart and breaks up into lace. Swimmers, boats and anything falling in leave ripples,
+  every falling droplet of spray makes its own little ring, and rain dimples the surface.
+- **How the water looks.** Where the water is moving, its surface is redrawn: lifted slightly so troughs dip below
+  the calm level, reflecting more of the sky at grazing angles than looking straight down (Fresnel), glinting where a
+  wave face catches the sun, paler in thin crests, white with foam, and fading back into normal water at the edges.
 - **Crumpling.** Whichever side is weaker gives way. A wooden hull hitting stone is crushed while the stone stays;
   a steel ram drives into soft ground without a scratch. Blocks crack first, and break once crushed far enough.
 - **Breaking through.** A block with open air behind it (a house wall, a post, a tree trunk) is held only by its
@@ -39,16 +53,23 @@ ram punches through a wall and carries on, and loads that are too big tear vehic
 - **Effects.**
   - Impact sounds that match the materials, heard as late as sound would take to arrive (343 m/s). A big crash far
     away is a distant boom a second or two after you see it.
-  - Metal hitting stone or metal throws white-hot sparks and glowing fragments.
-  - A hard landing on soil sends a ring of dust rolling out from under the whole vehicle, clods flying, and a dust
-    cloud rising.
-  - Wrecks from big crashes smoulder: smoke rises from them for up to 45 seconds, with a tall column you can see from
-    far away.
-  - Hitting water throws up a crown of droplets, and a column of spray with mist over it if the hit is big.
+  - Metal hitting stone or metal throws sparks: short streaks that fly off the way the vehicle bounces, fall under
+    gravity, bounce off the ground, cool from white-hot through yellow and orange to dull red, and hiss out in
+    water. Metal scraping along rock, metal or glass sprays a steady shower of them from the contact.
+  - A hard landing on soil sends a ring of dust rolling out from under the whole vehicle, clods flying, and a
+    billowing cloud of dust rising and spreading before it drifts off and settles.
+  - Smoke only comes from fire: things set alight and explosions in a crash. It rises in billowing, slowly
+    spinning puffs that swell as they climb and drift with the wind, for up to 45 seconds, with a tall column over
+    big fires.
+  - Hitting water throws up a crown of droplets that arc out and fall back, each leaving a ripple, and a column of
+    white water with fine mist hanging over it if the hit is big.
   - Ships moving through water throw spray off the bow; vehicles sinking or moving under water trail bubbles.
+    Water jetting in through a holed hull bubbles and gurgles.
   - Camera shake for nearby players, skid marks in grass and snow. Destroyed burners and engines can explode or
     start fires.
-  - Small bumps stay quiet: smoke, sparks and booms need a real impact speed, not just a heavy vehicle.
+  - Small bumps stay quiet: sparks, dust and booms need a real impact speed, not just a heavy vehicle.
+  - Sparks, smoke, dust, droplets and mist are the mod's own particles, drawn only on clients with the mod, so a
+    server needs nothing extra registered and players without the mod can still join.
 
 ## How it works
 
@@ -96,7 +117,12 @@ How:
   same either way.
 - Flying debris is capped (96 pieces in the air at once by default), and loose sections are found with a short search
   that goes downwards first.
+- Hull buoyancy reuses the shape that is already kept up to date. Compartments are found again only when the
+  vehicle's blocks change, and water levels are worked out once per tick for vehicles that are near liquid.
 - Waves are simulated only where something disturbed the water, near the player, and only on clients.
+- Vehicles and wreckage that fall into the void (256 blocks below the bottom of the world) are removed, like
+  everything else in the game. Otherwise they keep falling faster and faster until the physics engine chokes on
+  them and hangs the server.
 
 ## Requirements
 
@@ -131,10 +157,13 @@ Server settings are in `crashphysics-server.toml` (per world, under `serverconfi
 | water | `waterImpacts` | true | Hitting water or lava fast is a real impact (hull damage, braking) |
 | water | `waterDrag` | true | Vehicles moving through water or lava are slowed by it |
 | water | `dragCoefficient` | 1.0 | Drag coefficient of a block face in a liquid |
+| water | `hullBuoyancy` | true | Air walled in by a hull keeps the water out and holds the vehicle up |
+| water | `flooding` | true | Water pours in through holes and low openings, so holed or swamped ships list and sink |
 | effects | `skidMarks`, `fireAndExplosions`, `soundVolume`, `cameraShake` | true, true, 1.0, true | Effects |
 | limits | `maxBlocksBrokenPerTick` | 600 | Destruction budget per tick per dimension |
 | limits | `maxBreakingMillisPerTick` | 15 ms | Time crashes may spend breaking blocks per tick per dimension |
 | limits | `damageMemorySeconds` | 90 | How long cracks are remembered |
+| limits | `removeFallenVehicles` | true | Removes vehicles that fall into the void, so they can't hang the server |
 | limits | `debugLogging` | false | Logs every damaging impact |
 
 Each player can adjust the effects in `crashphysics-client.toml`:
@@ -200,9 +229,13 @@ Create blocks. Every field except `selector` is optional:
   land as blocks and stay where they land.
 - Vehicles larger than about 200,000 blocks of plot volume skip the structural check and the pre-step sweep, for
   performance.
-- Waves are drawn as a layer over Minecraft's own water rather than by reshaping it. Crests rise above the surface,
-  while troughs are shown by shading because the vanilla surface would hide them. Shader packs may draw this layer
-  differently.
+- Waves are drawn as a layer over Minecraft's own water rather than by reshaping it. Where the water moves, the
+  layer is lifted a little so troughs can dip below the calm level, but very deep troughs are still shown partly by
+  shading. Waves are visual only and don't push vehicles or players. Shader packs may draw the layer differently.
+- Flood water inside a hull is kept as a water level, not placed as water blocks, so you don't see it inside the
+  ship. The ship still feels its weight.
+- Only full blocks count as watertight for hull buoyancy. Slabs, stairs, trapdoors, fences and panes in a hull's
+  floor or walls are openings, and water comes in through them once they are below the waterline.
 - Crew injuries have only been tested without a client.
 
 ## Development
@@ -223,7 +256,9 @@ Create blocks. Every field except `selector` is optional:
   - a fast plunge into water smashes a wooden hull;
   - a slow splashdown is harmless and the hull floats;
   - a drone with wool wings set down from one block up is unharmed;
-  - the same drone slamming into rock at 35 m/s is wrecked.
+  - the same drone slamming into rock at 35 m/s is wrecked;
+  - a loaded open boat floats on its hull;
+  - the same boat with a hole in its bottom floods and sinks.
 - `./gradlew runGameTestServer -Pbench` runs the performance benchmarks instead and logs where the time goes;
   `-Pjfr=<file>` adds a Java Flight Recorder profile.
 - `./gradlew build` produces `build/libs/crashphysics-<version>.jar`.

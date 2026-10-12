@@ -34,9 +34,9 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Plays the crash effects the server sends: water thrown up in crowns and columns, wakes and bow spray, sparks off metal,
- * rings of dust rolling out from a hard landing, smoke rising from wrecks, and sounds that arrive as late as sound
- * would.
+ * Plays the crash effects the server sends: water thrown up in crowns and columns that falls back as spray, wakes and
+ * bow spray, white-hot sparks off metal, rings of dust rolling out from a hard landing, wrecks that keep smoking, water
+ * jetting into holed hulls, and sounds that arrive as late as sound would.
  */
 @EventBusSubscriber(modid = CrashPhysics.MODID, value = Dist.CLIENT)
 public final class CrashFxClient {
@@ -47,17 +47,20 @@ public final class CrashFxClient {
     private static final double SPEED_OF_SOUND = 343.0;
 
     private static final RandomSource RANDOM = RandomSource.create();
-    private static final List<Smoke> SMOKE = new ArrayList<>();
+    private static final List<Smoulder> SMOULDERING = new ArrayList<>();
     private static final Map<Entity, Boolean> WAS_IN_WATER = new WeakHashMap<>();
 
-    private static final class Smoke {
+    /**
+     * A wreck smoking after a crash.
+     */
+    private static final class Smoulder {
         final double x, y, z;
         final float strength;
         final int duration;
         final float radius;
         int age;
 
-        Smoke(final double x, final double y, final double z, final float strength, final int duration, final float radius) {
+        Smoulder(final double x, final double y, final double z, final float strength, final int duration, final float radius) {
             this.x = x;
             this.y = y;
             this.z = z;
@@ -82,8 +85,8 @@ public final class CrashFxClient {
                 case CrashFxPayload.SPARKS -> sparks(level, fx);
                 case CrashFxPayload.DUST_RING -> dustRing(level, fx);
                 case CrashFxPayload.SMOKE -> {
-                    if (SMOKE.size() < 64) {
-                        SMOKE.add(new Smoke(fx.x(), fx.y(), fx.z(), fx.magnitude(), (int) fx.vx(), Math.max(1.0f, fx.vy())));
+                    if (SMOULDERING.size() < 64) {
+                        SMOULDERING.add(new Smoulder(fx.x(), fx.y(), fx.z(), fx.magnitude(), (int) fx.vx(), Math.max(1.0f, fx.vy())));
                     }
                 }
                 case CrashFxPayload.SOUND -> sound(fx);
@@ -103,7 +106,7 @@ public final class CrashFxClient {
     }
 
     /**
-     * Spawns a particle with exactly this velocity [blocks per tick]; vanilla's own spawning would scramble it.
+     * Spawns a vanilla particle with exactly this velocity [blocks per tick]; vanilla's own spawning would scramble it.
      */
     @Nullable
     private static Particle spawn(final ParticleOptions type, final double x, final double y, final double z, final double vx, final double vy, final double vz) {
@@ -115,8 +118,9 @@ public final class CrashFxClient {
     }
 
     /**
-     * Something hitting water: a crater in the surface that sends out rings, a crown of droplets, and for big impacts
-     * a column of spray with mist hanging over it.
+     * Something hitting water: a crater in the surface that sends out rings, a crown of spray thrown up and out from
+     * its rim, and for big impacts a column of water shooting up and falling back, with mist hanging over it. The spray
+     * falls back in and rings the water where it lands.
      */
     private static void splash(final ClientLevel level, final CrashFxPayload.Fx fx) {
         final float magnitude = Math.max(0.0f, fx.magnitude());
@@ -127,42 +131,34 @@ public final class CrashFxClient {
         final float radius = 0.8f + 0.55f * magnitude;
         WaterWaves.displace(fx.x(), top, fx.z(), radius, Math.min(1.4f, 0.12f + 0.2f * magnitude));
 
-        // The crown: a ring of droplets thrown up and out
-        final int crown = amount(18 + 26 * magnitude);
-        final double kick = 0.18 + 0.05 * magnitude + Math.min(speed, 60.0) * 0.004;
+        // The crown: a sheet of water thrown up and out from the rim of the crater, breaking into drops
+        final int crown = amount(24 + 30 * magnitude);
+        final double kick = 0.16 + 0.05 * magnitude + Math.min(speed, 60.0) * 0.004;
         for (int n = 0; n < crown; n++) {
             final double angle = RANDOM.nextDouble() * Math.PI * 2.0;
-            final double out = kick * (0.6 + RANDOM.nextDouble() * 0.6);
-            final double r = radius * (0.5 + RANDOM.nextDouble() * 0.5);
-            final Particle drop = spawn(ParticleTypes.SPLASH, fx.x() + Math.cos(angle) * r, top + 0.1, fx.z() + Math.sin(angle) * r,
-                    Math.cos(angle) * out, out * (1.2 + RANDOM.nextDouble()), Math.sin(angle) * out);
-            if (drop != null) {
-                drop.setLifetime(20 + RANDOM.nextInt(20));
-            }
+            final double out = kick * (0.5 + RANDOM.nextDouble() * 0.6);
+            final double r = radius * (0.6 + RANDOM.nextDouble() * 0.5);
+            CrashParticles.droplet(level, fx.x() + Math.cos(angle) * r, top + 0.05, fx.z() + Math.sin(angle) * r,
+                    Math.cos(angle) * out * 0.6, out * (1.0 + RANDOM.nextDouble() * 0.8), Math.sin(angle) * out * 0.6,
+                    0.04f + RANDOM.nextFloat() * 0.05f);
         }
 
-        // A column of spray shooting up, and mist hanging where it was
+        // A column of water shooting up out of the crater as it closes, then falling back
         if (magnitude > 1.5f) {
-            final int column = amount(20 * (magnitude - 1.0f));
-            final double height = Math.min(2.2, 0.35 + 0.25 * (magnitude - 1.5));
+            final int column = amount(25 * (magnitude - 1.0f));
+            final double height = Math.min(1.6, 0.3 + 0.2 * (magnitude - 1.5));
             for (int n = 0; n < column; n++) {
-                final double spread = radius * 0.4;
-                final Particle drop = spawn(ParticleTypes.SPLASH, fx.x() + (RANDOM.nextDouble() - 0.5) * spread, top + 0.2,
-                        fx.z() + (RANDOM.nextDouble() - 0.5) * spread,
-                        (RANDOM.nextDouble() - 0.5) * 0.12, height * (0.5 + RANDOM.nextDouble() * 0.5), (RANDOM.nextDouble() - 0.5) * 0.12);
-                if (drop != null) {
-                    drop.setLifetime(30 + RANDOM.nextInt(30));
-                }
+                final double spread = radius * 0.35;
+                CrashParticles.droplet(level, fx.x() + (RANDOM.nextDouble() - 0.5) * spread, top + 0.1, fx.z() + (RANDOM.nextDouble() - 0.5) * spread,
+                        RANDOM.nextGaussian() * 0.04, height * (0.45 + RANDOM.nextDouble() * 0.55), RANDOM.nextGaussian() * 0.04,
+                        0.05f + RANDOM.nextFloat() * 0.06f);
             }
-            final int mist = amount(6 * (magnitude - 1.0f));
+            // Spray hanging in the air over it, drifting away
+            final int mist = amount(3 * (magnitude - 1.0f));
             for (int n = 0; n < mist; n++) {
-                final Particle cloud = spawn(ParticleTypes.CLOUD, fx.x() + (RANDOM.nextDouble() - 0.5) * radius * 1.5,
-                        top + 0.5 + RANDOM.nextDouble() * height * 6.0, fx.z() + (RANDOM.nextDouble() - 0.5) * radius * 1.5,
-                        (RANDOM.nextDouble() - 0.5) * 0.04, 0.01 + RANDOM.nextDouble() * 0.02, (RANDOM.nextDouble() - 0.5) * 0.04);
-                if (cloud != null) {
-                    cloud.setColor(0.92f, 0.95f, 1.0f);
-                    cloud.scale(1.5f + RANDOM.nextFloat());
-                }
+                CrashParticles.mist(level, fx.x() + (RANDOM.nextDouble() - 0.5) * radius * 1.4, top + 0.5 + RANDOM.nextDouble() * height * 8.0,
+                        fx.z() + (RANDOM.nextDouble() - 0.5) * radius * 1.4, RANDOM.nextGaussian() * 0.02, 0.02 + RANDOM.nextDouble() * 0.03,
+                        RANDOM.nextGaussian() * 0.02, 1.0f + magnitude * 0.35f, 40 + RANDOM.nextInt(30));
             }
         }
 
@@ -176,7 +172,7 @@ public final class CrashFxClient {
 
     /**
      * A hull moving through the water: it pushes the surface down and aside, which makes the bow wave and wake, and at
-     * speed throws spray off the bow and leaves foam.
+     * speed throws sheets of spray off both sides of the bow.
      */
     private static void wake(final ClientLevel level, final CrashFxPayload.Fx fx) {
         final double speed = Math.sqrt(fx.vx() * fx.vx() + fx.vz() * fx.vz());
@@ -184,52 +180,22 @@ public final class CrashFxClient {
         final float surface = WaterWaves.surface(level, fx.x(), fx.y(), fx.z());
         final double top = Float.isNaN(surface) ? fx.y() : surface;
 
-        WaterWaves.push(fx.x(), top, fx.z(), width * 0.9f, (float) Math.min(3.0, 0.3 + speed * 0.5));
+        WaterWaves.push(fx.x(), top, fx.z(), width * 0.9f, (float) Math.min(1.5, 0.15 + speed * 0.25));
 
-        if (speed > 1.5 && RANDOM.nextDouble() < 0.5) {
-            spawn(ParticleTypes.FISHING, fx.x() + (RANDOM.nextDouble() - 0.5) * width, top + 0.05, fx.z() + (RANDOM.nextDouble() - 0.5) * width,
-                    0.0, 0.0, 0.0);
-        }
-        if (speed > 4.0) {
-            // Spray peeling off both sides of the bow
-            final int spray = amount(Math.min(8.0, (speed - 4.0) * 0.6));
+        if (speed > 3.0) {
+            final int spray = amount(Math.min(10.0, (speed - 3.0) * 0.7));
             final double sideX = -fx.vz() / speed;
             final double sideZ = fx.vx() / speed;
             for (int n = 0; n < spray; n++) {
                 final double side = RANDOM.nextBoolean() ? 1.0 : -1.0;
-                final double out = 0.06 + speed * 0.012 * RANDOM.nextDouble();
-                final Particle drop = spawn(ParticleTypes.SPLASH, fx.x(), top + 0.15, fx.z(),
-                        sideX * side * out + fx.vx() / 20.0 * 0.6, 0.12 + speed * 0.01 * RANDOM.nextDouble(), sideZ * side * out + fx.vz() / 20.0 * 0.6);
-                if (drop != null) {
-                    drop.setLifetime(15 + RANDOM.nextInt(15));
-                }
+                final double out = 0.05 + speed * 0.012 * RANDOM.nextDouble();
+                CrashParticles.droplet(level, fx.x() + sideX * side * 0.4, top + 0.1, fx.z() + sideZ * side * 0.4,
+                        sideX * side * out + fx.vx() / 20.0 * 0.7, 0.1 + speed * 0.012 * RANDOM.nextDouble(), sideZ * side * out + fx.vz() / 20.0 * 0.7,
+                        0.03f + RANDOM.nextFloat() * 0.04f);
             }
-        }
-    }
-
-    /**
-     * Water forcing its way in through a hole in a hull: a jet of spray inside, air bubbling out and the surface
-     * outside sucked down over the hole.
-     */
-    private static void breach(final ClientLevel level, final CrashFxPayload.Fx fx) {
-        final double rate = fx.magnitude();
-        // The jet comes in about as fast as water falls from the height of the water above the hole
-        final double speed = Math.min(0.5, 0.12 + rate * 0.03);
-        final int count = amount(Math.min(10.0, 2.0 + rate));
-        for (int n = 0; n < count; n++) {
-            final Particle drop = spawn(ParticleTypes.SPLASH, fx.x() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.y() + (RANDOM.nextDouble() - 0.5) * 0.6,
-                    fx.z() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.vx() * speed + RANDOM.nextGaussian() * 0.04,
-                    fx.vy() * speed + RANDOM.nextGaussian() * 0.04 + 0.05, fx.vz() * speed + RANDOM.nextGaussian() * 0.04);
-            if (drop != null) {
-                drop.setLifetime(10 + RANDOM.nextInt(10));
+            if (speed > 8.0 && RANDOM.nextFloat() < 0.15f) {
+                CrashParticles.mist(level, fx.x(), top + 0.4, fx.z(), fx.vx() / 40.0, 0.02, fx.vz() / 40.0, 1.0f, 30);
             }
-        }
-        if (RANDOM.nextDouble() < 0.6) {
-            spawn(ParticleTypes.BUBBLE, fx.x() - fx.vx() * 0.6, fx.y() - fx.vy() * 0.6, fx.z() - fx.vz() * 0.6, 0.0, 0.1, 0.0);
-        }
-        final float surface = WaterWaves.surface(level, fx.x(), fx.y() + 1.0, fx.z());
-        if (!Float.isNaN(surface) && surface - fx.y() < 2.5) {
-            WaterWaves.push(fx.x(), surface, fx.z(), 0.8f, (float) Math.min(0.6, 0.05 + rate * 0.02));
         }
     }
 
@@ -242,63 +208,84 @@ public final class CrashFxClient {
     }
 
     /**
-     * Metal striking something hard: a spray of white-hot sparks and glowing fragments arcing away.
+     * Water forcing its way in through a hole in a hull: a jet of water inside, air bubbling out and the surface
+     * outside drawn down over the hole.
      */
-    private static void sparks(final ClientLevel level, final CrashFxPayload.Fx fx) {
-        final float magnitude = Math.max(0.0f, fx.magnitude());
-        final int count = amount(10 + 14 * magnitude);
-        final double vx = fx.vx() / 20.0;
-        final double vy = fx.vy() / 20.0;
-        final double vz = fx.vz() / 20.0;
+    private static void breach(final ClientLevel level, final CrashFxPayload.Fx fx) {
+        final double rate = fx.magnitude();
+        // The jet comes in about as fast as water would fall from the surface down to the hole
+        final double speed = Math.min(0.45, 0.12 + rate * 0.03);
+        final int count = amount(Math.min(12.0, 3.0 + rate));
         for (int n = 0; n < count; n++) {
-            final double speed = 0.25 + RANDOM.nextDouble() * (0.35 + magnitude * 0.08);
-            // Mostly thrown up and along the way it was going, scattered
-            final double dx = RANDOM.nextGaussian() * 0.6 + vx * 0.5;
-            final double dy = Math.abs(RANDOM.nextGaussian()) * 0.7 + 0.2;
-            final double dz = RANDOM.nextGaussian() * 0.6 + vz * 0.5;
-            final double length = Math.max(1.0e-3, Math.sqrt(dx * dx + dy * dy + dz * dz));
-            final double roll = RANDOM.nextDouble();
-            final ParticleOptions type = roll < 0.6 ? ParticleTypes.ELECTRIC_SPARK : roll < 0.85 ? ParticleTypes.LAVA : ParticleTypes.SMALL_FLAME;
-            final Particle spark = spawn(type, fx.x(), fx.y(), fx.z(), dx / length * speed, dy / length * speed + vy * 0.2, dz / length * speed);
-            if (spark != null) {
-                if (type == ParticleTypes.ELECTRIC_SPARK) {
-                    spark.setColor(1.0f, 0.75f + RANDOM.nextFloat() * 0.2f, 0.35f);
-                    spark.setLifetime(6 + RANDOM.nextInt(10));
-                } else if (type == ParticleTypes.LAVA) {
-                    spark.scale(0.4f);
-                }
-            }
+            CrashParticles.droplet(level, fx.x() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.y() + (RANDOM.nextDouble() - 0.5) * 0.6,
+                    fx.z() + (RANDOM.nextDouble() - 0.5) * 0.6, fx.vx() * speed + RANDOM.nextGaussian() * 0.03,
+                    fx.vy() * speed + RANDOM.nextGaussian() * 0.03 + 0.03, fx.vz() * speed + RANDOM.nextGaussian() * 0.03,
+                    0.05f + RANDOM.nextFloat() * 0.05f);
         }
-        if (magnitude > 3.0f) {
-            spawn(ParticleTypes.FLASH, fx.x(), fx.y(), fx.z(), 0.0, 0.0, 0.0);
+        if (RANDOM.nextDouble() < 0.6) {
+            spawn(ParticleTypes.BUBBLE, fx.x() - fx.vx() * 0.6, fx.y() - fx.vy() * 0.6, fx.z() - fx.vz() * 0.6, 0.0, 0.1, 0.0);
+        }
+        final float surface = WaterWaves.surface(level, fx.x(), fx.y() + 1.0, fx.z());
+        if (!Float.isNaN(surface) && surface - fx.y() < 2.5) {
+            WaterWaves.push(fx.x(), surface, fx.z(), 0.8f, (float) Math.min(0.6, 0.05 + rate * 0.02));
         }
     }
 
     /**
-     * A hard landing on loose ground: a ring of dust rolling out low along the ground, clods thrown up, and a cloud of
-     * dust rising from the middle.
+     * Metal striking something hard: a spray of white-hot sparks glancing off the surface it hit (thrown back off a
+     * wall, forward and up off the ground in a slide), bouncing and cooling to red.
+     */
+    private static void sparks(final ClientLevel level, final CrashFxPayload.Fx fx) {
+        final float magnitude = Math.max(0.0f, fx.magnitude());
+        // A scrape throws a steady stream, a hit one burst
+        final boolean scrape = fx.data() == 1;
+        final int count = amount(scrape ? 3 + 3 * magnitude : 14 + 18 * magnitude);
+        // The way it glanced off, the velocity reflected in the surface it hit [m/s]
+        final double speed = Math.sqrt(fx.vx() * fx.vx() + fx.vy() * fx.vy() + fx.vz() * fx.vz());
+        final double rx = speed > 1.0e-3 ? fx.vx() / speed : 0.0;
+        final double ry = speed > 1.0e-3 ? fx.vy() / speed : 1.0;
+        final double rz = speed > 1.0e-3 ? fx.vz() / speed : 0.0;
+        for (int n = 0; n < count; n++) {
+            final double throwSpeed = 0.12 + RANDOM.nextDouble() * (0.25 + Math.min(speed, 60.0) * 0.008);
+            // A cone around the glancing direction, opened up a lot, and always a little upwards
+            final double dx = rx + RANDOM.nextGaussian() * 0.55;
+            final double dy = ry + RANDOM.nextGaussian() * 0.45 + 0.3;
+            final double dz = rz + RANDOM.nextGaussian() * 0.55;
+            final double length = Math.max(1.0e-3, Math.sqrt(dx * dx + dy * dy + dz * dz));
+            // Just off the surface, so they don't start inside what was hit
+            CrashParticles.spark(level, fx.x() + rx * 0.3, fx.y() + ry * 0.3 + 0.05, fx.z() + rz * 0.3,
+                    dx / length * throwSpeed, dy / length * throwSpeed, dz / length * throwSpeed);
+        }
+        if (scrape) {
+            return;
+        }
+        // A puff of hot metal smoke
+        CrashParticles.smoke(level, fx.x() + rx * 0.4, fx.y() + 0.2, fx.z() + rz * 0.4, 0.0, 0.02, 0.0, 0.4f, 1.4f, 40, 0.0008f, 0.35f,
+                0.35f, 0.33f, 0.32f, 0.55f, 0.55f, 0.55f);
+    }
+
+    /**
+     * A hard landing on loose ground: a ring of dust rolling out low from under the whole vehicle, clods thrown up, and
+     * a cloud of dust rising and drifting off.
      */
     private static void dustRing(final ClientLevel level, final CrashFxPayload.Fx fx) {
         final float magnitude = Math.max(0.0f, fx.magnitude());
         final BlockState ground = Block.stateById(fx.data());
         final int mapColor = ground.getMapColor(level, BlockPos.containing(fx.x(), fx.y(), fx.z())).col;
-        final float r = Mth.lerp(0.35f, ((mapColor >> 16) & 0xFF) / 255.0f, 0.8f);
-        final float g = Mth.lerp(0.35f, ((mapColor >> 8) & 0xFF) / 255.0f, 0.75f);
-        final float b = Mth.lerp(0.35f, (mapColor & 0xFF) / 255.0f, 0.7f);
+        final float r = Mth.lerp(0.3f, ((mapColor >> 16) & 0xFF) / 255.0f, 0.78f);
+        final float g = Mth.lerp(0.3f, ((mapColor >> 8) & 0xFF) / 255.0f, 0.72f);
+        final float b = Mth.lerp(0.3f, (mapColor & 0xFF) / 255.0f, 0.66f);
 
         // Rolling out from under the whole vehicle, not just the point that hit
         final double start = Math.max(0.8, fx.vx());
-        final int ring = amount((16 + 12 * magnitude) * Math.max(1.0, start / 3.0));
-        final double outward = 0.25 + 0.08 * magnitude;
+        final int ring = amount((14 + 10 * magnitude) * Math.max(1.0, start / 3.0));
+        final double outward = 0.22 + 0.07 * magnitude;
         for (int n = 0; n < ring; n++) {
             final double angle = (n + RANDOM.nextDouble() * 0.5) / ring * Math.PI * 2.0;
             final double speed = outward * (0.7 + RANDOM.nextDouble() * 0.5);
-            final Particle dust = spawn(ParticleTypes.CLOUD, fx.x() + Math.cos(angle) * start, fx.y() + 0.3, fx.z() + Math.sin(angle) * start,
-                    Math.cos(angle) * speed, 0.01 + RANDOM.nextDouble() * 0.03, Math.sin(angle) * speed);
-            if (dust != null) {
-                dust.setColor(r, g, b);
-                dust.scale(3.0f + RANDOM.nextFloat() * (2.0f + magnitude * 0.6f));
-            }
+            CrashParticles.dust(level, fx.x() + Math.cos(angle) * start, fx.y() + 0.3, fx.z() + Math.sin(angle) * start,
+                    Math.cos(angle) * speed, 0.01 + RANDOM.nextDouble() * 0.02, Math.sin(angle) * speed,
+                    1.0f + RANDOM.nextFloat() * (0.8f + magnitude * 0.3f), 60 + RANDOM.nextInt(60), r, g, b);
         }
 
         if (!ground.isAir()) {
@@ -307,24 +294,24 @@ public final class CrashFxClient {
             for (int n = 0; n < count; n++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0;
                 final double out = 0.1 + RANDOM.nextDouble() * (0.15 + magnitude * 0.05);
-                spawn(clods, fx.x(), fx.y() + 0.5, fx.z(), Math.cos(angle) * out, 0.2 + RANDOM.nextDouble() * (0.3 + magnitude * 0.06), Math.sin(angle) * out);
+                spawn(clods, fx.x() + Math.cos(angle) * start * 0.8, fx.y() + 0.5, fx.z() + Math.sin(angle) * start * 0.8,
+                        Math.cos(angle) * out, 0.2 + RANDOM.nextDouble() * (0.3 + magnitude * 0.06), Math.sin(angle) * out);
             }
         }
 
-        final int plume = amount(3 + 3 * magnitude);
+        // The cloud kicked up over it all
+        final int plume = amount(4 + 4 * magnitude);
         for (int n = 0; n < plume; n++) {
             final double angle = RANDOM.nextDouble() * Math.PI * 2.0;
-            final Particle cloud = spawn(ParticleTypes.CAMPFIRE_COSY_SMOKE, fx.x() + Math.cos(angle) * start, fx.y() + 0.5,
-                    fx.z() + Math.sin(angle) * start, (RANDOM.nextDouble() - 0.5) * 0.05, 0.03 + RANDOM.nextDouble() * 0.04,
-                    (RANDOM.nextDouble() - 0.5) * 0.05);
-            if (cloud != null) {
-                cloud.setColor(r, g, b);
-            }
+            final double at = start * RANDOM.nextDouble();
+            CrashParticles.smoke(level, fx.x() + Math.cos(angle) * at, fx.y() + 0.5 + RANDOM.nextDouble(), fx.z() + Math.sin(angle) * at,
+                    RANDOM.nextGaussian() * 0.02, 0.03 + RANDOM.nextDouble() * 0.03, RANDOM.nextGaussian() * 0.02,
+                    1.2f, 3.0f + magnitude * 0.4f, 120, 0.0002f, 0.5f, r, g, b, r * 1.1f, g * 1.1f, b * 1.1f);
         }
     }
 
     /**
-     * Dust knocked off a breaking block.
+     * Dust and chips knocked off a breaking block.
      */
     private static void debrisDust(final ClientLevel level, final CrashFxPayload.Fx fx) {
         final BlockState state = Block.stateById(fx.data());
@@ -336,6 +323,13 @@ public final class CrashFxClient {
         for (int n = 0; n < count; n++) {
             spawn(chips, fx.x() + (RANDOM.nextDouble() - 0.5), fx.y() + (RANDOM.nextDouble() - 0.5), fx.z() + (RANDOM.nextDouble() - 0.5),
                     (RANDOM.nextDouble() - 0.5) * 0.3 + fx.vx() / 40.0, RANDOM.nextDouble() * 0.3 + fx.vy() / 40.0, (RANDOM.nextDouble() - 0.5) * 0.3 + fx.vz() / 40.0);
+        }
+        final int mapColor = state.getMapColor(level, BlockPos.containing(fx.x(), fx.y(), fx.z())).col;
+        final float r = Mth.lerp(0.4f, ((mapColor >> 16) & 0xFF) / 255.0f, 0.75f);
+        final float g = Mth.lerp(0.4f, ((mapColor >> 8) & 0xFF) / 255.0f, 0.72f);
+        final float b = Mth.lerp(0.4f, (mapColor & 0xFF) / 255.0f, 0.68f);
+        if (RANDOM.nextFloat() < 0.6f) {
+            CrashParticles.dust(level, fx.x(), fx.y(), fx.z(), fx.vx() / 60.0, 0.03, fx.vz() / 60.0, 0.8f, 50, r, g, b);
         }
     }
 
@@ -364,39 +358,35 @@ public final class CrashFxClient {
         final Minecraft minecraft = Minecraft.getInstance();
         final ClientLevel level = minecraft.level;
         if (level == null) {
-            SMOKE.clear();
+            SMOULDERING.clear();
             return;
         }
         if (minecraft.isPaused()) {
             return;
         }
 
-        // Wrecks smoulder: smoke drifting up for a while, thinning out
-        for (final Iterator<Smoke> iterator = SMOKE.iterator(); iterator.hasNext(); ) {
-            final Smoke smoke = iterator.next();
-            if (++smoke.age > smoke.duration) {
+        // Wrecks smoulder: thick dark smoke billowing up, paling and spreading as it rises, thinning out over time
+        for (final Iterator<Smoulder> iterator = SMOULDERING.iterator(); iterator.hasNext(); ) {
+            final Smoulder smoulder = iterator.next();
+            if (++smoulder.age > smoulder.duration) {
                 iterator.remove();
                 continue;
             }
-            final float left = 1.0f - (float) smoke.age / smoke.duration;
-            final float rate = smoke.strength * left * (float) CrashClientConfig.PARTICLE_AMOUNT.getAsDouble();
-            if (RANDOM.nextFloat() < rate * 0.5f) {
-                final Particle particle = spawn(ParticleTypes.CAMPFIRE_COSY_SMOKE, smoke.x + (RANDOM.nextDouble() - 0.5) * 2.0 * smoke.radius,
-                        smoke.y + RANDOM.nextDouble(), smoke.z + (RANDOM.nextDouble() - 0.5) * 2.0 * smoke.radius, (RANDOM.nextDouble() - 0.5) * 0.02, 0.04 + RANDOM.nextDouble() * 0.03,
-                        (RANDOM.nextDouble() - 0.5) * 0.02);
-                if (particle != null) {
-                    final float grey = 0.25f + RANDOM.nextFloat() * 0.25f;
-                    particle.setColor(grey, grey, grey);
-                }
+            final float left = 1.0f - (float) smoulder.age / smoulder.duration;
+            final float rate = smoulder.strength * left * (float) CrashClientConfig.PARTICLE_AMOUNT.getAsDouble();
+            if (RANDOM.nextFloat() < rate * 0.6f) {
+                final float dark = 0.12f + RANDOM.nextFloat() * 0.1f;
+                final float pale = 0.45f + RANDOM.nextFloat() * 0.15f;
+                CrashParticles.smoke(level, smoulder.x + (RANDOM.nextDouble() - 0.5) * 2.0 * smoulder.radius, smoulder.y + RANDOM.nextDouble() * 0.5,
+                        smoulder.z + (RANDOM.nextDouble() - 0.5) * 2.0 * smoulder.radius, RANDOM.nextGaussian() * 0.01, 0.05 + RANDOM.nextDouble() * 0.04,
+                        RANDOM.nextGaussian() * 0.01, 0.6f + smoulder.strength * 0.2f, 2.0f + smoulder.strength * 0.7f, 140 + RANDOM.nextInt(80),
+                        0.0012f, 0.75f, dark, dark, dark, pale, pale, pale);
             }
-            if (smoke.strength > 1.5f && smoke.age % 12 == 0 && left > 0.4f) {
-                // A tall column, visible from far away
-                spawn(ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, smoke.x, smoke.y + 0.5, smoke.z, 0.0, 0.07, 0.0);
-            }
-            if (RANDOM.nextFloat() < rate * 0.3f) {
-                spawn(ParticleTypes.LARGE_SMOKE, smoke.x + (RANDOM.nextDouble() - 0.5) * 2.0 * smoke.radius, smoke.y + 0.2,
-                        smoke.z + (RANDOM.nextDouble() - 0.5) * 2.0 * smoke.radius,
-                        0.0, 0.02, 0.0);
+            if (smoulder.strength > 1.5f && smoulder.age % 5 == 0 && left > 0.3f) {
+                // The tall column over a big wreck, visible from far away
+                final float grey = 0.2f + RANDOM.nextFloat() * 0.1f;
+                CrashParticles.smoke(level, smoulder.x + RANDOM.nextGaussian() * 0.5, smoulder.y + 0.5, smoulder.z + RANDOM.nextGaussian() * 0.5,
+                        0.0, 0.12 + RANDOM.nextDouble() * 0.05, 0.0, 1.0f, 3.5f, 260, 0.0018f, 0.65f, grey, grey, grey, 0.62f, 0.62f, 0.64f);
             }
         }
     }

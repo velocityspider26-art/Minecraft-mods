@@ -514,6 +514,24 @@ public final class CrashGameTests {
     }
 
     /**
+     * Only for watching on a dev server: an iron sled scraping along stone, throwing sparks.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "crashphysics_demo_sparks")
+    public static void demoIronSledScrapingStone(final GameTestHelper helper) {
+        if (!DEMO) {
+            helper.succeed();
+            return;
+        }
+        scenario(helper, 20, 100, area -> {
+            area.fill(0, 0, 0, 63, GROUND_TOP, 15, Blocks.STONE.defaultBlockState());
+            final ServerSubLevel sled = area.assemble(area.fill(2, GROUND_TOP + 1, 7, 4, GROUND_TOP + 1, 8, Blocks.IRON_BLOCK.defaultBlockState()));
+            launch(sled, 18.0, -3.0, 0.0);
+            return Counters.of(area.level);
+        }, (area, before) -> {
+        });
+    }
+
+    /**
      * A box-shaped hull: a solid bottom and deck with walls between them.
      */
     private static List<BlockPos> hull(final Area area, final int x0, final int y0, final int z0, final int length, final int height, final int width) {

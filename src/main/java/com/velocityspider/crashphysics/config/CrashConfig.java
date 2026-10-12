@@ -65,6 +65,7 @@ public final class CrashConfig {
     // Limits
     public static final ModConfigSpec.IntValue MAX_BLOCKS_BROKEN_PER_TICK;
     public static final ModConfigSpec.DoubleValue MAX_BREAKING_MILLIS_PER_TICK;
+    public static final ModConfigSpec.BooleanValue REMOVE_FALLEN_VEHICLES;
     public static final ModConfigSpec.IntValue DAMAGE_MEMORY_SECONDS;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
 
@@ -224,6 +225,10 @@ public final class CrashConfig {
                 .comment("Time crashes may spend breaking blocks per tick per dimension [ms]. When it runs out, the rest waits for the next tick",
                         "and anything still in the way holds for now. Keeps big crashes from freezing the server")
                 .defineInRange("maxBreakingMillisPerTick", 15.0, 1.0, 1000.0);
+        REMOVE_FALLEN_VEHICLES = BUILDER
+                .comment("Removes vehicles and wreckage that fall into the void, 256 blocks below the bottom of the world, like the game does with",
+                        "everything else. Otherwise they fall forever, faster and faster, until the physics engine chokes on them and the server hangs")
+                .define("removeFallenVehicles", true);
         DAMAGE_MEMORY_SECONDS = BUILDER
                 .comment("How long partial damage (cracks) is remembered on a block after its last hit [s]")
                 .defineInRange("damageMemorySeconds", 90, 1, 86_400);

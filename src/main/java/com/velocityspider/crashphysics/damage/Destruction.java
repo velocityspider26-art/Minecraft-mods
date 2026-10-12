@@ -218,6 +218,7 @@ public final class Destruction {
                 break;
             }
             this.level.explode(null, entry.x, entry.y, entry.z, entry.power, entry.fire, Level.ExplosionInteraction.BLOCK);
+            this.effects.fire(entry.x, entry.y, entry.z, Math.min(3.0f, 0.8f + entry.power * 0.4f));
         }
         this.volatiles.clear();
     }
@@ -420,6 +421,8 @@ public final class Destruction {
         final boolean hot = material.ignites() || (state.hasProperty(BlockStateProperties.LIT) && state.getValue(BlockStateProperties.LIT));
         if (hot) {
             this.ignite(x, y, z);
+            // Burning wreckage smokes
+            this.effects.fire(x, y, z, 1.0f);
         }
     }
 

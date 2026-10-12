@@ -33,7 +33,7 @@ public record CrashFxPayload(List<Fx> effects) implements CustomPacketPayload {
      * @param magnitude how big: log10 of the energy in kJ for impacts, the volume for sounds, the width for wakes
      * @param vx        a velocity [m/s] for wakes, sparks and splashes; the pitch for sounds; the radius of the vehicle for
      *                  dust rings; how long smoke lasts [ticks] (with its radius in vy)
-     * @param data      a block state id for dust, a sound event id for sounds
+     * @param data      a block state id for dust, a sound event id for sounds, 1 for sparks from a scrape
      */
     public record Fx(int kind, double x, double y, double z, float magnitude, float vx, float vy, float vz, int data) {
     }

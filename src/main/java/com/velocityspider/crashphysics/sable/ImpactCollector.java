@@ -114,6 +114,20 @@ final class ImpactCollector {
     record SkidMark(long pos, BlockState state, BlockState into, double speed) {
     }
 
+    /**
+     * Metal sliding over something hard, fast enough to throw sparks.
+     */
+    record Scrape(ServerSubLevel vehicle, double x, double y, double z, double vx, double vy, double vz) {
+    }
+
+    /**
+     * Below this sliding speed metal doesn't throw sparks [m/s]
+     */
+    private static final double SCRAPE_SPEED = 5.0;
+    private static final int SCRAPES_PER_VEHICLE = 3;
+    private final List<Scrape> scrapes = new ArrayList<>();
+    private final it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap<ServerSubLevel> scrapeCounts = new it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap<>();
+
     ImpactCollector(final ServerLevel level, final LevelCrashState state) {
         this.level = level;
         this.state = state;
@@ -191,6 +205,13 @@ final class ImpactCollector {
         return drained;
     }
 
+    synchronized List<Scrape> drainScrapes() {
+        final List<Scrape> drained = new ArrayList<>(this.scrapes);
+        this.scrapes.clear();
+        this.scrapeCounts.clear();
+        return drained;
+    }
+
     synchronized List<SkidMark> drainSkids() {
         final List<SkidMark> drained = new ArrayList<>(this.skids);
         this.skids.clear();
@@ -228,6 +249,7 @@ final class ImpactCollector {
             if (this.skidMarks) {
                 this.checkSkid(selfState, x, y, z, ox, oz, ix, iy, iz);
             }
+            this.checkScrape(selfState, x, z, ox, oy, oz, ix, iy, iz);
             return false;
         }
 
@@ -634,6 +656,36 @@ final class ImpactCollector {
 
     private static MaterialProfile asRigid(final MaterialProfile profile) {
         return profile.unbreakable() ? profile : new MaterialProfile(profile.density(), profile.strength(), profile.jointStrength(), true);
+    }
+
+    /**
+     * Metal sliding fast over rock, metal or glass throws sparks. Checked from the ground's side of the contact, so
+     * each one counts once.
+     */
+    private void checkScrape(final BlockState selfState, final int x, final int z, final int ox, final int oy, final int oz,
+                             final double ix, final double iy, final double iz) {
+        if (this.scrapes.size() >= 64 || this.vehicleAt(x, z) != null) {
+            return;
+        }
+        final FractureMode ground = CrashMaterials.get(selfState).fracture();
+        if (ground != FractureMode.BRITTLE && ground != FractureMode.DUCTILE && ground != FractureMode.GLASS) {
+            return;
+        }
+        final ServerSubLevel vehicle = this.vehicleAt(ox, oz);
+        final BodyMotion motion = vehicle != null ? this.state.motion(vehicle) : null;
+        if (motion == null || motion.linear.lengthSquared() < SCRAPE_SPEED * SCRAPE_SPEED * 0.25 || this.scrapeCounts.getInt(vehicle) >= SCRAPES_PER_VEHICLE) {
+            return;
+        }
+        final BlockState vehicleState = this.vehicleBlock(vehicle, ox, oy, oz);
+        if (vehicleState == null || CrashMaterials.get(vehicleState).fracture() != FractureMode.DUCTILE) {
+            return;
+        }
+        final Vector3d velocity = motion.pointVelocity(ix, iy, iz, this.scratchA);
+        if (velocity.length() < SCRAPE_SPEED) {
+            return;
+        }
+        this.scrapeCounts.addTo(vehicle, 1);
+        this.scrapes.add(new Scrape(vehicle, ix, iy, iz, velocity.x, velocity.y, velocity.z));
     }
 
     private void checkSkid(final BlockState selfState, final int x, final int y, final int z, final int ox, final int oz,

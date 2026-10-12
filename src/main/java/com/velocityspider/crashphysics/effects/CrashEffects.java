@@ -67,6 +67,10 @@ public final class CrashEffects {
         double velocityX;
         double velocityY;
         double velocityZ;
+        // The velocity bounced off the surfaces hit: the way sparks and chips fly
+        double reboundX;
+        double reboundY;
+        double reboundZ;
         final Map<FractureMode, Double> vehicleMaterials = new EnumMap<>(FractureMode.class);
         final Map<FractureMode, Double> hitMaterials = new EnumMap<>(FractureMode.class);
         BlockState dustState;
@@ -82,10 +86,11 @@ public final class CrashEffects {
      *
      * @param energy energy dissipated [J]
      * @param vx     velocity of the vehicle against what it hit [m/s]
+     * @param nx     the contact normal
      */
     public void recordImpact(final ServerSubLevel vehicle, final double x, final double y, final double z, final double energy,
                              final FractureMode vehicleMaterial, final FractureMode hitMaterial, final BlockState hitState,
-                             final double vx, final double vy, final double vz) {
+                             final double vx, final double vy, final double vz, final double nx, final double ny, final double nz) {
         if (!(energy > 0.0)) {
             return;
         }
@@ -98,6 +103,10 @@ public final class CrashEffects {
         impact.velocityX += vx * energy;
         impact.velocityY += vy * energy;
         impact.velocityZ += vz * energy;
+        final double normal = vx * nx + vy * ny + vz * nz;
+        impact.reboundX += (vx - 2.0 * normal * nx) * energy;
+        impact.reboundY += (vy - 2.0 * normal * ny) * energy;
+        impact.reboundZ += (vz - 2.0 * normal * nz) * energy;
         impact.vehicleMaterials.merge(vehicleMaterial, energy, Double::sum);
         impact.hitMaterials.merge(hitMaterial, energy, Double::sum);
         if (energy > impact.dustEnergy && !hitState.isAir()) {
@@ -129,6 +138,25 @@ public final class CrashEffects {
     }
 
     /**
+     * Metal sliding over rock or metal: a stream of sparks, and the grind of it.
+     *
+     * @param vx sliding velocity [m/s]
+     */
+    public void scrape(final ServerSubLevel vehicle, final double x, final double y, final double z, final double vx, final double vy, final double vz) {
+        final double speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        final List<CrashFxPayload.Fx> list = this.wakes.computeIfAbsent(vehicle, key -> new ArrayList<>());
+        // Thrown along the slide and up off the surface
+        list.add(new CrashFxPayload.Fx(CrashFxPayload.SPARKS, x, y, z, (float) Mth.clamp(speed / 12.0, 0.4, 3.0),
+                (float) vx, (float) (Math.abs(vy) + speed * 0.4), (float) vz, 1));
+        if (this.tick % 6 == 0 && this.lastScrapeSound != this.tick) {
+            this.lastScrapeSound = this.tick;
+            this.play(SoundEvents.GRINDSTONE_USE, x, y, z, (float) Mth.clamp(0.4 + speed * 0.03, 0.4, 1.5), (float) Mth.clamp(0.6 + speed * 0.02, 0.6, 1.4));
+        }
+    }
+
+    private long lastScrapeSound = -1;
+
+    /**
      * Water pouring into a hull through a hole.
      *
      * @param dx   the way it flows in
@@ -141,6 +169,20 @@ public final class CrashEffects {
         if (this.tick % 15 == 0) {
             // The gurgle and rush of water flooding in
             this.play(SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_INSIDE, x, y, z, (float) Mth.clamp(0.4 + rate * 0.1, 0.4, 2.0), 0.7f);
+        }
+    }
+
+    /**
+     * Something caught fire or blew up in a crash: it burns and smokes for a while.
+     *
+     * @param strength how big the fire is, about 1 for a burning block, up to 3 for a big explosion
+     */
+    public void fire(final double x, final double y, final double z, final float strength) {
+        for (final ServerPlayer player : this.level.players()) {
+            if (player.distanceToSqr(x, y, z) <= EFFECT_RANGE * EFFECT_RANGE && this.modded(player)) {
+                final float duration = 300.0f + 200.0f * strength;
+                this.send(player, new CrashFxPayload.Fx(CrashFxPayload.SMOKE, x, y, z, strength, duration, 1.0f + strength * 0.5f, 0.0f, 0));
+            }
         }
     }
 
@@ -224,6 +266,8 @@ public final class CrashEffects {
                         final double speed = Math.sqrt(fx.vx() * fx.vx() + fx.vz() * fx.vz());
                         if (fx.kind() == CrashFxPayload.WAKE && speed > 3.0) {
                             this.level.sendParticles(player, ParticleTypes.SPLASH, false, fx.x(), fx.y() + 0.1, fx.z(), 3, 0.3, 0.1, 0.3, 0.1);
+                        } else if (fx.kind() == CrashFxPayload.SPARKS) {
+                            this.level.sendParticles(player, ParticleTypes.ELECTRIC_SPARK, false, fx.x(), fx.y() + 0.1, fx.z(), 3, 0.2, 0.1, 0.2, 0.3);
                         }
                     }
                 }
@@ -324,13 +368,8 @@ public final class CrashEffects {
                     }
                 }
                 if (metal && hard && magnitude > 0.8 && speed > 5.0) {
-                    this.send(player, new CrashFxPayload.Fx(CrashFxPayload.SPARKS, x, y, z, (float) magnitude, (float) vx, (float) vy, (float) vz, 0));
-                }
-                if (magnitude > 2.7 && speed > 12.0 && !liquid) {
-                    // The wreck smoulders for a while
-                    final float duration = (float) Mth.clamp(200.0 + 250.0 * (magnitude - 2.7), 200.0, 900.0);
-                    this.send(player, new CrashFxPayload.Fx(CrashFxPayload.SMOKE, centerX, top, centerZ, (float) (magnitude - 2.2), duration,
-                            Math.min(halfWidth, 24.0f) * 0.7f, 0.0f, 0));
+                    this.send(player, new CrashFxPayload.Fx(CrashFxPayload.SPARKS, x, y, z, (float) magnitude, (float) (impact.reboundX / impact.energy),
+                            (float) (impact.reboundY / impact.energy), (float) (impact.reboundZ / impact.energy), 0));
                 }
             } else {
                 this.vanillaParticles(player, impact, x, y, z, magnitude, liquid, metal && hard && speed > 5.0);

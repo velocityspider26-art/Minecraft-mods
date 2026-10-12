@@ -195,6 +195,9 @@ public final class LevelCrashState {
     private void postPhysicsTimed(final SubLevelPhysicsSystem system) {
         final long resolveTimer = CrashTimings.begin();
         this.resolver.resolve(system, this.collector.drainRecords(), this.collector.drainSkids());
+        for (final ImpactCollector.Scrape scrape : this.collector.drainScrapes()) {
+            this.effects.scrape(scrape.vehicle(), scrape.x(), scrape.y(), scrape.z(), scrape.vx(), scrape.vy(), scrape.vz());
+        }
         CrashTimings.end(CrashTimings.Section.RESOLVE, resolveTimer);
         this.blockBreakAllowance = this.destruction.remainingBlockBudget();
 
@@ -289,6 +292,10 @@ public final class LevelCrashState {
             this.damage.expire(this.tick, CrashConfig.DAMAGE_MEMORY_SECONDS.getAsInt() * 20L);
         }
 
+        if (this.tick % 20 == 0 && CrashConfig.isLoaded() && CrashConfig.REMOVE_FALLEN_VEHICLES.getAsBoolean()) {
+            this.removeFallen();
+        }
+
         for (final BodyMotion motion : this.motions.values()) {
             motion.resetTick();
         }
@@ -315,6 +322,28 @@ public final class LevelCrashState {
      */
     public double floodWater(final ServerSubLevel vehicle) {
         return this.hulls.water(vehicle);
+    }
+
+    /**
+     * Removes vehicles that fell into the void: they would fall forever, faster and faster, until the physics engine
+     * chokes on them.
+     */
+    private void removeFallen() {
+        final ServerSubLevelContainer container = SubLevelContainer.getContainer(this.level);
+        if (container == null) {
+            return;
+        }
+        final double floor = this.level.getMinBuildHeight() - 256.0;
+        final java.util.List<ServerSubLevel> fallen = new java.util.ArrayList<>();
+        for (final ServerSubLevel subLevel : container.getAllSubLevels()) {
+            if (!subLevel.isRemoved() && subLevel.logicalPose().position().y() < floor) {
+                fallen.add(subLevel);
+            }
+        }
+        for (final ServerSubLevel subLevel : fallen) {
+            CrashPhysics.LOGGER.info("[crashphysics] {} fell into the void and was removed", subLevel);
+            container.removeSubLevel(subLevel, dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason.REMOVED);
+        }
     }
 
     public long tick() {
